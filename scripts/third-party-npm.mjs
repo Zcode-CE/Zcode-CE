@@ -7,11 +7,36 @@ import { resolveSpawnRuntimeOptions } from "./spawn-command.mjs";
 
 const exec = promisify(execFile);
 export const hashBytes = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const unsupportedCanvas = new Set([
-  "@napi-rs/canvas-android-arm64",
-  "@napi-rs/canvas-linux-arm-gnueabihf",
-  "@napi-rs/canvas-linux-riscv64-gnu",
-]);
+// @napi-rs/canvas 按平台分发原生二进制，每个平台一个包。pnpm 只会安装**当前平台**的那一个，
+// 其余平台包虽然出现在 lockfile 的生产依赖图里，但永远不会被安装。
+// 原实现只硬编码排除了 3 个平台（android-arm64 / linux-arm-gnueabihf / linux-riscv64-gnu），
+// 在 linux-x64 等常见平台上校验必然失败 —— 这是"排除集不完整"，不是缺依赖。
+//
+// 改为按当前平台动态判断：只排除**明确不属于当前平台**的 canvas 平台包。
+const CANVAS_PLATFORM_PREFIX = "@napi-rs/canvas-";
+const currentPlatformTag = (() => {
+  const arch = process.arch;
+  const libc =
+    process.platform === "linux" && !process.report?.getReport()?.header?.glibcVersionRuntime
+      ? "musl"
+      : "gnu";
+  switch (process.platform) {
+    case "darwin":
+      return `darwin-${arch}`;
+    case "win32":
+      return `win32-${arch}-msvc`;
+    case "linux":
+      return `linux-${arch}-${libc}`;
+    default:
+      return `${process.platform}-${arch}`;
+  }
+})();
+
+function isForeignCanvasPlatformPackage(name) {
+  if (!name.startsWith(CANVAS_PLATFORM_PREFIX)) return false;
+  return name.slice(CANVAS_PLATFORM_PREFIX.length) !== currentPlatformTag;
+}
+
 const noticeName =
   /(?:^|[._-])(?:licen[sc]es?|copying|notice|copyright|unlicense|third.party|ofl)(?:[._-]|$)/iu;
 
@@ -69,7 +94,7 @@ export function assertProductionGraphs(lockedProjects, installedProjects) {
   const locked = productionPackages(lockedProjects);
   const installed = productionPackages(installedProjects);
   const missing = [...locked].filter(
-    ([key, item]) => !installed.has(key) && !unsupportedCanvas.has(item.name),
+    ([key, item]) => !installed.has(key) && !isForeignCanvasPlatformPackage(item.name),
   );
   const stale = [...installed.keys()].filter((key) => !locked.has(key));
   if (missing.length || stale.length) {
@@ -152,7 +177,7 @@ export async function scanInstalledPackages(root, projects) {
 export function missingProductionPackages(required, installed) {
   const missing = [...required].filter(([key]) => !installed.has(key)).map(([, item]) => item);
   for (const item of missing) {
-    if (!unsupportedCanvas.has(item.name))
+    if (!isForeignCanvasPlatformPackage(item.name))
       throw new Error(`Missing installed dependency: ${item.name}@${item.version}`);
   }
   return missing;
