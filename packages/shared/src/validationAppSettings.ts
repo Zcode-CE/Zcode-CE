@@ -10,6 +10,7 @@ import {
   embeddedBrowserViewportPreferenceSchema,
 } from "./browser-use/command-metadata.js";
 import { providerFamilyConnectionSelectionSettingsSchema } from "./provider-family-connection-selection.js";
+import { resolveGithubMirrorPrefix } from "./githubMirror.js";
 
 /** 引导职业枚举；单独导出供 onboarding 记录回填 settings 时做窄化校验。 */
 const appSettingsOccupationSchema = z.enum([
@@ -55,6 +56,20 @@ export const integratedTerminalShellSelectionSchema = z.discriminatedUnion("mode
   }),
 ]);
 const providerFamilyDomainSchema = z.enum(["zai", "bigmodel"]);
+
+/**
+ * GitHub 加速前缀：空串表示关闭；非空时必须能通过 githubMirror 的 https/无凭据/无查询串约束。
+ *
+ * 为什么在这里也校验一次：设置页的拒绝保存是第一道闸，但 setting.json 可被手工编辑、
+ * 也可能被旧版本或同步链路写回，schema 是唯一拦得住"绕开 UI 写入明文前缀"的位置。
+ */
+const githubMirrorPrefixSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) => value === "" || resolveGithubMirrorPrefix(value).prefix !== undefined,
+    "GitHub mirror prefix must be an https URL without credentials, query or fragment",
+  );
 
 export const postUpdateReleaseNotesPayloadSchema = z.object({
   version: nonEmptyStringSchema,
@@ -429,6 +444,10 @@ const appSettingsObjectSchema = z.object({
   httpProxy: nonEmptyStringSchema.optional(),
   httpProxyNoProxy: nonEmptyStringSchema.optional(),
   httpProxyCaCertPath: nonEmptyStringSchema.optional(),
+  // 加速前缀默认关闭（空值 = 直连）。这里只校验形状：允许"合法前缀或空串"，
+  // 非空时必须通过 resolveGithubMirrorPrefix 的 https/无凭据/无查询串约束，
+  // 避免手改 setting.json 写入明文前缀后让插件下载落到 http 链路。
+  githubMirrorPrefix: githubMirrorPrefixSchema.optional(),
   embeddedBrowserAllowInsecureCertificates: z.boolean().default(false),
   embeddedBrowserViewportPreference: embeddedBrowserViewportPreferenceSchema.default(
     DEFAULT_EMBEDDED_BROWSER_VIEWPORT_PREFERENCE,
@@ -501,6 +520,7 @@ export const appSettingsPatchSchema = z.object({
   httpProxy: nonEmptyStringSchema.optional(),
   httpProxyNoProxy: nonEmptyStringSchema.optional(),
   httpProxyCaCertPath: nonEmptyStringSchema.optional(),
+  githubMirrorPrefix: githubMirrorPrefixSchema.optional(),
   embeddedBrowserAllowInsecureCertificates: z.boolean().optional(),
   embeddedBrowserViewportPreference: embeddedBrowserViewportPreferenceSchema.optional(),
   computerUseComposerEntryHidden: z.boolean().optional(),

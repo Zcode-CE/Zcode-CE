@@ -24,10 +24,13 @@ import {
   type ModelSelectionConfiguredDefaultSource,
   type ProviderSettingsConnectivityTester,
 } from "./providerFacadeServices.js";
+import type { ProviderModelCatalogFetcher } from "./providerModelCatalogFetcher.js";
 
 export interface ProviderRuntimeOptions extends ProviderConfigRuntimeOptions {
   readonly accountSource?: RefreshableProviderSource<AccountProviderConfigSnapshot>;
   readonly testConnectivity?: ProviderSettingsConnectivityTester;
+  /** 模型拉取出口；缺省时 fetchProviderModels 明确失败，而不是回退到 renderer 直连。 */
+  readonly modelCatalogFetcher?: ProviderModelCatalogFetcher;
 }
 
 export interface ProviderRuntimeDependencies {
@@ -35,6 +38,7 @@ export interface ProviderRuntimeDependencies {
   readonly accountSource?: RefreshableProviderSource<AccountProviderConfigSnapshot>;
   readonly disposeAccountSource?: () => void;
   readonly testConnectivity?: ProviderSettingsConnectivityTester;
+  readonly modelCatalogFetcher?: ProviderModelCatalogFetcher;
   readonly modelSelectionConfiguredDefaultSource?: ModelSelectionConfiguredDefaultSource;
   readonly disposeModelSelectionConfiguredDefaultSource?: () => void;
 }
@@ -105,6 +109,7 @@ export class ProviderRuntime {
       settingsFacade,
       ensureReady,
       dependencies.testConnectivity,
+      dependencies.modelCatalogFetcher,
     );
     this.#modelSelectionRuntime = createModelSelectionService(
       createNodeModelSelectionFacade(this.registryService),
@@ -157,6 +162,8 @@ function createSettingsMutationTarget(
       configService.renamePersonalModel(providerId, currentModelId, nextModelId, membership),
     deletePersonalModel: (providerId, modelId, membership) =>
       configService.deletePersonalModel(providerId, modelId, membership),
+    restoreHiddenModel: (providerId, modelId, membership) =>
+      configService.restoreHiddenModel(providerId, modelId, membership),
     setPersonalModelEnabled: (providerId, modelId, enabled, membership) =>
       configService.setPersonalModelEnabled(providerId, modelId, enabled, membership),
     savePersonalModelDraft: (
@@ -194,7 +201,7 @@ function createSettingsMutationTarget(
 }
 
 export function createProviderRuntime(options: ProviderRuntimeOptions): ProviderRuntime {
-  const { accountSource, testConnectivity, ...configRuntimeOptions } = options;
+  const { accountSource, testConnectivity, modelCatalogFetcher, ...configRuntimeOptions } = options;
   const configRuntime = createProviderConfigRuntime(configRuntimeOptions);
   const modelSelectionConfiguredDefaultSource = new NodeModelSelectionConfigRepository({
     personalRepository: configRuntime.personalRepository,
@@ -203,6 +210,7 @@ export function createProviderRuntime(options: ProviderRuntimeOptions): Provider
     configRuntime,
     accountSource,
     testConnectivity,
+    modelCatalogFetcher,
     modelSelectionConfiguredDefaultSource,
     disposeModelSelectionConfiguredDefaultSource: () =>
       modelSelectionConfiguredDefaultSource.dispose(),

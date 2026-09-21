@@ -17,8 +17,12 @@ import {
   type SavePersonalModelDraftInput,
 } from "@zcode/provider";
 import { createServiceDescriptor } from "../descriptors.js";
-import type { ModelConnectivityResult } from "@zcode/shared";
+import type { ModelCatalogEntry, ModelConnectivityResult } from "@zcode/shared";
 import { createServiceLogger } from "../logger/serviceLogger.js";
+import type {
+  ProviderModelCatalogFetcher,
+  ProviderModelCatalogRequest,
+} from "./providerModelCatalogFetcher.js";
 
 export type {
   ProviderSettingsProviderView,
@@ -58,6 +62,8 @@ export interface IProviderSettingsService {
     nextModelId: ModelId,
   ): Promise<ProviderSettingsView>;
   deletePersonalModel(providerId: ProviderId, modelId: ModelId): Promise<ProviderSettingsView>;
+  /** 恢复被隐藏的内置模型；没有它隐藏不可逆。 */
+  restoreHiddenModel(providerId: ProviderId, modelId: ModelId): Promise<ProviderSettingsView>;
   savePersonalModelDraft(input: SavePersonalModelDraftInput): Promise<ProviderSettingsView>;
   setPersonalModelEnabled(
     providerId: ProviderId,
@@ -68,6 +74,20 @@ export interface IProviderSettingsService {
   testModelConnectivity(
     input: ProviderSettingsConnectivityRequest,
   ): Promise<ModelConnectivityResult>;
+  /**
+   * 从目标 Environment 拉取 Provider 的 models 端点。
+   *
+   * 必须是 Host 侧方法：renderer 直连会被 CORS 拦、拿不到设置页的 HTTP 代理，
+   * 远程与手机端也无法访问用户本机的 provider。
+   * 纯读操作，不修改配置；未装配拉取能力时抛错而不是回退到 renderer 直连。
+   */
+  fetchProviderModels(providerId: ProviderId): Promise<ProviderModelCatalogView>;
+}
+
+export interface ProviderModelCatalogView {
+  readonly entries: readonly ModelCatalogEntry[];
+  /** 已归一化的实际请求地址；拉取失败时不返回。 */
+  readonly url: string;
 }
 
 export const IProviderSettingsService = createServiceDescriptor<IProviderSettingsService>(
@@ -110,6 +130,7 @@ export function createProviderSettingsService(
   facade: ProviderSettingsFacade,
   ensureReady: () => Promise<void> = async () => {},
   testConnectivity?: ProviderSettingsConnectivityTester,
+  modelCatalogFetcher?: ProviderModelCatalogFetcher,
 ): IProviderSettingsService {
   return {
     onDidChange: toEvent((listener) => facade.onDidChange(listener)),
@@ -156,6 +177,10 @@ export function createProviderSettingsService(
     deletePersonalModel: async (providerId, modelId) => {
       await ensureReady();
       return facade.deletePersonalModel(providerId, modelId);
+    },
+    restoreHiddenModel: async (providerId, modelId) => {
+      await ensureReady();
+      return facade.restoreHiddenModel(providerId, modelId);
     },
     savePersonalModelDraft: async (input) => {
       await ensureReady();
@@ -206,6 +231,45 @@ export function createProviderSettingsService(
         modelId: input.modelId,
       });
     },
+    fetchProviderModels: async (providerId) => {
+      await ensureReady();
+      if (!modelCatalogFetcher) {
+        throw new Error("当前 Environment 未装配模型拉取能力");
+      }
+      const request = resolveProviderModelCatalogRequest(facade, providerId);
+      return modelCatalogFetcher(request);
+    },
+  };
+}
+
+/**
+ * 从当前 Settings 视图投影拉取所需事实。
+ *
+ * 只消费 Effective Config：用户可能只在个人覆盖层填了 Key / baseUrl，
+ * 直接读内置层会拿到空 Key 或错误的 baseUrl。不完整配置直接拒绝，
+ * 避免发出必然 401/404 的请求。
+ */
+function resolveProviderModelCatalogRequest(
+  facade: ProviderSettingsFacade,
+  providerId: ProviderId,
+): ProviderModelCatalogRequest {
+  const provider = facade.getView().providers.find((item) => item.providerId === providerId);
+  if (!provider) throw new Error(`Provider 不存在: ${providerId}`);
+  const api = provider.effectiveConfig.api;
+  if (!api?.baseUrl) throw new Error("该 Provider 尚未配置 Base URL，无法拉取模型");
+  // API 格式决定端点推导规则，缺失时无法确定请求地址；不猜默认值，
+  // 否则会把 anthropic 网关的请求发到 OpenAI 兼容路径上。
+  if (!api.type) throw new Error("该 Provider 尚未配置 API 格式，无法拉取模型");
+  const access = provider.effectiveConfig.access;
+  const apiKey =
+    access && (access.type === "api-key" || access.type === "zhipu-coding-plan-api-key")
+      ? access.apiKey
+      : undefined;
+  return {
+    baseUrl: api.baseUrl,
+    apiFormat: api.type,
+    apiKey,
+    headers: api.headers ?? undefined,
   };
 }
 

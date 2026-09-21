@@ -1,8 +1,9 @@
 import { mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { onboardingRecordFileSchema } from "@zcode/shared";
+import { onboardingRecordFileSchema, onboardingRecordFileV2Schema } from "@zcode/shared";
 import { appSettingsOccupationEnum } from "@zcode/shared";
 import type {
+  OnboardingDecision,
   OnboardingRecordEntry,
   OnboardingRecordEntryInput,
   OnboardingRecordFile,
@@ -57,6 +58,43 @@ export function createOnboardingRecordService(
     return queued;
   };
 
+  /**
+   * 落一条决策并保证幂等：同一 (userId, status) 已存在时不重复追加。
+   *
+   * 失败只 warn 不抛：决策是"下次别再弹"的优化，写盘失败不应阻断引导判定本身
+   * （本机确实已有任务/用户确实关闭过，下次启动会重试落盘）。
+   */
+  const recordDecisionSafely = async (
+    existingFile: OnboardingRecordFile | null,
+    userId: string | null,
+    status: OnboardingDecision["status"],
+    reason: OnboardingDecision["reason"],
+  ): Promise<void> => {
+    try {
+      await enqueueWrite(async () => {
+        const filePath = getRecordFile();
+        const file = existingFile ??
+          (await readRecordFile(filePath)) ?? {
+            version: 2 as const,
+            deviceMid: "",
+            entries: [],
+            decisions: [],
+          };
+        if (file.decisions.some((d) => d.userId === userId && d.status === status)) return;
+        file.decisions.push({
+          userId,
+          status,
+          reason,
+          decidedAt: new Date().toISOString(),
+        });
+        await mkdir(join(filePath, ".."), { recursive: true });
+        await atomicWriteText(filePath, JSON.stringify(file, null, 2));
+      });
+    } catch (error) {
+      logger.warn(undefined, "record onboarding decision failed:", error);
+    }
+  };
+
   return {
     async appendRecord(deviceMid: string, entry: OnboardingRecordEntryInput): Promise<void> {
       const userId = await options.loadUserId();
@@ -78,7 +116,8 @@ export function createOnboardingRecordService(
           }
           file = existing;
         } else {
-          file = { version: 1, deviceMid, entries: [] };
+          // 新文件直接落 v2：v1 只在读取旧文件时出现，由 onboardingRecordFileSchema 无损升级。
+          file = { version: 2, deviceMid, entries: [], decisions: [] };
         }
         const record: OnboardingRecordEntry = {
           userId,
@@ -88,7 +127,7 @@ export function createOnboardingRecordService(
         // 每 userId（含 null）至多一条：同一用户重复完成引导（debug 重置后再答等）覆盖旧条目，
         // 而不是追加——覆盖后的新答案重新置 pending，等待上传。
         const previousIndex = file.entries.findIndex((item) => item.userId === userId);
-        const validated = onboardingRecordFileSchema.shape.entries.element.parse(record);
+        const validated = onboardingRecordFileV2Schema.shape.entries.element.parse(record);
         if (previousIndex >= 0) file.entries[previousIndex] = validated;
         else file.entries.push(validated);
         await mkdir(join(filePath, ".."), { recursive: true });
@@ -107,7 +146,7 @@ export function createOnboardingRecordService(
         // 兼容旧版重复文件取最后一条 null；移交是改写，不保留匿名副本。
         for (let i = file.entries.length - 1; i >= 0; i -= 1) {
           if (file.entries[i]!.userId === null) {
-            file.entries[i] = onboardingRecordFileSchema.shape.entries.element.parse({
+            file.entries[i] = onboardingRecordFileV2Schema.shape.entries.element.parse({
               ...file.entries[i]!,
               userId,
             });
@@ -121,8 +160,34 @@ export function createOnboardingRecordService(
     async shouldOnboard(): Promise<boolean> {
       const userId = await options.loadUserId();
       const file = await readRecordFile(getRecordFile());
+
+      // 判定顺序与官方 3.14.1 一致，不可调换：
+      // 1) 用户主动关闭过 → 不再引导（否则「关闭后重启又弹」的老症状会复现）。
+      // 2) 本机已有任务 → 视为老用户，落一条 existing_local_user 决策后不引导。
+      //    没有这一步，升级到本版的老用户会被当成新用户弹一次引导。
+      if (
+        file?.decisions.some(
+          (decision) => decision.userId === userId && decision.status === "dismissed",
+        )
+      ) {
+        return false;
+      }
+
+      const hasExistingLocalTask = options.hasExistingLocalTask;
+      if (hasExistingLocalTask && (await hasExistingLocalTask())) {
+        // 决策落盘失败不能阻断判定：下次启动会重试，且本机确实已有任务。
+        await recordDecisionSafely(file, userId, "existing_local_user", "existing_local_task");
+        return false;
+      }
+
       if (!file) return true;
       return !file.entries.some((entry) => entry.userId === userId);
+    },
+
+    async dismissOnboarding(): Promise<void> {
+      const userId = await options.loadUserId();
+      const file = await readRecordFile(getRecordFile());
+      await recordDecisionSafely(file, userId, "dismissed", "user_closed");
     },
 
     async getLatestEntry(): Promise<OnboardingRecordEntry | null> {
@@ -169,7 +234,7 @@ export function createOnboardingRecordService(
         if (!file) return;
         const index = file.entries.findLastIndex((entry) => entry.userId === userId);
         if (index < 0) return;
-        file.entries[index] = onboardingRecordFileSchema.shape.entries.element.parse({
+        file.entries[index] = onboardingRecordFileV2Schema.shape.entries.element.parse({
           ...file.entries[index],
           ...patch,
         });

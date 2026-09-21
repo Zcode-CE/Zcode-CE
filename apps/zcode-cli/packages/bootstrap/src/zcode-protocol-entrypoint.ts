@@ -47,7 +47,6 @@ import { cleanupProtocolRuntime } from "./zcode-protocol/runtime-cleanup.js";
 import { startProtocolResourceSampler } from "./zcode-protocol/resource-sampler.js";
 import { acquireProtocolStartupResource } from "./zcode-protocol/startup-resource.js";
 import type { ZCodeProcessResourceSampler } from "./process-resource-sampler.js";
-import { prepareZCodeTelemetryEnv, shutdownZCodeTelemetry } from "./telemetry-bootstrap.js";
 
 function applyProtocolPresentationSurface(
   options: Omit<ZCodeAppOptions, "providerRegistry">,
@@ -167,19 +166,10 @@ export async function runZCodeProtocolAgent(
       module: "bootstrap.zcode_protocol",
       providerCount: providerRegistryRuntime.snapshot.registry.providers.length,
     });
-    const runtimeSurface = resolveProtocolRuntimeSurface(runtimeEnv);
-    const telemetryEnv = await acquireProtocolStartupResource({
-      signal: options.lifecycle?.signal,
-      logger,
-      disposeLate: () => shutdownZCodeTelemetry(),
-      create: () =>
-        prepareZCodeTelemetryEnv(runtimeEnv, {
-          cliVersion: options.version,
-          productVersion: options.env?.ZCODE_APP_VERSION,
-          runtimeSurface,
-        }),
-    });
-    const telemetryDeviceMid = telemetryEnv.ZCODE_TELEMETRY_DEVICE_MID;
+    // 曾经在这里 prepareZCodeTelemetryEnv：它建进程级 OTLP Owner 并把 deviceMid 写回 env。
+    // 遥测删除后两者都不再需要 —— deviceMid 是设备身份，CLI 侧由 adapters 的
+    // ensureCliDeviceMid 从 ~/.zcode/v2/telemetry-state.json 独立派生（同文件同字段），
+    // 不依赖这里的写回；runtimeEnv 原样下传，宿主若已注入该键也不会被剥掉。
     mcpTelemetryTracker =
       configResult.config.features.mcp === false
         ? undefined
@@ -263,9 +253,8 @@ export async function runZCodeProtocolAgent(
             };
           },
           env: {
-            ...telemetryEnv,
+            ...runtimeEnv,
             ...appOptions.env,
-            ...(telemetryDeviceMid ? { ZCODE_TELEMETRY_DEVICE_MID: telemetryDeviceMid } : {}),
           },
           ...(nodeReplBrowserBroker ? { nodeReplBrowserBroker } : {}),
           ...(mcpConnectionPool
@@ -376,11 +365,3 @@ export async function runZCodeProtocolAgent(
   }
 }
 
-function resolveProtocolRuntimeSurface(
-  env: NodeJS.ProcessEnv,
-): "desktop_local_host" | "remote_workspace_host" {
-  // Bug 根因：入口曾无条件覆盖 Host 注入值，远程 SSH/WSL/容器 Trace 被归入本地 Desktop。
-  return env.ZCODE_TELEMETRY_RUNTIME_SURFACE?.trim() === "remote_workspace_host"
-    ? "remote_workspace_host"
-    : "desktop_local_host";
-}

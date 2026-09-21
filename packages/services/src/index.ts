@@ -46,13 +46,10 @@ export type {
   ConversationShareTurnPreflightResult,
   PublishTextConversationInput,
 } from "./conversation-share/conversationShare.js";
-// Conversation share 的具体实现依赖 Node 文件系统，只能从 @zcode/services/node 引入；
-// 根入口必须保持 browser-safe，避免 renderer 解析到 node:* 模块。
-export {
-  createConversationTelemetryService,
-  type ConversationTelemetryWorkspaceTarget,
-  type IConversationTelemetryService,
-} from "./conversation-telemetry/conversationTelemetry.js";
+// 遥测已移除（P1）：conversation-telemetry/conversationTelemetry.ts（UI 埋点 supervisor 的
+// 只读 workspace 服务桥）已删除，唯一消费者 ConversationTelemetryAttachment.tsx 同步删除。
+// 注意 ConversationTelemetryFact **协议类型本身保留** —— zcode-server-cli 的
+// taskActivityTracker.ts:55-66 用它做 running-task 计数与心跳，属功能而非遥测。
 
 // File service — IFileService is both a type (interface) and value (descriptor)
 export { IFileService } from "./file/file.js";
@@ -226,6 +223,19 @@ export {
   ICodingPlanSubscriptionService,
   type OffPeakClientConfig,
 } from "./coding-plan-subscription/codingPlanSubscription.js";
+// claim 平面（周末/体验套餐领取）的服务层入口：验证码求解器注入点 + 配置读取。
+export {
+  createManualClaimCaptcha,
+  type ManualClaimCaptcha,
+  type ManualClaimCaptchaSolver,
+} from "./coding-plan-subscription/manualClaimCaptcha.js";
+export {
+  createManualClaimPlanClient,
+  MANUAL_CLAIM_PATH,
+  MANUAL_CLAIM_PREVIEW_PATH,
+  type ManualClaimPlanClient,
+  type ManualClaimPlanClientOptions,
+} from "./coding-plan-subscription/manualClaimPlanClient.js";
 export {
   IClientScenesService,
   type ClientSceneConfig,

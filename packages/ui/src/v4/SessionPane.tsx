@@ -1,8 +1,6 @@
 import { resolveSelectionSideInheritedModel } from "@/lib/selectionSideInheritedModel.js";
 import { useStartPlanRecommendation } from "@/hooks/useStartPlanRecommendation.js";
 import type { SessionCreateSource } from "@zcode/shared";
-import { reportSessionCreate } from "@/lib/sessionCreateTelemetry.js";
-import { getLocalTtftObserver } from "@/v4/telemetry/localTtftObserver.js";
 /* oxlint-disable eslint(max-lines) -- SessionPane 是单 pane 竖切的命令编排收口（订阅/发送/停止/fork/edit/retry/queue/slash 全集），与旧 ChatView 同粒度；HEAD 已超限（693 行计数），拆散命令组会打散 dispatchCommand/snapshotRef 的闭包纪律。 */
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import {
@@ -64,8 +62,6 @@ import { WORKSPACE_FILE_DRAG_MIME } from "@/lib/workspaceFileDrag.js";
 import { buildChatSessionScrollMemoryKey } from "@/lib/chatSessionScrollMemory.js";
 import type { MessageFileLinkTarget } from "@/components/ai-elements/message.js";
 import { useServices } from "@/hooks/useServices.js";
-import { useOptionalPlatform } from "@/hooks/usePlatform.js";
-import type { SessionOpenTrigger } from "@/lib/sessionOpenArmsTelemetry.js";
 import { useDynamicWorkflowAvailability } from "@/hooks/useDynamicWorkflowAvailability.js";
 import { resolveWorkflowResumeHandler } from "@/v4/workflowResumeGate.js";
 import {
@@ -73,7 +69,6 @@ import {
   type WorkflowRunSettingsChange,
 } from "@/components/workflow-timeline/workflowRunSettings.js";
 import { useWorkflowRunJournalSummaries } from "@/hooks/useWorkflowRunJournalSummaries.js";
-import { usePlanIdentitySnapshot } from "@/hooks/usePlanIdentitySnapshot.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useWorkspaceHomePath } from "@/hooks/useWorkspaceHomePath.js";
 import { prepareWorkspaceWithZCodeSessionService } from "@/hooks/useWorkspacePrepare.js";
@@ -213,14 +208,6 @@ import type {
 import type { SessionLease } from "@/v4/sessionDataLayer.js";
 import { V4InteractionDialogs } from "@/v4/V4InteractionDialogs.js";
 import {
-  useScopedConversationTelemetryForegroundEnabled,
-  useScopedConversationTelemetrySupervisor,
-} from "@/v4/telemetry/ConversationTelemetryAttachment.js";
-import type { ConversationPromptTelemetrySeed } from "@/v4/telemetry/conversationTelemetrySupervisor.js";
-import { resolveSendAckSettlement } from "@/v4/telemetry/conversationTelemetrySupervisor.js";
-import { useSessionSubscriptionErrorTelemetry } from "@/v4/telemetry/useSessionSubscriptionErrorTelemetry.js";
-import { useSessionOpenArmsTelemetry } from "@/v4/telemetry/useSessionOpenArmsTelemetry.js";
-import {
   parseV4VisibleSlashCommand,
   parseSelectionSideSlashCommand,
   v4QueuedCommandText,
@@ -285,8 +272,6 @@ import {
 export interface SessionPaneProps {
   paneId: string;
   sessionId: string | null;
-  /** 低基数打开入口，由 pane 宿主提供；缺省仅用于兼容旧调用。 */
-  openTrigger?: SessionOpenTrigger;
   rootSessionId?: string;
   /** subagent 右侧详情等观察视图：不显示 composer/input，也不发送行内编辑类命令。 */
   readOnly?: boolean;
@@ -312,11 +297,6 @@ export interface SessionPaneProps {
    * focused pane。单 pane 消费者（V4ChatPane）缺省 true。
    */
   focused?: boolean;
-  /**
-   * pane 是否真实可见。分屏的非 focused pane 仍传 true；forceMount 的隐藏侧栏 tab 传 false。
-   * 只影响 foreground UI telemetry，不影响 live subscription 或后台 /event/report。
-   */
-  telemetryVisible?: boolean;
   /** 向右拆分新 draft 窗格（叶子数达上限时宿主不下发）。 */
   onSplitRight?: () => void;
   /** 向下拆分新 draft 窗格。 */
@@ -488,7 +468,6 @@ function shouldRestoreQueuedComposerFromAck(status: CommandAck["status"]): boole
 export function SessionPane({
   paneId,
   sessionId,
-  openTrigger,
   rootSessionId,
   readOnly = false,
   allowWorkspaceFileRewind = false,
@@ -502,7 +481,6 @@ export function SessionPane({
   onSessionCreated,
   onSelectionSideChatUnavailable,
   focused = true,
-  telemetryVisible = true,
   onSplitRight,
   onSplitDown,
   onClosePane,
@@ -552,7 +530,6 @@ export function SessionPane({
     fileChanges,
     fileRewindPreview,
   } = useV4Conversation();
-  const platform = useOptionalPlatform();
   const { conversationShareService, modelSelectionService, zcodeSessionService, zcodeTaskService } =
     useServices();
   const { intl, locale } = useZCodeIntl();
@@ -565,35 +542,9 @@ export function SessionPane({
   });
   // SessionPane 已位于目标 Workspace 的 ServiceProvider 内，直接订阅该 Host Service；
   // 不再从展示组件二次解析 workspace/remote 路由。
-  const conversationTelemetry = useScopedConversationTelemetrySupervisor({
-    workspacePath,
-    ...(workspaceIdentity ? { workspaceIdentity } : {}),
-    ...(remoteSessionId ? { remoteSessionId } : {}),
-  });
-  const conversationTelemetryForegroundEnabled = useScopedConversationTelemetryForegroundEnabled({
-    workspacePath,
-    ...(workspaceIdentity ? { workspaceIdentity } : {}),
-    ...(remoteSessionId ? { remoteSessionId } : {}),
-  });
-  const conversationTelemetryForegroundOwnerRef = useRef<object>({});
-  useEffect(() => {
-    if (
-      !conversationTelemetry ||
-      !conversationTelemetryForegroundEnabled ||
-      !telemetryVisible ||
-      !sessionId
-    ) {
-      return undefined;
-    }
-    return conversationTelemetry.attachForeground(
-      conversationTelemetryForegroundOwnerRef.current,
-      sessionId,
-    );
-  }, [conversationTelemetry, conversationTelemetryForegroundEnabled, sessionId, telemetryVisible]);
   const [lease, setLease] = useState<SessionLease | null>(null);
   const state = useConversationProjection(lease);
   const snapshot = state.snapshot;
-  const newlyCreatedSessionIdRef = useRef<string | null>(null);
   const shareDraft = useConversationShareSelectionStore((storeState) =>
     sessionId ? storeState.drafts[sessionId] : undefined,
   );
@@ -972,28 +923,6 @@ export function SessionPane({
     workspacePath,
   ]);
   const sessionLeaseReady = lease?.sessionId === sessionId;
-  const shouldMeasureExistingSessionOpen =
-    sessionLeaseReady && newlyCreatedSessionIdRef.current !== sessionId;
-  useSessionOpenArmsTelemetry({
-    sessionId,
-    snapshot,
-    openTiming: sessionLeaseReady ? state.openTiming : undefined,
-    rendererTiming: sessionLeaseReady ? state.rendererTiming : undefined,
-    openKind: sessionLeaseReady ? lease?.openKind : undefined,
-    openTrigger,
-    startedAt: sessionLeaseReady ? lease?.startedAt : undefined,
-    status: state.status,
-    lastError: state.lastError,
-    enabled: shouldMeasureExistingSessionOpen,
-    readOnly,
-    reporter: platform,
-  });
-  useEffect(() => {
-    const newlyCreatedSessionId = newlyCreatedSessionIdRef.current;
-    if (newlyCreatedSessionId !== null && newlyCreatedSessionId !== sessionId) {
-      newlyCreatedSessionIdRef.current = null;
-    }
-  }, [sessionId]);
   const mobilePlanInteractionReconcileTimersRef = useRef(
     new Map<string, ReturnType<typeof setTimeout>>(),
   );
@@ -1007,21 +936,6 @@ export function SessionPane({
   const pluginReferenceIconsEnabled =
     isSessionPluginCatalogReady(state.status, sessionId, snapshot?.sessionId) &&
     hasPluginReferenceUserRows(snapshot?.rows.window ?? []);
-  // send_result 的落定信号：用户消息真正画进对话历史。z-code 没有乐观渲染，
-  // 气泡必须等投影回流出 userInput row 才出现，所以 ACK accepted 不能算发送完成。
-  // 取 useEffect 而非 store 订阅回调 —— effect 在 DOM commit 之后跑，此刻气泡已在屏幕上。
-  useEffect(() => {
-    const rows = snapshot?.rows.window;
-    if (!rows || rows.length === 0) return;
-    // 不能只取最后一条 userInput：后台结果行可能紧随其后插到尾部，
-    // 只看尾部会漏掉用户自己那条，误判成 render_timeout。supervisor 侧按
-    // 待渲染表 O(1) 过滤，历史回填 / 切会话重载推来的老 row 不会误触发。
-    for (const row of rows) {
-      if (row.kind === "userInput" && row.sourceCommandId) {
-        conversationTelemetry?.notifyUserInputRendered(row.sourceCommandId);
-      }
-    }
-  }, [conversationTelemetry, snapshot]);
   const fileChangesRequestCache = useMemo(
     () => new Map<string, Promise<V4ConversationFileChangesResult>>(),
     [fileChanges, sessionId, snapshot?.logEpoch],
@@ -1295,40 +1209,8 @@ export function SessionPane({
   const codingPlanUpgradeDialog = useOptionalCodingPlanUpgradeDialog();
   const openSettingsTab = useOptionalTabStore((state) => state.openSettingsTab);
   const promoteGroupedDraftTask = useZCodeSessionStore((state) => state.promoteGroupedDraftTask);
-  // 首发 commandId 在 accepted 时已存在，也是 completion 的 message_id；不必等回复完成。
-  const reportDraftCreated = useCallback(
-    (createdSessionId: string, source: SessionCreateSource, messageId: string) => {
-      void reportSessionCreate(platform, {
-        sessionId: createdSessionId,
-        messageId,
-        workspacePath,
-        workspaceIdentity,
-        remoteSessionId,
-        source,
-        clientKind: isDesktop ? "desktop" : "web",
-      });
-    },
-    [platform, workspacePath, workspaceIdentity, remoteSessionId, isDesktop],
-  );
   const handleDraftSessionCreated = useCallback(
-    (
-      createdSessionId: string,
-      groupedDraftTask: GroupedDraftTaskState | null | undefined,
-      createSource?: SessionCreateSource,
-      messageId?: string,
-    ) => {
-      if (messageId) {
-        reportDraftCreated(
-          createdSessionId,
-          createSource ?? (groupedDraftTask ? "group" : "session"),
-          messageId,
-        );
-      }
-      // Bug 根因：Session 打开埋点只衡量已有 Session，但草稿首发过去会把新建/预热提升的
-      // sessionId 直接交给同一 hook。预热 lease 还保留草稿期的 startedAt 与空 snapshot timing，
-      // 因而把数小时闲置时间误记为 total/react。创建边界先标记本 pane 的首次绑定；离开后
-      // 再次显式打开同一 Session 时标记会清除，恢复正常的已有 Session 打开测量。
-      newlyCreatedSessionIdRef.current = createdSessionId;
+    (createdSessionId: string, groupedDraftTask: GroupedDraftTaskState | null | undefined) => {
       promoteComposerDraft(createdSessionId);
       // 只有 draft create/promote 的 accepted 边界能继承 grouped placement。
       // fork 和普通任务导航仍复用 onSessionCreated，但不会污染已有 task 的分组排序。
@@ -1347,7 +1229,6 @@ export function SessionPane({
       onSessionCreated?.(createdSessionId);
     },
     [
-      reportDraftCreated,
       onSessionCreated,
       promoteComposerDraft,
       promoteGroupedDraftTask,
@@ -1356,13 +1237,6 @@ export function SessionPane({
     ],
   );
   const { settings: sharedSettings } = useSettings();
-  const readPlanIdentitySnapshot = usePlanIdentitySnapshot(
-    sharedSettings?.providerFamilyDomain,
-    sharedSettings?.providerFamilyDomain
-      ? sharedSettings.providerFamilyConnectionSelections?.[sharedSettings.providerFamilyDomain]
-      : undefined,
-    baseWorkspaceServices.usageStatsService,
-  );
   const appFollowupMode = resolveAppFollowupMode(sharedSettings);
   const messageStreamShowReasoning = sharedSettings?.messageStreamShowReasoning ?? true;
   const messageStreamShowTodos = sharedSettings?.messageStreamShowTodos ?? false;
@@ -1399,7 +1273,6 @@ export function SessionPane({
       targetSessionId: string | null,
       baseRevision?: number,
       baseLogEpoch?: string,
-      telemetrySeed?: ConversationPromptTelemetrySeed,
       onEnvelopeCreated?: (envelope: CommandEnvelope) => void,
       sessionCreateSource?: SessionCreateSource,
     ): Promise<CommandAck> => {
@@ -1450,22 +1323,8 @@ export function SessionPane({
       }
       let ack: CommandAck;
       try {
-        if (telemetrySeed?.localTtft && !workspaceIdentity?.trim()) {
-          envelope.ttft = getLocalTtftObserver()?.dispatch(
-            telemetrySeed.localTtft,
-            workspacePath,
-            envelope.commandId,
-            targetSessionId,
-          );
-        }
         ack = await sendCommand(envelope);
-        if (telemetrySeed?.localTtft && ack.reasonCode === "guard.heldQueueConfirmationStale")
-          getLocalTtftObserver()?.confirmationRetry(telemetrySeed.localTtft);
-        else if (telemetrySeed?.localTtft)
-          getLocalTtftObserver()?.ack(telemetrySeed.localTtft, ack.status, ack.ttftExcluded);
       } catch (error) {
-        if (telemetrySeed?.localTtft)
-          getLocalTtftObserver()?.exclude(telemetrySeed.localTtft, "failed");
         if (lease?.store) {
           lease.store.settleCommand(envelope.commandId);
         }
@@ -1481,17 +1340,6 @@ export function SessionPane({
           reasonCode: String(error),
           at: Date.now(),
         });
-        // 发送漏斗落定：telemetrySeed 只有真实用户发送才携带，两步式 createSession
-        // 与后台任务无 seed，天然不会伪造 send_result。
-        if (telemetrySeed) {
-          conversationTelemetry?.settleSendResult({
-            seed: telemetrySeed,
-            sessionId: targetSessionId,
-            commandId: envelope.commandId,
-            status: "fail",
-            reasonCode: isProviderNotReadyError(error) ? "provider_not_ready" : "transport_error",
-          });
-        }
         throw error;
       }
       pendingCommandRegistry.applyAck(envelope, ack);
@@ -1507,51 +1355,6 @@ export function SessionPane({
         // ACK 只代表 CLI admission；若自己的 conversation topic 随后静默，store watchdog
         // 会在宽限期后复用同一 owned subscription 恢复权威 row/queue，不重放 command。
         lease.store.expectAcceptedInputProjection(envelope.commandId);
-      }
-      if (ack.status === "accepted" && telemetrySeed) {
-        const acceptedSessionId =
-          ack.result?.type === "createSelectionSideSession"
-            ? ack.result.sessionId
-            : (targetSessionId ??
-              (ack.result?.type === "createSession" ? ack.result.sessionId : null));
-        if (acceptedSessionId) {
-          conversationTelemetry?.acceptPromptSeed({
-            ...telemetrySeed,
-            sessionId: acceptedSessionId,
-            sourceCommandId: envelope.commandId,
-            memoryEnabled: ack.memoryEnabled,
-          });
-        }
-      }
-      if (telemetrySeed) {
-        // 队列二次确认的 ACK 返回 null（非终态），落定会让 first-wins 吃掉真实结果。
-        const outcome = resolveSendAckSettlement(ack);
-        if (outcome) {
-          const settledSessionId =
-            ack.result?.type === "createSelectionSideSession"
-              ? ack.result.sessionId
-              : (targetSessionId ??
-                (ack.result?.type === "createSession" ? ack.result.sessionId : null));
-          if (outcome.kind === "awaitRender") {
-            // ACK 只代表 Host 收下了命令，用户气泡此刻还没画出来；
-            // 等投影回流出 userInput row（或 30s 超时）再落定端到端耗时。
-            conversationTelemetry?.awaitSendRender({
-              seed: telemetrySeed,
-              sessionId: settledSessionId,
-              commandId: envelope.commandId,
-              ackStatus: outcome.ackStatus,
-            });
-          } else {
-            conversationTelemetry?.settleSendResult({
-              seed: telemetrySeed,
-              sessionId: settledSessionId,
-              commandId: envelope.commandId,
-              status: outcome.status,
-              ackStatus: outcome.ackStatus,
-              reasonCode: outcome.reasonCode,
-            });
-          }
-        }
       }
       // 生产构建 renderer 日志关闭，ack 摘要写入有界调试缓冲供 e2e/现场 probe。
       recordV4CommandAck({
@@ -1579,7 +1382,6 @@ export function SessionPane({
     },
     [
       captureAcceptedModelSelection,
-      conversationTelemetry,
       lease,
       provider,
       sendCommand,
@@ -1966,7 +1768,7 @@ export function SessionPane({
   );
 
   const handleOpenSelectionSideConversationWithPrompt = useCallback(
-    async (text: string, telemetrySeed?: ConversationPromptTelemetrySeed): Promise<boolean> => {
+    async (text: string): Promise<boolean> => {
       if (!sessionId || !selectionSideChatKey || !onOpenSelectionSideChat) {
         throw new Error("selection side chat is unavailable");
       }
@@ -1985,9 +1787,6 @@ export function SessionPane({
           "createSelectionSideSession",
           { firstInput: { text, ...(modelSelection ? { modelSelection } : {}) } },
           sessionId,
-          undefined,
-          undefined,
-          telemetrySeed,
         );
         if (
           (ack.status !== "accepted" && ack.status !== "duplicate") ||
@@ -2518,11 +2317,7 @@ export function SessionPane({
   );
 
   const dispatchSendTextAfterConfig = useCallback(
-    async (
-      text: string,
-      options: ConversationComposerSendOptions | undefined,
-      createSourceAtSend: SessionCreateSource,
-    ) => {
+    async (text: string, options: ConversationComposerSendOptions | undefined) => {
       let onAcceptedSelection: (() => void) | undefined;
       const dispatchSubmissionCommand = async (...args: Parameters<typeof dispatchCommand>) => {
         const ack = await dispatchCommand(...args);
@@ -2584,7 +2379,6 @@ export function SessionPane({
       if (sessionId && selectionSideSlashCommand) {
         const created = await handleOpenSelectionSideConversationWithPrompt(
           selectionSideSlashCommand.text,
-          options?.telemetrySeed,
         );
         return created ? ("sent" as const) : ("blocked" as const);
       }
@@ -2681,17 +2475,12 @@ export function SessionPane({
               heldQueueDisposition,
               expectedHeldQueueItemIds,
               submission,
-              (messageId) => reportDraftCreated(prewarm.sessionId, createSourceAtSend, messageId),
             );
             if (consumed === "confirmationRequired") return consumed;
             if (consumed) {
               onAcceptedSelection?.();
               prewarm.promote();
-              handleDraftSessionCreated(
-                prewarm.sessionId,
-                groupedDraftTaskAtSend,
-                createSourceAtSend,
-              );
+              handleDraftSessionCreated(prewarm.sessionId, groupedDraftTaskAtSend);
               return;
             }
           } catch (error) {
@@ -2721,7 +2510,7 @@ export function SessionPane({
           throw new Error("createSession 缺少 sessionId");
         }
         const newSessionId = createResult.sessionId;
-        handleDraftSessionCreated(newSessionId, groupedDraftTaskAtSend, createSourceAtSend);
+        handleDraftSessionCreated(newSessionId, groupedDraftTaskAtSend);
         await dispatchSlashCommand(
           draftSlashCommand,
           newSessionId,
@@ -2729,7 +2518,6 @@ export function SessionPane({
           heldQueueDisposition,
           expectedHeldQueueItemIds,
           submission,
-          (messageId) => reportDraftCreated(newSessionId, createSourceAtSend, messageId),
         );
         return;
       }
@@ -2748,18 +2536,10 @@ export function SessionPane({
                 ...(sharedContextRefs?.length ? { context_refs: sharedContextRefs } : {}),
               },
               prewarm.sessionId,
-              undefined,
-              undefined,
-              options?.telemetrySeed,
             );
             if (ack.status === "accepted") {
               prewarm.promote();
-              handleDraftSessionCreated(
-                prewarm.sessionId,
-                groupedDraftTaskAtSend,
-                createSourceAtSend,
-                ack.commandId,
-              );
+              handleDraftSessionCreated(prewarm.sessionId, groupedDraftTaskAtSend);
               return;
             }
             // failed ACK 也可能发生在 runtime 已启动、但 TurnStarted projection commit
@@ -2798,11 +2578,6 @@ export function SessionPane({
               ...draftConfigPayload,
             },
             null,
-            undefined,
-            undefined,
-            options?.telemetrySeed,
-            undefined,
-            createSourceAtSend,
           );
           if (ack.status !== "accepted") {
             throw new Error(ack.reasonCode ?? "createSession 被拒绝");
@@ -2811,12 +2586,7 @@ export function SessionPane({
           if (!result || result.type !== "createSession") {
             throw new Error("createSession 缺少 sessionId");
           }
-          handleDraftSessionCreated(
-            result.sessionId,
-            groupedDraftTaskAtSend,
-            createSourceAtSend,
-            ack.commandId,
-          );
+          handleDraftSessionCreated(result.sessionId, groupedDraftTaskAtSend);
           return;
         }
         // 本地 desktop localPath 是零拷贝 ready，不依赖 attachment transaction；极短窗口内
@@ -2844,19 +2614,11 @@ export function SessionPane({
             ...(sharedContextRefs?.length ? { context_refs: sharedContextRefs } : {}),
           },
           newSessionId,
-          undefined,
-          undefined,
-          options?.telemetrySeed,
         );
         if (sendAck.status !== "accepted") {
           throw new Error(sendAck.reasonCode ?? "sendText 被拒绝");
         }
-        handleDraftSessionCreated(
-          newSessionId,
-          groupedDraftTaskAtSend,
-          createSourceAtSend,
-          sendAck.commandId,
-        );
+        handleDraftSessionCreated(newSessionId, groupedDraftTaskAtSend);
         return;
       }
       // 附件 ref 已在 composer 预传状态机中收口。
@@ -2879,9 +2641,6 @@ export function SessionPane({
           ...(sharedContextRefs?.length ? { context_refs: sharedContextRefs } : {}),
         },
         sessionId,
-        undefined,
-        undefined,
-        options?.telemetrySeed,
       );
       if (ack.reasonCode === "guard.heldQueueConfirmationStale") {
         return "confirmationRequired" as const;
@@ -2903,7 +2662,6 @@ export function SessionPane({
       appSlashCommands,
       appFollowupMode,
       handleDraftSessionCreated,
-      reportDraftCreated,
       handleDraftSwitchMode,
       handleOpenSelectionSideConversationWithPrompt,
       intl,
@@ -2920,9 +2678,6 @@ export function SessionPane({
 
   const dispatchSendText = useCallback(
     (text: string, options?: ConversationComposerSendOptions) => {
-      const createSource = useZCodeSessionStore
-        .getState()
-        .getWorkspaceState(workspacePath, workspaceIdentity).draftCreateSource;
       const submissionOptions = {
         ...options,
         submission:
@@ -2932,7 +2687,7 @@ export function SessionPane({
       // 依赖“配置命令先到、sendText 后到”的跨命令时序。
       return configCommandBarrier.enqueue(async () => {
         try {
-          return await dispatchSendTextAfterConfig(text, submissionOptions, createSource);
+          return await dispatchSendTextAfterConfig(text, submissionOptions);
         } catch (error) {
           if (sessionId === null && isProviderNotReadyError(error)) {
             // UI 预检查与 Host getClient 之间 registry 仍可能失效。竞态命中时收敛成
@@ -3339,7 +3094,6 @@ export function SessionPane({
     },
     [dispatchCommand, sessionId],
   );
-  const telemetryDraftConfig = draftConfig;
   const ensureDraftPrewarmConfigBeforeSend = useCallback(
     async (targetSessionId: string) => {
       // followupMode 仍是 Session 行为设置；模型与模式属于本次 Submission，随 sendText
@@ -3678,12 +3432,6 @@ export function SessionPane({
   const queueEditActiveForCurrentComposer =
     queueEditOperation?.sessionId === sessionId && queueEditOperation.workspaceKey === workspaceKey;
   const errored = sessionId !== null && state.status === "error";
-  useSessionSubscriptionErrorTelemetry({
-    supervisor: conversationTelemetry,
-    sessionId,
-    lastError: state.lastError,
-    visible: errored && telemetryVisible && conversationTelemetryForegroundEnabled,
-  });
   // retry 的产品裁决属于行级权威投影。这里仅提供命令能力，入口是否展示
   // 完全读取 row.actions.canRetry，禁止再用 pane phase 形成第二套 guard。
   const retryActionsEnabled = !readOnly && !selectionSideChat && Boolean(sessionId);
@@ -4347,12 +4095,7 @@ export function SessionPane({
             });
             return;
           }
-          handleDraftSessionCreated(
-            ack.result.sessionId,
-            replay.clientContext?.groupedDraftTask,
-            replay.clientContext?.sessionCreateSource,
-            replay.payload.firstInput ? ack.commandId : undefined,
-          );
+          handleDraftSessionCreated(ack.result.sessionId, replay.clientContext?.groupedDraftTask);
         }
       })
       .catch((error) => {
@@ -4403,9 +4146,6 @@ export function SessionPane({
       onRuntimeRestart={onRuntimeRestart}
       onRuntimeLifecycle={onRuntimeLifecycle}
       provider={provider}
-      telemetryDraftConfig={telemetryDraftConfig}
-      telemetryVisible={telemetryVisible && conversationTelemetryForegroundEnabled}
-      readPlanIdentitySnapshot={readPlanIdentitySnapshot}
       onSendText={handleSendText}
       onDraftStateChange={handleComposerDraftStateChange}
       composerRestoreRequest={composerRestoreRequest}

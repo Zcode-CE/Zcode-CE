@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { TID_V4_RETRY_SUBSCRIBE } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
-import { useFeedbackStore } from "@/feedback/feedbackStore.js";
+import { useFeedbackEntryAction } from "@/feedback/useFeedbackEntryAction.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { buildErrorFeedbackDescription } from "@/lib/errorFeedbackDraft.js";
 
@@ -20,14 +20,13 @@ export function SessionSubscriptionErrorPanel({
   onReconnect,
 }: SessionSubscriptionErrorPanelProps) {
   const { intl } = useZCodeIntl();
-  const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
+  const { runFeedbackEntry } = useFeedbackEntryAction();
   const handleOpenFeedback = useCallback(async () => {
-    openFeedbackSubmit({
+    // 订阅失败时错误原文就是用户唯一的现场。改走「反馈与诊断」的渠道配置后，
+    // errorSummary 承载原文，description 承载任务上下文模板；渠道不可用时 hook 会引导到设置页。
+    const outcome = runFeedbackEntry({
       title: error.slice(0, 80),
-      type: "bug",
-      module: "Agent任务执行失败",
-      severity: "P2-中",
-      includeLogs: false,
+      errorSummary: error,
       description: buildErrorFeedbackDescription({
         message: error,
         contextLines: [
@@ -41,10 +40,11 @@ export function SessionSubscriptionErrorPanel({
         formatMessage: (id: string, values?: Record<string, string>) =>
           intl.formatMessage({ id }, values),
       }),
-      screenshots: [],
     });
-    toast(intl.formatMessage({ id: "chat.error.feedbackOpened" }));
-  }, [error, intl, openFeedbackSubmit, sessionId, workspacePath]);
+    if (outcome === "opened") {
+      toast(intl.formatMessage({ id: "chat.error.feedbackOpened" }));
+    }
+  }, [error, intl, runFeedbackEntry, sessionId, workspacePath]);
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-ui-base">

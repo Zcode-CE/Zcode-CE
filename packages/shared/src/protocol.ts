@@ -260,6 +260,12 @@ export interface AppSettings {
   /** 自定义 PEM 根证书路径；下次启动 app/agent 时用于 renderer 校验与 agent NODE_EXTRA_CA_CERTS。 */
   httpProxyCaCertPath?: string;
   /**
+   * GitHub 加速前缀，例如 https://ghfast.top/；为空时直连 GitHub（默认关闭，不替用户选镜像站）。
+   * 只作用于 GitHub 自有域名的请求（插件市场 zipball/clone、更新检查），非 GitHub 域名不受影响。
+   * 必须为 https 且不含用户名/口令/查询串，非法值在保存时被拒绝。格式要求见 docs/operations/github-mirror.md。
+   */
+  githubMirrorPrefix?: string;
+  /**
    * 内置浏览器忽略 HTTPS 证书校验错误（自签名、过期、域名不匹配等），用于访问内网测试站点。
    * 只影响内置浏览器出口，不影响 ZCode 自身对后端与模型 API 的请求。默认关闭，重启后生效。
    */

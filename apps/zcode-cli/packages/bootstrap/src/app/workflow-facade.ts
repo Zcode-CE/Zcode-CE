@@ -43,7 +43,13 @@ import type { PrepareUserExecutionBoundary, ZCodeAppOptions } from "./types.js";
 import { createWorkflowMethods, type WorkflowFacade } from "./workflow-methods.js";
 
 interface CreateWorkflowFacadeDeps {
-  agentTelemetry: AgentExecutionTelemetryPort;
+  /**
+   * 遥测端口改为可选：进程级 Telemetry Owner 已随 telemetry 包删除，App 不再注入实现。
+   * 缺席时下面条件传递，AgentRuntime 退回 core 自己的 NOOP
+   * （core/src/telemetry/runtime-telemetry.ts 的 NOOP_AGENT_EXECUTION_TELEMETRY），
+   * workflow child 的遥测面因此整体为空，业务链路不变。
+   */
+  agentTelemetry?: AgentExecutionTelemetryPort;
   appOptions: ZCodeAppOptions;
   appVersion: string;
   artifactStore?: ToolArtifactStorePort;
@@ -292,10 +298,15 @@ function createWorkflowChildRuntime(
       workingDirectory: deps.workingDirectory,
     },
     {
-      agentTelemetry: deps.agentTelemetry,
-      agentTelemetryCausation: deps.agentTelemetry.captureCausation(),
-      // Workflow 在父工具返回后独立调度，不能伪装成父 Span 的同步 Child。
-      agentTelemetryCausationMode: "linked_root",
+      // 端口缺席时不传这三个键，让 AgentRuntime 用 core 的 NOOP；在场时语义与从前逐字一致。
+      ...(deps.agentTelemetry
+        ? {
+            agentTelemetry: deps.agentTelemetry,
+            agentTelemetryCausation: deps.agentTelemetry.captureCausation(),
+            // Workflow 在父工具返回后独立调度，不能伪装成父 Span 的同步 Child。
+            agentTelemetryCausationMode: "linked_root" as const,
+          }
+        : {}),
       eventStore: createInMemorySessionEventStore(),
       sessionStore: deps.sessionStore,
       logger: deps.logger,

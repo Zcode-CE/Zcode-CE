@@ -25,15 +25,66 @@ export const onboardingRecordEntrySchema = z.object({
   uploadState: z.literal("pending"),
 });
 
-export const onboardingRecordFileSchema = z.object({
+/**
+ * 未完成向导的显式决定（v2 新增）。
+ *
+ * entries 表达"答完了引导"，decisions 表达"没答但已经处理过了"——两者互斥，
+ * 共同构成"该 userId 不需要再被引导"的判定面：
+ * - `dismissed` / `user_closed`：用户主动关闭引导（不保存任何偏好）；
+ * - `existing_local_user` / `existing_local_task`：存量用户短路（本地已有任务，
+ *   引导对其没有意义），由 `shouldOnboard` 自动补写，不需要用户操作。
+ *
+ * 只有这两个枚举值是有意的：决定一旦记录就不再变化，不做"改主意"的语义。
+ */
+export const onboardingDecisionSchema = z.object({
+  userId: z.string().min(1).nullable(),
+  status: z.enum(["dismissed", "existing_local_user"]),
+  reason: z.enum(["user_closed", "existing_local_task"]),
+  decidedAt: z.string().min(1),
+});
+
+/**
+ * v1：只有 entries。必须保留——升级到 v2 后老用户的文件仍是 v1，
+ * 若 schema 直接收窄成 v2 literal，老文件会解析失败，readRecordFile 返回 null，
+ * 结果是把老用户当成全新用户重新引导，与"不再对老用户弹出"的目标完全相反。
+ */
+export const onboardingRecordFileV1Schema = z.object({
   version: z.literal(1),
   deviceMid: z.string().min(1),
   entries: z.array(onboardingRecordEntrySchema),
 });
 
+/** v2：新增 decisions。 */
+export const onboardingRecordFileV2Schema = z.object({
+  version: z.literal(2),
+  deviceMid: z.string().min(1),
+  entries: z.array(onboardingRecordEntrySchema),
+  decisions: z.array(onboardingDecisionSchema),
+});
+
+/**
+ * 读取入口：v1 无损升到 v2（decisions 补空数组）。
+ *
+ * 迁移只在读取时发生，没有单独的迁移脚本——下次写入自然落 v2。
+ * 注意这里不能写成 v2 literal：见 `onboardingRecordFileV1Schema` 的说明。
+ */
+export const onboardingRecordFileSchema = z
+  .union([onboardingRecordFileV1Schema, onboardingRecordFileV2Schema])
+  .transform(
+    (file): z.output<typeof onboardingRecordFileV2Schema> =>
+      file.version === 1 ? { ...file, version: 2, decisions: [] } : file,
+  );
+
 export type OnboardingRecordEntry = z.infer<typeof onboardingRecordEntrySchema>;
+
+export type OnboardingDecision = z.infer<typeof onboardingDecisionSchema>;
+
+export type OnboardingRecordFileV1 = z.infer<typeof onboardingRecordFileV1Schema>;
+
+export type OnboardingRecordFileV2 = z.infer<typeof onboardingRecordFileV2Schema>;
 
 /** appendRecord 的入参：userId 由服务端（host）补全，调用方不传。 */
 export type OnboardingRecordEntryInput = Omit<OnboardingRecordEntry, "userId" | "uploadState">;
 
-export type OnboardingRecordFile = z.infer<typeof onboardingRecordFileSchema>;
+/** 解析后的形态恒为 v2（v1 已在 transform 里升级），调用方不需要分支处理版本。 */
+export type OnboardingRecordFile = z.output<typeof onboardingRecordFileSchema>;

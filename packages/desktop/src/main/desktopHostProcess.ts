@@ -1,5 +1,3 @@
-import { ingestToolExecResource } from "./desktopResourceTelemetry.js";
-import { ingestMcpResourceSamples } from "./processResourceMcpTelemetrySource.js";
 /* eslint-disable max-lines -- host process 统一处理 main↔host 生命周期、日志、ZCode Agent，拆分前先保持跨进程消息收口。 */
 import { bindDatabaseStartupRelay } from "./databaseStartupRelay.js";
 import { randomUUID } from "node:crypto";
@@ -18,8 +16,6 @@ import {
   type HostAgentProcessReadyResponse,
   type HostAgentProcessSpawnedResponse,
   type HostCuaOperationStateResponse,
-  type HostMcpTelemetryResponse,
-  type HostSessionCreateTelemetryResponse,
   type TaskRealtimeHostDeliveryKind,
   formatZCodeHostProcessName,
   HostMessageTypes,
@@ -49,9 +45,6 @@ import {
   hostModulePath,
   resolveBundledGlmBinaryPath,
 } from "./desktopRuntimeEnv.js";
-import { ingestHostNetworkObservations } from "./desktopNetworkTelemetry.js";
-import { ingestCliResourceSample } from "./processResourceCliSource.js";
-import { ingestHostSelfResourceSample } from "./processResourceSelfHeapSource.js";
 import { createFeedbackLogArchiveFromExportLogs } from "./exportLogs.js";
 import { buildHostE2ECoverageEnv } from "./e2eCoverage.js";
 
@@ -177,8 +170,6 @@ export function spawnHostProcess(
     onAgentProcessException?: (event: HostAgentProcessExceptionResponse) => void;
     onAgentProcessReady?: (event: HostAgentProcessReadyResponse) => void;
     onAgentProcessSpawned?: (event: HostAgentProcessSpawnedResponse) => void;
-    onMcpTelemetry?: (event: HostMcpTelemetryResponse) => void;
-    onSessionCreateTelemetry?: (event: HostSessionCreateTelemetryResponse) => void;
     onCuaOperationStateChanged?: (
       source: ElectronUtilityProcess,
       event: HostCuaOperationStateResponse,
@@ -297,53 +288,15 @@ export function spawnHostProcess(
       return;
     }
 
-    if (result.data.type === HostResponseTypes.NetworkTelemetryBatch) {
-      ingestHostNetworkObservations(result.data.observations);
-      return;
-    }
+    // 遥测移除（P1）：这里原有 7 个 host → main 的遥测分发分支（NetworkTelemetryBatch /
+    // AgentResourceSample / HostResourceSample / ToolExecResource / McpResourceSamples /
+    // McpTelemetry / SessionCreateTelemetry）。它们的共同出口都是 ARMS 资源与自定义事件上报，
+    // 已随 desktopNetworkTelemetry / desktopResourceTelemetry / desktopMcpTelemetry 等模块删除。
+    // HostResponseTypes 里的对应枚举仍保留（Host 侧协议未动），main 不再消费。
 
-    // CLI 自采的 60 秒样本：按 services 打的 lane 归入 cli_chat / cli_aux 角色。
-    if (result.data.type === HostResponseTypes.AgentResourceSample) {
-      ingestCliResourceSample(
-        result.data.sample,
-        result.data.runtimeSurface,
-        result.data.environmentKey,
-      );
-      return;
-    }
-
-    // Host 自采的 60 秒样本：main 只取 heap 作 host 角色事件的 heap 维度。
-    if (result.data.type === HostResponseTypes.HostResourceSample) {
-      ingestHostSelfResourceSample(result.data.sample);
-      return;
-    }
-
+    // 资源管理器窗口的进程行采样结果：本地 UI 能力，与遥测无关，保留。
     if (result.data.type === HostResponseTypes.ResourceUsageSnapshotResult) {
       resolveHostResourceUsageResult(label, result.data);
-      return;
-    }
-
-    if (result.data.type === HostResponseTypes.ToolExecResource) {
-      ingestToolExecResource(result.data.sample, result.data.runtimeSurface);
-      return;
-    }
-
-    if (result.data.type === HostResponseTypes.McpResourceSamples) {
-      ingestMcpResourceSamples(
-        result.data.samples,
-        result.data.runtimeSurface,
-        result.data.environmentKey,
-      );
-      return;
-    }
-
-    if (result.data.type === HostResponseTypes.McpTelemetry) {
-      dependencies.onMcpTelemetry?.(result.data);
-      return;
-    }
-
-    if (result.data.type === HostResponseTypes.SessionCreateTelemetry) {
-      dependencies.onSessionCreateTelemetry?.(result.data);
       return;
     }
 

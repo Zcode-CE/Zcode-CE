@@ -1,6 +1,5 @@
 import { sendWithConversationDelayE2E } from "@/v4/conversationTransportDelayE2E.js";
 import { getLocalTtftObserver } from "@/v4/telemetry/localTtftObserver.js";
-import { calibrateLocalTtftClock, localTtftNow } from "@zcode/shared";
 /* oxlint-disable eslint(max-lines) -- transport 将上传、分块读取和 runtime 生命周期保持在同一 host 边界。 */
 // ConversationTransport 的 desktop/host 实现：桥到 IZCodeAgentService 的 v4 转发面
 // （依赖注入原则——数据层不感知 host 细节，
@@ -95,31 +94,10 @@ export function createAgentConversationTransport(
     workspacePath: target.workspacePath,
     ...(target.workspaceIdentity ? { workspaceIdentity: target.workspaceIdentity } : {}),
   };
-  let calibrationFlight: Promise<void> | undefined;
-  const calibrate = () => {
-    const observer = getLocalTtftObserver();
-    if (
-      target.workspaceIdentity?.trim() ||
-      !observer?.needsCalibration(target.workspacePath) ||
-      calibrationFlight
-    )
-      return;
-    const start = localTtftNow();
-    calibrationFlight = agentService
-      .queryConversationCommandsV4({
-        ...workspace,
-        commands: [{ sessionId: null, commandId: `ttft-clock-${crypto.randomUUID()}` }],
-        clock: true,
-      })
-      .then((result) => {
-        const clock = result.clock && calibrateLocalTtftClock(start, localTtftNow(), result.clock);
-        if (clock) observer.calibrate(target.workspacePath, clock);
-      })
-      .catch(() => {})
-      .finally(() => {
-        calibrationFlight = undefined;
-      });
-  };
+  // 采集停用：不再为 TTFT 观测发起 clock:true 校准 RPC。
+  // 保留函数与全部调用点，是为了不改动握手 / 内容帧 / 检查点三条既有路径的结构；
+  // 函数体恒为 no-op 后，这些路径不再产生任何额外 RPC。
+  const calibrate = () => {};
   const ensureHandshake = async () => {
     const hello = await ensureAgentV4ConnectionHandshake(agentService);
     calibrate();

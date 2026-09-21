@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 import { app, BrowserWindow, Menu, MessageChannelMain } from "electron";
 import type { UtilityProcess as ElectronUtilityProcess } from "electron";
 import { HostMessageTypes, InternalChannels, PlatformChannels, type Locale } from "@zcode/shared";
-import { scheduleArmsBrowserPerfLoadNudge } from "./armsBrowserPerfLoadNudge.js";
 import { createBrowserWindow } from "./desktopWindowChrome.js";
 import type { HostInitMessage, WindowBootstrapOptions } from "./desktopHostProcess.js";
 import type { StartupWorkspaceWarmupTarget } from "./startupWorkspace.js";
@@ -117,11 +116,13 @@ export function createWindow(options: {
 
   const wcId = win.webContents.id;
   const browserWindowId = win.id;
-  // 资源遥测据此把主窗口 renderer 归 renderer_main；辅助窗口与 DevTools 归 chromium_other。
+  // 主窗口注册表：renderer heap 样本的信任边界据此判定发送方是否为主窗口
+  // （见 processResourceRendererHeapSource.ingestRendererHeapSample）。
   registerMainApplicationWindow(wcId);
   let domReadyGeneration = 0;
   let cancelRuntimeProcessEnvWait: (() => void) | null = null;
-  scheduleArmsBrowserPerfLoadNudge(win.webContents);
+  // 遥测移除（P1）：ARMS Browser 加载性能 nudge（scheduleArmsBrowserPerfLoadNudge）已随
+  // armsBrowserPerfLoadNudge.ts 一并删除；它原来在这里无条件执行，删模块必须同步删调用。
   win.webContents.on("dom-ready", async () => {
     cancelRuntimeProcessEnvWait?.();
     cancelRuntimeProcessEnvWait = null;

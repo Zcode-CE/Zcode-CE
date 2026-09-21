@@ -140,7 +140,7 @@ export function createTuiSubmitPrompt(
       providerRegistryRuntime,
       sessionId,
       workingDirectory,
-    } = await prepareTuiAppRuntime(deps, version, request, processRuntime);
+    } = await prepareTuiAppRuntime(deps, request, processRuntime);
     const browserRuntime = createCliHeadlessBrowserRuntime({ browserExecutable, browserUse }, deps);
     let createdApp: Awaited<ReturnType<NonNullable<RunDependencies["createZCodeApp"]>>>;
     try {
@@ -373,12 +373,6 @@ export function createTuiSubmitPrompt(
   submitPrompt.close = async () => {
     closeHandlerPromise ??= (async () => {
       await closeApp();
-      // Bug 根因：TUI 的 Session 切换和进程退出共用了 App close，不能在 /new 等路径
-      // 提前关闭共享 Owner；只有整个 Prompt Handler 终态才做对称 shutdown。
-      await runCliCleanupWithTimeout(
-        async () => processRuntime.shutdownTelemetry?.(),
-        cleanupTimeoutMs,
-      );
       const providerRegistryRuntime = await processRuntime.providerRegistryRuntimePromise;
       providerRegistryRuntime?.dispose();
     })();

@@ -1,4 +1,3 @@
-import { useOnboardingTelemetry } from "@/onboarding/useOnboardingTelemetry.js";
 import { OnboardingHeader } from "@/onboarding/OnboardingHeader.js";
 import { OccupationOnboardingVisual } from "@/onboarding/OccupationOnboardingVisual.js";
 import { occupations, type OccupationValue } from "@/onboarding/occupationOptions.js";
@@ -80,26 +79,12 @@ export function OccupationOnboarding({
     update,
   });
   const onboardingVisible = requested || (needsOnboarding === true && !dismissed);
-  const captureEnd = useOnboardingTelemetry({
-    platform,
-    visible:
-      Boolean(settings) &&
-      onboardingVisible &&
-      (requested || needsOnboarding !== null || Boolean(settings?.onboardingOccupation)),
-    step,
-    occupation,
-    mode,
-    memory,
-    suggestions,
-    migration,
-  });
   const closeOnboarding = useCallback(() => {
     if (savingRef.current) return;
-    captureEnd("close", intl.formatMessage({ id: "occupationOnboarding.close" }))();
     setStep(0);
     setDismissed(true);
     setRequested(false);
-  }, [captureEnd, intl, setRequested]);
+  }, [intl, setRequested]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (
@@ -214,7 +199,6 @@ export function OccupationOnboarding({
   const save = async (skip = false) => {
     if (savingRef.current) return;
     savingRef.current = true;
-    const reportEnd = captureEnd(skip ? "skip" : "start", t(skip ? "skip" : "start"));
     setSaving(true);
     setError(false);
     try {
@@ -227,8 +211,7 @@ export function OccupationOnboarding({
         memoryEnabled: skip ? false : memory,
         proactiveSuggestionsEnabled: !skip && mode === "office" && suggestions,
       });
-      reportEnd();
-      // 保存成功就是本次引导的终点；本地记录失败不应留下可再次上报的引导页面。
+      // 保存成功就是本次引导的终点；本地记录失败不应留下可再次触发的引导页面。
       setStep(0);
       setDismissed(true);
       setRequested(false);

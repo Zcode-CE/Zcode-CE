@@ -24,7 +24,6 @@ import {
   type AmendWorkflowRunSettingsInput,
   type ResumeSessionResult,
 } from "@zcode/core";
-import { createModelTelemetry } from "@zcode/telemetry";
 import {
   createRootTraceContext,
   traceContextToLogContext,
@@ -191,10 +190,11 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
     ...traceContextToLogContext(traceContext),
     module: "adapters.model",
   });
-  const modelTelemetry = createModelTelemetry({
-    owner: options.telemetryOwner,
-    sessionId,
-  });
+  // 曾经在这里 createModelTelemetry(...) 造进程级遥测 Owner，并向 scriptWorkflowFacade /
+  // script-workflow child / AgentRuntime / workflowFacade 四处注入 agentTelemetry 与 statusSink。
+  // 遥测删除后不再有 Owner：core 的 RuntimeTelemetryFacade 在 port 缺席时退化为
+  // NOOP_AGENT_EXECUTION_TELEMETRY（core/src/telemetry/runtime-telemetry.ts:46），
+  // 所以下面各处**不再传** agentTelemetry，由 core 自行兜底。
   let nodeReplBrowserBroker: NodeReplBrowserBroker | undefined;
   let ownedNodeReplBrowserBroker: NodeReplBrowserBroker | undefined;
   let providerModelRuntime: ApiProviderModelRuntime | undefined;
@@ -533,12 +533,8 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
         modelIoDir,
         modelIoFullRetentionEnabled: options.modelIoFullRetentionEnabled,
         executionConfig: modelExecutionConfig,
-        statusSink: modelTelemetry.statusSink,
         streamIdleTimeoutMs: configResult.config.modelStream.idleTimeoutMs,
       });
-    if (options.modelAdapter && modelTelemetry.statusSink) {
-      modelAdapter.addStatusSink(modelTelemetry.statusSink);
-    }
     // 进程级并发治理器：run service 拿它的窄端口给
     // driver（每个 actor runtime 一个请求级准入端口）；主 runtime 挂它的 observer（下面 deps）——
     // 不排队、不看冷却，但计入在飞并喂信号。进程级单例——配额本就在账号上，不按会话分。
@@ -555,7 +551,6 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
     // 新建的 Model 才看得到，child 不各自冻结一份。
     const modelFactory = providerModelRuntime.modelFactory;
     const scriptWorkflowFacade = createScriptWorkflowBridge({
-      agentTelemetry: modelTelemetry.agentExecution,
       appOptions: options,
       appVersion,
       artifactStore,
@@ -625,7 +620,6 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
                   ).configOverrides,
                 },
                 deps: {
-                  agentTelemetry: modelTelemetry.agentExecution,
                   appOptions: options,
                   appVersion,
                   artifactStore,
@@ -724,7 +718,6 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       currentSelection: () => getRuntime().getSessionModelSelection(),
     });
     runtime = new AgentRuntime(sessionId, runtimeConfig, {
-      agentTelemetry: modelTelemetry.agentExecution,
       // 主代理的模型请求过治理器的 observer：立即放行，但让治理器看见它的 429 / 成功。
       modelRequestAdmission: workflowConcurrencyGovernor.observer(),
       eventStore: options.eventStore ?? createInMemorySessionEventStore(),
@@ -824,7 +817,6 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       traceContext,
     });
     const workflowFacade = createWorkflowFacade({
-      agentTelemetry: modelTelemetry.agentExecution,
       appOptions: options,
       appVersion,
       artifactStore,
@@ -1112,11 +1104,8 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
         try {
           await closeSession?.();
         } finally {
-          try {
-            providerModelRuntime?.dispose();
-          } finally {
-            await modelTelemetry.shutdown();
-          }
+          // 遥测 Owner 的 shutdown 已随 telemetry 包删除；dispose 仍必须无条件执行。
+          providerModelRuntime?.dispose();
         }
       },
       ...workflowFacade,
@@ -1280,7 +1269,6 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
     };
   } catch (error) {
     providerModelRuntime?.dispose();
-    void modelTelemetry.shutdown().catch(() => undefined);
     void ownedNodeReplBrowserBroker?.close();
     startupTimer.fail("ZCode app startup failed", error, {
       context: { sessionId, workingDirectory },

@@ -1,7 +1,7 @@
 // scheduler(utilityProcess) ↔ main 的控制消息协议。两端都在 Electron 侧，走 parentPort.postMessage。
 // 与 host↔main 的 CronRun/CronRunResult(见 @zcode/shared channels + validation)不同：
 // 这层是 main 与「常驻 cron scheduler 进程」之间的私有通道；main 收到派发请求后再翻译成 CronRun 转发给 host。
-import type { ModelSelection, NodeSelfResourceSample } from "@zcode/shared";
+import type { ModelSelection } from "@zcode/shared";
 
 /** scheduler → main */
 export type SchedulerToMainMessage =
@@ -40,12 +40,6 @@ export type SchedulerToMainMessage =
       // 决定是否开 powerSaveBlocker。每次 tick 后上报当前值（幂等）。
       type: "offpeak-active-count";
       count: number;
-    }
-  | {
-      // scheduler 进程每 60 秒的自采样本。
-      // main 只取其中的 heap 作 scheduler 角色事件的 heap 维度，CPU 与 RSS 仍以 getAppMetrics 为准。
-      type: "scheduler-resource-sample";
-      sample: NodeSelfResourceSample;
     };
 
 /** main → scheduler */
