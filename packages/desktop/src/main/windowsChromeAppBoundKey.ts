@@ -76,6 +76,9 @@ interface HelperProcessResult {
 interface ReadAppBoundKeyOptions {
   appExecutablePath?: string;
   chromeExecutablePath: string;
+  // 与导出的 WindowsChromeAppBoundKeyReader 入参保持一致：helper --version 的 app/commit 校验允许调用方覆盖。
+  expectedAppVersion?: string;
+  expectedBuildCommit?: string;
   helperPath?: string;
   isPackaged?: boolean;
   logger: BrowserDataLogger;

@@ -19,7 +19,7 @@ export interface ExplicitStartupWorkspaceRequest {
 
 interface StartupDeepLinkConsumptionGate {
   markStartupRequestConsumed: (request: ExplicitStartupWorkspaceRequest) => void;
-  shouldHandleReadyProtocolUrl: (protocolUrl: string | null) => boolean;
+  shouldHandleReadyProtocolUrl: (protocolUrl: string | null) => protocolUrl is string;
 }
 
 interface ResolveExplicitStartupWorkspaceBootstrapDeps {
@@ -46,7 +46,7 @@ export function createStartupDeepLinkConsumptionGate(
       // 都必须形成一次性消费，避免 app.whenReady 再从 process.argv 重放同一个外部 URL。
       startupDeepLinkConsumed = true;
     },
-    shouldHandleReadyProtocolUrl: (protocolUrl) => {
+    shouldHandleReadyProtocolUrl: (protocolUrl): protocolUrl is string => {
       if (!protocolUrl) {
         return false;
       }

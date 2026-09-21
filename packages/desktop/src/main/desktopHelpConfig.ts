@@ -11,7 +11,10 @@ export function createDesktopHelpConfigReader(options: {
   appVersion: string;
   deviceMid: string;
 }) {
-  const read = createHelpAppConfigReader({ fetchImpl: (input, init) => net.fetch(input, init) });
+  // shared 的 fetchImpl 契约是 typeof fetch（入参允许 URL），而 Electron net.fetch 只接受 string | Request。
+  const read = createHelpAppConfigReader({
+    fetchImpl: (input, init) => net.fetch(input instanceof URL ? input.toString() : input, init),
+  });
   return async () => {
     const endpointOrigin = await options.resolveEndpointOrigin();
     return read(

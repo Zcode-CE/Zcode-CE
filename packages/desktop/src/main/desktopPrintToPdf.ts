@@ -21,8 +21,11 @@ export function registerDesktopPrintToPdfIpcHandler(logger: {
         preferCSSPageSize: true,
         margins: { top: 0, bottom: 0, left: 0, right: 0 },
       });
-      // Buffer 可能是池化视图，切出独立 ArrayBuffer 再走 structured clone
-      const data = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      // Buffer 可能是池化视图，切出独立 ArrayBuffer 再走 structured clone。
+      // Buffer.buffer 的静态类型是 ArrayBufferLike（含 SharedArrayBuffer，无法 structured clone），
+      // 而 Uint8Array#slice 一定返回新建的 ArrayBuffer 视图，语义与原来的 buffer.buffer.slice 一致。
+      const pool = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+      const data = pool.slice().buffer;
       return { success: true, data };
     } catch (error) {
       logger.warn(

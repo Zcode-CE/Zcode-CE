@@ -373,10 +373,9 @@ export async function createElectronBrowserWebmRecorder(
     if (!closed) fail(recorderError(`recorder renderer exited: ${details.reason ?? "unknown"}`));
   };
   recorderWindow.webContents.on("render-process-gone", onRendererGone);
-  const onConsoleMessage = (
-    _event: unknown,
-    details: { level?: string; message?: string },
-  ): void => {
+  // Electron 现在的 console-message 只把事件对象作为首个参数传入（level/message 在 details 上），
+  // 旧写法按 (event, level, message) 取值会永远打到 unknown/空串。
+  const onConsoleMessage = (details: { level?: string; message?: string }): void => {
     debug?.(
       `[browser-recording] recorder console level=${details.level ?? "unknown"} message=${details.message ?? ""}`,
     );

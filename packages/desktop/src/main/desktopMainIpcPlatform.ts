@@ -56,6 +56,12 @@ import { registerDesktopSaveFileIpcHandler } from "./desktopSaveFile.js";
 import { registerDesktopPrintToPdfIpcHandler } from "./desktopPrintToPdf.js";
 import { registerCuaPipActiveSessionIpc } from "./desktopCuaPipIpc.js";
 
+/**
+ * renderer → main 的设置补丁形状：直接取共享 appSettingsPatchSchema 的输出类型，
+ * 避免与手写的 AppSettings 字段（如 providerFamilyDomain 额外允许 "" 表示清空）产生偏差。
+ */
+export type AppSettingsSyncPatch = ReturnType<typeof appSettingsPatchSchema.parse>;
+
 export function registerPlatformIpcHandlers(options: {
   fetchHelpConfig?: () => Promise<unknown>;
   logger: {
@@ -87,7 +93,7 @@ export function registerPlatformIpcHandlers(options: {
     autoDownloadAndInstallUpdates: boolean;
   }>;
   setAutoDownloadAndInstallUpdates: (enabled: boolean) => Promise<void>;
-  syncAppSettings: (patch: unknown) => void;
+  syncAppSettings: (patch: AppSettingsSyncPatch) => void;
   /** 快捷键设置页录制态开关：true 时 main 重建菜单摘除可配置 accelerator */
   setShortcutRecordingActive?: (active: boolean, ownerWebContentsId?: number | null) => void;
   /** 桌面端设备标识符（基于 userData 路径的 SHA-256） */

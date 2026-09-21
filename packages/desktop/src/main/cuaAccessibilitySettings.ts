@@ -9,7 +9,6 @@ import { randomUUID } from "node:crypto";
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { shell } from "electron";
-import type { CuaHelperInstallerOptions } from "@zcode/services/node";
 import {
   resolveHelperPermissionSubjectIdentity,
   type HelperPermissionSubjectIdentity,
@@ -204,7 +203,17 @@ async function verifyHelperPermissionIdentityUnchanged(
   return fingerprint;
 }
 
-type CuaHelperInstallerLogger = NonNullable<CuaHelperInstallerOptions["logger"]>;
+/**
+ * installer 侧 logger 契约：首个参数是 traceId（main 侧不需要，转发时丢弃），其余原样转发。
+ * CuaHelperInstallerOptions["logger"] 在 @zcode/zcode-cua 的 .d.ts 里是 unknown，
+ * 直接把 NonNullable<unknown> 当返回类型会让对象字面量失去上下文类型（TS7006/TS7019），故在此显式声明。
+ */
+interface CuaHelperInstallerLogger {
+  debug(traceId: string, ...args: unknown[]): void;
+  info(traceId: string, ...args: unknown[]): void;
+  warn(traceId: string, ...args: unknown[]): void;
+  error(traceId: string, ...args: unknown[]): void;
+}
 
 function toInstallerLogger(
   logger: OpenCuaAccessibilitySettingsOptions["logger"],

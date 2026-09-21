@@ -248,7 +248,9 @@ export class TaskRealtimeBus {
 
     switch (parsed.data.type) {
       case HostResponseTypes.TaskRealtimePublish:
-        this.handleRealtimePublish(origin, parsed.data.event);
+        // host 事件用 passthrough 宽松 schema 校验（事件类型集合由 zcode-task-types 定义，zod 无法穷举），
+        // 推断出的 event 比手写的 TaskRealtimeEvent 更松；事件真实性由 host 构造点保证，这里在 main 边界收口。
+        this.handleRealtimePublish(origin, parsed.data.event as TaskRealtimeEvent);
         break;
       case HostResponseTypes.TaskRunLeaseAcquire:
         this.handleLeaseAcquire(origin, parsed.data.request);
@@ -257,7 +259,12 @@ export class TaskRealtimeBus {
         this.releaseLease(origin.hostId, parsed.data.target);
         break;
       case HostResponseTypes.TaskStreamOpPublish:
-        this.handleStreamOpPublish(origin, parsed.data.target, parsed.data.op);
+        // 同 TaskRealtimePublish：op.event 是 passthrough 宽松类型，边界处按 shared 手写类型收口。
+        this.handleStreamOpPublish(
+          origin,
+          parsed.data.target,
+          parsed.data.op as TaskStreamMirrorPublishOp,
+        );
         break;
       case HostResponseTypes.TaskOwnerCommandRequest:
         this.handleOwnerCommandRequest(origin, parsed.data.command);
@@ -592,11 +599,19 @@ export class TaskRealtimeBus {
     for (const op of ops) {
       const previous = coalesced[coalesced.length - 1];
       if (this.canMergeTextChunk(previous, op)) {
+        // 谓词只把 previous 收窄到「可合并的文本 chunk」；op 侧在这里显式收窄，才能读取 event.content。
+        const opContent =
+          op.kind === "stream_event" && "content" in op.event ? op.event.content : undefined;
+        if (typeof opContent !== "string") {
+          // canMergeTextChunk 已判定可合并，这里理论上不可达；保持与「合并不成立」一致的落点。
+          coalesced.push(op);
+          continue;
+        }
         coalesced[coalesced.length - 1] = {
           kind: "stream_event",
           event: {
             ...previous.event,
-            content: previous.event.content + op.event.content,
+            content: previous.event.content + opContent,
           },
         };
         continue;

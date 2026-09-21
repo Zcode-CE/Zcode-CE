@@ -7,6 +7,34 @@ import { captureBrowserDomSnapshot } from "./browserPlaywrightDomSnapshot.js";
 import { executeIabPlaywrightLocator } from "./browserPlaywrightLocatorExecutor.js";
 import { normalizePlaywrightTimeout } from "./browserPlaywrightTimeout.js";
 
+// elementInfoRuntime / overlayRuntime 会被 toString() 序列化后注入浏览器页面上下文执行，
+// 运行环境是页面而 main 是 Node/Electron 进程。main 工程刻意不开 dom lib（否则 DOM 全局会对
+// 所有 Node 侧文件可见，掩盖真实误用），所以这里只为这两个页面 runtime 补一份最小的页面侧声明；
+// 类型声明不产出运行时代码，序列化后的函数体与改动前一致。
+interface Element {
+  id: string;
+  tagName: string;
+  outerHTML: string;
+  style: { cssText: string };
+  remove(): void;
+  append(...nodes: Element[]): void;
+  getAttribute(name: string): string | null;
+  matches(selector: string): boolean;
+  getBoundingClientRect(): { x: number; y: number; width: number; height: number };
+}
+interface HTMLElement extends Element {
+  innerText?: string;
+}
+interface HTMLInputElement extends Element {
+  value?: string;
+}
+declare const document: {
+  elementsFromPoint(x: number, y: number): Element[];
+  getElementById(id: string): Element | null;
+  createElement(tagName: string): Element;
+  documentElement: Element;
+};
+
 type Done = (partial: Omit<BrowserCommandResult, "elapsedMs">) => BrowserCommandResult;
 
 const POLL_INTERVAL_MS = 50;
@@ -16,8 +44,10 @@ function serializeRuntimeCall(fn: (...args: any[]) => unknown, ...args: unknown[
 }
 
 function elementInfoRuntime(options: { x: number; y: number; includeNonInteractable?: boolean }) {
+  // CSS.escape 只在页面侧存在；这里按结构取用，`as` 会被类型擦除，序列化后的函数体不变。
   const cssEscape = (value: string) =>
-    globalThis.CSS?.escape?.(value) ?? value.replace(/[^\w-]/g, "\\$&");
+    (globalThis as { CSS?: { escape?(input: string): string } }).CSS?.escape?.(value) ??
+    value.replace(/[^\w-]/g, "\\$&");
   const candidatesFor = (element: Element) => {
     const values: string[] = [];
     if (element.id) values.push(`#${cssEscape(element.id)}`);
