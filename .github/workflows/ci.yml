@@ -22,17 +22,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # architecture:check --changed 需要基线对比，浅克隆会让变更集判断失真。
           fetch-depth: 0
 
       # 不传 version：读取根 package.json 的 "packageManager": "pnpm@10.33.2"。
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24.14.0
           cache: pnpm

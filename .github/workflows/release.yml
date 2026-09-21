@@ -52,15 +52,15 @@ jobs:
             artifact: windows
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # 不传 version：pnpm/action-setup 会读取根 package.json 的
       # "packageManager": "pnpm@10.33.2"。同时传 version 会因版本冲突直接报错。
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24.14.0
           cache: pnpm
@@ -103,7 +103,7 @@ jobs:
       # .blockmap 必须一起留存，否则 electron-updater 的差分下载会退化为全量包。
       - name: Upload installers
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: zcode-ce-${{ matrix.artifact }}
           if-no-files-found: warn
@@ -115,3 +115,33 @@ jobs:
             packages/desktop/dist/*.exe
             packages/desktop/dist/*.yml
             packages/desktop/dist/*.blockmap
+
+  # 单独一个 job 设置 Release 描述，必须在两个平台都构建完之后。
+  #
+  # 为什么需要它：electron-builder 创建 Release 时**不传 body**（electron-publish 里
+  # 没有 releaseNotes 的处理），GitHub 会用 tag 的 annotation 作为兜底。而 tag
+  # annotation 是纯文本、不是 Markdown，渲染出来是一整块引用样式 —— 字体小、颜色淡、
+  # 没有结构。这里显式写入 release-notes.md，得到正常的 Markdown 渲染。
+  #
+  # 为什么不能放在 build job 里：矩阵是串行的（max-parallel: 1，避免并发创建
+  # Release），先完成的平台执行时另一个平台的产物还没上传，描述会写到一半状态。
+  release-notes:
+    name: set release description
+    needs: build
+    # 只有 tag 构建才需要（workflow_dispatch 不创建 Release）。
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # 用 gh 而不是第三方 action：GH_TOKEN 已在仓库内可用，少一个供应链依赖。
+      # --notes-file 读取仓库根的双语 release-notes.md（中文在前，英文在后）。
+      - name: Set release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --notes-file release-notes.md \
+            --title "ZCode-CE ${{ github.ref_name }}"
