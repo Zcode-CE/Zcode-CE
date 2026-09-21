@@ -31,7 +31,7 @@ ZCode-CE 基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0�
 
 - **不是官方发行版**。ZCode-CE 由社区维护，不代表 Z.ai 或智谱的官方立场。
 - **不提供账号服务**。模型访问、套餐与计费仍由官方服务提供，本项目不代理、不转售。
-- **不含 Computer Use**。该系统级自动化能力在本版中为不可用占位实现。
+- **暂不含 Computer Use**。该系统级桌面自动化能力需要官方分发的闭源 helper 二进制，本版尚未接入，**后续版本计划跟进**。
 
 ## 入口
 

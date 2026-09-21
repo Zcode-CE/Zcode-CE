@@ -31,7 +31,7 @@ Four differences from the official distribution:
 
 - **Not an official distribution.** ZCode-CE is community-maintained and does not represent Z.ai or Zhipu.
 - **No account services.** Model access, plans, and billing remain with the official service. This project does not proxy or resell them.
-- **No Computer Use.** That system-level automation capability ships as an unavailable placeholder in this build.
+- **No Computer Use yet.** That system-level desktop automation capability requires a closed-source helper binary distributed by the official project, which this build does not yet integrate. **Planned for a future release.**
 
 ## Entry points
 
