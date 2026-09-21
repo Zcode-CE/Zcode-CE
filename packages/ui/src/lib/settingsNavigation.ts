@@ -43,7 +43,10 @@ const HIDDEN_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   // 工作区搜索（.zcodeignore）设置入口先隐藏：规则文件仍生效并可手动编辑，
   // 编辑页代码保留，放开时从这里移除即可。
   "workspaceFileSearch",
-  "computerUse",
+  // computerUse 曾在此隐藏，与 settingsPageConfig.ts 的「macOS/Windows/Linux 必须继续
+  // 通过 createSettingsPageConfig 动态加入 Computer Use」直接矛盾：那里按平台决定是否显示
+  // （Web 仍不显示），这里却把整个分区一刀切掉，导致桌面端也永远打不开电脑控制。
+  // 本地 Linux 改为实验性支持后必须恢复入口，否则用户只能看到插件页那张「不可用」卡片。
   // 「反馈与诊断」是正式设置页分区，刻意不加入隐藏集。
   // 本地反馈链路（GitHub 预填链接 / 日志导出）不依赖任何官方服务，
   // 用户必须能在离线或 fork 构建里打开它，否则报障入口会整体消失。
