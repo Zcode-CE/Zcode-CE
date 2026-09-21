@@ -2,6 +2,7 @@ import { CodingPlanEntryButton } from "@/settings/CodingPlanEntryButton.js";
 /* eslint-disable max-lines -- Coding Plan/Start Plan 状态卡集中编排状态、动作和套餐区块，当前先保持同一文件避免拆散状态语义。 */
 import {
   BIGMODEL_PROVIDER_ID,
+  isCodingPlanModelProviderId,
   isStartPlanModelProviderId,
   resolveModelProviderFamilySpecByProviderId,
   type UsageEntitlementSubscriptionDetail,
@@ -44,6 +45,7 @@ import { CodingPlanStatusActions, CodingPlanUpgradeAction } from "./CodingPlanSt
 import type { CodingPlanLoginOptions } from "./codingPlanPricingCards.js";
 import type { PurchaseAudience } from "./codingPlanEnterpriseTiers.js";
 import { StartPlanCard } from "./StartPlanCard.js";
+import { ManualClaimPlanCard } from "./ManualClaimPlanCard.js";
 import { StartPlanQuotaStatusCard } from "./StartPlanQuotaStatusCard.js";
 import { resolveStartPlanQuotaCardEntries } from "./StartPlanBalanceCard.js";
 import { useStartPlanPreview } from "./useStartPlanPreview.js";
@@ -642,6 +644,12 @@ export function CodingPlanStatusPanel({
 
       {startPlanCardVisible && !startPlanPreview.loading && startPlanPreview.preview ? (
         <StartPlanCard preview={startPlanPreview.preview} />
+      ) : null}
+
+      {/* claim 平面入口：挂在 Coding Plan 卡片下方。
+          卡片自身在「服务端没有可领取活动」时不渲染，因此这里不需要额外的可见性条件。 */}
+      {isCodingPlanModelProviderId(providerId) ? (
+        <ManualClaimPlanCard providerId={providerId} />
       ) : null}
     </div>
   );

@@ -4,11 +4,25 @@ import type { ICodingPlanSubscriptionService } from "./codingPlanSubscription.js
 import { BigModelCodingPlanSubscriptionProvider } from "./bigmodelCodingPlanSubscriptionProvider.js";
 import type { ModelSelectionView } from "@zcode/provider";
 import { ZaiCodingPlanSubscriptionProvider } from "./zaiCodingPlanSubscriptionProvider.js";
+import {
+  createManualClaimCaptcha,
+  type ManualClaimCaptcha,
+  type ManualClaimCaptchaSolver,
+} from "./manualClaimCaptcha.js";
 
 interface CodingPlanSubscriptionServiceDependencies {
   apiClient: ApiClient;
   credentialService: Pick<ICredentialService, "load">;
   resolveOffPeakModelSelectionView?: () => Promise<ModelSelectionView>;
+  /**
+   * claim 平面的验证码求解器（可选）。
+   * CE 当前没有本地求解器实现（不引入 happy-dom），因此缺省不传 →
+   * claimManualPlan 在需要验证码时返回可读的 captcha_unavailable 失败。
+   * 桌面端由 UI 在内嵌 WebView 里求解并把 verifyParam 直接传进请求，走主路径。
+   */
+  manualClaimCaptchaSolver?: ManualClaimCaptchaSolver;
+  /** 测试注入：覆盖 deviceMid 解析。 */
+  resolveDeviceMid?: () => Promise<string>;
 }
 
 /**
@@ -28,8 +42,19 @@ interface CodingPlanSubscriptionServiceDependencies {
 export function createCodingPlanSubscriptionService(
   dependencies: CodingPlanSubscriptionServiceDependencies,
 ): ICodingPlanSubscriptionService {
-  const bigmodelProvider = new BigModelCodingPlanSubscriptionProvider(dependencies);
-  const zaiProvider = new ZaiCodingPlanSubscriptionProvider(dependencies);
+  const manualClaimCaptcha: ManualClaimCaptcha = createManualClaimCaptcha({
+    apiClient: dependencies.apiClient,
+    solve: dependencies.manualClaimCaptchaSolver,
+  });
+  const providerOptions = {
+    apiClient: dependencies.apiClient,
+    credentialService: dependencies.credentialService,
+    resolveOffPeakModelSelectionView: dependencies.resolveOffPeakModelSelectionView,
+    manualClaimCaptcha,
+    resolveDeviceMid: dependencies.resolveDeviceMid,
+  };
+  const bigmodelProvider = new BigModelCodingPlanSubscriptionProvider(providerOptions);
+  const zaiProvider = new ZaiCodingPlanSubscriptionProvider(providerOptions);
 
   // 按 family 选择 enterprise 读路径 provider；缺省（含未指定 family 的历史调用）走 bigmodel。
   const resolveEnterprisePricingProvider = (
@@ -71,5 +96,10 @@ export function createCodingPlanSubscriptionService(
     continueEnterpriseOrderPayment: (request) =>
       bigmodelProvider.continueEnterpriseOrderPayment(request),
     checkEnterpriseOrderStatus: (request) => bigmodelProvider.checkEnterpriseOrderStatus(request),
+    // claim 平面：与 family 无关（zcode-plan 域共用 zcodejwttoken + deviceMid），
+    // 与 staticConfigs 同理固定走 bigmodel provider，避免两个 provider 各存一份设备身份缓存。
+    getManualClaimPlanPreviews: () => bigmodelProvider.getManualClaimPlanPreviews(),
+    claimManualPlan: (request) => bigmodelProvider.claimManualPlan(request),
+    getManualClaimCaptchaConfig: (options) => bigmodelProvider.getManualClaimCaptchaConfig(options),
   };
 }

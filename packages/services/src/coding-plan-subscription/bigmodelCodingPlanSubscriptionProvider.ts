@@ -50,6 +50,10 @@ import type {
   StartPlanPreviewConfig,
   ZCodeModelContextBudgetStrategy,
   DynamicWorkflowClientConfig,
+  ManualClaimCaptchaConfig,
+  ManualClaimPlanClaimOutcome,
+  ManualClaimPlanClaimRequest,
+  ManualClaimPlanPreview,
 } from "@zcode/shared";
 import type { ModelSelectionView } from "@zcode/provider";
 import type { OffPeakClientConfig } from "./codingPlanSubscription.js";
@@ -69,6 +73,8 @@ import {
   resolveDynamicWorkflowClientConfig,
   DEFAULT_DYNAMIC_WORKFLOW_MODE,
   ZCODE_DYNAMIC_WORKFLOW_MODE_ENV,
+  // 稳定错误码是值（不是类型），必须走值导入。
+  MANUAL_CLAIM_CAPTCHA_SOLVER_UNAVAILABLE,
 } from "@zcode/shared";
 import type { ICredentialService } from "../credential/credential.js";
 import { readApiJson } from "../providers/api/apiJson.js";
@@ -78,6 +84,14 @@ import {
   type BigModelTeamPlanApiKeyEnsureResult,
   type BigModelTeamPlanBizContext,
 } from "#src/bigmodel/teamPlanApiKey.js";
+// deviceMid 复用 CE 已有的唯一设备身份入口（telemetry-state.json + 文件锁）。
+// claim 平面不接受自造身份：X-Device-Mid 必须是 UUID 且跨端一致，否则服务端回 3001。
+import { ensureDeviceMid } from "../device/deviceMid.js";
+import {
+  createManualClaimPlanClient,
+  type ManualClaimPlanClient,
+} from "./manualClaimPlanClient.js";
+import type { ManualClaimCaptcha } from "./manualClaimCaptcha.js";
 
 const BIGMODEL_CODING_PLAN_API_PREFIX = "/api/biz";
 const ZAI_CODING_PLAN_PAY_API_PREFIX = "/api/pay";
@@ -125,6 +139,10 @@ interface BigModelCodingPlanSubscriptionProviderOptions {
   apiClient: ApiClient;
   credentialService: Pick<ICredentialService, "load">;
   resolveOffPeakModelSelectionView?: () => Promise<ModelSelectionView>;
+  /** claim 平面的验证码凭据来源；缺省时服务层按「本端不可用」返回可读失败。 */
+  manualClaimCaptcha?: ManualClaimCaptcha;
+  /** 测试注入：覆盖 deviceMid 解析（默认走 ensureDeviceMid 读设备身份文件）。 */
+  resolveDeviceMid?: () => Promise<string>;
 }
 
 interface TeamPlanProjectApiKeyPrewarmStatus {
@@ -155,14 +173,23 @@ export class BigModelCodingPlanSubscriptionProvider {
   protected readonly apiClient: ApiClient;
   protected readonly credentialService: Pick<ICredentialService, "load">;
   private readonly resolveOffPeakModelSelectionView?: () => Promise<ModelSelectionView>;
+  private readonly manualClaimCaptcha?: ManualClaimCaptcha;
+  private readonly resolveDeviceMid?: () => Promise<string>;
   private clientConfigSnapshot: ZCodeClientConfigEnvelope | null = null;
   private clientConfigSnapshotExpiresAt = 0;
   private clientConfigRequest: Promise<ZCodeClientConfigEnvelope> | null = null;
+  /**
+   * claim 平面客户端惰性单例：deviceMid 在进程内稳定（ensureDeviceMid 自带缓存），
+   * 每次领取都重读设备身份文件纯属浪费 IO，因此首次解析后复用。
+   */
+  private manualClaimClientPromise: Promise<ManualClaimPlanClient> | null = null;
 
   constructor(options: BigModelCodingPlanSubscriptionProviderOptions) {
     this.apiClient = options.apiClient;
     this.credentialService = options.credentialService;
     this.resolveOffPeakModelSelectionView = options.resolveOffPeakModelSelectionView;
+    this.manualClaimCaptcha = options.manualClaimCaptcha;
+    this.resolveDeviceMid = options.resolveDeviceMid;
   }
 
   // ─────────── family 维度抽象（供 ZaiCodingPlanSubscriptionProvider 覆盖）───────────
@@ -276,6 +303,136 @@ export class BigModelCodingPlanSubscriptionProvider {
   async getForceUpdateConfig(): Promise<ForceUpdateConfig | null> {
     const payload = await this.getClientConfigs();
     return unwrapClientConfigForceUpdate(payload);
+  }
+
+  // ─────────── claim 平面（周末 / 体验套餐手动领取）───────────
+  // 与购买链路完全分离：走 /api/v1/zcode-plan/billing/*，头集合也更小
+  // （见 manualClaimPlanClient.ts）。这里只负责「取 JWT / 取 deviceMid / 取验证码凭据」，
+  // 协议细节全部留在客户端模块，避免 provider 再长出一份头拼装逻辑。
+
+  /** 列出当前可领取的套餐；未登录也能拿到列表（preview 允许匿名）。 */
+  async getManualClaimPlanPreviews(): Promise<ManualClaimPlanPreview[]> {
+    const client = await this.resolveManualClaimClient();
+    const jwt = await this.loadZCodeJwt();
+    return await client.getPreviews({ jwt });
+  }
+
+  /** 阿里云验证码配置（claim 需要验证码时 UI 用它初始化验证码组件）。 */
+  async getManualClaimCaptchaConfig(options?: {
+    forceRefresh?: boolean;
+  }): Promise<ManualClaimCaptchaConfig | null> {
+    if (!this.manualClaimCaptcha) {
+      return null;
+    }
+    return await this.manualClaimCaptcha.getConfig(options);
+  }
+
+  /**
+   * 领取指定套餐。
+   *
+   * 验证码凭据来源优先级：
+   *   1. 请求里显式传入（桌面端内嵌 WebView 求解，主路径）；
+   *   2. 服务层注入的求解器（当前 CE 未接入 → 稳定失败码）。
+   * 两种情况都不抛异常：失败统一经 `ManualClaimPlanClaimOutcome` 返回，
+   * 让 UI 只处理一条失败分支（见 shared 的注释）。
+   */
+  async claimManualPlan(
+    request: ManualClaimPlanClaimRequest,
+  ): Promise<ManualClaimPlanClaimOutcome> {
+    const planId = request.planId?.trim();
+    if (!planId) {
+      return {
+        ok: false,
+        planId: request.planId ?? "",
+        failureKind: "invalid_request",
+        code: 3001,
+        message: "manual_claim_plan_id_required",
+      };
+    }
+
+    const jwt = await this.loadZCodeJwt();
+    if (!jwt) {
+      // 未登录不必取 deviceMid / 验证码：先给最短路径的稳定失败。
+      return {
+        ok: false,
+        planId,
+        failureKind: "login_required",
+        code: 401,
+        message: "manual_claim_login_required",
+      };
+    }
+
+    let captcha = request.captcha;
+    if (!captcha?.verifyParam?.trim()) {
+      try {
+        captcha = await this.manualClaimCaptcha?.getCaptchaCredential();
+      } catch (error) {
+        const code =
+          error instanceof Error ? error.message : MANUAL_CLAIM_CAPTCHA_SOLVER_UNAVAILABLE;
+        return {
+          ok: false,
+          planId,
+          failureKind: "captcha_unavailable",
+          code,
+          message: code,
+        };
+      }
+    }
+    if (!captcha?.verifyParam?.trim()) {
+      return {
+        ok: false,
+        planId,
+        failureKind: "captcha_unavailable",
+        code: MANUAL_CLAIM_CAPTCHA_SOLVER_UNAVAILABLE,
+        message: MANUAL_CLAIM_CAPTCHA_SOLVER_UNAVAILABLE,
+      };
+    }
+
+    const client = await this.resolveManualClaimClient();
+    return await client.claim(planId, captcha, { jwt });
+  }
+
+  /**
+   * 读取账号 JWT（`zcodejwttoken`）。
+   *
+   * 只读不写、缺失返回 undefined：claim 的 preview 允许匿名，claim 由调用方按
+   * login_required 处理，不能让一次凭据读取失败阻断「看看有什么可领」。
+   */
+  private async loadZCodeJwt(): Promise<string | undefined> {
+    try {
+      return (await this.credentialService.load(ZCODE_JWT_TOKEN_KEY))?.trim() || undefined;
+    } catch (error) {
+      log.warn(undefined, "manual claim jwt load failed", {
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
+    }
+  }
+
+  private async resolveManualClaimClient(): Promise<ManualClaimPlanClient> {
+    if (!this.manualClaimClientPromise) {
+      this.manualClaimClientPromise = this.createManualClaimClient();
+    }
+    try {
+      return await this.manualClaimClientPromise;
+    } catch (error) {
+      // deviceMid 解析失败（设备身份文件不可写等）不能污染后续调用：
+      // 清掉缓存让下一次重试重新解析，而不是把一个永久失败的 Promise 缓存到进程结束。
+      this.manualClaimClientPromise = null;
+      throw error;
+    }
+  }
+
+  private async createManualClaimClient(): Promise<ManualClaimPlanClient> {
+    const deviceMid = this.resolveDeviceMid
+      ? await this.resolveDeviceMid()
+      : await ensureDeviceMid();
+    return createManualClaimPlanClient({
+      apiClient: this.apiClient,
+      deviceMid,
+      appVersion: ZCODE_VERSION,
+      platform: resolveClientPlatformKey(),
+    });
   }
 
   async preview(request: CodingPlanPreviewRequest): Promise<CodingPlanPreviewResponse> {
