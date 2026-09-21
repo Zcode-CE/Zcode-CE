@@ -135,6 +135,7 @@ ZCode-CE 与官方 ZCode 使用**独立的安装身份**，可以并存。两者
 
 - [架构与模块边界](docs/development/architecture.md)
 - [与上游的差异](docs/development/upstream-diff.md)
+- [与官方发行版的差异](docs/development/official-diff.md)
 - [本地开发](docs/development/local-setup.md)
 - [遥测与隐私](docs/development/telemetry.md)
 - [贡献指南](docs/community/contributing.md)

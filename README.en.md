@@ -135,6 +135,7 @@ Developer documentation lives in [docs/](docs/):
 
 - [Architecture and module boundaries](docs/development/architecture.md)
 - [Differences from upstream](docs/development/upstream-diff.md)
+- [Differences from the official release](docs/development/official-diff.md)
 - [Local setup](docs/development/local-setup.md)
 - [Telemetry and privacy](docs/development/telemetry.md)
 - [Contributing](docs/community/contributing.md)
