@@ -131,6 +131,11 @@ export {
   DesktopCommandIds,
   buildLocalMediaPreviewUrl,
   createOpenInEditorRemoteTarget,
+  // 这三个窗口控件/缩放类型定义在 platform.ts，但开源版具名导出名单漏了它们，
+  // 导致 preload 与 client/globals.d.ts 从公开入口导入时报 TS2305。纯类型，无运行时影响。
+  type DesktopZoomState,
+  type WindowControlsOverlayMetrics,
+  type WindowControlsOverlayReadyPayload,
 } from "./platform.js";
 // 遥测已全部移除（P1）：以下模块与其全部导出已删除 ——
 //   telemetry.ts（埋点载荷/脱敏上下文）、telemetryRedaction.ts（上报文本脱敏）、

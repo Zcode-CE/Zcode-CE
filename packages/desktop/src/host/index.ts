@@ -293,11 +293,42 @@ const remoteConnectionProgressContext = createRemoteConnectionProgressContext({
   },
 });
 
+// host 的 stdout/stderr 是 fork 时继承来的管道。父终端或管道读端退出后，console.* 会抛 EPIPE；
+// 而 host 是 utilityProcess，未捕获异常会走 uncaughtException -> process.exit(1)，
+// 导致 host 猝死、渲染进程永远等不到 host。main 侧早已有同源护栏（main/logger.ts 的
+// isBrokenPipeError / safeConsoleWrite，注释明确写着「不能让日志输出反过来杀掉主进程」），
+// 这里把同一条规则补到 host 侧，保持语义一致：只吞 EPIPE，其它错误照旧抛出。
+function isBrokenPipeError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "EPIPE"
+  );
+}
+
+function ignoreBrokenPipeStreamError(error: Error): void {
+  // stream error 是异步事件，try/catch 包 console.* 不一定兜得住；这里统一吞掉 EPIPE。
+  if (!isBrokenPipeError(error)) {
+    throw error;
+  }
+}
+
+process.stdout.on("error", ignoreBrokenPipeStreamError);
+process.stderr.on("error", ignoreBrokenPipeStreamError);
+
 function writeHostLog(level: HostLogLevel, ...args: unknown[]): void {
   const prefix = formatLogPrefix("zcode-host", process.pid);
   const consoleFn =
     level === "error" ? rawConsole.error : level === "warn" ? rawConsole.warn : rawConsole.log;
-  consoleFn(prefix, ...args);
+  try {
+    consoleFn(prefix, ...args);
+  } catch (error) {
+    // 管道关闭时不能因为日志写不出去就杀掉 host；reportHostLog 仍要把日志送到 main。
+    if (!isBrokenPipeError(error)) {
+      throw error;
+    }
+  }
   reportHostLog(level, [prefix, ...args]);
 }
 

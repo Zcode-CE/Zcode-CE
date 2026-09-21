@@ -24,7 +24,10 @@ export function createServiceLogger(
     isDebugEnabled?: boolean | (() => boolean);
   },
 ): ServiceLogger {
-  const pid = options?.pid ?? process.pid;
+  // createServiceLogger 会被打进 renderer 包（浏览器环境），那里没有 process 全局；
+  // 直接读 process.pid 会在模块求值阶段抛 ReferenceError，导致 React 根本挂不上、UI 永久停在启动壳。
+  // formatLogPrefix 的契约就是「浏览器端不传 pid」（见 shared/src/log-format.ts），所以这里传 undefined。
+  const pid = options?.pid ?? (typeof process === "undefined" ? undefined : process.pid);
   const sink = options?.sink ?? console;
   const debugOption = options?.isDebugEnabled;
   const resolveDebugEnabled: () => boolean =
