@@ -7,7 +7,9 @@
 # 为什么必须走 CI：Windows 安装包（nsis）无法在 Linux 上交叉打包，必须由 windows-latest 产出。
 #
 # 说明文档：docs/operations/ci.md、docs/operations/release.md
-# ⚠️ 本文件尚未在真实 GitHub runner 上验证过（本地无法运行 Actions），详见 .reverse/21-release/R3b-ci.md
+# 本文件已在真实 GitHub runner 上验证并持续运行（CI / Release 两个 workflow 均为 active）。
+# 注意：不要在此处写死运行次数或版本号 —— 这类值会漂移；需要引用时用 `gh run list` 现取。
+# 首次验证记录与已知问题：.reverse/21-release/R3b-ci.md
 
 name: Release
 
