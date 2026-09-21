@@ -16,6 +16,7 @@ import { basename, dirname, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { runCommand } from "../../../scripts/spawn-command.mjs";
+import { stageCuaDriverIntoBundledAgents } from "./cua-driver-package-assets.mjs";
 import { stageAgentBundle } from "./stage-agent-bundle.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -246,6 +247,37 @@ function stageBundle() {
   stageAgentBundle({ repoRoot, platformKey });
 }
 
+/**
+ * 把 Computer Use 驱动及其平台原生依赖 stage 进 glm/node_modules。
+ *
+ * 为什么必须在 stageBundle() 之后：stageAgentBundle 会**清空并重建** glm 目录
+ * （刻意的，避免上次构建的残留原生二进制被打进包），所以 staging 顺序反了会被删掉。
+ *
+ * 为什么需要：node-repl-host 的 bundle 用运行时 import() 加载原生驱动，
+ * 而 staged 树默认没有 node_modules —— 正式包里那一跳会 ERR_MODULE_NOT_FOUND。
+ * 详见 cua-driver-package-assets.mjs 的模块注释。
+ */
+function stageCuaDriver() {
+  const { staged, triple } = stageCuaDriverIntoBundledAgents({
+    // 查找根与 electron-builder 的 runtimeModuleLookupRoots 同口径：根 node_modules
+    // 是 pnpm hoisted 布局下的主落点，desktop 自己的 node_modules 兜底。
+    lookupRoots: [repoRoot, desktopRoot],
+    glmDir,
+    // 与上面 platformKey 同源：支持 ZCODE_TARGET_OS/ARCH 交叉准备。
+    targetPlatform: {
+      os: platform,
+      arch,
+      key: platformKey,
+      npmLibc: platform === "linux" ? "glibc" : undefined,
+    },
+  });
+  const bytes = staged.reduce((sum, item) => sum + item.size, 0);
+  console.log(
+    `[prepare:agent-bundle] staged Computer Use driver (${triple}): ` +
+      `${staged.length} packages, ${(bytes / 1024 / 1024).toFixed(1)} MiB`,
+  );
+}
+
 function stageOfficialPlugins() {
   for (const plugin of officialPluginPackages) {
     const sourceRoot = resolve(repoRoot, plugin.relativePath);
@@ -285,4 +317,5 @@ function stageOfficialPlugins() {
 buildCliBundle();
 buildOfficialPluginRuntimes();
 stageBundle();
+stageCuaDriver();
 stageOfficialPlugins();

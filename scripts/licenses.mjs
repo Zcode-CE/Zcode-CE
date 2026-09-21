@@ -73,7 +73,28 @@ function classify(raw) {
     .map((x) => x.trim())
     .filter(Boolean);
   if (and.length > 1 && and.every((x) => GREEN.test(x))) return "green";
-  const t = or[0] || and[0] || s;
+  // AND 是**合取**：必须同时满足每一项，所以按**最严格**的那一项定级，不能只看第一项。
+  // 原实现取 or[0] || and[0]，于是 "MIT AND MPL-2.0" 因为首项是 MIT 而落进 review ——
+  // 既不是 green（会被放过）也不是 yellow-weak（有登记路径），等于把一个真实的 MPL
+  // 义务塞进"未知"桶。按最严格项定级后，它正确地落 yellow-weak，走人工复核登记。
+  const AND_RANK = [
+    "green",
+    "review",
+    "yellow-cc",
+    "yellow-weak",
+    "yellow-lgpl",
+    "red-nc",
+    "red-semiopen",
+    "red-agpl",
+    "red-gpl",
+  ];
+  if (and.length > 1) {
+    const worst = and
+      .map((part) => classify(part))
+      .sort((a, b) => AND_RANK.indexOf(b) - AND_RANK.indexOf(a))[0];
+    return worst;
+  }
+  const t = or[0] || s;
   if (/\bAGPL/i.test(t)) return "red-agpl";
   if (/\bLGPL/i.test(t)) return "yellow-lgpl";
   if (/\bGPL/i.test(t)) return "red-gpl";
@@ -87,8 +108,31 @@ for (const r of installed.values()) r.bucket = classify(r.license);
 
 // ---------- 构建工具许可标识复核（不是二进制发行义务豁免） ----------
 const WEAK_ALLOW = [[/^lightningcss/, "当前仅构建依赖；进入生产图时需重新核对 MPL 源码提供义务"]];
+/**
+ * 生产图内的弱 copyleft 依赖：已人工复核，登记结论。
+ *
+ * 与 WEAK_ALLOW 分开是刻意的：那张表只覆盖**构建期**依赖（不进入发行物），
+ * 这里覆盖**会随包分发**的依赖，义务更实，必须逐条写明复核结论而不是靠正则放过。
+ *
+ * MPL-2.0 是文件级 copyleft：只要不改动被覆盖的文件，分发义务就是保留许可声明
+ * 并提供对应源码。这些包原样分发（未修改），源码由 pinned 上游 tag 提供，
+ * 许可材料已登记在 third-party/npm-overrides.json。
+ */
+const PROD_WEAK_ALLOW = [
+  [
+    /^@ubjs\/(?:core|node)(?:-|$)/,
+    "@ubjs/* 是 MPL-2.0（uniffi N-API 运行时），原样分发未修改；源码见 pinned 上游 tag，许可材料已登记",
+  ],
+  [
+    /^@trycua\/cua-driver(?:-|$)/,
+    "平台包声明 MIT AND MPL-2.0，MPL 部分仅覆盖 node runtime 垫片（包内 node-runtime-NOTICE.md 有说明）；原样分发未修改，许可材料已登记",
+  ],
+];
 function weakAllowReason(r) {
-  if (r.isProd) return null;
+  if (r.isProd) {
+    for (const [re, why] of PROD_WEAK_ALLOW) if (re.test(r.name)) return why;
+    return null;
+  }
   for (const [re, why] of WEAK_ALLOW) if (re.test(r.name)) return why;
   return null;
 }

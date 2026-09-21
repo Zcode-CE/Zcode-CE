@@ -20,6 +20,7 @@ import {
   resolveDesktopArtifactSuffix,
   resolveDesktopProductIdentity,
 } from "./scripts/desktop-product-identity.mjs";
+import { verifyStagedCuaDriver } from "./scripts/cua-driver-package-assets.mjs";
 import { verifyStagedKoffi } from "./scripts/koffi-package-assets.mjs";
 const ELECTRON_BUILDER_ARCH = {
   1: "x64",
@@ -439,6 +440,25 @@ function assertPackagedNodePtyPrebuild(context) {
     throw new Error(`node-pty 预编译产物缺失: ${targetBinaryPath}`);
 }
 
+/**
+ * Computer Use 驱动的原生运行时必须随包。
+ *
+ * 为什么要有这条机械校验：node-repl-host 用运行时 import() 加载原生驱动
+ * （esbuild 无法 bundle uniffi 的 .node），而它自己不带 node_modules。
+ * 缺任何一个包，正式包的 Computer Use 都会在**用户第一次调用时**才
+ * ERR_MODULE_NOT_FOUND —— 构建全程绿灯，属于典型的静默失效。
+ * 这里让它在出包阶段就失败。
+ */
+function assertPackagedCuaDriver(context) {
+  const issues = verifyStagedCuaDriver({
+    resourcesDir: resolvePackagedResourcesDir(context),
+    targetPlatform,
+  });
+  if (issues.length > 0) {
+    throw new Error(`Computer Use 驱动运行时校验失败:\n- ${issues.join("\n- ")}`);
+  }
+}
+
 /** @type {import("electron-builder").Configuration} */
 export default {
   appId: desktopProductIdentity.appId,
@@ -550,6 +570,7 @@ export default {
     runTimedSync("afterPack:assertPackagedNodePtyPrebuild", () =>
       assertPackagedNodePtyPrebuild(context),
     );
+    runTimedSync("afterPack:assertPackagedCuaDriver", () => assertPackagedCuaDriver(context));
     if (actualWindowsTarget) {
       await runTimedAsync("afterPack:writeWindowsInstallManifest", () =>
         writeWindowsInstallManifest(context),
@@ -617,7 +638,20 @@ export default {
       // 不再随包内置独立 Node 二进制。远端 SSH/WSL 仍走原生二进制（无 Electron）。
       from: `bundled-agents/${targetPlatform.key}/glm`,
       to: "glm",
-      filter: ["**/*", "!**/*.map"],
+      // filter 里**必须**显式出现 node_modules 模式。
+      //
+      // electron-builder 的 FileMatcher 对 extraResources 会无条件排除
+      // `**/node_modules/**`：只有当一个非否定模式自身包含 "node_modules" 时，
+      // 它才改为在该模式**之前**插入排除项（见 app-builder-lib/out/fileMatcher.js
+      // 的 insertExculdeNodeModulesIndex 分支）；否则排除项被放到最前面，
+      // 把 node_modules 整棵剪掉。
+      //
+      // 为什么现在才需要：Computer Use 驱动是原生模块，esbuild 无法 bundle，
+      // 只能随 `glm/node_modules` 分发（见 cua-driver-package-assets.mjs）。
+      // 少了这一行，staging 成功、打包也"成功"，但驱动不会进安装包 ——
+      // 症状是用户首次调用 Computer Use 时才 ERR_MODULE_NOT_FOUND。
+      // 出包前的 assertPackagedCuaDriver 会把这种情况拦下来。
+      filter: ["**/*", "node_modules/**/*", "!**/*.map"],
     },
     {
       // agent shell 之前完全依赖宿主系统 PATH，GUI 启动时经常拿不到用户自己装的 rg。
