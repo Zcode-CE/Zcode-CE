@@ -33,11 +33,10 @@ import type {
   RemoteSessionClosedEvent,
   RemoteTarget,
   SSHConfigAliasOption,
-  RendererTelemetryEventPayload,
-  RendererActionTraceBatchV1,
-  RendererActionTraceConfigV1,
+  // 遥测已移除（P1）：RendererTelemetryEventPayload / RendererActionTraceBatchV1 /
+  // RendererActionTraceConfigV1 / TelemetryRendererContext 已随 shared 模块删除。
+  // RendererHeapSample 保留 —— 它是本地内存诊断，非上报。
   RendererHeapSample,
-  TelemetryRendererContext,
   TaskNotificationPayload,
   WindowScreenshotResult,
   EmbeddedBrowserDataClearResult,
@@ -204,18 +203,9 @@ declare global {
       onPaymentCallback(cb: (url: string) => void): () => void;
       /** 通知 main process renderer 已就绪 */
       notifyRendererReady(): void;
-      /** 同步当前 renderer 的 telemetry 上下文到 main process */
-      syncTelemetryContext(context: TelemetryRendererContext): void;
-      /** 通过 main process 统一上报业务 telemetry 事件 */
-      reportTelemetryEvent(payload: RendererTelemetryEventPayload): Promise<void>;
-      /** 读取 Desktop Renderer 用户操作 Trace 灰度配置。 */
-      getRendererActionTraceConfig?(): Promise<RendererActionTraceConfigV1>;
-      /** 订阅 Renderer 用户操作 Trace 灰度配置变化。 */
-      onRendererActionTraceConfigChanged?(
-        callback: (config: RendererActionTraceConfigV1) => void,
-      ): () => void;
-      /** 发送已结束的 ui_action batch；Main 不返回业务结果。 */
-      reportRendererActionTraceBatch?(batch: RendererActionTraceBatchV1): void;
+      // 遥测已移除（P1）：syncTelemetryContext / reportTelemetryEvent /
+      // getRendererActionTraceConfig / onRendererActionTraceConfigChanged /
+      // reportRendererActionTraceBatch 五个上报桥已删除。
       /** 主窗口 renderer 的 60 秒 heap 读数；单向 send，Main 不回执。 */
       reportRendererHeapSample?(sample: RendererHeapSample): void;
       /** 触发任务状态对应的系统通知 */

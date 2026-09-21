@@ -2,9 +2,11 @@
  * 单功能灰度 rollout 的通用机制层：TTL 缓存、in-flight 去重、3s 请求超时、
  * awaitFirstDecision 有界裁决。解析层（每个 feature 各自的 resolveConfig）由调用方注入。
  *
- * 抽取原因：desktopContextPromptRollout 与 rendererActionTraceRollout 共享同一套
+ * 抽取原因：最初是 desktopContextPromptRollout 与 rendererActionTraceRollout 共享同一套
  * /api/v1/client/configs 旁路请求机制，只有 `data.configs.<key>` 的解析不同；复制两份
  * 170 行机制代码会让超时/TTL 语义悄悄分叉。
+ * 遥测移除（P1）后 rendererActionTraceRollout 已删除，本机制层现在只服务
+ * desktopContextPromptRollout；抽取本身仍成立，不做无谓回并。
  *
  * 语义约定（与 desktopContextPromptRollout 一致，CUA 灰度 fail-close 也复用同一语义）：
  * - 请求失败/超时/解析失败：沿用上次快照（首次即失败 → 初始快照，由 defaultValue 决定）；

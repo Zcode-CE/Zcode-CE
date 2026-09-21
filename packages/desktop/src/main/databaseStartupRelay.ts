@@ -6,7 +6,6 @@ import {
   databaseStartupControlSchema,
   type DatabaseStartupState,
 } from "@zcode/shared";
-import { reportDatabaseStartupState } from "./databaseStartupTelemetry.js";
 
 let localStorageReady = false;
 let quit: (() => void) | undefined;
@@ -48,11 +47,8 @@ export function bindDatabaseStartupRelay(
     if (latest && state.startupId === latest.startupId && state.sequence <= latest.sequence) return;
     latest = state;
     forward(state);
-    try {
-      reportDatabaseStartupState(state);
-    } catch {
-      /* 遥测故障不阻断启动。 */
-    }
+    // 遥测移除（P1）：这里原有 reportDatabaseStartupState(state)（数据库启动阶段 → ARMS
+    // database_startup 自定义事件），随 databaseStartupTelemetry 删除。启动状态转发不受影响。
     if (state.phase === "ready" && !localStorageReady) {
       localStorageReady = true;
       for (const listener of readyListeners) listener();
