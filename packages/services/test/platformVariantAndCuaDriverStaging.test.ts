@@ -130,10 +130,17 @@ test("staging places the driver closure and its platform native library", async 
   ]);
   // 只 stage 目标平台：全拷会把六个平台的二进制一起打进安装包。
   assert.ok(!names.some((name) => name.includes("darwin") || name.includes("win32")));
+  // 原生依赖落在 node-repl-host 的 node_modules 下：electron-builder 会硬编码丢弃
+  // **源根直属**的 node_modules（util/filter.js 的 `if (relative === "node_modules") return false`），
+  // 所以不能放 glm/node_modules —— 那条路写什么 filter 都打不进包（见 staging 模块头注释）。
+  assert.equal(result.nodeModulesDir, resolve(glmDir, "packages/node-repl-host/node_modules"));
   // 原生库本体必须真的到位（只看目录会把"目录在但 .so 没拷进来"放过去）。
   assert.ok(
     existsSync(
-      resolve(glmDir, "node_modules/@trycua/cua-driver-linux-x64-gnu/libcua_driver_sdk.so"),
+      resolve(
+        glmDir,
+        "packages/node-repl-host/node_modules/@trycua/cua-driver-linux-x64-gnu/libcua_driver_sdk.so",
+      ),
     ),
   );
   // 体积统计用于构建日志：用户需要知道安装包会变大多少。
@@ -154,8 +161,10 @@ test("verification catches every way the staged runtime can be incomplete", asyn
     targetPlatform: TARGET,
   });
 
+  const nodeModulesDir = resolve(glmDir, "packages/node-repl-host/node_modules");
+
   // ① 原生库缺失
-  rmSync(resolve(glmDir, "node_modules/@trycua/cua-driver-linux-x64-gnu/libcua_driver_sdk.so"), {
+  rmSync(resolve(nodeModulesDir, "@trycua/cua-driver-linux-x64-gnu/libcua_driver_sdk.so"), {
     force: true,
   });
   assert.match(
@@ -164,7 +173,7 @@ test("verification catches every way the staged runtime can be incomplete", asyn
   );
 
   // ② 平台依赖包整目录缺失
-  rmSync(resolve(glmDir, "node_modules/@ubjs/node-linux-x64-gnu"), {
+  rmSync(resolve(nodeModulesDir, "@ubjs/node-linux-x64-gnu"), {
     recursive: true,
     force: true,
   });

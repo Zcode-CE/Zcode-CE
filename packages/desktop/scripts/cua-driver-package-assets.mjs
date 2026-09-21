@@ -9,8 +9,15 @@
 // （electron-builder 的 extraResources 只拷 bundled-agents/<key>/glm）。于是在正式包里
 // 这一跳会 ERR_MODULE_NOT_FOUND —— 表现为「Computer Use 装好了但用不了」的静默失效。
 //
-// 解法：把驱动及其依赖闭包按目标平台 stage 到 `glm/node_modules/`，
-// 那是 node-repl-host bundle 的祖先目录，Node 的解析算法会命中它。
+// 解法：把驱动及其依赖闭包按目标平台 stage 到
+// `glm/packages/node-repl-host/node_modules/`。
+//
+// 为什么不是 `glm/node_modules/`：electron-builder 的 util/filter.js 对**源根直属**的
+// node_modules 有硬编码丢弃（`if (relative === "node_modules") return false;`），
+// walk 不会下钻，写什么 filter 都没用（实测四种 filter 写法全部失败）。
+// 放进 node-repl-host 子目录既绕开那条规则，又正好落在 bundle 的祖先目录上 ——
+// Node 解析原生依赖时依次查 node_modules、../node_modules、../..，
+// 命中 packages/node-repl-host/node_modules。
 //
 // 只 stage 目标平台的原生包：驱动与 @ubjs 的平台包都是 optionalDependencies 全集，
 // 全拷会把六个平台的二进制一起打进安装包（Linux x64 只需 42 MB，全拷是数百 MB）。
@@ -36,7 +43,15 @@ function directorySize(dir) {
   return total;
 }
 
-/** 运行时必需的包；平台变体由 {@link resolveCuaDriverPlatformPackages} 追加。 */
+/**
+ * 原生依赖相对 `glm` 的落点。
+ *
+ * 必须是**子目录**下的 node_modules（原因见模块头注释），且要在 node-repl-host
+ * bundle 的祖先链上。
+ */
+const CUA_DRIVER_NODE_MODULES_RELATIVE = "packages/node-repl-host/node_modules";
+
+/** 运行时必需的包；平台变体由 {@link platformPackagesFor} 追加。 */
 const CUA_DRIVER_RUNTIME_PACKAGES = ["@trycua/cua-driver", "@ubjs/core", "@ubjs/node"];
 
 /**
@@ -99,7 +114,7 @@ export function stageCuaDriverIntoBundledAgents({ lookupRoots, glmDir, targetPla
   ];
 
   const staged = [];
-  const nodeModulesDir = resolve(glmDir, "node_modules");
+  const nodeModulesDir = resolve(glmDir, CUA_DRIVER_NODE_MODULES_RELATIVE);
   for (const packageName of packages) {
     const source = resolveInstalledPackage(packageName, lookupRoots);
     if (!source) {
@@ -131,7 +146,7 @@ export function verifyStagedCuaDriver({
   nodeReplHostRelativePath = "packages/node-repl-host",
 }) {
   const issues = [];
-  const nodeModulesDir = resolve(resourcesDir, glmRelativePath, "node_modules");
+  const nodeModulesDir = resolve(resourcesDir, glmRelativePath, CUA_DRIVER_NODE_MODULES_RELATIVE);
   let triple;
   try {
     triple = platformPackagesFor(targetPlatform);

@@ -638,20 +638,18 @@ export default {
       // 不再随包内置独立 Node 二进制。远端 SSH/WSL 仍走原生二进制（无 Electron）。
       from: `bundled-agents/${targetPlatform.key}/glm`,
       to: "glm",
-      // filter 里**必须**显式出现 node_modules 模式。
+      // 注意：`glm/node_modules` **不会**被打包，即使 filter 里写了 node_modules。
       //
-      // electron-builder 的 FileMatcher 对 extraResources 会无条件排除
-      // `**/node_modules/**`：只有当一个非否定模式自身包含 "node_modules" 时，
-      // 它才改为在该模式**之前**插入排除项（见 app-builder-lib/out/fileMatcher.js
-      // 的 insertExculdeNodeModulesIndex 分支）；否则排除项被放到最前面，
-      // 把 node_modules 整棵剪掉。
+      // electron-builder 的 util/filter.js 对源根直属的 node_modules 有硬编码丢弃：
+      //   if (relative === "node_modules") return false;
+      // （注释说明它只想过滤根 node_modules，保留嵌套的）。于是 walk 根本不会下钻，
+      // 无论 filter 写成 `node_modules/**/*` 还是 `**/node_modules/**/*` 都无效。
       //
-      // 为什么现在才需要：Computer Use 驱动是原生模块，esbuild 无法 bundle，
-      // 只能随 `glm/node_modules` 分发（见 cua-driver-package-assets.mjs）。
-      // 少了这一行，staging 成功、打包也"成功"，但驱动不会进安装包 ——
-      // 症状是用户首次调用 Computer Use 时才 ERR_MODULE_NOT_FOUND。
-      // 出包前的 assertPackagedCuaDriver 会把这种情况拦下来。
-      filter: ["**/*", "node_modules/**/*", "!**/*.map"],
+      // 所以 Computer Use 驱动的原生依赖 stage 到
+      // `packages/node-repl-host/node_modules`（见 cua-driver-package-assets.mjs）：
+      // 那个路径不是源根直属的 node_modules，能正常打包，而且正好在 node-repl-host
+      // bundle 的祖先目录里，是 Node 解析原生依赖时的一站。
+      filter: ["**/*", "!**/*.map"],
     },
     {
       // agent shell 之前完全依赖宿主系统 PATH，GUI 启动时经常拿不到用户自己装的 rg。
