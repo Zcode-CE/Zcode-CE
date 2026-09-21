@@ -28,8 +28,56 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # 发布前置校验。
+  #
+  # 为什么必须有：本流水线自己**不跑任何测试**（Checkout → Install → bundle → Upload），
+  # 所以没有这道 job 时，tag 可以指向一个从未被任何流水线验证过的提交 ——
+  # 3.14.1-ce.1.fix.2 就是这么发布的（CI 挂在 Test 步，而 tag 已经存在、构建已经在跑）。
+  # 有了它，「先推代码 → CI 绿 → 再单独打 tag」就从纪律变成了机械约束。
+  #
+  # ⚠️ 步骤与 .github/workflows/ci.yml 的 verify 必须保持一致，改一处要同步另一处。
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # architecture:check --changed 需要基线对比，浅克隆会让变更集判断失真。
+          fetch-depth: 0
+
+      # 不传 version：读取根 package.json 的 "packageManager": "pnpm@10.33.2"。
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm fmt:check
+
+      - name: Test
+        run: pnpm test
+
+      - name: Architecture check
+        run: pnpm run architecture:check -- --changed
+
   build:
     name: build ${{ matrix.artifact }}
+    # 校验不过就不产出任何安装包，避免再次出现「tag 已存在、构建已开始」的坏发布。
+    needs: verify
     runs-on: ${{ matrix.os }}
     strategy:
       # 一个平台失败不应阻止另一个平台产出（Windows 包只能在这里产出，尤其不能被 Linux 失败连坐）。
