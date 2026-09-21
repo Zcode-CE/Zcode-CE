@@ -1,42 +1,44 @@
-# ZCode-CE v3.14.1-ce.1.fix.1
+# ZCode-CE v3.14.1-ce.1.fix.2
 
 **中文** · [English](#english)
 
-> **热修复版本。** 修复 v3.14.1-ce.1 中导致界面完全无法显示的启动缺陷。
-> 该版本全部产物在任意平台、任意数据目录下都会卡在启动 logo 画面。
-> **所有 v3.14.1-ce.1 用户请升级到本版本。**
+> 承接 `3.14.1-ce.1.fix.1` 的启动修复，本版处理三处用户反馈的问题。
+> 若你仍在 `3.14.1-ce.1`（界面卡在 logo），请直接升级到本版。
 
-## 修复内容
+## 本次修复
 
-### 1. 启动卡死的两个独立缺陷
+### 1. 模型拉取对话框：模型一多就选不了、也加不了
 
-两个缺陷各自都足以让界面无法渲染，共同表现是永远停在启动 logo：
+对话框容器是 grid，而内部按 flex 写的滚动区在 grid 里**不生效** ——
+列表没有高度约束就撑破 `max-height`，被 `overflow: hidden` 裁掉，底部「添加」按钮也被顶出可视区。
 
-| #   | 位置                                            | 问题                                                                                                                             |
-| --- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `packages/desktop/src/preload/index.ts`         | 残留一处对已被删除的 `scheduleArmsEventBridgePatch()` 的调用，preload 抛 `ReferenceError`，导致 preload 脚本加载失败、IPC 桥残缺 |
-| 2   | `packages/services/src/logger/serviceLogger.ts` | `process.pid` 在浏览器环境不存在；该模块被打进渲染包后抛 `ReferenceError: process is not defined`，React 无法挂载                |
+- 改为 flex 列布局：固定头 / 固定搜索框 / 可滚动列表 / 固定底部按钮
+- **顶部新增搜索框**，模型多时可直接筛选
+- 搜索只影响「看得见什么」，不影响「选中了什么」：勾选跨筛选保留，可先筛一批勾一批再一次提交
+- 「全选」只作用于当前筛选下可见的项，无筛选时与改前一致
 
-两个缺陷的成因不同但后果相同，因此只修其中一个仍会是坏版本。
+### 2. 电脑控制在 Linux 上打不开
 
-### 2. 为什么此前没有被发现
+Linux 上只显示「当前环境暂不支持电脑控制」。排查后发现能力其实齐备，是**四道授权门控**全部只按 macOS/Windows 建模：
 
-根 `typecheck` 脚本只覆盖 `packages/desktop/tsconfig.host.json`，**`tsconfig.preload.json` 不在类型检查范围内**，
-因此缺陷 1 的 `TS2304` 从未被 CI 捕获。本版已把 preload 工程纳入 `typecheck`。
+- 可用性判定把 Linux 判为不支持
+- 设置分区只认 macOS/Windows 工作区
+- 插件页在 Linux 显示「不可用」卡片
+- **「电脑控制」整个设置分区被硬编码隐藏 —— 这一条在所有平台都生效，Windows 同样打不开**
 
-### 3. 顺带修复的上游缺陷
+四条已全部处理。Linux 现在可按「实验性支持」启用：
 
-官方发行版自身存在一处不对称缺陷：`packages/desktop/src/main/logger.ts` 为主进程装了 EPIPE 护栏
-（注释原文「不能让日志输出反过来杀掉主进程」），但 **host 进程侧没有装**。
-host 是 utilityProcess，未捕获异常会走 `process.exit(1)`；当继承来的 stdout/stderr 管道断开时，
-host 会猝死且 main 不重建，渲染进程永远等不到 host。本版把同一规则补到了 host 侧。
+- 驱动（开源实现 trycua/cua）已随包发出，打包期有 `assertPackagedCuaDriver` 硬校验把关
+- **但后端在 X11 / Wayland 下的覆盖度尚未全面验证**，鼠标键盘控制与截图可能不可用 ——
+  这一点已在设置页里如实标注，而不是承诺可用
 
-## 验证
+### 3. 「反馈与诊断」页重排
 
-- `pnpm typecheck` 通过（0 错误）；`pnpm lint` 通过（0 错误）
-- 打包产物内 `app.asar` 复核：preload 中残留符号 0 次；host 中 EPIPE 护栏各 1 次
-- 实机运行 + CDP 取证：`rootChildCount=1`、正文正常渲染、控制台零异常
-  （修复前为 `rootChildCount=0`、`bodyTextLen=0` 并伴随两条 `ReferenceError`）
+- 布局：诊断信息、反馈渠道、预填内容等原被挤在固定宽度的窄列里（预填预览每行十来个字就换行），现改为整行宽度
+- 删掉三行纯说明文字（附件、作用范围、遥测状态）—— 它们不是设置项
+- 「生成日志包」与「下载日志」实际是两条日志打包路径、用户分不出来，合并为一个「下载日志」，
+  并保留原来那份有用的反馈（导出后显示产物路径 + 「在文件管理器中显示」）
+- 「本构建不含任何后台上报通道」移到 **关于 ZCode** 对话框，作为一句事实陈述
 
 ## 平台
 
@@ -50,51 +52,45 @@ host 会猝死且 main 不重建，渲染进程永远等不到 host。本版把�
 ## 文档
 
 - [与官方发行版的差异](https://github.com/Zcode-CE/Zcode-CE/blob/main/docs/development/official-diff.md)
-- [安装说明](https://github.com/Zcode-CE/Zcode-CE#安装)
 - [发布与版本号规则](https://github.com/Zcode-CE/Zcode-CE/blob/main/docs/operations/release.md)
 
 ---
 
 # English
 
-> **Hotfix release.** Fixes a startup defect in v3.14.1-ce.1 that made the interface
-> completely unusable — every artifact of that release stays stuck on the splash logo
-> on any platform with any data directory.
-> **All v3.14.1-ce.1 users should upgrade.**
+> Follows the startup fix in `3.14.1-ce.1.fix.1`. This release addresses three reported issues.
+> If you are still on `3.14.1-ce.1` (UI stuck on the logo), upgrade straight to this version.
 
 ## Fixes
 
-### 1. Two independent defects causing the startup hang
+### 1. Model fetch dialog: with many models you could neither select nor add
 
-Either one alone is enough to prevent the interface from rendering:
+The dialog container is a grid, so the scrolling area written with flex semantics had no effect —
+the list had no height constraint, overflowed `max-height`, was clipped by `overflow: hidden`,
+and the Add button was pushed out of view.
 
-| #   | Location                                        | Problem                                                                                                                                                                     |
-| --- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `packages/desktop/src/preload/index.ts`         | A leftover call to the removed `scheduleArmsEventBridgePatch()` made the preload script throw `ReferenceError`, so it failed to load and the IPC bridge was left incomplete |
-| 2   | `packages/services/src/logger/serviceLogger.ts` | `process.pid` does not exist in a browser context; the module is bundled into the renderer and threw `ReferenceError: process is not defined`, so React never mounted       |
+- Now a flex column: fixed header / fixed search / scrollable list / pinned footer
+- **New search box at the top** to filter models
+- Search only changes what is _visible_, not what is _selected_ — selections survive filter changes
+- Select all applies to the currently visible items only; without a filter it behaves as before
 
-### 2. Why it was not caught earlier
+### 2. Computer Use could not be opened on Linux
 
-The root `typecheck` script only covered `packages/desktop/tsconfig.host.json`;
-**`tsconfig.preload.json` was outside type checking**, so the `TS2304` from defect 1
-never reached CI. This release adds the preload project to `typecheck`.
+Linux only showed Computer Use as unavailable. Four separate gates all assumed macOS/Windows only,
+including one that **hid the entire Computer Use settings section on every platform — Windows included**.
+All four are addressed. Linux can now be enabled as an **experimental** feature:
 
-### 3. Upstream defect fixed along the way
+- The driver (open-source trycua/cua) ships with the app, guarded by a hard `assertPackagedCuaDriver` check at package time
+- **Its X11 / Wayland coverage has not been fully verified**, so mouse/keyboard control and screenshots may not work.
+  This is stated plainly in the settings UI rather than promised.
 
-The official distribution has an asymmetric flaw: `packages/desktop/src/main/logger.ts`
-installs an EPIPE guard for the main process (its comment reads "log output must not kill
-the main process"), but **the host process has no such guard**. The host is a utilityProcess,
-and an uncaught exception there calls `process.exit(1)`; if the inherited stdout/stderr pipe
-breaks, the host dies, main does not rebuild it, and the renderer waits forever.
-This release ports the same guard to the host side.
+### 3. Feedback & Diagnostics page reworked
 
-## Verification
-
-- `pnpm typecheck` passes (0 errors); `pnpm lint` passes (0 errors)
-- Inspected `app.asar` inside the packaged artifacts: 0 occurrences of the leftover symbol
-  in preload; EPIPE guard present in host
-- Ran the packaged build and verified via CDP: `rootChildCount=1`, content rendered,
-  zero console exceptions (previously `rootChildCount=0`, `bodyTextLen=0`, two `ReferenceError`s)
+- Layout: rows were squeezed into a fixed narrow column; block content now spans the full width
+- Three purely explanatory rows removed (attachments, scope, telemetry status) — they were not settings
+- Build log zip and Download logs were two packaging paths users could not tell apart; merged into one
+  **Download logs**, keeping the useful part (showing the output path + Show in folder)
+- This build contains no background reporting channel — moved into the **About ZCode** dialog
 
 ## Platforms
 
@@ -103,5 +99,5 @@ This release ports the same guard to the host side.
 | **Linux**   | AppImage / deb / rpm / pacman |
 | **Windows** | NSIS (unsigned)               |
 
-**Data directory**: shared with the official ZCode at `~/.zcode/v2`; both can be installed
-side by side, but running them simultaneously is not recommended.
+**Data directory**: shared with the official ZCode at `~/.zcode/v2`; side-by-side installs are fine,
+running both simultaneously is not recommended.
