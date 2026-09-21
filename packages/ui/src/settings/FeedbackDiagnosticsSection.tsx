@@ -81,6 +81,7 @@ export function FeedbackDiagnosticsSection({ isDesktop = false }: { isDesktop?: 
         />
         {diagnostics.channel === "github" ? (
           <SettingsRow
+            controlLayout="stacked"
             label={intl.formatMessage({ id: "settings.feedback.repository.label" })}
             description={intl.formatMessage({ id: "settings.feedback.repository.description" })}
             control={
