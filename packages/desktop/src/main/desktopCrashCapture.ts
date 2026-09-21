@@ -124,8 +124,10 @@ function pruneCrashDumpArchive(
   archiveDir: string,
   policy: CrashArchiveRetentionPolicy,
 ): CrashArchiveCleanupResult {
-  // 启动时必须先完成本地留档与清理，再让 ARMS 扫描并删除 live；这里保持与既有归档一致的
-  // 同步临界区，避免异步 IO 改变 appCrashCaptureBootstrap -> appARMSBootstrap 的先后顺序。
+  // 启动时必须先完成本地留档与清理，这里保持与既有归档一致的同步临界区，
+  // 避免异步 IO 打乱 appCrashCaptureBootstrap 内部的初始化顺序。
+  // （遥测移除（P1）前该顺序还要相对 appARMSBootstrap 成立——ARMS 会扫描并删除 live dump；
+  //  ARMS 已整体删除，这个跨模块约束不再存在。）
   const deletedFiles: string[] = [];
   const failedFiles: string[] = [];
   const dumps: Array<{ entry: string; path: string; mtimeMs: number; size: number }> = [];
