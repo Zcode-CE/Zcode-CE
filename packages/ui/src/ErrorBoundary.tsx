@@ -6,7 +6,6 @@ import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
 import zhCN from "@/i18n/locales/zh-CN.js";
 import enUS from "@/i18n/locales/en-US.js";
 import { logger } from "@/logger.js";
-import { reportReactErrorToArms } from "@/lib/reactErrorArmsTelemetry.js";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import { AlertTriangleIcon, RefreshCw } from "lucide-react";
@@ -323,12 +322,6 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
       errorInfo.componentStack,
     );
     this.props.onCaughtReactError?.(normalizedError, errorInfo);
-    // React 错误边界拦截了异常、阻止其冒泡到 window.onerror，RUM Browser SDK 默认收不到。
-    // 主动转发到 ARMS 自定义事件干道（reporter 在 renderer 入口早注入），补上根级渲染崩溃盲区。
-    reportReactErrorToArms({
-      error: normalizedError,
-      componentStack: errorInfo.componentStack ?? "",
-    });
     this.setState({ componentStack: errorInfo.componentStack ?? "" });
   }
 
@@ -397,13 +390,6 @@ export class ScopedErrorBoundary extends Component<
       errorInfo.componentStack,
     );
     this.props.onCaughtReactError?.(normalizedError, errorInfo, this.props.scope);
-    // 同根级边界：scoped 区域捕获的渲染异常同样不会冒泡到 RUM，按 scope 区分上报，
-    // 让 sidebar/chat/terminal/settings 等局部崩溃在 RUM 里可见、可定位。
-    reportReactErrorToArms({
-      error: normalizedError,
-      componentStack: errorInfo.componentStack ?? "",
-      scope: this.props.scope,
-    });
     this.setState({ componentStack: errorInfo.componentStack ?? "" });
   }
 

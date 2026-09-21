@@ -25,6 +25,7 @@ import {
 import { cn } from "@/components/lib/utils.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useFeedbackStore } from "@/feedback/feedbackStore.js";
+import { useFeedbackEntryAction } from "@/feedback/useFeedbackEntryAction.js";
 import { useDesktopUpdateMenu } from "@/hooks/useDesktopUpdateMenu.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -44,13 +45,14 @@ export function WorkspaceHelpMenuButton({
   const { intl } = useZCodeIntl();
   const platform = usePlatform();
   const updateMenu = useDesktopUpdateMenu(isDesktop);
-  const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
   const openFeatureRequest = useFeedbackStore((state) => state.openFeatureRequest);
+  const { runFeedbackEntry } = useFeedbackEntryAction();
   const helpMenuLabel = intl.formatMessage({ id: "workspaceHeader.help.menu" });
+  // 「问题上报」改走「反馈与诊断」的渠道配置；「产品需求」仍走独立的需求弹窗（无工单语义）。
   const helpMenuActions = createHelpMenuActionHandlers({
     platform,
     intl,
-    openSubmit: openFeedbackSubmit,
+    runFeedbackEntry,
   });
   const handleOpenCommunity = () => {
     void platform.openCommunity();

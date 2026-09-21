@@ -18,6 +18,7 @@ import {
   WandSparkles,
   Keyboard,
   FileSearch,
+  LifeBuoy,
 } from "lucide-react";
 import { isSettingsSectionEnabled, type SettingsSectionId } from "@/lib/settingsNavigation.js";
 import type { Theme } from "@/useTheme.js";
@@ -154,6 +155,14 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     id: "usage",
     icon: BarChart3,
     titleId: "settings.usageTitle",
+    groupId: "dataAndStats",
+  },
+  // 「反馈与诊断」跟随「使用统计」：两者都是关于「这次运行本身怎么样」的信息面
+  // （用量 / 报障材料），放在一起符合用户的心智分组。
+  {
+    id: "feedback",
+    icon: LifeBuoy,
+    titleId: "settings.feedback.title",
     groupId: "dataAndStats",
   },
 ];

@@ -1,8 +1,4 @@
 import { databaseStartupControlSchema, databaseStartupStateSchema } from "./database-startup.js";
-import {
-  sessionCreateTelemetrySchema,
-  automationSessionCreateTelemetrySchema,
-} from "./sessionCreateTelemetry.js";
 /* eslint-disable max-lines -- 运行时 schema 当前集中在共享包入口，外部 relay payload 校验加入后先保持单一导出面。 */
 import { z } from "zod";
 import { zcodeProcessDiagnosticSchema } from "./process-diagnostic.js";
@@ -16,7 +12,7 @@ import { zcodeAgentProviderSchema } from "./zcode-agent-policy.js";
 import { modelSelectionSchema } from "./model-selection.js";
 import { providerProvisioningTriggerSchema } from "./provider-provisioning.js";
 import {
-  zcodeMcpTelemetryEventSchema,
+  // zcodeMcpTelemetryEventSchema 已随 hostMcpTelemetryResponseSchema 删除（P1），此处同步移除。
   zcodeMcpResourceSamplesSchema,
   zcodeToolExecResourceSchema,
   zcodeProcessResourceSampleSchema,
@@ -697,24 +693,8 @@ export const hostToolExecResourceResponseSchema = z
   .strict();
 export type HostToolExecResourceResponse = z.infer<typeof hostToolExecResourceResponseSchema>;
 
-export const hostMcpTelemetryResponseSchema = z
-  .object({
-    type: z.literal("mcp-telemetry"),
-    runtimeSurface: z.enum(["local", "remote"]),
-    event: zcodeMcpTelemetryEventSchema,
-  })
-  .strict();
-export type HostMcpTelemetryResponse = z.infer<typeof hostMcpTelemetryResponseSchema>;
-
-export const hostSessionCreateTelemetryResponseSchema = z
-  .object({
-    type: z.literal("session-create-telemetry"),
-    event: automationSessionCreateTelemetrySchema,
-  })
-  .strict();
-export type HostSessionCreateTelemetryResponse = z.infer<
-  typeof hostSessionCreateTelemetryResponseSchema
->;
+// 遥测已全部移除（P1）：hostMcpTelemetryResponseSchema / hostSessionCreateTelemetryResponseSchema
+// 及其 Host*Response 类型已删除（对应的 HostResponseTypes 与上报链路一并移除）。
 
 export const hostAgentRunningTaskCountChangedResponseSchema = z.object({
   type: z.literal("agent-running-task-count-changed"),
@@ -949,10 +929,8 @@ export const hostResponseMessageSchema = z.discriminatedUnion("type", [
   hostAgentProcessExceptionResponseSchema,
   hostAgentResourceSampleResponseSchema,
   hostResourceSampleResponseSchema,
-  hostMcpTelemetryResponseSchema,
   hostMcpResourceSamplesResponseSchema,
   hostToolExecResourceResponseSchema,
-  hostSessionCreateTelemetryResponseSchema,
   hostAgentRunningTaskCountChangedResponseSchema,
   hostWorkspaceRunningTaskCountChangedResponseSchema,
   hostCuaOperationStateResponseSchema,

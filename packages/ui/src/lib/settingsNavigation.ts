@@ -19,7 +19,8 @@ export type SettingsSectionId =
   | "workspaceFileSearch"
   | "computerUse"
   | "automations"
-  | "shortcuts";
+  | "shortcuts"
+  | "feedback";
 
 type SettingsUsageTabTarget = "app" | "codingPlan";
 type SettingsPluginTabTarget = "plugins" | "mcps" | "skills" | "commands";
@@ -43,6 +44,9 @@ const HIDDEN_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   // 编辑页代码保留，放开时从这里移除即可。
   "workspaceFileSearch",
   "computerUse",
+  // 「反馈与诊断」是正式设置页分区，刻意不加入隐藏集。
+  // 本地反馈链路（GitHub 预填链接 / 日志导出）不依赖任何官方服务，
+  // 用户必须能在离线或 fork 构建里打开它，否则报障入口会整体消失。
 ]);
 
 interface SettingsSectionIntentEventDetail {
@@ -77,7 +81,8 @@ function isSettingsSectionId(value: string): value is SettingsSectionId {
     value === "workspaceFileSearch" ||
     value === "computerUse" ||
     value === "automations" ||
-    value === "shortcuts"
+    value === "shortcuts" ||
+    value === "feedback"
   );
 }
 

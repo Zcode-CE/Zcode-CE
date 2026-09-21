@@ -23,6 +23,7 @@ function projectProviderSettingsProviders(
     issues: provider.issues,
     personalConfig: structuredClone(provider.personalConfig ?? {}),
     config: structuredClone(provider.effectiveConfig),
+    hiddenModelIds: provider.hiddenModelIds,
     models: provider.models.map((model) => ({
       kind: model.kind,
       modelId: model.modelId,

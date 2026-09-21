@@ -97,7 +97,6 @@ const WorkflowActorSessionContent = memo(function WorkflowActorSessionContent({
       readOnly
       allowWorkspaceFileRewind
       focused={focused}
-      telemetryVisible={focused}
       workspacePath={tab.workspacePath}
       workspaceIdentity={tab.workspaceIdentity}
       remoteSessionId={tab.remoteSessionId}

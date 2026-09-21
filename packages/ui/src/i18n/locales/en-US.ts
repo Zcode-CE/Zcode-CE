@@ -1874,6 +1874,21 @@ const enUS: Record<string, string> = {
     "Optional. Set a PEM root certificate path to inject it as NODE_EXTRA_CA_CERTS for models, MCP, and command tools, and to trust it in renderer certificate verification. Restart the app to take effect.",
   "settings.httpProxyCaCertPathPlaceholder": "e.g. /Users/name/certs/root-ca.pem",
   "settings.httpProxySavedHint": "Network proxy settings saved. Restart the app to take effect.",
+  // Kept deliberately low-key: the label is the whole affordance, with only format,
+  // scope, and how to disable it spelled out.
+  "settings.githubMirror": "China mirror",
+  "settings.githubMirrorDescription":
+    "Set a mirror prefix when GitHub is unreachable or slow; the plugin marketplace and update checks will use it. Leave blank to connect directly. Must be an https URL; restart the app to take effect.",
+  "settings.githubMirrorPlaceholder": "e.g. https://ghfast.top/",
+  "settings.githubMirrorSavedHint": "Mirror prefix saved. Restart the app to take effect.",
+  "settings.githubMirror.error.invalidUrl":
+    "Enter a complete https URL, for example https://ghfast.top/",
+  "settings.githubMirror.error.insecureProtocol": "The mirror prefix must be an https URL",
+  "settings.githubMirror.error.credentials":
+    "The mirror prefix must not contain a username or password",
+  "settings.githubMirror.error.queryOrFragment":
+    "The mirror prefix must not contain a query string or # fragment",
+  "settings.githubMirror.error.saveFailed": "Failed to save the mirror prefix. Please try again.",
   "settings.desktopChromiumHardwareAcceleration": "Chrome hardware acceleration",
   "settings.desktopChromiumHardwareAccelerationDescription":
     "Turn this off to work around blank windows, crashes, or rendering issues caused by some GPUs or drivers. Restart the app to take effect.",
@@ -3047,6 +3062,25 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.models": "Model list",
   "settings.modelProvider.modelsEmpty": "No models are configured. Add a model to use it in chat.",
   "settings.modelProvider.addModel": "Add model",
+  "settings.modelProvider.modelCatalog.button": "Fetch models",
+  "settings.modelProvider.modelCatalog.title": "Fetch models from provider",
+  "settings.modelProvider.modelCatalog.description":
+    "Reads this provider's models endpoint. Select the models to add. Fetching only reads the list and does not change your configuration.",
+  "settings.modelProvider.modelCatalog.loading": "Fetching model list…",
+  "settings.modelProvider.modelCatalog.retry": "Retry",
+  "settings.modelProvider.modelCatalog.empty":
+    "The provider returned no models. Check the Base URL and API format.",
+  "settings.modelProvider.modelCatalog.allExisting":
+    "Every fetched model is already in the list. Nothing to add.",
+  "settings.modelProvider.modelCatalog.selectAll": "Select all",
+  "settings.modelProvider.modelCatalog.clearAll": "Clear selection",
+  "settings.modelProvider.modelCatalog.alreadyExists": "Already added",
+  "settings.modelProvider.modelCatalog.addSelected": "Add {count} models",
+  "settings.modelProvider.modelCatalog.partialFailure": "Some models could not be added",
+  "settings.modelProvider.hiddenModels.title": "Hidden models ({count})",
+  "settings.modelProvider.hiddenModels.description":
+    "These built-in models were deleted. Built-in models come from the app's bundled configuration, so deleting them hides them; restoring brings them back to the list and the model picker.",
+  "settings.modelProvider.hiddenModels.restore": "Restore",
   "settings.modelProvider.modelId": "Model ID",
   "settings.modelProvider.modelDisplayName": "Display name",
   "settings.modelProvider.modelApiFormat.anthropic": "Anthropic messages",
@@ -6480,6 +6514,103 @@ const enUS: Record<string, string> = {
   "scheduledPreview.toast.running": "Running “{title}”…",
   "scheduledPreview.toast.view": "View",
   "scheduledPreview.addSchedule": "Add schedule",
+  "settings.feedback.title": "Feedback & Diagnostics",
+  "settings.feedback.channel.label": "Feedback channel",
+  "settings.feedback.channel.description":
+    "You submit feedback yourself in the browser; ZCode never reports in the background.",
+  "settings.feedback.channel.github": "This project's GitHub Issues",
+  "settings.feedback.channel.github.description":
+    "Opens a pre-filled new issue in your browser with redacted diagnostics. Edit anything before submitting.",
+  "settings.feedback.channel.custom": "Custom URL",
+  "settings.feedback.channel.custom.description":
+    "For GitLab, Gitea, or a self-hosted tracker; supports {title} and {body} placeholders.",
+  "settings.feedback.channel.off": "Turn the entry off",
+  "settings.feedback.channel.off.description":
+    "Hides the open-issue button and keeps only local diagnostics.",
+  "settings.feedback.repository.label": "Default repository",
+  "settings.feedback.repository.description": "This project's issue tracker.",
+  "settings.feedback.customUrl.label": "Custom URL template",
+  "settings.feedback.customUrl.description":
+    "Supports {title} and {body} placeholders. Without placeholders, title and body are appended as query parameters.",
+  "settings.feedback.customUrl.placeholder": "https://gitlab.com/example/project/-/issues/new",
+  "settings.feedback.customUrl.invalid":
+    "The current URL is empty or invalid. Fix it before opening.",
+  "settings.feedback.diagnostics.label": "Diagnostics",
+  "settings.feedback.diagnostics.description":
+    "Only version, build, platform, and an error summary. Device identifiers, account details, and full logs never appear here.",
+  "settings.feedback.diagnostics.field.app": "App version",
+  "settings.feedback.diagnostics.field.runtime": "Runtime",
+  "settings.feedback.diagnostics.field.error": "Error summary",
+  "settings.feedback.diagnostics.field.notes": "Description",
+  "settings.feedback.description.label": "Description (optional)",
+  "settings.feedback.description.placeholder":
+    "Briefly describe the problem; it becomes the issue title and body.",
+  "settings.feedback.preview.label": "Pre-filled content",
+  "settings.feedback.preview.description":
+    "This appears in the issue editor. Edit or delete anything before submitting.",
+  "settings.feedback.preview.empty": "(Nothing to pre-fill right now)",
+  "settings.feedback.openInBrowser": "Open in browser",
+  "settings.feedback.copy": "Copy link",
+  "settings.feedback.copied": "Link copied",
+  "settings.feedback.copyFailed": "Could not copy. Select the link manually.",
+  "settings.feedback.logs.label": "Diagnostic logs",
+  "settings.feedback.logs.description":
+    "Builds a redacted log zip locally. You can export it even when the feedback channel is off.",
+  "settings.feedback.logs.prepare": "Build log zip",
+  "settings.feedback.logs.preparing": "Packaging…",
+  "settings.feedback.logs.prepared": "Log zip created",
+  "settings.feedback.logs.failed": "Could not create the log zip",
+  "settings.feedback.logs.reveal": "Show in folder",
+  "settings.feedback.logs.revealFailed": "Could not open the system file manager",
+  "settings.feedback.attachment.label": "Attachments",
+  "settings.feedback.attachment.description":
+    "A pre-filled link cannot upload files. Drag the log zip into the issue body yourself.",
+  "settings.feedback.telemetry.label": "Telemetry status",
+  "settings.feedback.telemetry.description":
+    "This build contains no background reporting channel. This status is read-only.",
+  "settings.feedback.telemetry.disabled": "All disabled",
+  "settings.feedback.scope.label": "Scope",
+  "settings.feedback.scope.local": "This machine only",
+  "settings.feedback.scope.app":
+    "This section only reads and writes local configuration; it does not follow workspace switches.",
+  "settings.feedback.scope.workspace":
+    "This section only reads and writes local configuration; diagnostics never include the workspace path or remote target.",
+  "settings.feedback.official.label": "Official ticket service",
+  "settings.feedback.official.description":
+    "Uses the official feedback API (requires an official account and device identity). Usually unreachable from community builds; use it only if you really have access.",
+  "settings.feedback.official.open": "Open official feedback",
+  "feedback.entry.channelOff":
+    "The feedback entry is turned off in settings. Feedback & Diagnostics is open so you can pick a channel again.",
+  "feedback.entry.channelUnavailable":
+    "The custom feedback URL is empty or not a valid URL. Feedback & Diagnostics is open so you can fix it.",
+  "settings.modelProvider.manualClaim.claim": "Claim",
+  "settings.modelProvider.manualClaim.loadFailed":
+    "Could not load claimable plans right now. Try again later.",
+  "settings.modelProvider.manualClaim.success": "Claimed. The entitlement is now active.",
+  "settings.modelProvider.manualClaim.captcha.title": "Complete security check",
+  "settings.modelProvider.manualClaim.captcha.description":
+    "Claiming requires a one-time security check. It runs in a sandboxed browser view and stays on this machine.",
+  "settings.modelProvider.manualClaim.captcha.loading": "Loading the verification component…",
+  "settings.modelProvider.manualClaim.captcha.solving": "Complete the challenge above.",
+  "settings.modelProvider.manualClaim.captcha.failed": "Verification was not completed",
+  "settings.modelProvider.manualClaim.captcha.retry": "Verify again",
+  "settings.modelProvider.manualClaim.captcha.unsupported":
+    "Claiming requires a security check that is only available in the desktop app. Please claim from ZCode Desktop.",
+  manual_claim_failure_not_found: "This plan no longer exists. Refresh and try again.",
+  manual_claim_failure_unavailable: "The campaign has not started or has already ended.",
+  manual_claim_failure_already_claimed: "This account has already claimed this plan.",
+  manual_claim_failure_ineligible:
+    "This account or client version does not meet the campaign requirements.",
+  manual_claim_failure_quota_exhausted: "Today's quota is used up. Try again tomorrow.",
+  manual_claim_failure_invalid_request:
+    "The request was rejected. Update to the latest version and retry.",
+  manual_claim_failure_captcha: "The security check did not pass. Please verify again.",
+  manual_claim_failure_captcha_unavailable:
+    "This machine cannot complete the security check right now. Try again later.",
+  manual_claim_failure_login_required: "Sign in before claiming.",
+  manual_claim_failure_http_error: "The service is temporarily unavailable. Try again later.",
+  manual_claim_failure_network: "Network error. Check your connection and retry.",
+  manual_claim_failure_unknown: "Claim failed. Try again later.",
 };
 
 export default enUS;

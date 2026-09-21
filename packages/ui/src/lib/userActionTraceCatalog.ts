@@ -1,4 +1,7 @@
-import type { RendererActionTraceGroup } from "@zcode/shared";
+// 上报已停用（P1）：原先 group 取 `Extract<RendererActionTraceGroup, "core" | "settings">`，
+// 该 trace 协议模块已随遥测删除。这里内联等价字面量联合，保持本目录文件对业务侧的
+// 类型契约（SettingsUserActionFeatureId 等）不变 —— 它现在只是 feature/action 标识表。
+type UserActionCatalogGroup = "core" | "settings";
 
 export const CORE_USER_ACTION_FEATURES = {
   "workspace.local.lifecycle": ["open", "switch", "close"],
@@ -109,7 +112,7 @@ type UserActionOperationKind =
 interface UserActionCatalogEntry {
   featureId: UserActionFeatureId;
   action: string;
-  group: Extract<RendererActionTraceGroup, "core" | "settings">;
+  group: UserActionCatalogGroup;
   operationKind: UserActionOperationKind;
   surface: string;
   timeoutMs: number;

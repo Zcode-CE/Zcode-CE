@@ -19,6 +19,8 @@ import {
 } from "./helpers.js";
 import { enumeratePluginComponents, type PluginComponentGroup } from "./plugin-components.js";
 import { applyNetworkEgressEnv } from "../network/subprocess-env.js";
+import { applyGithubMirrorPrefix } from "@zcode/shared";
+import { resolveGithubMirrorPrefixFromEnv } from "./github-mirror-env.js";
 import { createNodeWebFetchHttpClientAdapter } from "../http/index.js";
 import { writeCdnOfficialMarketplacePartitionSync } from "./official-marketplace.js";
 import {
@@ -1417,7 +1419,9 @@ async function clonePluginSource(
   const args = ["clone"];
   if (!sha) args.push("--depth", "1");
   if (ref) args.push("--branch", ref);
-  args.push(url, dir);
+  // 加速前缀在交给 git 之前套：上面的 URL 归一化/来源判定仍按 github.com 语义走，
+  // 只有真正要发出去的远端地址被改写（镜像站同样提供 git 智能 HTTP 协议）。
+  args.push(applyGithubMirrorPrefix(url, resolveGithubMirrorPrefixFromEnv()), dir);
   try {
     await execGitCloneWithRetry(args, dir, signal);
     if (sha) await execGitCommand(["-C", dir, "checkout", sha], signal);
@@ -1646,7 +1650,7 @@ async function cloneMarketplaceSource(
   const args = ["clone", "--depth", "1"];
   if (ref) args.push("--branch", ref);
   if (sparsePaths?.length) args.push("--filter=blob:none", "--sparse");
-  args.push(url, dir);
+  args.push(applyGithubMirrorPrefix(url, resolveGithubMirrorPrefixFromEnv()), dir);
   try {
     await execGitCloneWithRetry(args, dir, signal);
     if (sparsePaths?.length) {

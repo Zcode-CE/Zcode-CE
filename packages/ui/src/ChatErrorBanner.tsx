@@ -26,7 +26,7 @@ import {
 } from "./components/ui/dialog.js";
 import { cn } from "./components/lib/utils.js";
 import { toast } from "./components/ui/toast.js";
-import { useFeedbackStore } from "@/feedback/feedbackStore.js";
+import { useFeedbackEntryAction } from "@/feedback/useFeedbackEntryAction.js";
 import { getProviderBusinessErrorMessageId } from "@/lib/providerBusinessError.js";
 import { buildErrorFeedbackDescription } from "@/lib/errorFeedbackDraft.js";
 import {
@@ -121,7 +121,7 @@ export function ChatErrorBanner({
   onOpenUpgrade?: () => void;
 }) {
   const { intl } = useZCodeIntl();
-  const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
+  const { runFeedbackEntry } = useFeedbackEntryAction();
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const actionButtonClassName = "shrink-0";
   const iconButtonClassName = "shrink-0";
@@ -133,12 +133,11 @@ export function ChatErrorBanner({
   }
 
   const handleOpenFeedback = async () => {
-    openFeedbackSubmit({
-      title: localizedErrorMessage.slice(0, 80),
-      type: "bug",
-      module: "模型调用报错",
-      severity: "P2-中",
-      includeLogs: false,
+    // 改造前这里无条件打开官方工单弹窗（连官方域名，fork 用户点了等于没反应）。
+    // 现在改走「反馈与诊断」的渠道配置：errorSummary 让错误现场自动出现在预填正文里，
+    // 用户不必再从横幅手抄一遍报错。原始错误对象与堆栈不进上下文，只传可读 message 与模板正文。
+    const outcome = runFeedbackEntry({
+      errorSummary: localizedErrorMessage,
       description: buildErrorFeedbackDescription({
         message: localizedErrorMessage,
         detail: error.detail,
@@ -146,9 +145,12 @@ export function ChatErrorBanner({
         formatMessage: (id: string, values?: Record<string, string>) =>
           intl.formatMessage({ id }, values),
       }),
-      screenshots: [],
     });
-    toast(intl.formatMessage({ id: "chat.error.feedbackOpened" }));
+    // 渠道关闭或地址非法时 hook 已改为引导到设置页并自带提示，这里不再补一句“已打开反馈”，
+    // 否则用户会同时看到“已打开”和“未配置”两条互相矛盾的提示。
+    if (outcome === "opened") {
+      toast(intl.formatMessage({ id: "chat.error.feedbackOpened" }));
+    }
   };
 
   const handleCopyError = async () => {

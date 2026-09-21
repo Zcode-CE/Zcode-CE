@@ -35,6 +35,7 @@ import {
 import { createQuickPickCommands } from "@/quickpick/quickPickCommands.js";
 import { CommandCenterDialog } from "@/command-center/CommandCenterDialog.js";
 import { FeedbackHost } from "@/feedback/FeedbackHost.js";
+import { useFeedbackEntryAction } from "@/feedback/useFeedbackEntryAction.js";
 import { useFeedbackStore } from "@/feedback/feedbackStore.js";
 import {
   resolveQuickPickConversationNavigation,
@@ -658,18 +659,26 @@ export function App({
   const handleOpenQuickPick = useCallback(() => {
     setIsQuickPickOpen((open) => !open);
   }, []);
-  const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
   const openFeedbackTickets = useFeedbackStore((state) => state.openTickets);
+  const { runFeedbackEntry } = useFeedbackEntryAction();
   const isLoggedIn = Boolean(user);
+  // quickpick / 原生菜单的「反馈」入口此前直接走 platform.openFeedback()：
+  // 桌面端会按远端配置打开官方外部表单，Web 端打开官方 feedback_url——对 fork 用户都是死链。
+  // 统一改走「反馈与诊断」的渠道配置，与聊天里的错误横幅行为一致。
   const handleOpenFeedback = useCallback(() => {
-    void platform.openFeedback();
-  }, [platform]);
+    runFeedbackEntry({});
+  }, [runFeedbackEntry]);
 
   useEffect(() => {
     // 内置反馈中心合并了"提交反馈 / 我的反馈"两个 Tab，
     // 老的 OpenTicketsPanel IPC 仍然兼容（直接打开列表），未来如果还需要单独入口可以复用。
+    //
+    // 两个 IPC 语义不同，不能一起改道：
+    // - OpenFeedbackDialog 是原生菜单的通用「反馈」入口，属本任务范围 → 走渠道配置；
+    // - OpenTicketsPanel 打开的是**官方工单列表**，只有官方链路才有工单概念，
+    //   属「官方服务 + 用户主动」象限的保留能力 → 保持原样，不去动它。
     const disposeFeedbackDialog = platform.onOpenFeedbackDialog?.(() => {
-      openFeedbackSubmit();
+      runFeedbackEntry({});
     });
     const disposeTicketsPanel = platform.onOpenTicketsPanel?.(() => {
       openFeedbackTickets();
@@ -678,7 +687,7 @@ export function App({
       disposeFeedbackDialog?.();
       disposeTicketsPanel?.();
     };
-  }, [openFeedbackSubmit, openFeedbackTickets, platform]);
+  }, [openFeedbackTickets, platform, runFeedbackEntry]);
   const handleOpenCommunity = useCallback(() => platform.openCommunity(), [platform]);
   const handleOpenProductDocs = useCallback(() => {
     platform.openExternal(ZCODE_PRODUCT_DOCS_URL);

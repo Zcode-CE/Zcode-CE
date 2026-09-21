@@ -28,6 +28,8 @@ export interface ProviderSettingsFormProvider extends Pick<
   /** 只读继承基线与即时表单展示值，不直接持久化。 */
   config: ProviderConfigObject;
   models: ProviderSettingsFormModel[];
+  /** 被用户隐藏的内置模型；用于卡片上的恢复入口。 */
+  hiddenModelIds: readonly string[];
 }
 
 /** 设置页面在一次编辑会话中使用的 Model 状态。 */

@@ -12,6 +12,8 @@ import {
   resolveHttpZipSource,
   type ResolvedZipPluginSourceRoot,
 } from "./zip-source.js";
+import { resolveGithubMirrorPrefixFromEnv } from "./github-mirror-env.js";
+import { applyGithubMirrorPrefix } from "@zcode/shared";
 
 const GITHUB_HOSTS = new Set(["github.com", "www.github.com"]);
 const GITHUB_REPOSITORY_SEGMENT = /^[A-Za-z0-9_.-]+$/u;
@@ -88,6 +90,9 @@ export async function resolveGitHubArchiveSource(
       `source is not a public GitHub HTTPS repository: ${input.url}`,
     );
   }
+  // 加速前缀只在**真正发请求前**套：buildGitHubArchiveUrl 仍返回规范 GitHub URL，
+  // 上面的 parsePublicGitHubRepositoryUrl 校验也就继续按 github.com 判定，
+  // 不会因为用户配了镜像站而让来源校验失效。
   const resolved = await resolveHttpZipSource({
     headers: {
       Accept: "application/vnd.github+json",
@@ -96,7 +101,10 @@ export async function resolveGitHubArchiveSource(
     requireSingleRoot: true,
     signal: input.signal,
     stripRoot: true,
-    url: buildGitHubArchiveUrl(repository, input.pin),
+    url: applyGithubMirrorPrefix(
+      buildGitHubArchiveUrl(repository, input.pin),
+      resolveGithubMirrorPrefixFromEnv(),
+    ),
   });
   try {
     let selectedPath = resolved.path;

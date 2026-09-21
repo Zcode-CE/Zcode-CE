@@ -6,13 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OAuthProviderId, OAuthProviderMeta } from "@zcode/shared";
-import {
-  BIGMODEL_PROVIDER_ID,
-  isCredentialDecryptError,
-  resolveSafeTelemetryHostname,
-  ZAI_PROVIDER_ID,
-} from "@zcode/shared";
-import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";
+import { BIGMODEL_PROVIDER_ID, isCredentialDecryptError, ZAI_PROVIDER_ID } from "@zcode/shared";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import type { LoginEntryPurpose } from "@/store/index.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
@@ -91,19 +85,6 @@ export function useOAuth() {
           startedProvider === ZAI_PROVIDER_ID || startedProvider === BIGMODEL_PROVIDER_ID,
         );
         platform.openExternal(authorizeUrl);
-        void reportAppTelemetryEvent(
-          platform,
-          {
-            elementName: "app_login_ck",
-            eventRegion: "app",
-            eventType: "ck",
-            eventExtraDetail: {
-              // 授权 URL 含 state/凭据参数；埋点只取 hostname，浏览器仍使用上面的完整地址。
-              login_url: resolveSafeTelemetryHostname(authorizeUrl),
-            },
-          },
-          "useOAuth",
-        );
 
         logger.info("[useOAuth] OAuth 流程已启动，等待浏览器回调", {
           provider: startedProvider,

@@ -86,22 +86,17 @@ export {
   loadUiFontSizePx,
   subscribeToUiFontSizeStorageChanges,
 } from "./lib/uiFontSize.js";
-export { reportUiLaunchToInput } from "./lib/uiPerfArmsTelemetry.js";
-export {
-  RendererUserActionTelemetry,
-  runUserAction,
-  runUserActionAsync,
-  setUserActionTelemetry,
-  startUserAction,
-} from "./lib/userActionTelemetry.js";
+// 上报已停用：RendererUserActionTelemetry 类与 setUserActionTelemetry 已删除，
+// 只保留业务侧使用的三个透传包装器（见 lib/userActionTelemetry.ts 的说明）。
+export { runUserAction, runUserActionAsync, startUserAction } from "./lib/userActionTelemetry.js";
 export {
   CORE_USER_ACTION_FEATURES,
   SETTINGS_USER_ACTION_FEATURES,
   USER_ACTION_CATALOG,
 } from "./lib/userActionTraceCatalog.js";
-export { setReactErrorArmsReporter } from "./lib/reactErrorArmsTelemetry.js";
-export { recordArmsCustomEventForE2E } from "./lib/armsCustomEventObservability.js";
 export { generateMobileDeviceFingerprint, setStreamClientId } from "./lib/streamClientId.js";
 export { GlobalDatabaseStartupLoading } from "./root/GlobalDatabaseStartupLoading.js";
 
+// localTtftObserver 保留：P0 已把实现降级为 no-op，但 SessionPane / ConversationComposer /
+// agentConversationTransport 仍在调用其接口，删除会破坏协议契约。
 export { LocalTtftObserver, setLocalTtftObserver } from "@/v4/telemetry/localTtftObserver.js";

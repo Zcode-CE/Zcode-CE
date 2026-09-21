@@ -141,6 +141,15 @@ export function useModelProviders(target: {
     [commitProviderSettingsView, providerSettingsService],
   );
 
+  const restoreHiddenModel = useCallback(
+    async (providerId: string, modelId: string) => {
+      const view = await providerSettingsService.restoreHiddenModel(providerId, modelId);
+      commitProviderSettingsView(view);
+      return view;
+    },
+    [commitProviderSettingsView, providerSettingsService],
+  );
+
   const deleteProvider = useCallback(
     async (id: string) => {
       const view = await persistPersonalProviderDeletion({
@@ -228,6 +237,7 @@ export function useModelProviders(target: {
     savePersonalModelDraft,
     setPersonalModelEnabled,
     deletePersonalModel,
+    restoreHiddenModel,
     deleteProvider,
     reorderProviderModels,
     saveDisplayOrder,

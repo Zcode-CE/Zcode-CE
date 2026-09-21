@@ -74,7 +74,9 @@ import { BrowserSettingsSection } from "@/settings/BrowserSettingsSection.js";
 import { ComputerUseSection } from "@/settings/ComputerUseSection.js";
 import { ShortcutSettingsSection } from "@/settings/ShortcutSettingsSection.js";
 import { MigrationSection } from "@/settings/MigrationSection.js";
+import { FeedbackDiagnosticsSection } from "@/settings/FeedbackDiagnosticsSection.js";
 import { SETTINGS_FRAME_CONTENT_CLASSNAME } from "@/settings/SettingsPageParts.js";
+import { GithubMirrorSetting } from "@/settings/GithubMirrorSetting.js";
 import {
   SettingsBreadcrumbProvider,
   SettingsHeaderBreadcrumb,
@@ -1781,7 +1783,11 @@ export function SettingsPage({
                               })
                             }
                           />
-                        ) : activeSection === "appearance" ? (
+                        ) : null}
+                        {/* 国内加速紧贴通用设置的分组尾部：它和 HTTP 代理同属网络出口配置，
+                            但作用域不同（只影响 GitHub 域名），因此独立成卡而不是并进代理卡片。 */}
+                        {activeSection === "general" ? <GithubMirrorSetting /> : null}
+                        {activeSection === "appearance" ? (
                           <AppearanceSectionContent
                             codePreviewSettings={codePreviewSettings}
                             setCodePreviewSettings={handleCodePreviewSettingsChange}
@@ -1946,6 +1952,14 @@ export function SettingsPage({
                             remoteSessionId={activeWorkspaceTab?.remoteSessionId}
                             remoteTarget={activeWorkspaceTab?.remoteTarget}
                             localWorkspacePath={activeWorkspaceTab?.localWorkspacePath}
+                          />
+                        ) : activeSection === "feedback" ? (
+                          // 「反馈与诊断」只依赖本机能力（GitHub 预填链接 / 本地日志归档），
+                          // 因此不接 workspace 参数，也不跟随远端 workspace 切换。
+                          <FeedbackDiagnosticsSection
+                            isDesktop={Boolean(isDesktop)}
+                            workspacePath={activeWorkspacePath}
+                            workspaceIdentity={activeWorkspaceIdentity}
                           />
                         ) : null}
                       </div>

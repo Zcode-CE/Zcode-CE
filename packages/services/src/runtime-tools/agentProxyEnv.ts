@@ -1,5 +1,7 @@
 import {
+  normalizeGithubMirrorPrefix,
   ZCODE_AGENT_CA_CERT_ENV_KEY,
+  ZCODE_GITHUB_MIRROR_ENV_KEY,
   ZCODE_HTTP_PROXY_ENV_KEY,
   ZCODE_NO_PROXY_ENV_KEY,
   ZCODE_WORKSPACE_IDENTITY_ENV,
@@ -16,6 +18,10 @@ import {
 //
 // 自定义证书：只接受设置页显式填写的 PEM 路径。注入 NODE_EXTRA_CA_CERTS 让 agent（含模型 provider 请求）
 // 在 Node 启动时信任它，同时用 ZCODE_AGENT_CA_CERT 给 adapter 和工具子进程补齐跨运行时 CA 变量。
+//
+// GitHub 加速前缀：插件市场安装在 agent 子进程内执行（bootstrap → adapters/plugins），
+// 子进程里没有设置服务，只能像代理/CA 一样在 spawn 时把最终值注入。
+// 子进程侧由 @zcode/adapters 的 github-mirror-env.ts 消费。
 
 const PROXY_ENV_KEYS = [
   "HTTP_PROXY",
@@ -118,6 +124,18 @@ export function buildAgentWorkspaceIdentityEnv(
 ): Record<string, string> {
   const trimmed = workspaceIdentity?.trim();
   return trimmed ? { [ZCODE_WORKSPACE_IDENTITY_ENV]: trimmed } : {};
+}
+
+/**
+ * 把设置页的 GitHub 加速前缀翻译成 agent 子进程 env。
+ *
+ * 与代理/CA 同语义：spawn 时读取，「下次启动 agent」生效。
+ * 非法值不注入 —— 配置写错只应回落到直连，不能中断插件安装
+ * （保存期已拒绝非法值，见 shared/githubMirror.ts）。
+ */
+export function buildAgentGithubMirrorEnv(prefix: string | undefined): Record<string, string> {
+  const normalized = normalizeGithubMirrorPrefix(prefix);
+  return normalized ? { [ZCODE_GITHUB_MIRROR_ENV_KEY]: normalized } : {};
 }
 
 function normalizeProxyValue(value: string | undefined): string | undefined {
