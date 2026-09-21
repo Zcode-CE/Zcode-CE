@@ -88,6 +88,22 @@ const browserUseRequiredRuntimePaths = [
   "skills/control-browser/SKILL.md",
   "skills/web-gui-tester/SKILL.md",
 ];
+// Office 三个插件：纯资源包（skills/*/SKILL.md + scripts/check_office.py + agents/visual-judge.md），
+// 没有任何构建产物，所以 requiresRuntime 为 false，且**不设** runtimeBuildScript
+// —— 设了会让 buildOfficialPluginRuntimes() 去跑一个不存在的构建脚本。
+//
+// 为什么必须在这里出现：这三个插件此前完全没进任何 staging 清单，打包后
+// resources/glm/packages 下不存在对应目录，filesystem seed 的三处 candidate 全部落空，
+// 发行版用户拿不到 Office 能力（症状是「官方市场里有 Documents 插件、点进去却是空的」）。
+// 权威归属见 bootstrap/official-plugin-definitions.ts（那里早已标了 defaultEnabled: true
+// 和 requiredSeedPaths，只是没人把它反查到 staging 清单上）。
+// 单列成表而不是复制三份字面量：三份平行清单各自手写正是本次漏加的同型根因
+// （见上方常量注释里踩过的先例）；配套回归测试见 documents-plugin/test/。
+const officePluginPackages = [
+  { name: "documents", skill: "docx" },
+  { name: "presentations", skill: "pptx" },
+  { name: "spreadsheets", skill: "xlsx" },
+];
 const officialPluginPackages = [
   {
     // browser-use 只携带自己的 client script 与 skill/docs；node_repl MCP runtime 归
@@ -111,6 +127,16 @@ const officialPluginPackages = [
     runtimeBuildScript: "scripts/build.mjs",
     stagedPath: "packages/node-repl-host",
   },
+
+  ...officePluginPackages.map(({ name, skill }) => ({
+    packageName: `@zcode/${name}-plugin`,
+    relativePath: `apps/zcode-cli/packages/${name}-plugin`,
+    requiresRuntime: false,
+    // 与 official-plugin-definitions.ts 的 requiredSeedPaths 一致：缺失时 stageOfficialPlugins()
+    // 直接抛错，而不是静默产出一个没有 skill 正文的残缺插件。
+    requiredSeedPaths: ["agents/visual-judge.md", `skills/${skill}/SKILL.md`],
+    stagedPath: `packages/${name}-plugin`,
+  })),
 ];
 const includedOfficialPluginTopLevelPaths = new Set([
   ".mcp.json",

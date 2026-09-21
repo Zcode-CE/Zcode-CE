@@ -90,6 +90,16 @@ const browserUseRequiredRuntimePaths = [
   "skills/control-browser/SKILL.md",
   "skills/web-gui-tester/SKILL.md",
 ];
+// Office 三个插件：纯资源包，没有构建产物，所以 requiresRuntime 为 false，
+// 且**不设** runtimeBuildScript —— 设了会让 buildRemoteOfficialPluginRuntimes() 去跑
+// 一个不存在的构建脚本。它们此前完全没进这份清单，远端 shared-host 预构建产出的
+// glm 组件里因此没有 office 插件，远端用户同样拿不到 Office 能力。
+// 权威归属见 bootstrap/official-plugin-definitions.ts。
+const remoteOfficePluginPackages = [
+  { name: "documents", skill: "docx" },
+  { name: "presentations", skill: "pptx" },
+  { name: "spreadsheets", skill: "xlsx" },
+];
 const remoteOfficialPluginPackages = [
   // 44b25ed46c「remove bundled plugins except browser use and cua」删掉了其余
   // 内置插件源码，但漏改这份清单，bootstrap:with-remote 在 staging 第一个 manifest 就抛
@@ -116,6 +126,13 @@ const remoteOfficialPluginPackages = [
     runtimeBuildScript: "scripts/build.mjs",
     stagedPath: "packages/node-repl-host",
   },
+
+  ...remoteOfficePluginPackages.map(({ name }) => ({
+    packageName: `@zcode/${name}-plugin`,
+    relativePath: `apps/zcode-cli/packages/${name}-plugin`,
+    requiresRuntime: false,
+    stagedPath: `packages/${name}-plugin`,
+  })),
 ];
 const remoteOfficialPluginTopLevelPaths = new Set([
   ".mcp.json",
@@ -147,6 +164,15 @@ function shouldCopyOfficialPluginAsset(sourcePath) {
 const remoteOfficialPluginRequiredPaths = [
   "packages/browser-use-plugin/.zcode-plugin/plugin.json",
   "packages/node-repl-host/.zcode-plugin/plugin.json",
+  // office 插件同样必须出现在可复用组件的完整性清单里：只校验 browser-use/node-repl-host
+  // 的话，一个缺少 office 目录的旧 release 会被判为「可复用」，于是继续产出没有 Office 能力的
+  // 远端资源包 —— 正是本次 V-2 的失效模式。plugin.json 之外再钉住真正的能力资产
+  // （skill 正文与 check_office.py），避免 stage 出只有 manifest 的空壳插件。
+  ...remoteOfficePluginPackages.flatMap(({ name, skill }) => [
+    `packages/${name}-plugin/.zcode-plugin/plugin.json`,
+    `packages/${name}-plugin/skills/${skill}/SKILL.md`,
+    `packages/${name}-plugin/scripts/check_office.py`,
+  ]),
 ];
 
 function readZCodeAgentRuntimeVersion() {

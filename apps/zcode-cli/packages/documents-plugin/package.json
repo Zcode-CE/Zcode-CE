@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@zcode/documents-plugin",
+  "version": "0.1.7",
+  "private": true,
+  "license": "MIT",
+  "description": "DOCX document production skills for ZCode-CE, based on DeepSeek Harness skill-office (MIT).",
+  "scripts": {
+    "test": "node --test test/checkOffice.test.mjs"
+  }
+}

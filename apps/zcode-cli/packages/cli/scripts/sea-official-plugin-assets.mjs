@@ -17,6 +17,26 @@ const browserUseRequiredRuntimePaths = [
   "skills/web-gui-tester/SKILL.md",
 ];
 
+// Office 三个插件：内容型插件（只有 skills/*/SKILL.md、scripts/check_office.py 与
+// agents/visual-judge.md），没有 MCP server、没有构建产物。requiresRuntime: false 让
+// collectSeaOfficialPluginAssets() 跳过 assertPluginRuntime() 的 dist/mcp/server.js 校验
+// —— 那个校验对内容型插件必然失败。它们此前完全没进这份清单，SEA 单文件可执行里
+// 因此不含 office 插件，用 SEA 发行的用户拿不到 Office 能力。
+// version 必须与 package.json、.zcode-plugin/plugin.json、official-plugin-definitions.ts
+// 三处保持一致：不一致会导致运行时按版本精确匹配失败、seed 不生效。
+const officeSeaPlugins = [
+  { name: "documents", skill: "docx" },
+  { name: "presentations", skill: "pptx" },
+  { name: "spreadsheets", skill: "xlsx" },
+].map(({ name, skill }) => ({
+  marketplace: "zcode-plugins-official",
+  name,
+  packageName: `@zcode/${name}-plugin`,
+  requiresRuntime: false,
+  requiredSeedPaths: ["agents/visual-judge.md", `skills/${skill}/SKILL.md`],
+  rootPath: join("packages", `${name}-plugin`),
+  version: "0.1.7",
+}));
 export const officialSeaPlugins = [
   {
     // node_repl 宿主：Browser Use 与 Computer Use 共用的运行时产物，自己不是面向用户的插件
@@ -43,6 +63,8 @@ export const officialSeaPlugins = [
     // 导致发布产物不 seed browser-use，进而无法装配宿主 node_repl MCP。
     version: "0.5.1",
   },
+
+  ...officeSeaPlugins,
 ];
 
 export const collectSeaOfficialPluginAssets = async ({

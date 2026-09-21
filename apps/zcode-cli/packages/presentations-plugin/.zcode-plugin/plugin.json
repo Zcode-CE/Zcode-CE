@@ -1,0 +1,15 @@
+{
+  "name": "presentations",
+  "version": "0.1.7",
+  "description": "presentations plugin for ZCode-CE (DSH-based, MIT).",
+  "description_i18n": {
+    "en": "PowerPoint presentation production skills for PPTX: create, edit, lay out, check, and deliver.",
+    "zh-CN": "面向 PPTX 的演示文稿制作技能：创建、编辑、排版、结构校验与交付。"
+  },
+  "author": {
+    "name": "DeepSeek Harness (MIT), adapted for ZCode-CE"
+  },
+  "license": "MIT",
+  "skills": "skills",
+  "agents": "agents"
+}
