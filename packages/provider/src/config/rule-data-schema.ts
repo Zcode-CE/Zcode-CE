@@ -101,9 +101,12 @@ export const providerTemplateConfigRuleSchema = providerTemplateDataSchema.exten
     }),
 });
 export const builtinProviderConfigRuleSchema = providerConfigRuleSchema.extend({
-  config: providerConfigDataSchema.omit({ personalModelIds: true, modelOrder: true }).extend({
-    group: providerGroupDataSchema.exclude(["standard-personal"]),
-  }),
+  // 隐藏集与个人成员、个人顺序同属用户覆盖层，内置模板不得声明。
+  config: providerConfigDataSchema
+    .omit({ personalModelIds: true, modelOrder: true, hiddenModelIds: true })
+    .extend({
+      group: providerGroupDataSchema.exclude(["standard-personal"]),
+    }),
 });
 const personalProviderConfigRuleSchema = providerConfigRuleSchema
   .extend({

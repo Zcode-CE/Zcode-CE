@@ -241,6 +241,7 @@ export function ModelProviderSectionDetail({
   onSavePersonalModelDraft,
   onSetPersonalModelEnabled,
   onDeletePersonalModel,
+  onRestoreHiddenModel,
   onDelete,
   onReorderProviderModels,
   onTestModel,
@@ -280,6 +281,8 @@ export function ModelProviderSectionDetail({
     enabled: boolean,
   ) => Promise<unknown>;
   onDeletePersonalModel?: (providerId: string, modelId: string) => Promise<unknown>;
+  /** 恢复被隐藏的内置模型；缺失时卡片不展示恢复入口。 */
+  onRestoreHiddenModel?: (providerId: string, modelId: string) => Promise<unknown>;
   onDelete: (provider: ProviderSettingsFormProvider) => Promise<void>;
   onReorderProviderModels?: (providerId: string, modelIds: string[]) => Promise<void>;
   onTestModel: (providerId: string, modelId: string) => Promise<ModelConnectivityResult>;
@@ -318,6 +321,7 @@ export function ModelProviderSectionDetail({
     onSavePersonalModelDraft,
     onSetPersonalModelEnabled,
     onDeletePersonalModel,
+    onRestoreHiddenModel,
     settingsRevision: providerSettingsView?.revision,
   };
   const selectedPlanAccess = useMemo(() => {

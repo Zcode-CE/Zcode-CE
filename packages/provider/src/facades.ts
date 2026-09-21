@@ -83,6 +83,11 @@ export interface ProviderSettingsMutationTarget {
     modelId: ModelId,
     membership?: ProviderModelMembership,
   ): Promise<unknown>;
+  restoreHiddenModel(
+    providerId: ProviderId,
+    modelId: ModelId,
+    membership?: ProviderModelMembership,
+  ): Promise<unknown>;
   savePersonalModelDraft(
     providerId: ProviderId,
     originalModelId: ModelId,
@@ -160,6 +165,11 @@ export interface ProviderSettingsProviderView extends Pick<
   readonly effectiveConfig: ProviderConfigObject;
   readonly issues: readonly ConfigValidationIssue[];
   readonly models: readonly ProviderSettingsModelView[];
+  /**
+   * 被用户隐藏的内置模型 ID。它不在 models 里（已从列表过滤），
+   * 但设置页需要它渲染"已隐藏的模型"恢复入口。
+   */
+  readonly hiddenModelIds: readonly ModelId[];
 }
 
 export interface ProviderSettingsTemplateView {
@@ -390,6 +400,12 @@ export class ProviderSettingsFacade {
   deletePersonalModel(providerId: ProviderId, modelId: ModelId): Promise<ProviderSettingsView> {
     return this.#mutateProvider(providerId, "delete-personal-model", (target) =>
       target.deletePersonalModel(providerId, modelId, this.#modelMembership(providerId)),
+    );
+  }
+
+  restoreHiddenModel(providerId: ProviderId, modelId: ModelId): Promise<ProviderSettingsView> {
+    return this.#mutateProvider(providerId, "restore-hidden-model", (target) =>
+      target.restoreHiddenModel(providerId, modelId, this.#modelMembership(providerId)),
     );
   }
 
@@ -632,6 +648,13 @@ function createProviderSettingsView(input: {
       ...(personalConfig ? { personalConfig: personalConfig.toJSON() } : {}),
       effectiveConfig: provider.config.toJSON(),
       issues: provider.providerIssues,
+      // 隐藏集只暴露仍指向真实内置模型的条目：模板移除某个模型后，
+      // 陈旧条目不应继续在恢复入口里显示成一条永远恢复不了的幽灵记录。
+      hiddenModelIds: Object.freeze(
+        (provider.config.hiddenModelIds ?? []).filter((modelId) =>
+          (provider.config.builtinModelIds ?? []).includes(modelId),
+        ),
+      ),
       models: Object.freeze(
         provider.models.map((model) => {
           const personalModelConfig = input.personalModels.getExact(

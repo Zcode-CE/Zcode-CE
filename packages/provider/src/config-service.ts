@@ -336,7 +336,12 @@ export class ProviderConfigService implements ProviderSource<ProviderConfigSnaps
         membership?.inheritedModelIds ??
         resolveProviderBuiltinModelIds(zcodeBuiltin, current.providers, normalizedProviderId);
       if (builtinModelIds.includes(normalizedModelId)) {
-        throw new Error(`Model 已存在: ${normalizedProviderId}/${normalizedModelId}`);
+        // 被隐藏的内置模型对用户不可见；静默"添加成功但列表里没有"比报错更难排查。
+        throw new Error(
+          (provider.hiddenModelIds ?? []).includes(normalizedModelId)
+            ? `Model 已被隐藏，请先恢复: ${normalizedProviderId}/${normalizedModelId}`
+            : `Model 已存在: ${normalizedProviderId}/${normalizedModelId}`,
+        );
       }
       const currentModelIds = provider.personalModelIds ?? [];
       if (currentModelIds.includes(normalizedModelId)) {
@@ -518,6 +523,11 @@ export class ProviderConfigService implements ProviderSource<ProviderConfigSnaps
     });
   }
 
+  /**
+   * 删除模型。内置模型只能"隐藏"：内置名单来自 zcode-builtin 模板，
+   * 从个人层删掉会在下一次模板加载时被重新注入，因此记入 hiddenModelIds 由 Resolver 过滤。
+   * 个人模型仍按原语义从 personalModelIds 移除。两种来源对调用方不可区分。
+   */
   async deletePersonalModel(
     providerId: ProviderId,
     modelId: ModelId,
@@ -528,31 +538,82 @@ export class ProviderConfigService implements ProviderSource<ProviderConfigSnaps
     const builtin = await this.#zcodeBuiltinSource.read();
     return this.#updatePersonal((current) => {
       assertMembershipCurrent(membership, normalizedProviderId, current);
-      const provider = current.providers.get(normalizedProviderId);
+      const provider = writableProviderOverlay(builtin, current, normalizedProviderId);
       const inherited =
         membership?.inheritedModelIds ??
         resolveProviderBuiltinModelIds(builtin, current.providers, normalizedProviderId);
-      if (inherited.includes(normalizedModelId))
-        throw new Error(`Built-in Model 不能删除: ${normalizedProviderId}/${normalizedModelId}`);
-      if (!provider?.personalModelIds?.includes(normalizedModelId)) {
-        throw new Error(`Personal Model 不存在: ${normalizedProviderId}/${normalizedModelId}`);
+      if (inherited.includes(normalizedModelId)) {
+        // 个人层可能残留同名成员（历史数据或旧版本迁移），隐藏时一并清掉，
+        // 否则它会在恢复前继续以 personal 身份出现在成员名单里。
+        const personalModelIds = (provider.personalModelIds ?? []).filter(
+          (candidate) => candidate !== normalizedModelId,
+        );
+        return {
+          providers: current.providers.set(
+            normalizedProviderId,
+            provider
+              .withPersonalModelIds(personalModelIds)
+              .withModelOrder(
+                normalizeModelOrder(inherited, personalModelIds, provider.modelOrder ?? []),
+              )
+              .withHiddenModelIds([
+                ...(provider.hiddenModelIds ?? []).filter(
+                  (candidate) => candidate !== normalizedModelId,
+                ),
+                normalizedModelId,
+              ]),
+          ),
+          models: current.models.deleteExact(normalizedProviderId, normalizedModelId),
+          providerOrder: current.providerOrder,
+        };
       }
+      if (!provider.personalModelIds?.includes(normalizedModelId)) {
+        throw new Error(`Model 不存在: ${normalizedProviderId}/${normalizedModelId}`);
+      }
+      const personalModelIds = provider.personalModelIds.filter(
+        (candidate) => candidate !== normalizedModelId,
+      );
       return {
         providers: current.providers.set(
           normalizedProviderId,
           provider
-            .withPersonalModelIds(
-              provider.personalModelIds.filter((candidate) => candidate !== normalizedModelId),
-            )
+            .withPersonalModelIds(personalModelIds)
             .withModelOrder(
-              normalizeModelOrder(
-                inherited,
-                provider.personalModelIds.filter((candidate) => candidate !== normalizedModelId),
-                provider.modelOrder ?? [],
-              ),
+              normalizeModelOrder(inherited, personalModelIds, provider.modelOrder ?? []),
             ),
         ),
         models: current.models.deleteExact(normalizedProviderId, normalizedModelId),
+        providerOrder: current.providerOrder,
+      };
+    });
+  }
+
+  /**
+   * 恢复被隐藏的内置模型。没有恢复入口时隐藏不可逆，用户只能手改配置文件。
+   * 只允许对内置模型生效：个人模型删除是真实移除，恢复会凭空造出成员。
+   */
+  async restoreHiddenModel(
+    providerId: ProviderId,
+    modelId: ModelId,
+    membership?: ProviderModelMembership,
+  ): Promise<ProviderConfigLayerSnapshot> {
+    const normalizedProviderId = normalizeId("providerId", providerId);
+    const normalizedModelId = normalizeId("modelId", modelId);
+    return this.#updatePersonal((current) => {
+      assertMembershipCurrent(membership, normalizedProviderId, current);
+      const provider = current.providers.get(normalizedProviderId);
+      const hidden = provider?.hiddenModelIds ?? [];
+      if (!hidden.includes(normalizedModelId)) {
+        throw new Error(`Model 未被隐藏: ${normalizedProviderId}/${normalizedModelId}`);
+      }
+      return {
+        providers: current.providers.set(
+          normalizedProviderId,
+          provider!.withHiddenModelIds(
+            hidden.filter((candidate) => candidate !== normalizedModelId),
+          ),
+        ),
+        models: current.models,
         providerOrder: current.providerOrder,
       };
     });

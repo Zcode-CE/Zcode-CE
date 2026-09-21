@@ -178,6 +178,7 @@ export class ProviderConfig extends ConfigOverlay<ProviderConfig> {
   readonly builtinModelIds?: ProviderConfigObject["builtinModelIds"];
   readonly personalModelIds?: ProviderConfigObject["personalModelIds"];
   readonly modelOrder?: ProviderConfigObject["modelOrder"];
+  readonly hiddenModelIds?: ProviderConfigObject["hiddenModelIds"];
   readonly visibility?: ProviderConfigObject["visibility"];
 
   constructor(input: ProviderConfigInput = {}) {
@@ -189,6 +190,7 @@ export class ProviderConfig extends ConfigOverlay<ProviderConfig> {
     this.builtinModelIds = freezeModelIds(input.builtinModelIds);
     this.personalModelIds = freezeModelIds(input.personalModelIds);
     this.modelOrder = freezeModelIds(input.modelOrder);
+    this.hiddenModelIds = freezeModelIds(input.hiddenModelIds);
     this.visibility = input.visibility;
     Object.freeze(this);
   }
@@ -202,6 +204,7 @@ export class ProviderConfig extends ConfigOverlay<ProviderConfig> {
       builtinModelIds: this.overlayValue(this.builtinModelIds, next.builtinModelIds),
       personalModelIds: this.overlayValue(this.personalModelIds, next.personalModelIds),
       modelOrder: this.overlayValue(this.modelOrder, next.modelOrder),
+      hiddenModelIds: this.overlayValue(this.hiddenModelIds, next.hiddenModelIds),
       visibility: this.overlayValue(this.visibility, next.visibility),
     });
   }
@@ -218,6 +221,21 @@ export class ProviderConfig extends ConfigOverlay<ProviderConfig> {
     return this.overlay(new ProviderConfig({ modelOrder }));
   }
 
+  /** 隐藏集是个人层的删除标记；空数组必须保留，否则恢复最后一个隐藏模型会被当成"未声明"。 */
+  withHiddenModelIds(hiddenModelIds: readonly ModelId[]): ProviderConfig {
+    return new ProviderConfig({
+      group: this.group,
+      logo: this.logo,
+      access: this.access,
+      api: this.api,
+      builtinModelIds: this.builtinModelIds,
+      personalModelIds: this.personalModelIds,
+      modelOrder: this.modelOrder,
+      hiddenModelIds,
+      visibility: this.visibility,
+    });
+  }
+
   withoutGroup(): ProviderConfig {
     return new ProviderConfig({
       logo: this.logo,
@@ -226,6 +244,7 @@ export class ProviderConfig extends ConfigOverlay<ProviderConfig> {
       builtinModelIds: this.builtinModelIds,
       personalModelIds: this.personalModelIds,
       modelOrder: this.modelOrder,
+      hiddenModelIds: this.hiddenModelIds,
       visibility: this.visibility,
     });
   }
@@ -240,6 +259,9 @@ export class ProviderConfig extends ConfigOverlay<ProviderConfig> {
       builtinModelIds: source?.builtinModelIds,
       personalModelIds: source?.personalModelIds,
       modelOrder: source?.modelOrder,
+      // 隐藏集与成员名单一样只从当前个人覆盖层取：普通 Provider 草稿保存若采用
+      // Renderer 回传的值，会让"改了 API Key"把用户之前隐藏的模型全部复活。
+      hiddenModelIds: source?.hiddenModelIds,
       visibility: this.visibility,
     });
   }
@@ -258,6 +280,7 @@ export class ProviderConfig extends ConfigOverlay<ProviderConfig> {
       builtinModelIds: this.builtinModelIds,
       personalModelIds: this.personalModelIds,
       modelOrder: this.modelOrder,
+      hiddenModelIds: this.hiddenModelIds,
       visibility: this.visibility,
     });
   }

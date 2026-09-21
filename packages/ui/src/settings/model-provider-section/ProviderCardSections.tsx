@@ -16,13 +16,22 @@ import type { ProviderApiType } from "@zcode/provider";
 import {
   TID_MODEL_PROVIDER_ADD_MODEL_BUTTON,
   TID_MODEL_PROVIDER_BASE_URL_INPUT,
+  TID_MODEL_PROVIDER_FETCH_MODELS_BUTTON,
   TID_MODEL_PROVIDER_MODEL_DELETE_BUTTON,
   TID_MODEL_PROVIDER_MODEL_INPUT,
   TID_MODEL_PROVIDER_NAME_EDIT_BUTTON,
   TID_MODEL_PROVIDER_NAME_INPUT,
   testId,
 } from "@zcode/shared";
-import { InfoIcon, LockKeyholeIcon, Plus, Pencil, Trash2, MoreHorizontal } from "lucide-react";
+import {
+  Download,
+  InfoIcon,
+  LockKeyholeIcon,
+  Plus,
+  Pencil,
+  Trash2,
+  MoreHorizontal,
+} from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import {
@@ -45,6 +54,8 @@ import {
   resolveProviderConnectionApiFormatDisplayLabel,
 } from "@/settings/model-provider-section/ProviderApiFormatSelect.js";
 import { SortableProviderModelList } from "@/settings/model-provider-section/SortableProviderModelList.js";
+import { ProviderModelCatalogDialog } from "@/settings/model-provider-section/ProviderModelCatalogDialog.js";
+import { ProviderHiddenModelsSection } from "@/settings/model-provider-section/ProviderHiddenModelsSection.js";
 import { useProviderModelDraft } from "@/settings/model-provider-section/useProviderModelDraft.js";
 import { ProviderLogo } from "@/settings/model-provider-section/ProviderLogo.js";
 import type { ProviderConfigObject } from "@zcode/provider";
@@ -355,6 +366,9 @@ export function ProviderModelsSection({
   onDeleteModel,
   onAddModel,
   onReorderModelIds,
+  onAddModelsFromCatalog,
+  hiddenModelIds = [],
+  onRestoreHiddenModel,
   settingsRevision = 0,
 }: {
   providerId: string;
@@ -372,10 +386,16 @@ export function ProviderModelsSection({
   onModelEnabledChange?: (modelId: string, enabled: boolean) => void | Promise<void>;
   onAddModel: (model: ProviderSettingsFormModel) => void | Promise<void>;
   onReorderModelIds?: (modelIds: string[]) => void;
+  /** 拉取到的候选模型批量添加；由父层复用既有 addPersonalModel 写入边界。 */
+  onAddModelsFromCatalog?: (modelIds: readonly string[]) => Promise<void>;
+  /** 被用户隐藏的内置模型；非空时展示恢复入口。 */
+  hiddenModelIds?: readonly string[];
+  onRestoreHiddenModel?: (modelId: string) => Promise<unknown>;
   settingsRevision?: number;
 }) {
   const { intl } = useZCodeIntl();
   const { providerSettingsService } = useServices();
+  const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addSaving, setAddSaving] = useState(false);
   const addSavingRef = useRef(false);
@@ -470,17 +490,32 @@ export function ProviderModelsSection({
         <span className="text-ui-base text-foreground-subtle">
           {intl.formatMessage({ id: "settings.modelProvider.models" })}
         </span>
-        <Button
-          type="button"
-          variant="secondary"
-          size="default"
-          className="rounded-lg"
-          data-testid={TID_MODEL_PROVIDER_ADD_MODEL_BUTTON}
-          onClick={openAddDialog}
-        >
-          <Plus data-icon="inline-start" aria-hidden="true" />
-          {intl.formatMessage({ id: "settings.modelProvider.addModel" })}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onAddModelsFromCatalog ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="default"
+              className="rounded-lg"
+              data-testid={TID_MODEL_PROVIDER_FETCH_MODELS_BUTTON}
+              onClick={() => setCatalogDialogOpen(true)}
+            >
+              <Download data-icon="inline-start" aria-hidden="true" />
+              {intl.formatMessage({ id: "settings.modelProvider.modelCatalog.button" })}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="secondary"
+            size="default"
+            className="rounded-lg"
+            data-testid={TID_MODEL_PROVIDER_ADD_MODEL_BUTTON}
+            onClick={openAddDialog}
+          >
+            <Plus data-icon="inline-start" aria-hidden="true" />
+            {intl.formatMessage({ id: "settings.modelProvider.addModel" })}
+          </Button>
+        </div>
       </div>
       {models.length > 0 ? (
         <div className="overflow-hidden rounded-lg border border-input-border bg-input">
@@ -523,7 +558,8 @@ export function ProviderModelsSection({
                       })
                     }
                     settingsRevision={settingsRevision}
-                    onDelete={!model.builtin ? () => onDeleteModel(model.modelId) : undefined}
+                    // 内置模型同样可删：底层把删除记为个人层隐藏，重启与模板更新后仍然生效。
+                    onDelete={() => onDeleteModel(model.modelId)}
                     onEnabledChange={(enabled) => {
                       void Promise.resolve(onModelEnabledChange?.(model.modelId, enabled)).catch(
                         () => undefined,
@@ -548,6 +584,25 @@ export function ProviderModelsSection({
           {intl.formatMessage({ id: "settings.modelProvider.modelsEmpty" })}
         </div>
       )}
+      {onRestoreHiddenModel ? (
+        <ProviderHiddenModelsSection
+          providerId={providerId}
+          hiddenModelIds={hiddenModelIds}
+          onRestore={(_providerId, modelId) => onRestoreHiddenModel(modelId)}
+        />
+      ) : null}
+      {onAddModelsFromCatalog ? (
+        <ProviderModelCatalogDialog
+          open={catalogDialogOpen}
+          onOpenChange={setCatalogDialogOpen}
+          providerId={providerId}
+          existingModelIds={models.map((model) => model.modelId)}
+          onFetch={(targetProviderId) =>
+            providerSettingsService.fetchProviderModels(targetProviderId)
+          }
+          onAddModels={onAddModelsFromCatalog}
+        />
+      ) : null}
       <>
         <ProviderModelMetadataDialog
           onRestore={() => {

@@ -142,6 +142,7 @@ export function InlineEditableProviderCard({
   onSavePersonalModelDraft,
   onSetPersonalModelEnabled,
   onDeletePersonalModel,
+  onRestoreHiddenModel,
   onDelete,
   onTestModel,
   onReorderModelIds,
@@ -169,6 +170,8 @@ export function InlineEditableProviderCard({
     enabled: boolean,
   ) => Promise<unknown>;
   onDeletePersonalModel?: (providerId: string, modelId: string) => Promise<unknown>;
+  /** 恢复被隐藏的内置模型；缺失时卡片不展示恢复入口。 */
+  onRestoreHiddenModel?: (providerId: string, modelId: string) => Promise<unknown>;
   onDelete?: () => void | Promise<void>;
   onTestModel?: (providerId: string, modelId: string) => Promise<ModelConnectivityResult>;
   onReorderModelIds?: (modelIds: string[]) => Promise<void>;
@@ -665,6 +668,10 @@ export function InlineEditableProviderCard({
     [models, onSavePersonalModelDraft, provider.providerId, runSaveOperation],
   );
 
+  /**
+   * 删除模型。内置模型与个人模型走同一个写入边界 —— 底层把内置模型的删除记为
+   * 个人层隐藏（内置名单由模板提供，真删会被重新注入），因此这里不再按来源分支。
+   */
   const handleDeleteModel = useCallback(
     (modelId: string) => {
       const index = models.findIndex((model) => model.modelId === modelId);
@@ -672,23 +679,20 @@ export function InlineEditableProviderCard({
       if (!model) {
         return;
       }
-      if (!model.builtin) {
-        void runSaveOperation(
-          async () => {
-            if (!onDeletePersonalModel)
-              throw new Error("当前设置入口未装配 Personal Model 删除能力");
-            await onDeletePersonalModel(provider.providerId, model.modelId);
-          },
-          { modelId: model.modelId, operation: "delete" },
-        ).catch((error) => {
-          logger.warn("[ModelProviderSection] 删除 Personal Model 失败", {
-            providerId: provider.providerId,
-            modelId: model.modelId,
-            error,
-          });
+      void runSaveOperation(
+        async () => {
+          if (!onDeletePersonalModel) throw new Error("当前设置入口未装配 Model 删除能力");
+          await onDeletePersonalModel(provider.providerId, model.modelId);
+        },
+        { modelId: model.modelId, operation: "delete" },
+      ).catch((error) => {
+        logger.warn("[ModelProviderSection] 删除 Model 失败", {
+          providerId: provider.providerId,
+          modelId: model.modelId,
+          builtin: model.builtin,
+          error,
         });
-        return;
-      }
+      });
     },
     [models, onDeletePersonalModel, provider.providerId, runSaveOperation],
   );
@@ -736,6 +740,38 @@ export function InlineEditableProviderCard({
       });
     },
     [onReorderModelIds, optimisticModelOrder, provider.providerId],
+  );
+
+  /**
+   * 批量添加拉取到的模型。
+   *
+   * 逐个走既有的 addPersonalModel 写入边界（不新增批量接口）：每个模型各自解析推荐配置，
+   * 且单个失败不连累其余 —— 用户能看到具体哪几个没加上，而不是整批回滚后无从排查。
+   * 聚合结果交给对话框展示，这里不逐个弹通知，避免一次添加十几个模型刷满提示。
+   */
+  const handleAddModelsFromCatalog = useCallback(
+    async (modelIds: readonly string[]) => {
+      if (!onAddPersonalModel) throw new Error("当前设置入口未装配 Personal Model 添加能力");
+      const failures: string[] = [];
+      for (const modelId of modelIds) {
+        try {
+          await onAddPersonalModel(provider.providerId, modelId, {}, undefined);
+        } catch (error) {
+          logger.warn("[ModelProviderSection] 批量添加模型失败", {
+            providerId: provider.providerId,
+            modelId,
+            error,
+          });
+          failures.push(modelId);
+        }
+      }
+      if (failures.length > 0) {
+        throw new Error(
+          `${intl.formatMessage({ id: "settings.modelProvider.modelCatalog.partialFailure" })}: ${failures.join(", ")}`,
+        );
+      }
+    },
+    [intl, onAddPersonalModel, provider.providerId],
   );
 
   const handleDeleteProvider = useCallback(() => {
@@ -853,6 +889,13 @@ export function InlineEditableProviderCard({
           onDeleteModel={handleDeleteModel}
           onAddModel={handleAddModel}
           onReorderModelIds={onReorderModelIds ? handleReorderModelIds : undefined}
+          onAddModelsFromCatalog={onAddPersonalModel ? handleAddModelsFromCatalog : undefined}
+          hiddenModelIds={provider.hiddenModelIds ?? []}
+          onRestoreHiddenModel={
+            onRestoreHiddenModel
+              ? (modelId) => onRestoreHiddenModel(provider.providerId, modelId)
+              : undefined
+          }
           settingsRevision={settingsRevision ?? 0}
         />
       </div>

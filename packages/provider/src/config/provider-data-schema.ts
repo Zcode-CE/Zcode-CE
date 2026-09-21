@@ -89,6 +89,9 @@ export const providerConfigDataSchema = z
     builtinModelIds: modelIdsDataSchema,
     personalModelIds: modelIdsDataSchema,
     modelOrder: modelIdsDataSchema,
+    // 用户对内嵌内置模型的隐藏集。只存在于个人覆盖层：内置层由模板提供，
+    // 写在内置层的删除会被下一次模板加载重新注入，因此隐藏必须落在个人层。
+    hiddenModelIds: modelIdsDataSchema,
     visibility: providerVisibilityDataSchema.nullable().optional(),
   })
   .strict();

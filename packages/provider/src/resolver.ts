@@ -65,6 +65,7 @@ export function serializeRegistryProviderConfig(
     ...(config.builtinModelIds == null ? {} : { builtinModelIds: [...config.builtinModelIds] }),
     ...(config.personalModelIds == null ? {} : { personalModelIds: [...config.personalModelIds] }),
     ...(config.modelOrder == null ? {} : { modelOrder: [...config.modelOrder] }),
+    ...(config.hiddenModelIds == null ? {} : { hiddenModelIds: [...config.hiddenModelIds] }),
     ...(config.visibility === undefined ? {} : { visibility: config.visibility }),
   };
 }
@@ -241,11 +242,15 @@ export class ProviderConfigResolver {
       const personalIdsInOrder = uniqueInOrder(personalModelIds).filter(
         (modelId) => !builtinIds.has(modelId),
       );
+      // 用户删除内置模型只能记为隐藏（内置模板会重新注入），过滤必须发生在
+      // 唯一的投影点上：设置视图与执行 Registry 都从这里取模型，隐藏后两边同时消失，
+      // 不会出现"设置里没了但模型选择器里还能选"。
+      const hiddenIds = new Set(uniqueInOrder(config.hiddenModelIds ?? []));
       const orderedModelIds = resolveOwnedOrder(
         builtinIdsInOrder,
         personalIdsInOrder,
         config.modelOrder ?? [],
-      );
+      ).filter((modelId) => !hiddenIds.has(modelId));
       const accessEntitled =
         config.access?.type !== "zhipu-account" || config.access.entitled === true;
       // 账号权益与当前连接是两件事。非当前账号仍保留设置展示，不向普通 Registry 发布模型。
