@@ -9,9 +9,35 @@ export interface DefaultPluginMarketplace {
 
 export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "zcode-plugins-official";
 
-/** Settings 三类资源发现共用；Bootstrap 单测与官方 definition 的 defaultEnabled 机械对照。 */
+/**
+ * Anthropic 维护的 Claude Code 插件目录。
+ *
+ * 来源：`anthropics/claude-plugins-official`（Apache-2.0）。它**不是本项目维护的市场**，
+ * 收录的是第三方插件；加它只为让用户能安装社区插件（Superpowers、context7 等），
+ * 不代表本项目对其内容做任何背书。
+ */
+export const CLAUDE_PLUGINS_OFFICIAL_MARKETPLACE_ID = "claude-plugins-official";
+
+/**
+ * 官方插件在「用户未显式配置」时的默认启用集合。
+ *
+ * Settings 三类资源发现共用；集合内容与官方发行版**完全一致**（10 项）。
+ *
+ * ⚠️ 其中 5 项在本仓库没有实体，因此当前是**无效条目**：
+ * `image-search`、`pdf`、`skill-creator`、`plugin-creator`、`zcode-guide`。
+ *
+ * 这不是本仓库删除了声明，而是这些插件的**实体不能随本仓库分发**
+ * （官方授权限制，或仅分发编译产物）。判定链是
+ * `candidate.defaultEnabled || DEFAULT_ENABLED.has(pluginId)` —— 没有 candidate
+ * 时这段逻辑不会执行，所以无效条目**不产生运行时错误**，只是不生效。
+ *
+ * 保留它们而不是删除，是为了与上游保持一致：这些能力将来可能补齐
+ * （PDF 与会话迁移已在 README 的后续计划里），删除声明会让后续同步上游时产生冲突。
+ */
 export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set([
   "browser-use@zcode-plugins-official",
+  // 以下 4 项本仓库无实体：依赖官方服务端与账号鉴权（image-search），
+  // 或仅分发编译产物（pdf / skill-creator / plugin-creator / zcode-guide）。
   "image-search@zcode-plugins-official",
   "documents@zcode-plugins-official",
   "pdf@zcode-plugins-official",
@@ -25,18 +51,29 @@ export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
   "plugin-creator@zcode-plugins-official",
   "zcode-guide@zcode-plugins-official",
   // 电脑控制回退为默认关闭，故 computer-use 不在此名单内。
-  // 该集合必须与 official-plugin-definitions.ts 里标了 defaultEnabled 的插件逐一对应，
-  // bootstrap 的「Settings 默认启用集合与 CLI 的官方插件声明一致」单测机械对照两者。
 ]);
 
 export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] = [
   {
-    // ZCode 官方唯一市场：本地 seed 分片与 CDN 分片在 Agent storage 内合并。
+    // ZCode 官方市场：本地 seed 分片与 CDN 分片在 Agent storage 内合并。
     // CDN manifest 的 name 必须与该 canonical id 一致。
     id: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
     source: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
     name: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
     description: "Official ZCode plugins marketplace: built-in and community plugins for ZCode.",
+    pluginCount: 0,
+  },
+  {
+    // 社区插件入口。上游开源代码里只保留了第一个市场，导致 Superpowers、context7 等
+    // 社区插件没有安装入口 —— 这里补上，字段与官方发行版一致。
+    //
+    // 注意：该市场由 Anthropic 维护、收录第三方插件；本项目不背书其内容，
+    // 也不对其插件质量或许可负责，用户安装前应自行确认。
+    id: CLAUDE_PLUGINS_OFFICIAL_MARKETPLACE_ID,
+    source: "anthropics/claude-plugins-official",
+    name: CLAUDE_PLUGINS_OFFICIAL_MARKETPLACE_ID,
+    description:
+      "Directory of popular Claude Code extensions including development tools, productivity plugins, and MCP integrations",
     pluginCount: 0,
   },
 ];

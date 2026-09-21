@@ -34,6 +34,17 @@ ZCode-CE 基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0�
 - **不提供账号服务**。模型访问、套餐与计费仍由官方服务提供，本项目不代理、不转售。
 - **Computer Use 的平台支持有差异**。Windows 为正式支持；**Linux 为实验性**（默认关闭，需在设置中开启）。官方发行版不支持 Linux 桌面自动化，本版通过开源实现提供，但受上游验证范围限制：已在 X11 / Sway / KDE Wayland 验证，**Wayland 下截图不可用**（元素操作不受影响），GNOME 未完整验证。详见[桌面自动化文档](docs/development/computer-use.md)。
 
+### 后续计划
+
+以下能力官方发行版包含但未随源码分发，本版尚未提供，计划在后续版本补齐：
+
+| 能力         | 状态                                                                       |
+| ------------ | -------------------------------------------------------------------------- |
+| **PDF 制作** | 计划补齐。官方实现含 LaTeX / HTML 双链路，本版将基于开源排版工具链重新实现 |
+| **会话迁移** | 计划补齐。用于导入旧版本会话记录                                           |
+
+其余未提供的能力及其原因见[与官方发行版的差异](docs/development/official-diff.md)。
+
 ## 安装
 
 从 [Releases](https://github.com/Zcode-CE/Zcode-CE/releases) 下载对应平台的安装包。

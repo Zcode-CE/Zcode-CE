@@ -34,6 +34,17 @@ Five differences from the official distribution:
 - **No account services.** Model access, plans, and billing remain with the official service. This project does not proxy or resell them.
 - **Platform support for Computer Use differs.** Windows is fully supported; **Linux is experimental** (off by default, enable it in settings). The official distribution does not support Linux desktop automation at all; this build provides it through an open implementation, within the limits of upstream validation: verified on X11 / Sway / KDE Wayland, **screenshots are unavailable on Wayland** (element actions are unaffected), GNOME is not fully verified. See the [desktop automation docs](docs/development/computer-use.md).
 
+### Roadmap
+
+The official distribution ships the following capabilities without their source. This build does not provide them yet; they are planned for later releases:
+
+| Capability            | Status                                                                                                                                    |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **PDF generation**    | Planned. The official implementation has both LaTeX and HTML pipelines; this project will reimplement it on an open typesetting toolchain |
+| **Session migration** | Planned. Imports session records from older versions                                                                                      |
+
+For every capability this build does not provide, and why, see [Differences from the official distribution](docs/development/official-diff.md).
+
 ## Install
 
 Download the installer for your platform from [Releases](https://github.com/Zcode-CE/Zcode-CE/releases).
