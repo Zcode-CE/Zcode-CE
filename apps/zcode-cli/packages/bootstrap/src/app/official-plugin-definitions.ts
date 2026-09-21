@@ -79,11 +79,33 @@ const OFFICIAL_CUA_REQUIRED_SEED_PATHS = [
 
 // zcode-guide 原本没有 requiredSeedPaths，seed 丢文件时会静默装出一个
 // 没有 /workflow 命令的插件——症状是命令不存在，没有任何诊断。commands/ 与技能正文都钉住。
+//
+// 2026-09-22（fix.3）：补上另外六份技能正文（五个自诊断 + 配置指南）。它们与 dynamic-workflows
+// 是该插件的两个能力面，漏钉时 seed 只会按实际拷贝结果静默建出一个半残插件。
 const OFFICIAL_ZCODE_GUIDE_REQUIRED_SEED_PATHS = [
   "commands/workflow.md",
   "skills/dynamic-workflows/SKILL.md",
   "skills/dynamic-workflows/examples.md",
   "skills/dynamic-workflows/patterns.md",
+  "skills/diagnosing-commands/SKILL.md",
+  "skills/diagnosing-hooks/SKILL.md",
+  "skills/diagnosing-mcp/SKILL.md",
+  "skills/diagnosing-plugins/SKILL.md",
+  "skills/diagnosing-skills/SKILL.md",
+  "skills/zcode-configuration-guide/SKILL.md",
+] as const;
+
+// 纯内容型插件（commands + skills，无 MCP server、无编译产物）的必需资产。
+// 必须逐个钉住正文：清单里的路径缺失时 seed 会整插件拒收（ZCODE_PLUGIN_SEED_INCOMPLETE，
+// bundled-plugins.ts:316-324），只钉 manifest 则会把「有壳没内容」的残缺插件静默发出去。
+const OFFICIAL_SKILL_CREATOR_REQUIRED_SEED_PATHS = ["skills/skill-creator/SKILL.md"] as const;
+
+const OFFICIAL_RESTORE_LEGACY_SESSIONS_REQUIRED_SEED_PATHS = [
+  "commands/restore-legacy-sessions.md",
+  "skills/restore-legacy-sessions/SKILL.md",
+  // 命令正文只负责让 agent 去跑这两个脚本；缺脚本会 seed 出一个「会说要做、做不了」的插件。
+  "skills/restore-legacy-sessions/scripts/restore-conversation.mjs",
+  "skills/restore-legacy-sessions/scripts/scan-legacy-sessions.mjs",
 ] as const;
 
 export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = [
@@ -234,6 +256,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       },
     },
     name: "restore-legacy-sessions",
+    requiredSeedPaths: OFFICIAL_RESTORE_LEGACY_SESSIONS_REQUIRED_SEED_PATHS,
     rootCandidates: [
       "packages/restore-legacy-sessions-plugin",
       "../restore-legacy-sessions-plugin",
@@ -284,6 +307,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       description_i18n: { "zh-CN": "创建、编辑和验证可复用的 ZCode 技能。" },
     },
     name: "skill-creator",
+    requiredSeedPaths: OFFICIAL_SKILL_CREATOR_REQUIRED_SEED_PATHS,
     rootCandidates: [
       "packages/skill-creator-plugin",
       "../skill-creator-plugin",
@@ -355,10 +379,19 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       "../../../zcode-cua-plugin",
     ],
     requiredSeedPaths: OFFICIAL_CUA_REQUIRED_SEED_PATHS,
-    // 当前 CUA 为不可用占位包，无需复制 native runtime；避免把本地旧依赖继续带入缓存。
+    // 2026-09-22（fix.3）：插件资产已从官方发行包原样搬进 apps/zcode-cli/packages/zcode-cua-plugin
+    // （4 文件逐字节全等，许可见 docs/development/computer-use.md 的表）。这里仍不复制 native runtime：
+    // 本构建的 CUA 驱动改走 MIT 许可的 @trycua/cua-driver（packages/zcode-cua/index.js:19-32），
+    // 官方 native runtime 与 Helper 实体均不随包发出（electron-builder.config.js 中 cua-helper 命中 0）。
+    // 避免把本地旧依赖继续带入插件缓存。
     runtimeTopLevelPaths: [],
-    // 这里的 version 追踪上游 zcode-cua runtime 版本，使插件 UI 展示、缓存路径、
-    // marketplace 条目都对齐；具体版本由原子 producer bump 工作流维护。
+    // 这里的 version 追踪上游 zcode-cua runtime 版本（packages/zcode-cua/package.json 的 version），
+    // 使插件 UI 展示、缓存路径、marketplace 条目都对齐；具体版本由原子 producer bump 工作流维护。
+    //
+    // 2026-09-22（fix.3 回退）：本轮一度把它改成 0.6.1（意图对齐插件 manifest 的 version），已回退。
+    // 原因：本字段追踪的是 **runtime 版本**而非插件 manifest 版本 —— packages/zcode-cua 是 0.6.3，
+    // 且官方发行包本来就是「manifest 0.6.1 / 定义 0.6.3」并存，这个差不是我们引入的缺陷。改成 0.6.1
+    // 会破坏上一条注释的追踪不变量，并让 producer bump 工作流失去正确的比较基线。
     version: "0.6.3",
   },
 ];

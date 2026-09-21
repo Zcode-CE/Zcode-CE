@@ -68,7 +68,17 @@ export function stageKoffiIntoBundledAgents({ koffiPackageRoot, glmDir, targetPl
 export function verifyStagedKoffi({
   resourcesDir,
   targetPlatform,
-  pluginRelativePath = "packages/zcode-cua-plugin",
+  // 驱动的原生依赖（koffi）stage 到 node-repl-host 的 node_modules —— 见
+  // cua-driver-package-assets.mjs 与 electron-builder.config.js 中关于「源根直属
+  // node_modules 会被 electron-builder 硬编码丢弃」的说明。此默认值原先指向
+  // packages/zcode-cua-plugin，那个目录当前不存在，会让校验必然失败；已修正为实际位置。
+  //
+  // 遗留缺口（本函数自身即证据）：koffi 的 **stage 有调用点**（prepare-agent-node-bundle.mjs
+  // 调用 stageKoffiIntoBundledAgents），但 koffi 的 **打包期校验没有调用点** ——
+  // electron-builder.config.js:24 只 import 了本函数却从未调用，平台测试也记了这一点
+  // （services/test/platformVariantAndCuaDriverStaging.test.ts:236）。后果：随包缺 koffi
+  // 时构建不会失败，要到运行时第一次用电脑控制才暴露。接线本函数即可补上这道校验。
+  pluginRelativePath = "packages/node-repl-host",
 }) {
   const platformKey = koffiPlatformKey(targetPlatform);
   const koffiRoot = resolve(resourcesDir, "glm", pluginRelativePath, "node_modules", "koffi");

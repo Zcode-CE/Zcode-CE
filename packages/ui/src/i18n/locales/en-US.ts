@@ -6505,6 +6505,31 @@ const enUS: Record<string, string> = {
   "settings.computerUse.composerEntry.saveFailed": "Failed to save: {error}",
   "settings.computerUse.pluginDisabledHint":
     "The Computer Use plugin is not enabled. Enable it in Plugins to use Computer Use.",
+  "settings.computerUse.toggleDescriptionUnavailable":
+    "The Computer Use plugin is missing from the current plugin list, so this switch is unavailable. See the note below.",
+  // Switch-state copy: prerequisite states (loading / plugin missing) must stay distinct from
+  // "turned off", or the loading window reads as "you need to switch it on" while the switch
+  // can only fail with Plugin not found.
+  "settings.computerUse.pluginState.loadingTitle": "Loading the Computer Use plugin",
+  "settings.computerUse.pluginState.loadingDescription":
+    "Reading the plugin list for the current workspace. The switch stays unavailable until it is ready.",
+  "settings.computerUse.pluginState.loadFailedTitle": "Computer Use plugin state is unavailable",
+  "settings.computerUse.pluginState.loadFailedDescription":
+    "The plugin list failed to load, so Computer Use availability is unknown. Retry; if it keeps failing, restart ZCode and reopen this page.",
+  "settings.computerUse.pluginState.unavailableTitle":
+    "The Computer Use plugin is unavailable in this build",
+  "settings.computerUse.pluginState.unavailableDescription":
+    "This build's plugin list has no computer-use@zcode-plugins-official entry, so the switch is unavailable. Report it through the feedback entry, or bundle that plugin in a custom build.",
+  "settings.computerUse.pluginState.enableFailedTitle": "Could not enable Computer Use",
+  "settings.computerUse.pluginState.enableFailedFallback":
+    "Unknown error. Restart ZCode and try again.",
+  "settings.computerUse.pluginState.enabled": "Enabled",
+  "settings.computerUse.pluginState.disabled": "Off",
+  "settings.computerUse.pluginState.loading": "Loading",
+  "settings.computerUse.pluginState.loadFailed": "State unknown",
+  "settings.computerUse.pluginState.unavailable": "Unavailable",
+  "settings.computerUse.pluginState.retry": "Read again",
+  "settings.computerUse.pluginState.retrying": "Reading…",
   "settings.computerUse.unsupported.title": "Computer Use is unavailable here",
   "settings.computerUse.unsupported.remoteDescription":
     "Computer Use is not yet supported for SSH, WSL, Docker, or other remote environments. Switch to a local workspace.",

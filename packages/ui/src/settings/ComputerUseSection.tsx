@@ -41,7 +41,11 @@ import { createCuaPermissionOnboardingOperationId } from "@/lib/cuaPermissionOnb
 import { waitForAccessibilityNotStale } from "@/settings/cuaPermissionRestartVerify.js";
 import { requiredCuaPermissionsForFreshStatus } from "@/settings/cuaPermissionPreparation.js";
 import { ExternalLink } from "lucide-react";
-import { resolveComputerUseAvailability } from "@/settings/computerUseAvailability.js";
+import {
+  resolveComputerUseAvailability,
+  resolveComputerUsePluginState,
+  shouldDisableComputerUseToggle,
+} from "@/settings/computerUseAvailability.js";
 
 interface ComputerUseSectionProps {
   isDesktop?: boolean;
@@ -128,34 +132,114 @@ export function ComputerUseSection({
   const plugins = usePluginManagementStore((state) => state.plugins);
   const setPluginEnabled = usePluginManagementStore((state) => state.setEnabled);
   const initializePlugins = usePluginManagementStore((state) => state.initialize);
+  const refreshPlugins = usePluginManagementStore((state) => state.refresh);
   const togglingPluginId = usePluginManagementStore((state) => state.togglingPluginId);
+  const pluginStoreError = usePluginManagementStore((state) => state.error);
+  const lastFailedPluginId = usePluginManagementStore((state) => state.lastFailedPluginId);
   const cuaPlugin = plugins.find((plugin) => plugin.id === ZCODE_CUA_OFFICIAL_PLUGIN_ID);
   const cuaEnabled = cuaPlugin?.enabled ?? false;
   const cuaToggling = togglingPluginId === ZCODE_CUA_OFFICIAL_PLUGIN_ID;
 
-  const initRef = useRef(false);
+  // 本 workspace 是否已经完成过一次插件列表加载（成功或失败都算），加载结果是否失败。
+  // 判定依据不是 store.loading：它在本组件初始化之前是 false，把「未开始」误判成「已完成」正是
+  // 开关在加载期显示「未启用」的原因。因此这里以本组件的初始化尝试为准，context key 变了就整体重置。
+  const pluginLoadContextKey = `${workspacePath ?? ""}\u0000${workspaceIdentity?.trim() ?? ""}`;
+  const [pluginsLoaded, setPluginsLoaded] = useState(false);
+  const [pluginLoadFailed, setPluginLoadFailed] = useState(false);
+  const initRef = useRef<{ contextKey: string; done: boolean }>({
+    contextKey: pluginLoadContextKey,
+    done: false,
+  });
   useEffect(() => {
-    if (
-      initRef.current ||
-      !supportsComputerUseSettings ||
-      !workspacePath ||
-      !pluginManagementService
-    )
-      return;
-    initRef.current = true;
+    // workspace 切换后旧结果不再代表当前列表，先整体回到「加载中」。
+    if (initRef.current.contextKey !== pluginLoadContextKey) {
+      initRef.current = { contextKey: pluginLoadContextKey, done: false };
+      setPluginsLoaded(false);
+      setPluginLoadFailed(false);
+    }
+    if (initRef.current.done) return;
+    if (!supportsComputerUseSettings || !workspacePath || !pluginManagementService) return;
+    initRef.current.done = true;
     // 复用 Plugins 分区同一条初始化路径，确保 store 已加载 zcode-cua 的 enabled 态。
+    // 加载失败同样算「本 context 的加载已结束」：插件条目取不到，开关必须停在不可用而不是
+    // 冒充「未启用」，否则用户点下去只会拿到 Plugin not found。
     void initializePlugins({
       workspacePath,
       workspaceIdentity,
       pluginService: pluginManagementService,
-    });
+    })
+      .catch(() => {
+        /* 失败态由 store 的 error 与下方状态机表达，这里只负责结束「加载中」 */
+      })
+      .then(() => {
+        if (initRef.current.contextKey !== pluginLoadContextKey) return;
+        setPluginsLoaded(true);
+        setPluginLoadFailed(usePluginManagementStore.getState().error !== null);
+      });
   }, [
+    pluginLoadContextKey,
     supportsComputerUseSettings,
     workspacePath,
     workspaceIdentity,
     pluginManagementService,
     initializePlugins,
   ]);
+
+  const pluginState = resolveComputerUsePluginState({
+    loaded: pluginsLoaded,
+    loadFailed: pluginLoadFailed,
+    present: Boolean(cuaPlugin),
+    enabled: cuaEnabled,
+  });
+  // 总开关唯一允许进入 setEnabled 的条件：条目已解析出来，且当前没有其它启停操作在飞。
+  const pluginToggleDisabled =
+    shouldDisableComputerUseToggle(pluginState.kind) || cuaToggling || !workspacePath;
+  const pluginStateTone: StatusDotTone =
+    pluginState.kind === "enabled"
+      ? "green"
+      : pluginState.kind === "disabled"
+        ? "muted"
+        : pluginState.kind === "loading"
+          ? "subtle"
+          : "amber";
+  const pluginStateLabelId =
+    pluginState.kind === "enabled"
+      ? "settings.computerUse.pluginState.enabled"
+      : pluginState.kind === "disabled"
+        ? "settings.computerUse.pluginState.disabled"
+        : pluginState.kind === "loading"
+          ? "settings.computerUse.pluginState.loading"
+          : pluginState.reason === "load-failed"
+            ? "settings.computerUse.pluginState.loadFailed"
+            : "settings.computerUse.pluginState.unavailable";
+
+  // 启用失败：只看归属自己的失败。共享 error 字段会被无关插件操作的失败污染，
+  // 把它当成「电脑控制启用失败」会给出错误的操作建议。
+  const pluginEnableFailed = lastFailedPluginId === ZCODE_CUA_OFFICIAL_PLUGIN_ID;
+  const pluginEnableFailureMessage =
+    pluginEnableFailed && pluginStoreError
+      ? pluginStoreError
+      : pluginEnableFailed
+        ? intl.formatMessage({ id: "settings.computerUse.pluginState.enableFailedFallback" })
+        : null;
+
+  // 加载失败时的重试：复用 store.refresh（同一 workspace 上下文），成功后清掉失败态。
+  const [retryingPluginLoad, setRetryingPluginLoad] = useState(false);
+  const onRetryPluginLoad = useCallback((): void => {
+    if (!pluginManagementService) return;
+    setRetryingPluginLoad(true);
+    void refreshPlugins(pluginManagementService)
+      .then(() => {
+        if (!mountedRef.current) return;
+        setPluginLoadFailed(usePluginManagementStore.getState().error !== null);
+      })
+      .catch(() => {
+        /* refresh 内部已把失败写进 store.error */
+      })
+      .then(() => {
+        if (mountedRef.current) setRetryingPluginLoad(false);
+      });
+  }, [pluginManagementService, refreshPlugins]);
 
   const [restarting, setRestarting] = useState(false);
   // 重启 single-flight：授权返回回调、双击和手动按钮共享同一 operation，不并发轮换 broker 凭据。
@@ -706,17 +790,32 @@ export function ComputerUseSection({
         <SettingsRow
           label={intl.formatMessage({ id: "settings.computerUse.toggleLabel" })}
           description={intl.formatMessage({
-            id: "settings.computerUse.toggleDescription",
+            id:
+              pluginState.kind === "unavailable"
+                ? "settings.computerUse.toggleDescriptionUnavailable"
+                : "settings.computerUse.toggleDescription",
           })}
           control={
             <Switch
+              data-testid="cua-settings-enabled-switch"
+              data-cua-plugin-state={pluginState.kind}
               aria-label={intl.formatMessage({
                 id: "settings.computerUse.toggleLabel",
               })}
+              aria-busy={pluginState.kind === "loading" || cuaToggling}
               checked={cuaEnabled}
-              disabled={cuaToggling || !workspacePath}
+              disabled={pluginToggleDisabled}
               onCheckedChange={(checked) => void onTogglePlugin(checked)}
             />
+          }
+          detail={
+            <span className="inline-flex items-center gap-1.5">
+              <StatusDot
+                tone={pluginStateTone}
+                {...(pluginState.kind === "loading" ? { spinning: true } : {})}
+              />
+              {intl.formatMessage({ id: pluginStateLabelId })}
+            </span>
           }
         />
         {/* 输入框常驻入口的显隐开关：关闭是持久化 hidden 标记，
@@ -736,12 +835,82 @@ export function ComputerUseSection({
                 id: "settings.computerUse.composerEntry.label",
               })}
               checked={composerEntryVisible}
-              disabled={composerEntrySaving || !cuaEnabled}
+              disabled={
+                composerEntrySaving ||
+                !cuaEnabled ||
+                shouldDisableComputerUseToggle(pluginState.kind)
+              }
               onCheckedChange={(checked) => void onToggleComposerEntry(checked)}
             />
           }
         />
       </SettingsGroupCard>
+
+      {/* 插件列表加载中：此时并不知道 computer-use 条目到底在不在，开关必须只读。
+          旧实现按 enabled=false 渲染，会让用户在加载窗口内把「还没读到」当成「没启用」。 */}
+      {pluginState.kind === "loading" ? (
+        <div className="rounded-lg border border-border bg-card p-3 text-ui-base text-foreground-subtle">
+          <p className="font-medium text-foreground">
+            {intl.formatMessage({ id: "settings.computerUse.pluginState.loadingTitle" })}
+          </p>
+          <p className="mt-1">
+            {intl.formatMessage({ id: "settings.computerUse.pluginState.loadingDescription" })}
+          </p>
+        </div>
+      ) : null}
+
+      {/* 插件条目拿不到：分为「列表加载失败（可重试）」与「本构建里根本没有该插件（不可点）」。
+          两种都不可能把开关点成功——旧实现会一路落到选解析器抛出
+          Plugin not found: computer-use@zcode-plugins-official，这是最糟的表达。 */}
+      {pluginState.kind === "unavailable" ? (
+        <div className="rounded-lg border border-border bg-card p-3 text-ui-base text-foreground-subtle">
+          <p className="font-medium text-foreground">
+            {intl.formatMessage({
+              id:
+                pluginState.reason === "load-failed"
+                  ? "settings.computerUse.pluginState.loadFailedTitle"
+                  : "settings.computerUse.pluginState.unavailableTitle",
+            })}
+          </p>
+          <p className="mt-1">
+            {intl.formatMessage({
+              id:
+                pluginState.reason === "load-failed"
+                  ? "settings.computerUse.pluginState.loadFailedDescription"
+                  : "settings.computerUse.pluginState.unavailableDescription",
+            })}
+          </p>
+          {pluginState.reason === "load-failed" ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              disabled={retryingPluginLoad || !pluginManagementService}
+              onClick={onRetryPluginLoad}
+            >
+              {intl.formatMessage({
+                id: retryingPluginLoad
+                  ? "settings.computerUse.pluginState.retrying"
+                  : "settings.computerUse.pluginState.retry",
+              })}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* 启用失败：失败原因必须留在页面上（而不是只闪一次 toast），并给出可执行的下一步。 */}
+      {pluginEnableFailureMessage ? (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-ui-base text-destructive"
+        >
+          <p className="font-medium">
+            {intl.formatMessage({ id: "settings.computerUse.pluginState.enableFailedTitle" })}
+          </p>
+          <p className="mt-1">{pluginEnableFailureMessage}</p>
+        </div>
+      ) : null}
 
       {/* Linux 是实验性支持：驱动已随包发出，但后端在 X11 / Wayland 下的覆盖度未验证，
           必须显式告知能力边界，而不是让用户以为「开了就能用」。

@@ -8,7 +8,13 @@
 
 ## 版本号
 
-当前版本：**`3.14.1-ce.1`**，写在根 `package.json` 的 `version` 字段。
+当前版本写在根 `package.json` 的 `version` 字段。**本文不复制具体版本号** —— 它每次发布都变，
+硬编码在这里必然过期。查当前值：
+
+```bash
+node -p "require('./package.json').version"
+git tag --sort=-v:refname | head -1
+```
 
 ### 命名结构
 

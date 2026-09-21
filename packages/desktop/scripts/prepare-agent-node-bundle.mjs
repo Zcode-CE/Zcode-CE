@@ -106,6 +106,56 @@ const officePluginPackages = [
   { name: "presentations", skill: "pptx" },
   { name: "spreadsheets", skill: "xlsx" },
 ];
+// 纯内容型官方插件：只有 commands/skills，无 MCP server、无编译产物。
+//
+// 为什么必须有这四条：仓库早就按「它们存在」写好了装配，包却从未被搬进来 ——
+//   · slash-commands.ts 的 `/workflow` 命令取自 zcode-guide 插件；
+//   · dynamic-workflow-gate.ts 按 <插件技能根>/dynamic-workflows/SKILL.md 做灰度裁剪，
+//     即动态工作流的技能正文同样由 zcode-guide 提供；
+//   · startup-marks.ts 的注释点名 skill-creator 是 defaultEnabled 的官方插件。
+// 缺包时这些装配全部静默落空（症状：/workflow 不存在、dynamic-workflows 技能缺失）。
+// requiredSeedPaths 与 bootstrap/official-plugin-definitions.ts 的同名常量逐条一致；
+// 缺失时 stageOfficialPlugins() 抛 missing staged official plugin seed asset。
+const contentPluginPackages = [
+  {
+    name: "zcode-guide",
+    requiredSeedPaths: [
+      "commands/workflow.md",
+      "skills/dynamic-workflows/SKILL.md",
+      "skills/dynamic-workflows/examples.md",
+      "skills/dynamic-workflows/patterns.md",
+      "skills/diagnosing-commands/SKILL.md",
+      "skills/diagnosing-hooks/SKILL.md",
+      "skills/diagnosing-mcp/SKILL.md",
+      "skills/diagnosing-plugins/SKILL.md",
+      "skills/diagnosing-skills/SKILL.md",
+      "skills/zcode-configuration-guide/SKILL.md",
+    ],
+  },
+  { name: "skill-creator", requiredSeedPaths: ["skills/skill-creator/SKILL.md"] },
+  {
+    name: "plugin-creator",
+    requiredSeedPaths: [
+      "skills/plugin-creator/SKILL.md",
+      "skills/plugin-creator/scripts/create-basic-plugin.mjs",
+      "skills/plugin-creator/scripts/marketplace-files.mjs",
+      "skills/plugin-creator/scripts/upsert-dev-marketplace.mjs",
+      "skills/plugin-creator/scripts/scaffold-files.mjs",
+      "skills/plugin-creator/scripts/validate-plugin.mjs",
+      "skills/plugin-creator/references/plugin-json-spec.md",
+      "skills/plugin-creator/references/installing-and-updating.md",
+    ],
+  },
+  {
+    name: "restore-legacy-sessions",
+    requiredSeedPaths: [
+      "commands/restore-legacy-sessions.md",
+      "skills/restore-legacy-sessions/SKILL.md",
+      "skills/restore-legacy-sessions/scripts/restore-conversation.mjs",
+      "skills/restore-legacy-sessions/scripts/scan-legacy-sessions.mjs",
+    ],
+  },
+];
 const officialPluginPackages = [
   {
     // browser-use 只携带自己的 client script 与 skill/docs；node_repl MCP runtime 归
@@ -130,6 +180,27 @@ const officialPluginPackages = [
     stagedPath: "packages/node-repl-host",
   },
 
+  {
+    // Computer Use 壳：官方发行包里的 MIT 资产（author Z.ai），只携带 skill/docs/SDK 三件套。
+    // 它**没有**构建产物，MCP 运行时复用宿主注入的 node_repl（见上一条）——插件 manifest
+    // 不声明 mcpServers，只把 node_repl 记在 hostMcpServerNames 上。
+    // 这三件资产此前完全没进任何 staging 清单，打包产物里因此没有 packages/zcode-cua-plugin，
+    // filesystem seed 的四个 rootCandidate 全部落空，设置页「启用电脑控制」直接报
+    // Plugin not found: computer-use@zcode-plugins-official。
+    packageName: "@zcode/zcode-cua-plugin",
+    relativePath: "apps/zcode-cli/packages/zcode-cua-plugin",
+    requiresRuntime: false,
+    // 与 bootstrap/official-plugin-definitions.ts 的 OFFICIAL_CUA_REQUIRED_SEED_PATHS 一一对应：
+    // 缺任一件时 stageOfficialPlugins() 抛 missing staged official plugin seed asset，
+    // 而不是静默产出一个没有 skill 正文的残缺插件。
+    requiredSeedPaths: [
+      "docs/computer-use.md",
+      "scripts/computer-use-client.mjs",
+      "skills/computer-use/SKILL.md",
+    ],
+    stagedPath: "packages/zcode-cua-plugin",
+  },
+
   ...officePluginPackages.map(({ name, skill }) => ({
     packageName: `@zcode/${name}-plugin`,
     relativePath: `apps/zcode-cli/packages/${name}-plugin`,
@@ -137,6 +208,14 @@ const officialPluginPackages = [
     // 与 official-plugin-definitions.ts 的 requiredSeedPaths 一致：缺失时 stageOfficialPlugins()
     // 直接抛错，而不是静默产出一个没有 skill 正文的残缺插件。
     requiredSeedPaths: ["agents/visual-judge.md", `skills/${skill}/SKILL.md`],
+    stagedPath: `packages/${name}-plugin`,
+  })),
+
+  ...contentPluginPackages.map(({ name, requiredSeedPaths }) => ({
+    packageName: `@zcode/${name}-plugin`,
+    relativePath: `apps/zcode-cli/packages/${name}-plugin`,
+    requiresRuntime: false,
+    requiredSeedPaths,
     stagedPath: `packages/${name}-plugin`,
   })),
 ];

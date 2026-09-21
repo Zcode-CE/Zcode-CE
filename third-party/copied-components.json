@@ -266,5 +266,81 @@
     ],
     "scope": "Office document authoring skills (docx/pptx/xlsx SKILL.md), the shared OOXML structural checker (scripts/check_office.py), and the MIT license text. Adapted for ZCode-CE: the upstream `load_workspace_dependencies` / `render_document` / `present` tool references were replaced with system-Python and file-path equivalents, and the skill directory was renamed from `assets/` to `skills/` to match this repository's plugin layout. The `agents/visual-judge.md` file is an independent ZCode-CE implementation, not copied from upstream.",
     "license": "MIT"
+  },
+  {
+    "id": "ZCode computer-use plugin shell (Z.ai)",
+    "referenceRevision": null,
+    "source": "Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-cua-plugin 0.6.1 in .zcode-plugin/plugin.json and package.json (author: Z.ai; license: MIT). The notice retained below is the full MIT license text carrying that attribution",
+    "file": "third-party/upstream/2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031.txt",
+    "sha256": "2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031",
+    "importRevision": null,
+    "provenance": "Copied from the official Linux distribution package /usr/lib/zcode/glm/packages/zcode-cua-plugin (zcode-bin 3.14.0-1). All four files are byte-identical to that package (sha256 verified on both sides); our copy also pins that same manifest as the license declaration. Upstream records no revision for this material. Reconstructed notice: upstream declares only the author name \"Z.ai\" — it provides neither a copyright line nor a year — so the copyright line below is ZCode-CE's attribution of the declared author, not an upstream-supplied notice.",
+    "roots": ["apps/zcode-cli/packages/zcode-cua-plugin"],
+    "scope": "Official computer-use plugin shell only: .zcode-plugin/plugin.json, docs/computer-use.md, scripts/computer-use-client.mjs and skills/computer-use/SKILL.md from plugin version 0.6.1. Verbatim copy; no local modifications and no node_modules. The runtime this shell drives (packages/zcode-cua and the @trycua/cua-driver closure) is an independent ZCode-CE implementation and is registered separately by the npm dependency inventory.",
+    "license": "MIT"
+  },
+  {
+    "id": "ZCode zcode-guide plugin (Z.ai)",
+    "referenceRevision": null,
+    "source": "Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-guide-plugin 0.2.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages",
+    "file": "third-party/upstream/2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031.txt",
+    "sha256": "2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031",
+    "importRevision": null,
+    "provenance": "Copied from the official Linux distribution package /usr/lib/zcode/glm/packages/zcode-guide-plugin (zcode-bin 3.14.0-1). Every redistributed file is byte-identical to that package (sha256 verified per file: 12 of the upstream 13); no node_modules is copied.",
+    "roots": ["apps/zcode-cli/packages/zcode-guide-plugin"],
+    "scope": "Official zcode-guide plugin content: 9 skill documents under skills/, commands/workflow.md, README.md and .zcode-plugin/plugin.json. Verbatim copy, no local modifications. The upstream package.json is intentionally not redistributed: apps/zcode-cli/packages/* is a pnpm workspace glob, so a copied manifest would register this directory as a workspace importer and break `pnpm install --frozen-lockfile`; the MIT declaration is retained in the copied .zcode-plugin/plugin.json.",
+    "license": "MIT"
+  },
+  {
+    "id": "ZCode skill-creator plugin (Z.ai)",
+    "referenceRevision": null,
+    "source": "Upstream ships no standalone LICENSE file. MIT is declared by the official package skill-creator-plugin 0.1.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages",
+    "file": "third-party/upstream/2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031.txt",
+    "sha256": "2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031",
+    "importRevision": null,
+    "provenance": "Copied from the official Linux distribution package /usr/lib/zcode/glm/packages/skill-creator-plugin (zcode-bin 3.14.0-1). Every redistributed file is byte-identical to that package (sha256 verified per file: 2 of the upstream 3); no node_modules is copied.",
+    "roots": ["apps/zcode-cli/packages/skill-creator-plugin"],
+    "scope": "Official skill-creator plugin content: skills/skill-creator/SKILL.md and .zcode-plugin/plugin.json. Verbatim copy, no local modifications. The upstream package.json is intentionally not redistributed: apps/zcode-cli/packages/* is a pnpm workspace glob, so a copied manifest would register this directory as a workspace importer and break `pnpm install --frozen-lockfile`; the MIT declaration is retained in the copied .zcode-plugin/plugin.json.",
+    "license": "MIT"
+  },
+  {
+    "id": "ZCode plugin-creator plugin (Z.ai)",
+    "referenceRevision": null,
+    "source": "Upstream ships no standalone LICENSE file. MIT is declared by the official package plugin-creator-plugin 0.1.1 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages",
+    "file": "third-party/upstream/2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031.txt",
+    "sha256": "2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031",
+    "importRevision": null,
+    "provenance": "Copied from the official Linux distribution package /usr/lib/zcode/glm/packages/plugin-creator-plugin (zcode-bin 3.14.0-1). Every redistributed file is byte-identical to that package (sha256 verified per file: 9 of the upstream 10); no node_modules is copied.",
+    "roots": ["apps/zcode-cli/packages/plugin-creator-plugin"],
+    "scope": "Official plugin-creator plugin content: skills/plugin-creator/SKILL.md, two references, five Node helper scripts and .zcode-plugin/plugin.json. Verbatim copy, no local modifications. This package also carries the Codex lineage registered in the separate Codex plugin-creator entry; the helper scripts are independent Node implementations, not copies of the upstream Python scripts. The upstream package.json is intentionally not redistributed: apps/zcode-cli/packages/* is a pnpm workspace glob, so a copied manifest would register this directory as a workspace importer and break `pnpm install --frozen-lockfile`; the MIT declaration is retained in the copied .zcode-plugin/plugin.json.",
+    "license": "MIT"
+  },
+  {
+    "id": "ZCode restore-legacy-sessions plugin (Z.ai)",
+    "referenceRevision": null,
+    "source": "Upstream ships no standalone LICENSE file. MIT is declared by the official package restore-legacy-sessions-plugin 0.1.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages",
+    "file": "third-party/upstream/2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031.txt",
+    "sha256": "2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031",
+    "importRevision": null,
+    "provenance": "Copied from the official Linux distribution package /usr/lib/zcode/glm/packages/restore-legacy-sessions-plugin (zcode-bin 3.14.0-1). Every redistributed file is byte-identical to that package (sha256 verified per file: 6 of the upstream 7); no node_modules is copied.",
+    "roots": ["apps/zcode-cli/packages/restore-legacy-sessions-plugin"],
+    "scope": "Official restore-legacy-sessions plugin content: commands/restore-legacy-sessions.md, skills/restore-legacy-sessions/SKILL.md, two Node helper scripts, README.md and .zcode-plugin/plugin.json. Verbatim copy, no local modifications. The upstream package.json is intentionally not redistributed: apps/zcode-cli/packages/* is a pnpm workspace glob, so a copied manifest would register this directory as a workspace importer and break `pnpm install --frozen-lockfile`; the MIT declaration is retained in the copied .zcode-plugin/plugin.json.",
+    "license": "MIT"
+  },
+  {
+    "id": "Codex plugin-creator (workflow adapted by the ZCode plugin-creator plugin)",
+    "referenceRevision": null,
+    "source": "https://github.com/openai/codex — codex-rs/skills/src/assets/samples/plugin-creator/{SKILL.md,references/plugin-json-spec.md,references/installing-and-updating.md}. Apache-2.0 per the openai/codex repository LICENSE and the @openai/codex package metadata (license: Apache-2.0); the upstream skill files carry no copyright header of their own",
+    "file": "scripts/license-texts/Apache-2.0.txt",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "importRevision": null,
+    "provenance": "Attribution entry: no Codex file is redistributed. The ZCode plugin-creator plugin states on SKILL.md:8 that \"the authoring workflow is adapted from Codex's plugin-creator\". Upstream comparison shows a rewrite rather than a copy (upstream SKILL.md 249 lines vs 58; upstream five Python scripts vs five independent Node .mjs scripts; no shared distinctive wording), but the stated lineage is recorded as upstream itself declares it. Verified directly against openai/codex ref 23ae65bb064f4e304e1c9848fce6853c34580e83 on 2026-09-22 (fetched with curl; upstream SKILL.md sha256 71b95b8219644f95d633721e7f7cd3c469edfc8fe50f8415d400dfb2d74bc7b9); the same eight upstream files are byte-identical to the locally installed codex 0.145.0-alpha.24 copy, so that copy may also be used as evidence. The Apache-2.0 LICENSE from that ref (sha256 d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc) is the same license text shipped below, differing only in indentation and line wrapping.",
+    "roots": [
+      "apps/zcode-cli/packages/plugin-creator-plugin/skills/plugin-creator/SKILL.md",
+      "apps/zcode-cli/packages/plugin-creator-plugin/skills/plugin-creator/references/installing-and-updating.md",
+      "apps/zcode-cli/packages/plugin-creator-plugin/skills/plugin-creator/references/plugin-json-spec.md"
+    ],
+    "scope": "Covers the Codex lineage of the three Z.ai-authored Markdown files listed in roots; they are distributed verbatim from the official ZCode package and additionally carry the Z.ai MIT declaration (see the ZCode plugin-creator plugin entry). Apache-2.0 obligations are met by the Apache-2.0 license text shipped in THIRD-PARTY-NOTICES.md, this attribution entry naming the upstream path, and the change statement Z.ai already carries inside SKILL.md:8 — no marker is added to the redistributed files so they remain byte-identical to the official package.",
+    "license": "Apache-2.0"
   }
 ]

@@ -10,12 +10,15 @@ ZCode-CE 基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0�
 
 ## 改动概览
 
-相对上游基线 `872ad96`（`feat: open source`），本仓库共 21 个提交、341 个文件变更
-（+16167 / −27308 行）。改动按主题分为六类。
+相对上游基线 `872ad96`（`feat: open source`），本仓库共 46 个提交、385 个文件变更
+（+18124 / −27414 行）。改动按主题分为六类。
 
-### 1. 移除遥测与监控（178 文件，+4983 / −11501）
+> 计数核对方式：`git rev-list --count 872ad96..HEAD` 与 `git diff --shortstat 872ad96 HEAD`。
+> 这两个数字随每次提交增长，引用前请重新执行。
 
-按「数据流向 + 触发方」判定，而非按模块名。四个提交自底向上推进：
+### 1. 移除遥测与监控（178 文件，+839 / −21505）
+
+按「数据流向 + 触发方」判定，而非按模块名。五个提交自底向上推进：
 
 | 提交      | 内容                                                           |
 | --------- | -------------------------------------------------------------- |
@@ -102,13 +105,13 @@ ZCode-CE 基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0�
 
 | 目录                      | 文件数 |
 | ------------------------- | ------ |
-| `packages/ui`             | 95     |
-| `packages/desktop`        | 94     |
-| `apps/zcode-cli/packages` | 50     |
-| `packages/services`       | 24     |
-| `packages/shared`         | 19     |
+| `packages/desktop`        | 121    |
+| `packages/ui`             | 100    |
+| `apps/zcode-cli/packages` | 47     |
+| `packages/services`       | 26     |
+| `packages/shared`         | 20     |
+| `docs`                    | 17     |
 | `packages/zcode-cua`      | 10     |
-| `docs`                    | 15     |
 
 ## 同步上游
 
@@ -126,19 +129,22 @@ git merge upstream/main
 
 ## 已知的技术债
 
-| #   | 项                                                                              | 严重度 |
-| --- | ------------------------------------------------------------------------------- | ------ |
-| 1   | `tsconfig.main.json` 的 `rootDir` 越界（`tsc -b` 会把编译产物写进 `src/`）      | 高     |
-| 2   | `pnpm typecheck` 的工程列表不含 desktop main/renderer                           | 中     |
-| 3   | desktop main/renderer 存在既有类型错误                                          | 中     |
-| 4   | `packages/ui` 的 `@/*` 别名导致测试必须从包目录内执行                           | 低     |
-| 5   | `THIRD-PARTY-NOTICES.md` 的 30 项材料待补齐（`licenses:check --strict` 不通过） | 中     |
+| #   | 项                                                                              | 严重度 | 状态                                                         |
+| --- | ------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------ |
+| 1   | `tsconfig.main.json` 的 `rootDir` 越界（`tsc -b` 会把编译产物写进 `src/`）      | 高     | ✅ 已修（`18948a9` 补 `noEmit`）                             |
+| 2   | `pnpm typecheck` 的工程列表不含 desktop main/renderer                           | 中     | ✅ 已修（`8549509` 纳入 main/renderer/scheduler）            |
+| 3   | desktop main/renderer 存在既有类型错误                                          | 中     | ✅ 已修（`ce03e36` main 77→0、`5cbe4cd` renderer/scheduler） |
+| 4   | `packages/ui` 的 `@/*` 别名导致测试必须从包目录内执行                           | 低     | ⬜ 仍存在                                                    |
+| 5   | `THIRD-PARTY-NOTICES.md` 的 30 项材料待补齐（`licenses:check --strict` 不通过） | 中     | ⬜ 仍存在                                                    |
 
-技术债 #1 的规避方式：**不要对 `packages/desktop` 使用 `tsc -b`**，改用
-`tsc -p <cfg> --noEmit` 或 `scripts/desktop-typecheck-baseline.sh`。
+技术债 #1 的历史规避方式（**已由 `noEmit` 修掉**，保留作为背景）：不要对
+`packages/desktop` 使用 `tsc -b`，改用 `tsc -p <cfg> --noEmit` 或
+`scripts/desktop-typecheck-baseline.sh`。
 
-技术债 #3 的当前基线（`bash scripts/desktop-typecheck-baseline.sh head`）：
-main 42 项、renderer 94 项。改动 desktop 后跑 `... diff` 只报**新增**错误。
+技术债 #3 的当前基线（`bash scripts/desktop-typecheck-baseline.sh head`，2026-09-22 实测）：
+**main 1 项、renderer 90 项**——剩下的错误集中在 `packages/services` 的
+`TS2591`（缺 `@types/node` 上下文）等第三方源码，不是 desktop 自身代码。
+改动 desktop 后跑 `... diff` 只报**新增**错误。
 
 技术债 #5 的两级判定：
 

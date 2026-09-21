@@ -1,6 +1,5 @@
 /* eslint-disable max-lines -- host process 服务注册和启动装配需要集中维护，拆散后会更难追踪依赖注入顺序 */
 // Node.js service implementations — NOT safe to import in browser code
-import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -497,6 +496,11 @@ import {
   type WindowsCuaRuntime,
 } from "#src/cua-permission-broker/windowsCuaDevRuntime.js";
 import { createCanonicalCuaHelperInstaller } from "./cua-permission-broker/cuaHelperInstaller.js";
+import {
+  canRunOpenSourceCuaDriver,
+  mintCuaProductHelperEnv,
+  resolveCuaProductHelperSpawnEnv,
+} from "./cua-permission-broker/cuaProductHelperSpawnEnv.js";
 import { WindowsCuaHelperHost } from "#src/cua-permission-broker/windowsCuaDevHelperHost.js";
 import { DEV_HELPER_APP_NAME, HELPER_APP_NAME } from "@zcode/zcode-cua/broker/helperConstants";
 import { resolveBrokerSocketPath } from "@zcode/zcode-cua/broker/socketPath";
@@ -1254,20 +1258,43 @@ export async function buildCuaProductHelperAgentEnv(
       }
     }
     markCuaProductHelperAgentEnvUnavailable(host);
-    if (!isCallerTimeout) {
-      cuaProductHelperAgentEnvRetryAt.set(host, Date.now() + CUA_PRODUCT_HELPER_AGENT_ENV_RETRY_MS);
-    }
-    logger.warn(
-      undefined,
-      `Computer Use Helper broker_unavailable; disabling workspace zcode-cua MCP server for this agent spawn (${cuaHelperStartErrorDetail(error)})`,
-    );
-    return {
+    const helperFailureEnv: Record<string, string> = {
       [BROKER_UNAVAILABLE_ENV]: isCallerTimeout
         ? // 冷启动仍在后台跑——"warming up"，reconcileRecoveredHelper 会在 helper ready 后
           // 只清理后续 spawn marker。
           "broker_unavailable: helper broker warming up"
         : `broker_unavailable: ${cuaHelperStartErrorDetail(error)}`,
     };
+    if (!isCallerTimeout) {
+      // Helper 真的起不来（F3-2）：CE 构建不随包携带 cua-helper —— macOS 的
+      // resources/cua-helper/*.app 与 Windows 的 resources/tools/cua-helper 都不在
+      // electron-builder.config.js:580-667 的 extraResources 里，也没有 runtime-manifest.json
+      // 的生产者 —— 因此 win32 的 acquire 分支必然落在这一跳。官方 Helper 只是 Computer Use
+      // 的凭据来源，不是门控：在开源驱动支持的平台上改用懒铸造契约
+      // （socket + config-provenance authority），与上面 darwin 懒启动分支同口径，
+      // 让 node-repl-host 的 trycua 路径照常可用。
+      const openSourceEnv = resolveCuaProductHelperSpawnEnv(helperFailureEnv);
+      if (openSourceEnv !== helperFailureEnv) {
+        // 作用域：只有真的回落到铸造契约时才清退避。下面未铸造的分支（开源驱动不支持该平台）
+        // 仍然走原来的 30s 退避——那里代表"真实存在的 Helper 反复启动失败"，退避仍然必要。
+        // 铸造则意味着不再依赖 Helper transport，留着退避反而有害：窗口内的后续 spawn 会在
+        // 本函数 :1173 拿到 "helper startup retry is deferred" envelope、又被判成"无凭据"，
+        // Windows 会退化成"每个退避窗口（CUA_PRODUCT_HELPER_AGENT_ENV_RETRY_MS，见 :549 = 30s）
+        // 只有一次会话能用电脑控制"。
+        cuaProductHelperAgentEnvRetryAt.delete(host);
+        logger.warn(
+          undefined,
+          `Computer Use Helper unavailable; using the open-source driver credential contract instead (${cuaHelperStartErrorDetail(error)})`,
+        );
+        return openSourceEnv;
+      }
+      cuaProductHelperAgentEnvRetryAt.set(host, Date.now() + CUA_PRODUCT_HELPER_AGENT_ENV_RETRY_MS);
+    }
+    logger.warn(
+      undefined,
+      `Computer Use Helper broker_unavailable; disabling workspace zcode-cua MCP server for this agent spawn (${cuaHelperStartErrorDetail(error)})`,
+    );
+    return helperFailureEnv;
   }
 }
 
@@ -2184,16 +2211,17 @@ export function createLocalServices(options: {
       // 供后续配置/生命周期 bookkeeping 使用；recovery 只清理 marker，不回收已有 Agent。
       cuaProductHelperWorkspaceRegistry.setEnabled(context, Boolean(cuaProductHelperHost));
       let cuaProductHelperEnv: Record<string, string> = {};
-      if (!helper && cuaPluginEnabled && process.platform === "darwin") {
+      // 平台集合从 darwin 扩到开源驱动支持的三个平台（F3-2）：Linux 永远没有官方 Helper
+      // ——createDefaultCuaProductHelper 对非 darwin/win32 直接返回 undefined，helper 恒为
+      // undefined——只写 darwin 会让 Linux 上的 trycua 路径永远拿不到凭据；
+      // win32 在这里是兜底（该平台通常能从 acquire 拿到 host 对象，失败回落见 catch 分支）。
+      if (!helper && cuaPluginEnabled && canRunOpenSourceCuaDriver(process.platform)) {
         // 懒启动：无托管 host 时注入稳定 socket；无 token（身份模式）、无 pluginAuthority
         // （其校验方就是 host，host 缺席时无意义）。SDK ensureBrokerAvailable 负责拉起。
         // pluginAuthority 是 agent 进程内的 config-provenance 随机数（bootstrap 捕获后写进
         // node_repl 配置 env，core 比对两者证明该配置出自本 bootstrap 而非用户配置文件）；
         // 它不需要 host——托管态由 host 铸造，懒启动态在此按 spawn 铸造，语义与校验完全一致。
-        cuaProductHelperEnv = {
-          [BROKER_SOCKET_ENV]: resolveBrokerSocketPath(),
-          [ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY]: randomBytes(16).toString("hex"),
-        };
+        cuaProductHelperEnv = mintCuaProductHelperEnv();
         cuaProductHelperWorkspaceRegistry.setEnabled(context, false);
       } else if (cuaProductHelperHost && helper) {
         const candidateEnv = await buildCuaProductHelperAgentEnv(

@@ -18,7 +18,7 @@
 
 ### 插件清单对照
 
-官方发行版随包分发 14 个插件，本仓库分发 5 个。
+官方发行版随包分发 14 个插件，本仓库分发 10 个（其中 5 个是从官方发行包逐字节搬运的 MIT 内容，见下文「本项目已补齐的部分」）。
 
 | 插件                      | 官方 | 本仓库 | 说明                                         |
 | ------------------------- | ---- | ------ | -------------------------------------------- |
@@ -31,11 +31,11 @@
 | `image-search`            | ✅   | ❌     | 依赖官方服务端与账号鉴权                     |
 | `android-emulator`        | ✅   | ❌     | 仅分发编译产物，无源码                       |
 | `ios-simulator`           | ✅   | ❌     | 仅分发编译产物，无源码                       |
-| `computer-use`            | ✅   | ❌     | 仅分发编译产物，无源码                       |
-| `plugin-creator`          | ✅   | ❌     | 仅分发编译产物，无源码                       |
-| `skill-creator`           | ✅   | ❌     | 仅分发编译产物，无源码                       |
-| `zcode-guide`             | ✅   | ❌     | 仅分发编译产物，无源码                       |
-| `restore-legacy-sessions` | ✅   | ❌     | 仅分发编译产物，无源码                       |
+| `computer-use`            | ✅   | ✅     | 官方插件原样搬运（MIT），执行改用开源驱动    |
+| `plugin-creator`          | ✅   | ✅     | 官方插件原样搬运（MIT；工作流改编自 Codex）  |
+| `skill-creator`           | ✅   | ✅     | 官方插件原样搬运（MIT）                      |
+| `zcode-guide`             | ✅   | ✅     | 官方插件原样搬运（MIT）                      |
+| `restore-legacy-sessions` | ✅   | ✅     | 官方插件原样搬运（MIT）                      |
 
 ### 能力对照
 
@@ -87,8 +87,8 @@
 **两边都没有随包分发**。
 
 Superpowers 上游（`obra/superpowers`，MIT）是公开项目，官方客户端通过
-`claude-plugins-official` 市场提供安装入口。本仓库对该市场没有任何引用（见
-「其它差距」）。
+`claude-plugins-official` 市场提供安装入口。**本仓库现已同样提供该市场**（见「其它差距」），
+因此用户可以从市场自行安装，而不是依赖随包分发。
 
 ### 修正 2：Swift bridge（第 8 项）
 
@@ -161,22 +161,21 @@ PiP 传输层是本项里最容易被忽略的缺口——**编排层保留不�
 
 ### 仅分发编译产物，无源码
 
-以下插件在官方发行版中只包含**打包后的 JavaScript 与类型声明**，没有 TypeScript 源码：
+以下插件在官方发行版中只包含**打包后的 JavaScript 与类型声明**，没有 TypeScript 源码，
+且上游没有公开对应的源码仓库：
 
-| 插件                      | 分发内容                                        |
-| ------------------------- | ----------------------------------------------- |
-| `android-emulator`        | `dist/` 编译产物 + 16 个 `.d.ts`，无 `.ts` 源码 |
-| `ios-simulator`           | `dist/` 编译产物 + `.d.ts`，无 `.ts` 源码       |
-| `computer-use`            | `dist/mcp/server.js`（约 3.2 MB 打包产物）      |
-| `node-repl-host`          | `dist/mcp/server.js`（约 5.1 MB 打包产物）      |
-| `plugin-creator`          | 技能文档 + 脚本，无独立运行时                   |
-| `skill-creator`           | 技能文档                                        |
-| `zcode-guide`             | 技能文档 + 命令                                 |
-| `restore-legacy-sessions` | 技能文档 + 脚本                                 |
+| 插件               | 分发内容                                        |
+| ------------------ | ----------------------------------------------- |
+| `android-emulator` | `dist/` 编译产物 + 16 个 `.d.ts`，无 `.ts` 源码 |
+| `ios-simulator`    | `dist/` 编译产物 + `.d.ts`，无 `.ts` 源码       |
 
-这些插件的清单声明为 MIT，但**上游未公开其源码仓库**。没有源码就无法移植，重新实现需要
-从打包产物反向工程——对 `android-emulator` / `ios-simulator` 这类依赖完整工具链
-（Android SDK、Xcode、AVD、idb）的能力，成本极高且难以保证行为一致。
+重新实现需要从打包产物反向工程——对这类依赖完整工具链（Android SDK、Xcode、AVD、idb）的
+能力，成本极高且难以保证行为一致。
+
+**2026-09-22 修订**：这张表此前还列了 `computer-use`、`node-repl-host`、`plugin-creator`、
+`skill-creator`、`zcode-guide`、`restore-legacy-sessions` 六项，那个分类是错的。它们的发行
+内容本来就是**可再分发的 MIT 内容**（技能文档、脚本、命令、文档），不需要「移植源码」，
+只要按许可原样搬运即可——本轮已按此处理，见下文「本项目已补齐的部分」。
 
 ### 依赖官方服务端
 
@@ -218,6 +217,34 @@ Helper 后端**，而官方没有提供 Linux 后端。这个区别容易被误�
 保留的失败关闭语义：`driver: "disabled"` 模式维持原占位行为，所有面不可用。原生 Helper、
 PiP 传输层、broker RPC 仍是占位——**这三块没有被开源驱动替代**，因为它们的职责是官方私有
 二进制之间的通道，不是驱动能力本身。
+
+### 四个内容插件：官方发行包原样搬运
+
+`zcode-guide`、`skill-creator`、`plugin-creator`、`restore-legacy-sessions` 四个插件没有
+MCP server、没有 hooks、没有编译产物，全部是技能文档（Markdown）与 `.mjs` 脚本，清单声明
+`license: MIT` / `author: Z.ai`。它们**不需要重新实现**：直接从官方发行包逐字节搬运到
+`apps/zcode-cli/packages/<name>-plugin/`（共 29 个文件，逐文件 sha256 与官方包相同），
+许可归属登记在 `third-party/copied-components.json`，许可全文随 `THIRD-PARTY-NOTICES.md` 分发。
+
+| 插件                      | 版本  | 搬运文件数 | 许可         | 备注                       |
+| ------------------------- | ----- | ---------- | ------------ | -------------------------- |
+| `zcode-guide`             | 0.2.0 | 12         | MIT (© Z.ai) | 9 个技能文档 + 命令 + 说明 |
+| `skill-creator`           | 0.1.0 | 2          | MIT (© Z.ai) | 1 个技能文档               |
+| `plugin-creator`          | 0.1.1 | 9          | MIT (© Z.ai) | 含 Codex 血缘，见下        |
+| `restore-legacy-sessions` | 0.1.0 | 6          | MIT (© Z.ai) | 技能 + 命令 + 2 个脚本     |
+
+两点如实说明：
+
+- **官方 `package.json` 有意不搬**（官方 13/3/10/7 个文件 → 本仓库 12/2/9/6）。原因：
+  `apps/zcode-cli/packages/*` 是 pnpm workspace 的通配目录，放进去会让这 4 个目录变成
+  workspace importer，CI 第一站 `pnpm install --frozen-lockfile` 直接失败；而插件加载只认
+  `.zcode-plugin/plugin.json`，MIT 声明就在那份文件里，许可信息不因此缺失。
+- **`plugin-creator` 带 Codex 血缘**：`skills/plugin-creator/SKILL.md:8` 自述
+  「the authoring workflow is adapted from Codex's plugin-creator」，上游是 Apache-2.0 的
+  [openai/codex](https://github.com/openai/codex)。逐文件比对显示 Z.ai 做的是**改写**而不是复制
+  （上游 SKILL.md 249 行 vs 本包 58 行；上游 5 个 Python 脚本 vs 本包 5 个独立的 Node 脚本），
+  但仍按上游自述**如实登记**了一条独立的 Apache-2.0 归属条目——许可副本由
+  `THIRD-PARTY-NOTICES.md` 承担，变更声明即 SKILL.md 里那句自述。
 
 ### Office 三件套：MIT 独立实现
 
@@ -271,37 +298,57 @@ PiP 传输层、broker RPC 仍是占位——**这三块没有被开源驱动替
 
 除了上述 12 项，系统对比后还发现以下差距。
 
-### 默认个人插件市场
+### 默认个人插件市场（已补齐）
 
-官方构建产物里出现 `claude-plugins-official`（3 处），其中一处的注释明确写着它是
+官方构建产物里出现 `claude-plugins-official`，其中一处的注释明确写着它是
 **默认个人市场 id**：
 
 > 默认个人市场 id（客户端精选推荐区已下线，pluginNames 策展名单随之下线）。
 
-本仓库源码与构建产物中该字符串出现 **0 次**。这个市场是 **Superpowers、context7 等社区
-插件**的分发入口——它没有被引用的直接后果是：官方用户能从市场装上 Superpowers，本仓库
-用户没有这个入口。
+这个市场是 **Superpowers、context7 等社区插件**的分发入口。上游开源快照只保留了
+`zcode-plugins-official` 一个市场，本仓库一度同样如此——直接后果是官方用户能从市场装上
+Superpowers，本仓库用户没有这个入口。
 
-需要说明两点，避免过度解读：
+**现状：本仓库已补上该市场**（`packages/shared/src/plugin-marketplaces.ts` 的
+`DEFAULT_PLUGIN_MARKETPLACES`，id 为 `CLAUDE_PLUGINS_OFFICIAL_MARKETPLACE_ID`）。
 
-- 这是**上游开源代码本身的状态**，不是本仓库为「去官方化」而删除的
-  （`packages/shared/src/plugin-marketplaces.ts` 与开源基线逐字节一致）
-- 该市场是否在官方客户端**首启自动注册**，本文未验证，已列入「待验证项」
+需要说明的是：
+
+- 该市场由 **Anthropic 维护**（`anthropics/claude-plugins-official`），收录的是第三方插件；
+  本项目不背书其内容，用户安装前应自行确认许可与质量
+- 该市场在官方客户端是否**首启自动注册**，本文未验证，已列入「待验证项」
 
 ### 插件声明与实际分发不一致
 
 本仓库的官方插件声明文件
 （`apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts`）
-**与上游基线逐字节一致**，其中声明了 14 个插件，包括本仓库并未分发的
-`android-emulator`、`ios-simulator`、`pdf`、`image-search`、`computer-use`、
-`plugin-creator`、`skill-creator`、`zcode-guide`、`restore-legacy-sessions`。
+声明了 **14 个**插件，本仓库仍不分发其中的 `android-emulator`、`ios-simulator`、`pdf`、
+`image-search` 四个。该文件在 fix.3 之前与上游基线逐字节一致，fix.3 起为其中几个内容型插件
+补了 `requiredSeedPaths`（见该文件内注释），因此**现在已与基线不同**。
 
 这些声明在运行时找不到对应目录，会被静默跳过（`resolveFilesystemPluginRoot` 遍历
-`rootCandidates` 全部落空后返回 `undefined`）。连带影响是**默认启用名单里包含用户实际
-装不上的插件**——`packages/shared/src/plugin-marketplaces.ts` 的
-`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS` 就包含 `pdf` 与 `image-search`。
+`rootCandidates` 全部落空后返回 `undefined`）。
 
-这是本仓库需要修正的一致性问题，不是官方的问题。
+默认启用名单（`packages/shared/src/plugin-marketplaces.ts` 的
+`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`）里同样保留了没有实体的条目（`pdf` 与
+`image-search`）。但**这些条目只参与「已发现的插件是否默认启用」这一个判断**，集合的每一处
+消费点都作用在**已发现、已加载或已落盘缓存**的候选之上：
+
+| 消费点                              | 求值对象                             |
+| ----------------------------------- | ------------------------------------ |
+| `commandsService.ts:394`            | 遍历已发现的 command candidate       |
+| `skillsService.ts:820`              | 遍历已发现的 skill candidate         |
+| `subagentsService.ts:437`           | 遍历官方插件缓存根（磁盘上已存在的） |
+| `adapters/src/plugins/index.ts:179` | 已成功加载的插件（`loaded.id`）      |
+
+没有候选时那段逻辑根本不执行，因此无效条目**不产生运行时错误，只是不生效** —— 用户不会
+因为这条名单看到失败提示。
+
+要区分的是另一条链路：**插件被列进市场清单、却没有可加载的目录**时，用户在该条目上点「启用」
+会拿到 `Plugin not found: <name>@<marketplace>`（`adapters/src/plugins/marketplace.ts:703`
+的校验）。那条报错的判据是市场清单，不是这张默认启用名单，两者不能混为一谈。
+
+这是本仓库需要修正的一致性问题（声明与实际分发不一致），不是官方的问题。
 
 ### 插件资源规模差异
 
@@ -374,7 +421,7 @@ BASE=872ad96
 # 官方插件清单（应为 14 项）
 ls "$OFFICIAL"
 
-# 本仓库插件清单（应为 5 项：按真实 plugin.json 清单计）
+# 本仓库插件清单（应为 10 项：按真实 plugin.json 清单计）
 find apps/zcode-cli/packages -name plugin.json -path '*.zcode-plugin*' \
   | sed 's|/.zcode-plugin/plugin.json||' | sort
 ```
@@ -514,21 +561,22 @@ for (const m of src.matchAll(/\["([a-z]+)",\s*"[a-z]+",\s*"[A-Za-z]+"/g)) names.
 console.log([...new Set(names)].length);
 '
 
-# 实际分发的插件数（应为 5）
+# 实际分发的插件数（应为 10）
 find apps/zcode-cli/packages -name plugin.json -path '*.zcode-plugin*' | wc -l
 ```
 
-预期结果：14 项声明、5 个实际分发的插件——声明里有 9 个插件在仓库中不存在。
+预期结果：14 项声明、10 个实际分发的插件——声明里有 4 个插件在仓库中不存在
+（`android-emulator`、`ios-simulator`、`pdf`、`image-search`）。
 
 ## 待验证项
 
 以下结论尚未取得充分证据，读者不应直接采信：
 
-| 项                                         | 状态                                                                         |
-| ------------------------------------------ | ---------------------------------------------------------------------------- |
-| `claude-plugins-official` 是否首启自动注册 | 仅确认官方构建产物引用它、本仓库没有；自动注册行为未验证                     |
-| 官方 Windows CUA 是否已面向所有用户发布    | 官方存在 `WindowsCuaHelperHost` 与 `ZCODE_CUA_DEV_MODE` 开关；发布范围未验证 |
-| 官方 macOS Helper 的完整能力边界           | 仅确认安装器为 darwin-only；其能力清单未与本仓库逐项比对                     |
+| 项                                         | 状态                                                                              |
+| ------------------------------------------ | --------------------------------------------------------------------------------- |
+| `claude-plugins-official` 是否首启自动注册 | 该市场已在本仓库声明（见「其它差距」）；但官方/本仓库是否在**首启**自动注册未验证 |
+| 官方 Windows CUA 是否已面向所有用户发布    | 官方存在 `WindowsCuaHelperHost` 与 `ZCODE_CUA_DEV_MODE` 开关；发布范围未验证      |
+| 官方 macOS Helper 的完整能力边界           | 仅确认安装器为 darwin-only；其能力清单未与本仓库逐项比对                          |
 
 ## 相关文档
 

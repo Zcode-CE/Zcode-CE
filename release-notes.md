@@ -1,44 +1,61 @@
-# ZCode-CE v3.14.1-ce.1.fix.2
+# ZCode-CE v3.14.1-ce.1.fix.3
 
 **中文** · [English](#english)
 
-> 承接 `3.14.1-ce.1.fix.1` 的启动修复，本版处理三处用户反馈的问题。
+> 承接 `3.14.1-ce.1.fix.2`。本版把「本应可用、却在开源版里被摘掉或卡住的能力」补回来。
 > 若你仍在 `3.14.1-ce.1`（界面卡在 logo），请直接升级到本版。
 
 ## 本次修复
 
-### 1. 模型拉取对话框：模型一多就选不了、也加不了
+### 1. 五个内置插件从未随包发出
 
-对话框容器是 grid，而内部按 flex 写的滚动区在 grid 里**不生效** ——
-列表没有高度约束就撑破 `max-height`，被 `overflow: hidden` 裁掉，底部「添加」按钮也被顶出可视区。
+官方发行包有 **14** 个内置插件，本仓库只发出 **5** 个。其余插件在源码里**声明都在**，包里没有实体 ——
+运行时会遍历候选路径全部落空后**静默跳过**，不报错、不警告。本版补入 5 个，现在共 **10** 个：
 
-- 改为 flex 列布局：固定头 / 固定搜索框 / 可滚动列表 / 固定底部按钮
-- **顶部新增搜索框**，模型多时可直接筛选
-- 搜索只影响「看得见什么」，不影响「选中了什么」：勾选跨筛选保留，可先筛一批勾一批再一次提交
-- 「全选」只作用于当前筛选下可见的项，无筛选时与改前一致
+- **`computer-use`** —— 见下节
+- **`zcode-guide`** —— 恢复 `/workflow` 命令与 `dynamic-workflows` 技能，见下节
+- **`skill-creator`** —— 让智能体帮你写技能
+- **`plugin-creator`** —— 让智能体帮你写插件（工作流改编自 OpenAI Codex，Apache-2.0，已登记归属）
+- **`restore-legacy-sessions`** —— 恢复旧版本会话。**默认关闭**，且它会写会话数据库
+  （`~/.zcode/v2/tasks-index.sqlite`、`~/.zcode/cli/db/db.sqlite`），只在显式启用并调用时运行
 
-### 2. 电脑控制在 Linux 上打不开
+全部按官方发行包逐字节原样搬运（MIT / Apache-2.0），未带官方 `node_modules`。
 
-Linux 上只显示「当前环境暂不支持电脑控制」。排查后发现能力其实齐备，是**四道授权门控**全部只按 macOS/Windows 建模：
+同时修了一处护栏缺失：`skill-creator` 与 `restore-legacy-sessions` 此前**完全没有声明必需资产**，
+少一个文件只会静默降级 —— 现已逐项钉住。
 
-- 可用性判定把 Linux 判为不支持
-- 设置分区只认 macOS/Windows 工作区
-- 插件页在 Linux 显示「不可用」卡片
-- **「电脑控制」整个设置分区被硬编码隐藏 —— 这一条在所有平台都生效，Windows 同样打不开**
+### 2. `/workflow` 命令在本构建里此前从未存在
 
-四条已全部处理。Linux 现在可按「实验性支持」启用：
+本仓库为它建好了全套装配 —— 命令面板里专门把它排在 `goal` 之后、灰度开关、运行时包、界面文案 ——
+**但内容提供方 `zcode-guide` 插件从未随包发出**。结果是这个命令在我们的构建里从来没有出现过。
+本版补入该插件，`/workflow` 与 `dynamic-workflows` 技能恢复。
 
-- 驱动（开源实现 trycua/cua）已随包发出，打包期有 `assertPackagedCuaDriver` 硬校验把关
-- **但后端在 X11 / Wayland 下的覆盖度尚未全面验证**，鼠标键盘控制与截图可能不可用 ——
-  这一点已在设置页里如实标注，而不是承诺可用
+### 3. 电脑控制：解开 Helper 门控
 
-### 3. 「反馈与诊断」页重排
+本构建的三个平台都**没有官方 Helper 实体**（打包配置里没有它，生成它的脚本也不在本仓库）。
+而官方原先只在存在私有 Helper 时才向智能体注入 broker 凭据 —— 于是这条能力在本仓库里恒不可用。
 
-- 布局：诊断信息、反馈渠道、预填内容等原被挤在固定宽度的窄列里（预填预览每行十来个字就换行），现改为整行宽度
-- 删掉三行纯说明文字（附件、作用范围、遥测状态）—— 它们不是设置项
-- 「生成日志包」与「下载日志」实际是两条日志打包路径、用户分不出来，合并为一个「下载日志」，
-  并保留原来那份有用的反馈（导出后显示产物路径 + 「在文件管理器中显示」）
-- 「本构建不含任何后台上报通道」移到 **关于 ZCode** 对话框，作为一句事实陈述
+本版让开源驱动（`@trycua/cua-driver`，MIT）不再依赖 Helper：无 Helper 实体时直接生成
+socket 与 pluginAuthority 凭据，与官方为 macOS 写的懒启动契约同源。
+
+**如实标注的限制**：
+
+- **Windows 未在真机上实测** —— 只做了 CI 打包。驱动的 Windows 预编译产物能否在本机加载未经验证
+- **Linux 的 X11 / Wayland 覆盖度仍未验证** —— 鼠标键盘控制与截图可能不可用，设置页按「实验性」标注
+- **远端工作区（SSH / WSL / 容器）与 Web 不承载电脑控制** —— 本轮有意不碰
+
+### 4. 文档与许可
+
+- 修正 `NOTICE.md` 中「电脑控制不可用」等已过期陈述，以及 `official-diff.md` 里一处自相矛盾
+  （把纯 Markdown 的插件错写成「仅分发编译产物，无源码」）
+- 5 个插件的许可与第三方归属登记完成，`licenses:check` 通过
+
+### 5. 仍未补齐的能力（有意不做，不是遗漏）
+
+- `pdf` —— 官方版授权**仅限非商业使用**，不能进入本仓库；需基于开源排版链重新实现，已列入后续路线
+- `image-search` —— 能力在官方服务端，需要官方账号鉴权，本地实现无意义
+- `android-emulator` / `ios-simulator` —— 官方只分发编译产物，无源码
+- 官方 Office 四件套原版 —— 同为「禁止商用」许可；本仓库使用独立 MIT 实现提供同等能力
 
 ## 平台
 
@@ -58,39 +75,75 @@ Linux 上只显示「当前环境暂不支持电脑控制」。排查后发现�
 
 # English
 
-> Follows the startup fix in `3.14.1-ce.1.fix.1`. This release addresses three reported issues.
+> Follows `3.14.1-ce.1.fix.2`. This release restores capabilities that should have been available
+> but were stripped from, or blocked in, the open-source build.
 > If you are still on `3.14.1-ce.1` (UI stuck on the logo), upgrade straight to this version.
 
 ## Fixes
 
-### 1. Model fetch dialog: with many models you could neither select nor add
+### 1. Five built-in plugins were never shipped
 
-The dialog container is a grid, so the scrolling area written with flex semantics had no effect —
-the list had no height constraint, overflowed `max-height`, was clipped by `overflow: hidden`,
-and the Add button was pushed out of view.
+The official distribution ships **14** built-in plugins; this repository shipped **5**. The rest were
+still declared in source but had no package on disk — resolution silently skips them with no error and
+no warning. Five are added here, bringing the total to **10**:
 
-- Now a flex column: fixed header / fixed search / scrollable list / pinned footer
-- **New search box at the top** to filter models
-- Search only changes what is _visible_, not what is _selected_ — selections survive filter changes
-- Select all applies to the currently visible items only; without a filter it behaves as before
+- **`computer-use`** — see below
+- **`zcode-guide`** — restores the `/workflow` command and the `dynamic-workflows` skill, see below
+- **`skill-creator`** — let the agent write skills for you
+- **`plugin-creator`** — let the agent write plugins for you (workflow adapted from OpenAI Codex,
+  Apache-2.0; attribution registered)
+- **`restore-legacy-sessions`** — restore sessions from older versions. **Off by default**, and it
+  writes to the session database (`~/.zcode/v2/tasks-index.sqlite`, `~/.zcode/cli/db/db.sqlite`);
+  it only runs when explicitly enabled and invoked
 
-### 2. Computer Use could not be opened on Linux
+All copied byte-for-byte from the official distribution (MIT / Apache-2.0), without the official
+`node_modules`.
 
-Linux only showed Computer Use as unavailable. Four separate gates all assumed macOS/Windows only,
-including one that **hid the entire Computer Use settings section on every platform — Windows included**.
-All four are addressed. Linux can now be enabled as an **experimental** feature:
+A missing guardrail was fixed too: `skill-creator` and `restore-legacy-sessions` previously declared
+**no required assets at all**, so a missing file degraded silently — each is now pinned.
 
-- The driver (open-source trycua/cua) ships with the app, guarded by a hard `assertPackagedCuaDriver` check at package time
-- **Its X11 / Wayland coverage has not been fully verified**, so mouse/keyboard control and screenshots may not work.
-  This is stated plainly in the settings UI rather than promised.
+### 2. The `/workflow` command never existed in this build
 
-### 3. Feedback & Diagnostics page reworked
+This repository has the entire wiring for it — the command palette even pins it right after `goal`,
+plus the feature gate, runtime packages and UI copy — **but its content provider, the `zcode-guide`
+plugin, was never shipped.** The command had therefore never appeared in our builds. It ships now,
+restoring `/workflow` and the `dynamic-workflows` skill.
 
-- Layout: rows were squeezed into a fixed narrow column; block content now spans the full width
-- Three purely explanatory rows removed (attachments, scope, telemetry status) — they were not settings
-- Build log zip and Download logs were two packaging paths users could not tell apart; merged into one
-  **Download logs**, keeping the useful part (showing the output path + Show in folder)
-- This build contains no background reporting channel — moved into the **About ZCode** dialog
+### 3. Computer Use: the Helper gate is opened
+
+None of the three platforms in this build has an official Helper binary (it is absent from the
+packaging config and the script that would produce it is not in this repository). The official code
+only injects broker credentials into the agent when a private Helper exists — so this capability was
+permanently unavailable here.
+
+This release decouples the open-source driver (`@trycua/cua-driver`, MIT) from the Helper: without a
+Helper it mints the socket and pluginAuthority credentials directly, the same lazy-start contract the
+official code already uses for macOS.
+
+**Stated plainly:**
+
+- **Windows has not been tested on real hardware** — CI packaging only. Whether the driver's
+  prebuilt Windows binary loads on a real machine is unverified
+- **Linux X11 / Wayland coverage is still unverified** — mouse/keyboard control and screenshots may
+  not work; the settings page labels it experimental
+- **Remote workspaces (SSH / WSL / containers) and Web do not carry Computer Use** — deliberately out
+  of scope this round
+
+### 4. Docs and licensing
+
+- Corrected stale claims in `NOTICE.md` ("Computer Use is unavailable") and one self-contradiction in
+  `official-diff.md` (plugins that are plain Markdown were mis-described as "compiled artifacts only,
+  no source")
+- License and third-party attribution registered for all five plugins; `licenses:check` passes
+
+### 5. Still missing on purpose (not oversights)
+
+- `pdf` — the official plugin is licensed for **non-commercial use only** and cannot be included here;
+  it needs a rewrite on an open-source layout toolchain, now on the roadmap
+- `image-search` — the capability lives on official servers and requires official account auth
+- `android-emulator` / `ios-simulator` — the official builds ship compiled artifacts without source
+- The official Office plugins — also "no commercial use"; equivalent capability is provided by
+  independent MIT implementations
 
 ## Platforms
 

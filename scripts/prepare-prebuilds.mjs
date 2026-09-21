@@ -100,6 +100,49 @@ const remoteOfficePluginPackages = [
   { name: "presentations", skill: "pptx" },
   { name: "spreadsheets", skill: "xlsx" },
 ];
+// 纯内容型官方插件（commands/skills，无 MCP、无编译产物）：与桌面 staging 清单
+// （packages/desktop/scripts/prepare-agent-node-bundle.mjs 的 contentPluginPackages）和
+// bootstrap/official-plugin-definitions.ts 的同名 requiredSeedPaths 三处同源。
+const remoteContentPluginPackages = [
+  {
+    name: "zcode-guide",
+    requiredSeedPaths: [
+      "commands/workflow.md",
+      "skills/dynamic-workflows/SKILL.md",
+      "skills/dynamic-workflows/examples.md",
+      "skills/dynamic-workflows/patterns.md",
+      "skills/diagnosing-commands/SKILL.md",
+      "skills/diagnosing-hooks/SKILL.md",
+      "skills/diagnosing-mcp/SKILL.md",
+      "skills/diagnosing-plugins/SKILL.md",
+      "skills/diagnosing-skills/SKILL.md",
+      "skills/zcode-configuration-guide/SKILL.md",
+    ],
+  },
+  { name: "skill-creator", requiredSeedPaths: ["skills/skill-creator/SKILL.md"] },
+  {
+    name: "plugin-creator",
+    requiredSeedPaths: [
+      "skills/plugin-creator/SKILL.md",
+      "skills/plugin-creator/scripts/create-basic-plugin.mjs",
+      "skills/plugin-creator/scripts/marketplace-files.mjs",
+      "skills/plugin-creator/scripts/upsert-dev-marketplace.mjs",
+      "skills/plugin-creator/scripts/scaffold-files.mjs",
+      "skills/plugin-creator/scripts/validate-plugin.mjs",
+      "skills/plugin-creator/references/plugin-json-spec.md",
+      "skills/plugin-creator/references/installing-and-updating.md",
+    ],
+  },
+  {
+    name: "restore-legacy-sessions",
+    requiredSeedPaths: [
+      "commands/restore-legacy-sessions.md",
+      "skills/restore-legacy-sessions/SKILL.md",
+      "skills/restore-legacy-sessions/scripts/restore-conversation.mjs",
+      "skills/restore-legacy-sessions/scripts/scan-legacy-sessions.mjs",
+    ],
+  },
+];
 const remoteOfficialPluginPackages = [
   // 44b25ed46c「remove bundled plugins except browser use and cua」删掉了其余
   // 内置插件源码，但漏改这份清单，bootstrap:with-remote 在 staging 第一个 manifest 就抛
@@ -131,6 +174,14 @@ const remoteOfficialPluginPackages = [
     packageName: `@zcode/${name}-plugin`,
     relativePath: `apps/zcode-cli/packages/${name}-plugin`,
     requiresRuntime: false,
+    stagedPath: `packages/${name}-plugin`,
+  })),
+
+  ...remoteContentPluginPackages.map(({ name, requiredSeedPaths }) => ({
+    packageName: `@zcode/${name}-plugin`,
+    relativePath: `apps/zcode-cli/packages/${name}-plugin`,
+    requiresRuntime: false,
+    requiredSeedPaths,
     stagedPath: `packages/${name}-plugin`,
   })),
 ];
@@ -172,6 +223,12 @@ const remoteOfficialPluginRequiredPaths = [
     `packages/${name}-plugin/.zcode-plugin/plugin.json`,
     `packages/${name}-plugin/skills/${skill}/SKILL.md`,
     `packages/${name}-plugin/scripts/check_office.py`,
+  ]),
+  // 纯内容型插件同理：只校验 manifest 会把缺正文的空壳目录判为可复用，
+  // 于是继续产出「插件在、能力不在」的远端资源（V-2 同型失效）。
+  ...remoteContentPluginPackages.flatMap(({ name, requiredSeedPaths }) => [
+    `packages/${name}-plugin/.zcode-plugin/plugin.json`,
+    ...requiredSeedPaths.map((relativePath) => `packages/${name}-plugin/${relativePath}`),
   ]),
 ];
 

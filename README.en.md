@@ -38,10 +38,9 @@ Five differences from the official distribution:
 
 The official distribution ships the following capabilities without their source. This build does not provide them yet; they are planned for later releases:
 
-| Capability            | Status                                                                                                                                    |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **PDF generation**    | Planned. The official implementation has both LaTeX and HTML pipelines; this project will reimplement it on an open typesetting toolchain |
-| **Session migration** | Planned. Imports session records from older versions                                                                                      |
+| Capability         | Status                                                                                                                                    |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **PDF generation** | Planned. The official implementation has both LaTeX and HTML pipelines; this project will reimplement it on an open typesetting toolchain |
 
 For every capability this build does not provide, and why, see [Differences from the official distribution](docs/development/official-diff.md).
 

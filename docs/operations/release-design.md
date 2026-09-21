@@ -133,7 +133,8 @@ pnpm bundle:desktop --os <mac|win|linux> --arch <x64|arm64>
 #### Linux 产物：4 种格式
 
 `electron-builder.config.js` 的 `linux.target` 为 `["AppImage", "deb", "rpm", "pacman"]`。
-本机实测 `pnpm bundle:desktop --os linux --arch x64` 产出：
+本机实测 `pnpm bundle:desktop --os linux --arch x64` 产出（下表版本号是**当时的实测快照**，
+不是当前版本 —— 命名规则见下方一行，当前版本以根 `package.json` 为准）：
 
 | 格式     | 文件                                         | 体积      |
 | -------- | -------------------------------------------- | --------- |

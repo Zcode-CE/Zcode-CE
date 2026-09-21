@@ -2320,6 +2320,18 @@ The original import revisions of copied components are not recorded in the curre
 
 - DeepSeek Harness skill-office (MIT): apps/zcode-cli/packages/documents-plugin, apps/zcode-cli/packages/presentations-plugin, apps/zcode-cli/packages/spreadsheets-plugin. License reference: https://github.com/deepseek-ai/deepseek-harness (packages/skill/skill-office). Original import revision: not recorded.
 
+- ZCode computer-use plugin shell (Z.ai) (MIT): apps/zcode-cli/packages/zcode-cua-plugin. License reference: Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-cua-plugin 0.6.1 in .zcode-plugin/plugin.json and package.json (author: Z.ai; license: MIT). The notice retained below is the full MIT license text carrying that attribution. Original import revision: not recorded.
+
+- ZCode zcode-guide plugin (Z.ai) (MIT): apps/zcode-cli/packages/zcode-guide-plugin. License reference: Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-guide-plugin 0.2.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages. Original import revision: not recorded.
+
+- ZCode skill-creator plugin (Z.ai) (MIT): apps/zcode-cli/packages/skill-creator-plugin. License reference: Upstream ships no standalone LICENSE file. MIT is declared by the official package skill-creator-plugin 0.1.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages. Original import revision: not recorded.
+
+- ZCode plugin-creator plugin (Z.ai) (MIT): apps/zcode-cli/packages/plugin-creator-plugin. License reference: Upstream ships no standalone LICENSE file. MIT is declared by the official package plugin-creator-plugin 0.1.1 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages. Original import revision: not recorded.
+
+- ZCode restore-legacy-sessions plugin (Z.ai) (MIT): apps/zcode-cli/packages/restore-legacy-sessions-plugin. License reference: Upstream ships no standalone LICENSE file. MIT is declared by the official package restore-legacy-sessions-plugin 0.1.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages. Original import revision: not recorded.
+
+- Codex plugin-creator (workflow adapted by the ZCode plugin-creator plugin) (Apache-2.0): apps/zcode-cli/packages/plugin-creator-plugin/skills/plugin-creator/SKILL.md, apps/zcode-cli/packages/plugin-creator-plugin/skills/plugin-creator/references/installing-and-updating.md, apps/zcode-cli/packages/plugin-creator-plugin/skills/plugin-creator/references/plugin-json-spec.md. License reference: https://github.com/openai/codex — codex-rs/skills/src/assets/samples/plugin-creator/{SKILL.md,references/plugin-json-spec.md,references/installing-and-updating.md}. Apache-2.0 per the openai/codex repository LICENSE and the @openai/codex package metadata (license: Apache-2.0); the upstream skill files carry no copyright header of their own. Original import revision: not recorded.
+
 Fig autocomplete source carries the repository's MIT license; the generated registry records npm @withfig/autocomplete@2.692.3 metadata as ISC. The original source MIT notice is retained below.
 
 ## Embedded native and WASM components
@@ -2939,6 +2951,8 @@ SOFTWARE.
 - @chevrotain/utils@12.0.0: LICENSE.txt
 
 - chevrotain@12.0.0: LICENSE.txt
+
+- Codex plugin-creator (workflow adapted by the ZCode plugin-creator plugin): https://github.com/openai/codex — codex-rs/skills/src/assets/samples/plugin-creator/{SKILL.md,references/plugin-json-spec.md,references/installing-and-updating.md}. Apache-2.0 per the openai/codex repository LICENSE and the @openai/codex package metadata (license: Apache-2.0); the upstream skill files carry no copyright header of their own
 
 - wuffs (inside @napi-rs/canvas@0.1.100): https://skia.googlesource.com/external/github.com/google/wuffs-mirror-release-c.git/+/e3f919ccfe3ef542cfc983a82146070258fb57f8/LICENSE?format=TEXT
 
@@ -37463,6 +37477,45 @@ SOFTWARE.
 MIT License
 
 Copyright (c) 2026 DeepSeek
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+````
+
+### Notice 2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031
+
+- ZCode computer-use plugin shell (Z.ai): Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-cua-plugin 0.6.1 in .zcode-plugin/plugin.json and package.json (author: Z.ai; license: MIT). The notice retained below is the full MIT license text carrying that attribution
+
+- ZCode zcode-guide plugin (Z.ai): Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-guide-plugin 0.2.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages
+
+- ZCode skill-creator plugin (Z.ai): Upstream ships no standalone LICENSE file. MIT is declared by the official package skill-creator-plugin 0.1.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages
+
+- ZCode plugin-creator plugin (Z.ai): Upstream ships no standalone LICENSE file. MIT is declared by the official package plugin-creator-plugin 0.1.1 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages
+
+- ZCode restore-legacy-sessions plugin (Z.ai): Upstream ships no standalone LICENSE file. MIT is declared by the official package restore-legacy-sessions-plugin 0.1.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages
+
+
+
+````text
+MIT License
+
+Copyright (c) Z.ai
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

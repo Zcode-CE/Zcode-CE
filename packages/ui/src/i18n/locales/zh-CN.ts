@@ -6206,6 +6206,28 @@ const zhCN: Record<string, string> = {
     "需先开启电脑控制，才能在输入框显示该按钮。",
   "settings.computerUse.composerEntry.saveFailed": "保存失败：{error}",
   "settings.computerUse.pluginDisabledHint": "电脑控制插件未启用。前往插件开启后即可使用电脑控制。",
+  "settings.computerUse.toggleDescriptionUnavailable":
+    "当前插件列表里没有电脑控制插件，开关暂不可用；原因见下方说明。",
+  // 开关状态文案：前置状态（加载中 / 插件不在列表里）必须与「已关闭」区分开，
+  // 否则加载窗口内显示「未启用」会让用户以为需要自己打开，而点下去只会报 Plugin not found。
+  "settings.computerUse.pluginState.loadingTitle": "正在加载电脑控制插件",
+  "settings.computerUse.pluginState.loadingDescription":
+    "正在读取当前工作区的插件列表，就绪前开关保持不可用。",
+  "settings.computerUse.pluginState.loadFailedTitle": "暂时无法读取电脑控制插件状态",
+  "settings.computerUse.pluginState.loadFailedDescription":
+    "插件列表加载失败，因此无法确认电脑控制是否可用。请重试；重试仍失败时，重启 ZCode 后再进入本页。",
+  "settings.computerUse.pluginState.unavailableTitle": "电脑控制插件在当前构建中不可用",
+  "settings.computerUse.pluginState.unavailableDescription":
+    "当前构建的插件列表里没有 computer-use@zcode-plugins-official，因此开关不可用。请通过反馈入口反馈，或在自定义构建中把这个插件补进内置插件包。",
+  "settings.computerUse.pluginState.enableFailedTitle": "电脑控制启用失败",
+  "settings.computerUse.pluginState.enableFailedFallback": "未知错误，请重启 ZCode 后重试。",
+  "settings.computerUse.pluginState.enabled": "已启用",
+  "settings.computerUse.pluginState.disabled": "未启用",
+  "settings.computerUse.pluginState.loading": "加载中",
+  "settings.computerUse.pluginState.loadFailed": "状态未知",
+  "settings.computerUse.pluginState.unavailable": "不可用",
+  "settings.computerUse.pluginState.retry": "重新读取",
+  "settings.computerUse.pluginState.retrying": "重新读取中…",
   "settings.computerUse.unsupported.title": "当前环境暂不支持电脑控制",
   "settings.computerUse.unsupported.remoteDescription":
     "Computer Use 暂不支持 SSH、WSL、Docker 或其他远端环境。请切换到本机工作区。",

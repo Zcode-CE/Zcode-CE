@@ -7,7 +7,9 @@
 ```
 apps/zcode-cli/          Agent CLI 与运行时（独立 workspace，有自己的 pnpm-workspace.yaml）
   packages/              adapters / bootstrap / cli / contracts / core / i18n / tui …
-  packages/*-plugin/     内置插件（browser-use / node-repl-host / documents / presentations / spreadsheets）
+  packages/*-plugin/     内置插件（browser-use / node-repl-host / documents / presentations /
+                         spreadsheets / zcode-cua / plugin-creator / skill-creator / zcode-guide /
+                         restore-legacy-sessions）
   tools/                 prompt-trajectory / typescript
 packages/
   desktop/               Electron main / host / renderer / preload / scheduler
@@ -21,7 +23,7 @@ packages/
   provider/              模型供应商抽象
   provider-node/         供应商的 Node 侧实现
   zcode-server-cli/      独立服务端 CLI
-  zcode-cua/             Computer Use（本版为 API 兼容的占位实现）
+  zcode-cua/             Computer Use 运行时（适配 MIT 的 @trycua/cua-driver）
   formal-proof/          状态空间枚举器
   model-option-map/      模型选项映射
 config/provider/         内置供应商配置（zcode-builtin.json）
