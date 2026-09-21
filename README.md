@@ -140,6 +140,53 @@ ZCode-CE 与官方 ZCode 使用**独立的安装身份**，可以并存。两者
 - [贡献指南](docs/community/contributing.md)
 - [发布流程](docs/operations/release.md)
 
+## 开源参考与致谢
+
+ZCode-CE 站在许多开源项目的肩膀上。以下按用途分类列出我们复用或参考的项目。
+
+### 复用的代码组件
+
+这些项目的代码被直接引入本仓库，完整清单与许可快照见 [third-party/copied-components.json](third-party/copied-components.json)。
+
+| 项目                                                                                                                | 许可       | 用途                                                       |
+| ------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------------------------------------------------- |
+| [zai-org/ZCode](https://github.com/zai-org/ZCode)                                                                   | Apache-2.0 | 本仓库的上游                                               |
+| [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)                                     | MIT        | Office 文档能力（`skill-office`）；Computer Use 的架构参考 |
+| [vercel/ai-elements](https://github.com/vercel/ai-elements)                                                         | Apache-2.0 | AI 对话界面组件                                            |
+| [shadcn-ui/ui](https://github.com/shadcn-ui/ui)                                                                     | MIT        | UI 基础组件                                                |
+| [microsoft/vscode](https://github.com/microsoft/vscode)                                                             | MIT        | 编辑器相关实现                                             |
+| [withfig/autocomplete](https://github.com/withfig/autocomplete)                                                     | MIT        | 命令补全数据                                               |
+| [material-extensions/vscode-material-icon-theme](https://github.com/material-extensions/vscode-material-icon-theme) | MIT        | 文件图标主题                                               |
+| [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser)                                           | Apache-2.0 | 浏览器自动化                                               |
+| [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills)                                             | MIT        | Agent 技能定义                                             |
+| [obra/superpowers](https://github.com/obra/superpowers)                                                             | MIT        | Agent 技能实现                                             |
+
+### 运行时依赖
+
+| 项目                                        | 许可          | 用途                                            |
+| ------------------------------------------- | ------------- | ----------------------------------------------- |
+| [trycua/cua](https://github.com/trycua/cua) | MIT / MPL-2.0 | Computer Use 的桌面驱动（`@trycua/cua-driver`） |
+
+完整的 npm 依赖许可清单见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+
+### 设计参考
+
+以下项目未复用代码，但其设计与接口约定对本项目的实现有重要参考价值。
+
+| 项目                                                 | 参考内容                                                                          |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------- |
+| [zcode-api](https://github.com/LX2000WASD/zcode-api) | 官方服务接口的协议还原，用于权益能力（套餐额度、领取、计费）的实现                |
+| [openai/codex](https://github.com/openai/codex)      | Computer Use 的应用级访问控制设计                                                 |
+| [trycua/cua](https://github.com/trycua/cua)          | 平台行为台账与安全语义（`possibly_sent` 防重放、`controller lease`、kill switch） |
+
+### 第三方服务
+
+模型访问、套餐与计费由 [Z.ai / 智谱](https://z.ai/) 提供，本项目不代理、不转售。
+
+---
+
+感谢上述项目的作者与维护者。如果你的项目出现在这里但归属或表述有误，欢迎提 issue 指正。
+
 ## 许可
 
 本项目基于 [zai-org/ZCode](https://github.com/zai-org/ZCode) 构建，遵循 [Apache-2.0](LICENSE)。

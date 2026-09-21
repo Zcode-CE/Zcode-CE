@@ -140,6 +140,53 @@ Developer documentation lives in [docs/](docs/):
 - [Contributing](docs/community/contributing.md)
 - [Release process](docs/operations/release.md)
 
+## Open source references and acknowledgements
+
+ZCode-CE stands on the shoulders of many open source projects. Below they are grouped by how we use them.
+
+### Reused code components
+
+Code from these projects is vendored into this repository. The complete list and license snapshots live in [third-party/copied-components.json](third-party/copied-components.json).
+
+| Project                                                                                                             | License    | Use                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------- |
+| [zai-org/ZCode](https://github.com/zai-org/ZCode)                                                                   | Apache-2.0 | Upstream of this repository                                                             |
+| [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)                                     | MIT        | Office document capabilities (`skill-office`); architectural reference for Computer Use |
+| [vercel/ai-elements](https://github.com/vercel/ai-elements)                                                         | Apache-2.0 | AI chat interface components                                                            |
+| [shadcn-ui/ui](https://github.com/shadcn-ui/ui)                                                                     | MIT        | Base UI components                                                                      |
+| [microsoft/vscode](https://github.com/microsoft/vscode)                                                             | MIT        | Editor-related implementations                                                          |
+| [withfig/autocomplete](https://github.com/withfig/autocomplete)                                                     | MIT        | Command completion data                                                                 |
+| [material-extensions/vscode-material-icon-theme](https://github.com/material-extensions/vscode-material-icon-theme) | MIT        | File icon theme                                                                         |
+| [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser)                                           | Apache-2.0 | Browser automation                                                                      |
+| [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills)                                             | MIT        | Agent skill definitions                                                                 |
+| [obra/superpowers](https://github.com/obra/superpowers)                                                             | MIT        | Agent skill implementations                                                             |
+
+### Runtime dependencies
+
+| Project                                     | License       | Use                                                    |
+| ------------------------------------------- | ------------- | ------------------------------------------------------ |
+| [trycua/cua](https://github.com/trycua/cua) | MIT / MPL-2.0 | Desktop driver for Computer Use (`@trycua/cua-driver`) |
+
+The full npm dependency license list is in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+### Design references
+
+No code is reused from these projects, but their designs and interface conventions informed this implementation.
+
+| Project                                              | What we referenced                                                                                                       |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| [zcode-api](https://github.com/LX2000WASD/zcode-api) | Protocol reconstruction of the official service APIs, used for entitlement capabilities (plan quotas, claiming, billing) |
+| [openai/codex](https://github.com/openai/codex)      | Application-level access control design for Computer Use                                                                 |
+| [trycua/cua](https://github.com/trycua/cua)          | Platform behaviour ledger and safety semantics (`possibly_sent` anti-replay, `controller lease`, kill switch)            |
+
+### Third-party services
+
+Model access, plans, and billing are provided by [Z.ai / Zhipu](https://z.ai/). This project does not proxy or resell them.
+
+---
+
+Thanks to the authors and maintainers of all the projects above. If your project appears here with an incorrect attribution, please open an issue.
+
 ## License
 
 Built on [zai-org/ZCode](https://github.com/zai-org/ZCode), licensed under [Apache-2.0](LICENSE).
