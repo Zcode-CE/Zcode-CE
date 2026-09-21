@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "ignorePatterns": [
+    ".reverse/**",
     "THIRD-PARTY-NOTICES.md",
     "third-party/inventory.json",
     "third-party/upstream/**",
