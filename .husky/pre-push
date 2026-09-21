@@ -1,0 +1,5 @@
+# 与 CI 等价：把 .github/workflows/ci.yml 的每一步搬到本地，推送前一次跑完。
+# 目的：不再用「push → 等 CI → 失败 → 再 push」这种方式试错，避免无谓的流水线运行。
+# 注意：本地绿不等于 CI 绿（CI 是干净检出 + pnpm install --frozen-lockfile），
+#       但能挡掉绝大多数失败；CI 仍作为干净环境的最终裁判保留。
+pnpm run verify:pre-push
