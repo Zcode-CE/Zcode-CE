@@ -16,22 +16,38 @@ ZCode-CE is the **open-source community edition** of the ZCode AI coding workben
 
 ## About this project
 
-ZCode-CE is built on [zai-org/ZCode](https://github.com/zai-org/ZCode) (Apache-2.0), for users who want **full control over their own development environment**.
+ZCode-CE is built on [zai-org/ZCode](https://github.com/zai-org/ZCode) (Apache-2.0), for users who want **full control over their own development environment**. **Community contributions are welcome** — whether it's feature development, issue reports, or documentation improvements.
 
-Four differences from the official distribution:
+Five differences from the official distribution:
 
-| Area                       | Description                                                                                                                                                 |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **No telemetry**           | Telemetry and monitoring components from the official distribution are removed. With a self-hosted API, no background reporting to official services occurs |
-| **Entitlements preserved** | Official service entitlements (plan quotas, limited-time bonuses) are fully retained. The client ships every capability needed to claim and bill them       |
-| **Community feedback**     | Feedback goes to this project's GitHub Issues by default, not the official ticket system. The channel is configurable or can be disabled                    |
-| **Open document skills**   | Office document capabilities (Word / PowerPoint / Excel) come from MIT-licensed open implementations, not official closed-source plugins                    |
+| Area                       | Description                                                                                                                                                                                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **No telemetry**           | Telemetry and monitoring components from the official distribution are removed. With a self-hosted API, no background reporting to official services occurs                                                                         |
+| **Entitlements preserved** | Official service entitlements (plan quotas, limited-time bonuses) are fully retained. The client ships every capability needed to claim and bill them                                                                               |
+| **Community feedback**     | Feedback goes to this project's GitHub Issues by default, not the official ticket system. The channel is configurable or can be disabled                                                                                            |
+| **Open document skills**   | Office document capabilities (Word / PowerPoint / Excel) come from MIT-licensed open implementations, not official closed-source plugins                                                                                            |
+| **Desktop automation**     | Computer Use comes from an MIT-licensed open implementation ([trycua/cua](https://github.com/trycua/cua)), not the official unlicensed closed-source helper. **Windows is fully supported; Linux is experimental** (off by default) |
 
 ### What this is not
 
 - **Not an official distribution.** ZCode-CE is community-maintained and does not represent Z.ai or Zhipu.
 - **No account services.** Model access, plans, and billing remain with the official service. This project does not proxy or resell them.
-- **No Computer Use yet.** That system-level desktop automation capability requires a closed-source helper binary distributed by the official project, which this build does not yet integrate. **Planned for a future release.**
+- **Platform support for Computer Use differs.** Windows is fully supported; **Linux is experimental** (off by default, enable it in settings). The official distribution does not support Linux desktop automation at all; this build provides it through an open implementation, within the limits of upstream validation: verified on X11 / Sway / KDE Wayland, **screenshots are unavailable on Wayland** (element actions are unaffected), GNOME is not fully verified. See the [desktop automation docs](docs/development/computer-use.md).
+
+## Install
+
+Download the installer for your platform from [Releases](https://github.com/Zcode-CE/Zcode-CE/releases).
+
+| Platform    | Format                                         | Notes                                                                                                                   |
+| ----------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Windows** | `.exe` (NSIS)                                  | Run the installer. Currently **unsigned**, so the first launch requires choosing "Run anyway" in the SmartScreen prompt |
+| **Linux**   | `.AppImage` / `.deb` / `.rpm` / `.pkg.tar.zst` | AppImage needs `chmod +x` before running                                                                                |
+
+**Data directory**: shared with the official ZCode at `~/.zcode/v2`. Both can be installed side by side (separate install identities), but running them simultaneously is not recommended.
+
+> **About Windows signing**: the official distribution is signed with a DigiCert organization-validated (OV) certificate. As a community project we cannot obtain that class of certificate, and are applying for free open-source code signing from [SignPath Foundation](https://signpath.org/) (the certificate is issued to SignPath Foundation, not to this project). Once approved, the SmartScreen prompt goes away.
+
+Prefer to build from source or contribute? See [Setup](#setup) and [Development](#development) below.
 
 ## Entry points
 

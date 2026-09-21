@@ -568,6 +568,20 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - @tokenlens/models@1.3.0 — MIT
 
+- @trycua/cua-driver-darwin-arm64@0.28.2 — MIT AND MPL-2.0
+
+- @trycua/cua-driver-darwin-x64@0.28.2 — MIT AND MPL-2.0
+
+- @trycua/cua-driver-linux-arm64-gnu@0.28.2 — MIT AND MPL-2.0
+
+- @trycua/cua-driver-linux-x64-gnu@0.28.2 — MIT AND MPL-2.0
+
+- @trycua/cua-driver-win32-arm64-msvc@0.28.2 — MIT AND MPL-2.0
+
+- @trycua/cua-driver-win32-x64-msvc@0.28.2 — MIT AND MPL-2.0
+
+- @trycua/cua-driver@0.28.2 — MIT
+
 - @ts-morph/common@0.27.0 — MIT
 
 - @types/d3-array@3.2.2 — MIT
@@ -675,6 +689,22 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 - @types/use-sync-external-store@0.0.6 — MIT
 
 - @types/validate-npm-package-name@4.0.2 — MIT
+
+- @ubjs/core@0.31.0-3 — MPL-2.0
+
+- @ubjs/node-darwin-arm64@0.31.0-3 — MPL-2.0
+
+- @ubjs/node-darwin-x64@0.31.0-3 — MPL-2.0
+
+- @ubjs/node-linux-arm64-gnu@0.31.0-3 — MPL-2.0
+
+- @ubjs/node-linux-x64-gnu@0.31.0-3 — MPL-2.0
+
+- @ubjs/node-win32-arm64-msvc@0.31.0-3 — MPL-2.0
+
+- @ubjs/node-win32-x64-msvc@0.31.0-3 — MPL-2.0
+
+- @ubjs/node@0.31.0-3 — MPL-2.0
 
 - @ungap/structured-clone@1.3.0 — ISC
 
@@ -2237,6 +2267,36 @@ Some publishers provide only a license identifier or a short README license sect
 - is-node-process@1.2.0: https://registry.npmjs.org/is-node-process/1.2.0
 
 - ansi-to-react@6.2.6: https://registry.npmjs.org/ansi-to-react/6.2.6
+
+- @trycua/cua-driver@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+- @trycua/cua-driver-darwin-arm64@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+- @trycua/cua-driver-darwin-x64@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+- @trycua/cua-driver-linux-arm64-gnu@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+- @trycua/cua-driver-linux-x64-gnu@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+- @trycua/cua-driver-win32-arm64-msvc@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+- @trycua/cua-driver-win32-x64-msvc@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+- @ubjs/core@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node-darwin-arm64@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node-darwin-x64@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node-linux-arm64-gnu@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node-linux-x64-gnu@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node-win32-arm64-msvc@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node-win32-x64-msvc@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
 
 The original import revisions of copied components are not recorded in the current checkout. Pinned license references below do not establish the original copy revision. They cover upstream-derived portions only; local adaptations do not change the upstream terms.
 
@@ -5915,6 +5975,81 @@ SOFTWARE.
 
 ````
 
+### Notice 66a466cc022b4bf4a41f678e4d31d9b82098cc55cc364d6e9295366dfd02cef2
+
+- @trycua/cua-driver-darwin-arm64@0.28.2: node-runtime-NOTICE.md
+
+- @trycua/cua-driver-darwin-x64@0.28.2: node-runtime-NOTICE.md
+
+- @trycua/cua-driver-linux-arm64-gnu@0.28.2: node-runtime-NOTICE.md
+
+- @trycua/cua-driver-linux-x64-gnu@0.28.2: node-runtime-NOTICE.md
+
+- @trycua/cua-driver-win32-arm64-msvc@0.28.2: node-runtime-NOTICE.md
+
+- @trycua/cua-driver-win32-x64-msvc@0.28.2: node-runtime-NOTICE.md
+
+
+
+````text
+# Cua Driver Node runtime notice
+
+`cua_driver_node_runtime.node` is a compatibility build derived from the N-API
+runtime in `uniffi-bindgen-react-native` 0.31.0-3, copyright its contributors
+and licensed under the Mozilla Public License 2.0.
+
+The corresponding source is the pinned npm development dependency plus the
+deterministic transformations in `scripts/build-node-runtime.mjs`. The source
+and build script are available in the Cua repository at the release tag that
+matches this package.
+
+<https://www.mozilla.org/MPL/2.0/>
+
+````
+
+### Notice c0779290c1d4783169aa3dbfb55feb505e563ef8a004bbf55298ceffcfbda8d9
+
+- @trycua/cua-driver-darwin-arm64@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+- @trycua/cua-driver-darwin-x64@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+- @trycua/cua-driver-linux-arm64-gnu@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+- @trycua/cua-driver-linux-x64-gnu@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+- @trycua/cua-driver-win32-arm64-msvc@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+- @trycua/cua-driver-win32-x64-msvc@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+- @trycua/cua-driver@0.28.2: https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md
+
+
+
+````text
+MIT License
+
+Copyright (c) 2025 Cua AI, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+````
+
 ### Notice c2a4cfb69592431f4b3a179c114909bb76a979d5748c19ca595c94133c623b12
 
 - @ts-morph/common@0.27.0: LICENSE
@@ -6080,6 +6215,33 @@ SOFTWARE.
     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE
+
+````
+
+### Notice d1cc4c0ada218e8a336dc8c3d8bb7d5b1c8dedfa31f5b25c9ea1759d21b8b62d
+
+- @ubjs/core@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node-darwin-arm64@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node-darwin-x64@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node-linux-arm64-gnu@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node-linux-x64-gnu@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node-win32-arm64-msvc@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node-win32-x64-msvc@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+- @ubjs/node@0.31.0-3: https://raw.githubusercontent.com/jhugman/uniffi-bindgen-react-native/0.31.0-3/LICENSE
+
+
+
+````text
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/
 
 ````
 
