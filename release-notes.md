@@ -1,95 +1,107 @@
-# ZCode-CE v3.14.1-ce.1
+# ZCode-CE v3.14.1-ce.1.fix.1
 
 **中文** · [English](#english)
 
-基于官方 ZCode **3.14.1** 的社区版首个正式发布。
+> **热修复版本。** 修复 v3.14.1-ce.1 中导致界面完全无法显示的启动缺陷。
+> 该版本全部产物在任意平台、任意数据目录下都会卡在启动 logo 画面。
+> **所有 v3.14.1-ce.1 用户请升级到本版本。**
 
-## 与官方发行版的差异
+## 修复内容
 
-| 方面             | 说明                                                                                                                     |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **无遥测**       | 移除官方发行版中的遥测与监控组件（ARMS/RUM、OpenTelemetry、崩溃远端上报）                                                |
-| **保留权益**     | 官方服务权益（套餐额度、限时赠送额度领取、额度重置）完整保留                                                             |
-| **社区反馈**     | 反馈默认走本项目的 GitHub Issues，渠道可配置或关闭                                                                       |
-| **开源文档能力** | Office 文档能力（Word / PowerPoint / Excel）由 MIT 许可的开源实现提供                                                    |
-| **桌面自动化**   | Computer Use 由 MIT 许可的开源实现（[trycua/cua](https://github.com/trycua/cua)）提供，不依赖官方未标注许可的闭源 helper |
+### 1. 启动卡死的两个独立缺陷
 
-## 功能
+两个缺陷各自都足以让界面无法渲染，共同表现是永远停在启动 logo：
 
-- 模型列表支持隐藏内置模型与从供应商拉取（三种 API 格式）
-- 手动领取套餐的验证码链路
-- 国内加速配置（默认关闭）
-- 补上社区插件市场入口（Superpowers、context7 等可安装）
-- 补齐官方 3.14.1 的两项修复（引导重复弹出、折叠输入框丢内容）
+| # | 位置 | 问题 |
+| - | ---- | ---- |
+| 1 | `packages/desktop/src/preload/index.ts` | 残留一处对已被删除的 `scheduleArmsEventBridgePatch()` 的调用，preload 抛 `ReferenceError`，导致 preload 脚本加载失败、IPC 桥残缺 |
+| 2 | `packages/services/src/logger/serviceLogger.ts` | `process.pid` 在浏览器环境不存在；该模块被打进渲染包后抛 `ReferenceError: process is not defined`，React 无法挂载 |
 
-## 发布
+两个缺陷的成因不同但后果相同，因此只修其中一个仍会是坏版本。
 
-- 安装身份独立（`ZCode-CE` / `dev.zcode.app.ce`），可与官方版并存安装
-- 更新渠道指向本项目的 GitHub Release，不执行远端强制升级检查
-- GitHub Actions 自动构建（Linux + Windows）
+### 2. 为什么此前没有被发现
+
+根 `typecheck` 脚本只覆盖 `packages/desktop/tsconfig.host.json`，**`tsconfig.preload.json` 不在类型检查范围内**，
+因此缺陷 1 的 `TS2304` 从未被 CI 捕获。本版已把 preload 工程纳入 `typecheck`。
+
+### 3. 顺带修复的上游缺陷
+
+官方发行版自身存在一处不对称缺陷：`packages/desktop/src/main/logger.ts` 为主进程装了 EPIPE 护栏
+（注释原文「不能让日志输出反过来杀掉主进程」），但 **host 进程侧没有装**。
+host 是 utilityProcess，未捕获异常会走 `process.exit(1)`；当继承来的 stdout/stderr 管道断开时，
+host 会猝死且 main 不重建，渲染进程永远等不到 host。本版把同一规则补到了 host 侧。
+
+## 验证
+
+- `pnpm typecheck` 通过（0 错误）；`pnpm lint` 通过（0 错误）
+- 打包产物内 `app.asar` 复核：preload 中残留符号 0 次；host 中 EPIPE 护栏各 1 次
+- 实机运行 + CDP 取证：`rootChildCount=1`、正文正常渲染、控制台零异常
+  （修复前为 `rootChildCount=0`、`bodyTextLen=0` 并伴随两条 `ReferenceError`）
 
 ## 平台
 
-| 平台             | 产物                          | 说明                                                        |
-| ---------------- | ----------------------------- | ----------------------------------------------------------- |
-| **Linux**        | AppImage / deb / rpm / pacman | AppImage 需先 `chmod +x`                                    |
-| **Windows**      | NSIS                          | 当前**未签名**，首次运行需在 SmartScreen 中选择「仍要运行」 |
-| **Computer Use** | —                             | Windows 正式支持；Linux 实验性（默认关闭）                  |
+| 平台        | 产物                          |
+| ----------- | ----------------------------- |
+| **Linux**   | AppImage / deb / rpm / pacman |
+| **Windows** | NSIS（当前未签名）            |
 
 **数据目录**：与官方 ZCode 共享 `~/.zcode/v2`，可并存安装但不建议同时运行。
-
-**Windows 签名**：官方发行版使用 DigiCert 签发的组织验证（OV）证书签名。本项目作为社区项目无法申请同类证书，正在申请 [SignPath Foundation](https://signpath.org/) 的免费开源代码签名，通过后将消除 SmartScreen 提示。
 
 ## 文档
 
 - [与官方发行版的差异](https://github.com/Zcode-CE/Zcode-CE/blob/main/docs/development/official-diff.md)
-- [桌面自动化](https://github.com/Zcode-CE/Zcode-CE/blob/main/docs/development/computer-use.md)
-- [遥测与隐私](https://github.com/Zcode-CE/Zcode-CE/blob/main/docs/development/telemetry.md)
+- [安装说明](https://github.com/Zcode-CE/Zcode-CE#安装)
+- [发布与版本号规则](https://github.com/Zcode-CE/Zcode-CE/blob/main/docs/operations/release.md)
 
 ---
 
-## English
+# English
 
-The first stable community release based on official ZCode **3.14.1**.
+> **Hotfix release.** Fixes a startup defect in v3.14.1-ce.1 that made the interface
+> completely unusable — every artifact of that release stays stuck on the splash logo
+> on any platform with any data directory.
+> **All v3.14.1-ce.1 users should upgrade.**
 
-### Differences from the official distribution
+## Fixes
 
-| Area                       | Description                                                                                                                                                 |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **No telemetry**           | Telemetry and monitoring components from the official distribution are removed (ARMS/RUM, OpenTelemetry, remote crash reporting)                            |
-| **Entitlements preserved** | Official service entitlements (plan quotas, limited-time bonuses, quota resets) are fully retained                                                          |
-| **Community feedback**     | Feedback goes to this project's GitHub Issues by default; the channel is configurable or can be disabled                                                    |
-| **Open document skills**   | Office document capabilities (Word / PowerPoint / Excel) come from MIT-licensed open implementations                                                        |
-| **Desktop automation**     | Computer Use comes from an MIT-licensed open implementation ([trycua/cua](https://github.com/trycua/cua)), not the official unlicensed closed-source helper |
+### 1. Two independent defects causing the startup hang
 
-### Features
+Either one alone is enough to prevent the interface from rendering:
 
-- Hide built-in models and fetch model lists from providers (three API formats)
-- Captcha flow for manually claiming plan bonuses
-- China network acceleration setting (off by default)
-- Community plugin marketplace entry (Superpowers, context7, and others are installable)
-- Both official 3.14.1 fixes ported (onboarding re-prompting, composer content loss)
+| # | Location | Problem |
+| - | -------- | ------- |
+| 1 | `packages/desktop/src/preload/index.ts` | A leftover call to the removed `scheduleArmsEventBridgePatch()` made the preload script throw `ReferenceError`, so it failed to load and the IPC bridge was left incomplete |
+| 2 | `packages/services/src/logger/serviceLogger.ts` | `process.pid` does not exist in a browser context; the module is bundled into the renderer and threw `ReferenceError: process is not defined`, so React never mounted |
 
-### Release
+### 2. Why it was not caught earlier
 
-- Separate install identity (`ZCode-CE` / `dev.zcode.app.ce`); installs side by side with the official build
-- Update channel points at this project's GitHub Release; no remote force-update gate
-- GitHub Actions automated builds (Linux + Windows)
+The root `typecheck` script only covered `packages/desktop/tsconfig.host.json`;
+**`tsconfig.preload.json` was outside type checking**, so the `TS2304` from defect 1
+never reached CI. This release adds the preload project to `typecheck`.
 
-### Platforms
+### 3. Upstream defect fixed along the way
 
-| Platform         | Artifacts                     | Notes                                                                                         |
-| ---------------- | ----------------------------- | --------------------------------------------------------------------------------------------- |
-| **Linux**        | AppImage / deb / rpm / pacman | AppImage needs `chmod +x`                                                                     |
-| **Windows**      | NSIS                          | Currently **unsigned**; first launch requires choosing "Run anyway" in the SmartScreen prompt |
-| **Computer Use** | —                             | Fully supported on Windows; experimental on Linux (off by default)                            |
+The official distribution has an asymmetric flaw: `packages/desktop/src/main/logger.ts`
+installs an EPIPE guard for the main process (its comment reads "log output must not kill
+the main process"), but **the host process has no such guard**. The host is a utilityProcess,
+and an uncaught exception there calls `process.exit(1)`; if the inherited stdout/stderr pipe
+breaks, the host dies, main does not rebuild it, and the renderer waits forever.
+This release ports the same guard to the host side.
 
-**Data directory**: shared with the official ZCode at `~/.zcode/v2`. Both can be installed side by side, but running them simultaneously is not recommended.
+## Verification
 
-**Windows signing**: the official distribution is signed with a DigiCert organization-validated (OV) certificate. As a community project we cannot obtain that class of certificate, and are applying for free open-source code signing from [SignPath Foundation](https://signpath.org/). Once approved, the SmartScreen prompt goes away.
+- `pnpm typecheck` passes (0 errors); `pnpm lint` passes (0 errors)
+- Inspected `app.asar` inside the packaged artifacts: 0 occurrences of the leftover symbol
+  in preload; EPIPE guard present in host
+- Ran the packaged build and verified via CDP: `rootChildCount=1`, content rendered,
+  zero console exceptions (previously `rootChildCount=0`, `bodyTextLen=0`, two `ReferenceError`s)
 
-### Documentation
+## Platforms
 
-- [Differences from the official distribution](https://github.com/Zcode-CE/Zcode-CE/blob/main/docs/development/official-diff.md)
-- [Desktop automation](https://github.com/Zcode-CE/Zcode-CE/blob/main/docs/development/computer-use.md)
-- [Telemetry and privacy](https://github.com/Zcode-CE/Zcode-CE/blob/main/docs/development/telemetry.md)
+| Platform    | Artifacts                     |
+| ----------- | ----------------------------- |
+| **Linux**   | AppImage / deb / rpm / pacman |
+| **Windows** | NSIS (unsigned)               |
+
+**Data directory**: shared with the official ZCode at `~/.zcode/v2`; both can be installed
+side by side, but running them simultaneously is not recommended.
