@@ -17,6 +17,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { runCommand } from "../../../scripts/spawn-command.mjs";
 import { stageCuaDriverIntoBundledAgents } from "./cua-driver-package-assets.mjs";
+import { stageKoffiIntoBundledAgents } from "./koffi-package-assets.mjs";
 import { stageAgentBundle } from "./stage-agent-bundle.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -278,6 +279,47 @@ function stageCuaDriver() {
   );
 }
 
+/**
+ * 把 koffi 的原生 addon stage 进 node-repl-host/node_modules/koffi。
+ *
+ * 为什么需要：koffi 是 CLI bundle 的 external（apps/zcode-cli/packages/cli/scripts/build.mjs
+ * 的 resolveBuildExternal），因为 esbuild 无法 bundle 它按平台动态 require 的 .node。
+ * 它只被 Windows 的 Job Object 路径使用（adapters/src/mcp/windows-job-object.ts），
+ * 而安装后的 agent 没有 hoisted node_modules —— 不 stage 就永远拿不到。
+ *
+ * 现状说明（**既有缺陷，非本次引入**）：`stageKoffiIntoBundledAgents` 此前**没有任何
+ * 调用点**（koffi-package-assets.mjs 只有定义；electron-builder.config.js 只 import 了
+ * verifyStagedKoffi 也没调用）。这里补上调用点，让它真正生效。
+ * 影响面很小：koffi 只在 win32 分支加载，加载失败时 windows-job-object.ts 会
+ * return undefined 并退回 taskkill，所以此前是"功能降级"而非崩溃。
+ *
+ * 落点与 Computer Use 驱动一致（node-repl-host/node_modules）：electron-builder 会
+ * 硬编码丢弃**源根直属**的 node_modules，放 glm/node_modules 打不进包。
+ */
+function stageKoffiRuntime() {
+  try {
+    const nativePath = stageKoffiIntoBundledAgents({
+      koffiPackageRoot: repoRoot,
+      glmDir: resolve(glmDir, "packages/node-repl-host"),
+      targetPlatform: {
+        os: platform,
+        arch,
+        key: platformKey,
+        npmLibc: platform === "linux" ? "glibc" : undefined,
+      },
+    });
+    console.log(`[prepare:agent-bundle] staged koffi runtime: ${nativePath}`);
+  } catch (error) {
+    // koffi 缺失只影响 Windows 的 Job Object 清理（有 taskkill 回退），
+    // 不应该让 Linux/macOS 的打包整体失败。
+    console.warn(
+      `[prepare:agent-bundle] koffi runtime 未 stage（Windows Job Object 将退回 taskkill）：${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+}
+
 function stageOfficialPlugins() {
   for (const plugin of officialPluginPackages) {
     const sourceRoot = resolve(repoRoot, plugin.relativePath);
@@ -318,4 +360,5 @@ buildCliBundle();
 buildOfficialPluginRuntimes();
 stageBundle();
 stageCuaDriver();
+stageKoffiRuntime();
 stageOfficialPlugins();

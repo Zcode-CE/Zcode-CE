@@ -110,16 +110,29 @@ X11 会话下窗口枚举与输入注入走 XTEST/XSendEvent，不需要 Wayland
 ## 打包
 
 驱动是**原生模块**，esbuild 无法 bundle（uniffi 的 `.node` 依赖是运行时解析的）。
-打包链路必须把驱动及其依赖 stage 到 agent 运行时的 `node_modules` 下，
-并在出包前做机械校验。
-
-> **当前状态**：该 staging 步骤**尚未接入**打包链路，正式包的 Computer Use 会因为
-> `ERR_MODULE_NOT_FOUND` 不可用。修复方式与体积影响见仓库内部交付说明
-> （`.reverse/22-cua/CUA-1-integration.md`，不入库）。
+打包链路把驱动及其依赖按目标平台 stage 到
+`resources/glm/packages/node-repl-host/node_modules/`，并在出包前做机械校验。
 
 需要的包：`@trycua/cua-driver`、对应平台的 `@trycua/cua-driver-*` 原生包、
 `@ubjs/core`、`@ubjs/node` 及对应平台的 `@ubjs/node-*`。
-Linux x64 下原生部分约 42 MB，会显著增加安装包体积。
+只 stage 目标平台 —— 驱动与 `@ubjs` 的平台包都是 optionalDependencies 全集，
+全拷会把六个平台的二进制一起打进安装包。
+
+### 为什么不能放在 `glm/node_modules`
+
+electron-builder 对**源根直属**的 node_modules 有硬编码丢弃
+（`app-builder-lib/out/util/filter.js` 的 `if (relative === "node_modules") return false`），
+判定发生在 filter 之前，`walk` 不会下钻 —— 写任何 filter 都无效。
+放进 `node-repl-host` 子目录既绕开该规则，又正好落在 bundle 的祖先解析链上。
+
+### 体积
+
+Linux x64 的原生部分约 42 MiB（未压缩），进安装包后被压缩。实测增量：
+
+| 产物     | 增量               |
+| -------- | ------------------ |
+| AppImage | +13.3 MiB（+7.5%） |
+| deb      | +9.4 MiB（+7.1%）  |
 
 ## 许可
 

@@ -230,6 +230,30 @@ test("the staged tree really resolves the driver from the host bundle", async (t
   await runtime.dispose();
 });
 
+test("the koffi native addon stages next to the host bundle", async (t) => {
+  // koffi 是 CLI bundle 的 external（esbuild 无法 bundle 它按平台动态 require 的 .node），
+  // 只被 Windows 的 Job Object 路径使用。它此前**零调用点**（既有缺陷）——
+  // stageKoffiIntoBundledAgents 有定义但没人调，verifyStagedKoffi 有 import 但没调用。
+  // 这里锁住"调用点存在且落点正确"，避免再次退化成死代码。
+  const { stageKoffiIntoBundledAgents } =
+    await import("../../desktop/scripts/koffi-package-assets.mjs");
+  const root = "/tmp/zcode-koffi-staging-test";
+  const glmDir = stageFixture(root);
+  if (!glmDir) {
+    t.skip("node-repl-host bundle 未构建");
+    return;
+  }
+  const nativePath = stageKoffiIntoBundledAgents({
+    koffiPackageRoot: repoRoot,
+    // 与 prepare-agent-node-bundle 的 stageKoffiRuntime 同落点。
+    glmDir: resolve(glmDir, "packages/node-repl-host"),
+    targetPlatform: TARGET,
+  });
+  assert.ok(existsSync(nativePath), nativePath);
+  // 必须落在子目录下的 node_modules：源根直属的 node_modules 会被 electron-builder 丢弃。
+  assert.ok(nativePath.includes("packages/node-repl-host/node_modules/koffi"), nativePath);
+});
+
 test("the host bundle keeps the driver as a runtime import rather than inlining it", async (t) => {
   // esbuild 无法 bundle uniffi 的 .node；一旦被内联，staging 就失去意义，
   // 而症状只在正式包出现。这里把 bundle 策略本身钉住。
