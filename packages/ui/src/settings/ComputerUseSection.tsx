@@ -41,10 +41,7 @@ import { createCuaPermissionOnboardingOperationId } from "@/lib/cuaPermissionOnb
 import { waitForAccessibilityNotStale } from "@/settings/cuaPermissionRestartVerify.js";
 import { requiredCuaPermissionsForFreshStatus } from "@/settings/cuaPermissionPreparation.js";
 import { ExternalLink } from "lucide-react";
-import {
-  isComputerUseRemoteOrLinux,
-  resolveComputerUseAvailability,
-} from "@/settings/computerUseAvailability.js";
+import { resolveComputerUseAvailability } from "@/settings/computerUseAvailability.js";
 
 interface ComputerUseSectionProps {
   isDesktop?: boolean;
@@ -84,7 +81,6 @@ export function ComputerUseSection({
     (isMacDesktop ?? supportsLocalMacCuaPermissionOnboarding(platform)) &&
     isLocalWorkspace;
   const supportsLocalWindowsWorkspace = isWindowsDesktop && isLocalWorkspace;
-  const supportsComputerUseSettings = supportsLocalMacWorkspace || supportsLocalWindowsWorkspace;
   const availability = resolveComputerUseAvailability({
     isDesktop: isDesktop || isWindowsDesktop || supportsLocalMacWorkspace,
     isMacDesktop: isMacDesktop || supportsLocalMacWorkspace,
@@ -93,6 +89,12 @@ export function ComputerUseSection({
     remoteTarget,
     workspaceIdentity,
   });
+  // Linux 走开源实现（trycua/cua）：驱动已随包发出，但后端在 X11 / Wayland 下的覆盖度未验证，
+  // 因此能力开放、标注实验性；下方 macOS 专属的授权块仍由 supportsLocalMacWorkspace 单独把关。
+  // 平台判定复用 availability（与 PluginsSection 同口径），它已排除远端与 web。
+  const supportsLocalLinuxWorkspace = availability.kind === "local-linux" && isLocalWorkspace;
+  const supportsComputerUseSettings =
+    supportsLocalMacWorkspace || supportsLocalWindowsWorkspace || supportsLocalLinuxWorkspace;
   // CUA 权限是 macOS 本机属性：仅完整 macOS 设置需要 Helper workspace 路径。
   const path = supportsLocalMacWorkspace ? (localWorkspacePath ?? workspacePath) : null;
   // 展示只跟 settled：fresh 每次查询开始都会落回 false，跟着它渲染会让授权按钮的文案
@@ -689,13 +691,9 @@ export function ComputerUseSection({
           {intl.formatMessage({ id: "settings.computerUse.unsupported.title" })}
         </p>
         <p className="mt-1 text-ui-sm text-foreground-subtle">
-          {intl.formatMessage({
-            id: isComputerUseRemoteOrLinux(availability)
-              ? availability.kind === "local-linux"
-                ? "settings.computerUse.unsupported.linuxDescription"
-                : "settings.computerUse.unsupported.remoteDescription"
-              : "settings.computerUse.unsupported.remoteDescription",
-          })}
+          {/* Linux 已改为「可用但实验性」，走不到这张卡片；这里只剩远端与 web 两种情形，
+              二者共用同一句说明，不再需要按 kind 分支。 */}
+          {intl.formatMessage({ id: "settings.computerUse.unsupported.remoteDescription" })}
         </p>
       </div>
     );
@@ -744,6 +742,20 @@ export function ComputerUseSection({
           }
         />
       </SettingsGroupCard>
+
+      {/* Linux 是实验性支持：驱动已随包发出，但后端在 X11 / Wayland 下的覆盖度未验证，
+          必须显式告知能力边界，而不是让用户以为「开了就能用」。
+          该提示与启用态无关——未启用时也要先讲清楚门槛。 */}
+      {supportsLocalLinuxWorkspace ? (
+        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+          <p className="font-medium">
+            {intl.formatMessage({ id: "settings.computerUse.experimental.title" })}
+          </p>
+          <p className="mt-1 text-foreground-subtle">
+            {intl.formatMessage({ id: "settings.computerUse.experimental.linuxDescription" })}
+          </p>
+        </div>
+      ) : null}
 
       {/* CUA 未启用时隐藏下方权限配置，只留总开关，避免一堆禁用项。 */}
       {cuaEnabled && supportsLocalMacWorkspace ? (

@@ -6208,9 +6208,10 @@ const zhCN: Record<string, string> = {
   "settings.computerUse.pluginDisabledHint": "电脑控制插件未启用。前往插件开启后即可使用电脑控制。",
   "settings.computerUse.unsupported.title": "当前环境暂不支持电脑控制",
   "settings.computerUse.unsupported.remoteDescription":
-    "Computer Use 暂不支持 SSH、WSL、Docker 或其他远端环境。请切换到本机 macOS 或 Windows 工作区。",
-  "settings.computerUse.unsupported.linuxDescription":
-    "Computer Use 暂不支持 Linux 桌面环境。请切换到本机 macOS 或 Windows 工作区。",
+    "Computer Use 暂不支持 SSH、WSL、Docker 或其他远端环境。请切换到本机工作区。",
+  "settings.computerUse.experimental.title": "Linux 上为实验性支持",
+  "settings.computerUse.experimental.linuxDescription":
+    "Linux 桌面使用开源实现（trycua/cua）。驱动已随包发出，但它在 X11 / Wayland 下的覆盖度尚未全面验证，鼠标键盘控制与截图可能不可用；遇到问题请通过反馈入口告知。",
   "settings.computerUse.unsupported.badge": "当前环境不可用",
   "settings.computerUse.unsupported.group": "不可用的内置能力",
   "scheduledPreview.keepAwakeEnabled": "已开启保持唤醒",

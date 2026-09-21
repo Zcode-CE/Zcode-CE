@@ -82,7 +82,7 @@ import {
   selectPluginsForScope,
 } from "@/settings/pluginCapabilityProjection.js";
 import {
-  isComputerUseRemoteOrLinux,
+  isComputerUseUnavailable,
   matchesComputerUseSearch,
   resolveComputerUseAvailability,
 } from "@/settings/computerUseAvailability.js";
@@ -292,7 +292,7 @@ function PluginList({
     configScope === "user" &&
     target &&
     !loading &&
-    isComputerUseRemoteOrLinux(computerUseAvailability) &&
+    isComputerUseUnavailable(computerUseAvailability) &&
     matchesComputerUseSearch(searchQuery),
   );
   const hasEmptySearchResult = Boolean(
@@ -649,11 +649,9 @@ function PluginList({
             {intl.formatMessage({ id: "settings.computerUse.title" })}
           </div>
           <div className="mt-0.5 text-ui-sm text-foreground-subtle">
+            {/* Linux 已改为「可用但实验性」，本卡片现在只服务远端环境。 */}
             {intl.formatMessage({
-              id:
-                computerUseAvailability.kind === "local-linux"
-                  ? "settings.computerUse.unsupported.linuxDescription"
-                  : "settings.computerUse.unsupported.remoteDescription",
+              id: "settings.computerUse.unsupported.remoteDescription",
             })}
           </div>
         </div>

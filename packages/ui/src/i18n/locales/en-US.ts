@@ -6507,9 +6507,10 @@ const enUS: Record<string, string> = {
     "The Computer Use plugin is not enabled. Enable it in Plugins to use Computer Use.",
   "settings.computerUse.unsupported.title": "Computer Use is unavailable here",
   "settings.computerUse.unsupported.remoteDescription":
-    "Computer Use is not yet supported for SSH, WSL, Docker, or other remote environments. Switch to a local macOS or Windows workspace.",
-  "settings.computerUse.unsupported.linuxDescription":
-    "Computer Use is not yet supported on Linux desktops. Switch to a local macOS or Windows workspace.",
+    "Computer Use is not yet supported for SSH, WSL, Docker, or other remote environments. Switch to a local workspace.",
+  "settings.computerUse.experimental.title": "Experimental on Linux",
+  "settings.computerUse.experimental.linuxDescription":
+    "On Linux desktops Computer Use runs on the open-source trycua/cua implementation. The driver ships with the app, but its X11 / Wayland coverage has not been fully verified, so mouse/keyboard control and screenshots may not work. Please report issues through the feedback entry.",
   "settings.computerUse.unsupported.badge": "Unavailable here",
   "settings.computerUse.unsupported.group": "Unavailable built-in capabilities",
   "scheduledPreview.keepAwakeEnabled": "Keep awake enabled",
