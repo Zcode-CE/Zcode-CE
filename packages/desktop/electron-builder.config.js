@@ -109,15 +109,6 @@ const asarCliPath = resolve(
 );
 const REQUIRED_ASAR_RUNTIME_MODULES = [
   "module-details-from-path",
-  "@opentelemetry/api-logs",
-  // Bugfix: telemetry 的 OTLP exporter 会在启动阶段加载 sdk-metrics。pnpm 开发态可从
-  // workspace 根目录解析，但 electron-builder 不会稳定复制这条 hoisted 依赖，导致安装包启动即崩溃。
-  // 将 sdk-metrics 作为闭包根注入，同时递归带齐它的 OpenTelemetry 运行时依赖。
-  "@opentelemetry/sdk-metrics",
-  // OTLP proto 导出链闭包根：递归带齐 otlp-transformer/protobufjs 及其子依赖，
-  // 否则 hoisted 布局漏 protobufjs 时已安装应用启动即报 Cannot find module 'protobufjs/minimal'。
-  "@opentelemetry/exporter-trace-otlp-proto",
-  "@opentelemetry/exporter-metrics-otlp-proto",
   "pngjs",
   // @zcode/services 的代理连通性探测会动态 require("undici") 取 ProxyAgent。
   // tsup 虽然把 services 代码并进了主/host 产物，但不会把这个运行时 require 的包内联进去，
@@ -754,13 +745,20 @@ export default {
   },
   detectUpdateChannel: false,
   publish: {
-    provider: "generic",
-    // 当前 OSS/CDN 对多 Range 请求返回 206，但 Content-Type 仍是 application/x-msdownload，
-    // electron-updater 会因缺少 multipart/byteranges 直接回退整包下载。关闭 multiple range 后仍走差分，
-    // 只是按单 Range 顺序拉取差异块，避免 Windows 用户更新时从约 15MB 退化成 300MB+ 全量包。
-    useMultipleRangeRequest: false,
-    // 新客户端运行时使用服务端 manifest provider；这里仅保留 electron-builder 必需的
-    // generic publish 占位，避免打包产物继续携带可配置的旧 stable feed。
-    url: "http://localhost:8081",
+    // 更新渠道指向本项目的 GitHub Release。electron-builder 会把这份配置写进安装包的
+    // app-update.yml（provider/owner/repo），electron-updater 运行时直接读它构造 GitHubProvider，
+    // 因此不需要自建 manifest 服务；客户端侧的分支逻辑见 packages/desktop/src/main/autoUpdater.ts。
+    provider: "github",
+    owner: "Zcode-CE",
+    repo: "Zcode-CE",
+    // 注意：这里不能保留 generic 专有的 useMultipleRangeRequest。GithubOptions 在
+    // electron-builder 的 schema 里是 additionalProperties:false，带上该字段会直接校验失败；
+    // 而 GitHub provider 的差分下载本来就固定走单 Range（electron-updater 内部因 GitHub 走 S3
+    // 强制 isUseMultipleRangeRequest=false），所以去掉它不会让 Windows 更新退化成全量包。
+    //
+    // electron-builder 默认把 GitHub Release 建成 draft，而 draft 对 electron-updater 完全不可见
+    // （releases.atom 与 /releases/latest 都不返回），会让更新链路静默失效。这里显式发布正式
+    // Release；需要临时改回 draft / prerelease 时用 EP_DRAFT / EP_PRE_RELEASE 环境变量覆盖。
+    releaseType: "release",
   },
 };

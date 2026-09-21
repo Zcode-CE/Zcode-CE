@@ -116,6 +116,23 @@ export function compareSemverVersions(leftVersion: string, rightVersion: string)
   return comparePrerelease(left.prerelease, right.prerelease);
 }
 
+/**
+ * 剥离预发布标识后的版本（`3.14.1-ce.1` → `3.14.1`）。
+ *
+ * 为什么强更判定必须用它：semver 下 `3.14.1-ce.1 < 3.14.1`。若直接比较，官方一旦把
+ * `minimalVersion` 下发到 `3.14.1`，所有社区版构建（带 `-ce.N` 后缀）都会被判为"低于最低版本"，
+ * 触发 `maybeBlockStartupForForceUpdate` 阻止创建主窗口并退出——**应用直接打不开**。
+ *
+ * 社区版的 `-ce.N` 是"基于上游 3.14.1 的第 1 次社区发布"，语义上**不低于** `3.14.1`，
+ * 因此强更门只应比较 major/minor/patch。
+ *
+ * 注意：这里只影响**强更门**的判定，不改变 `compareSemverVersions` 的通用语义
+ * （更新检查等场景仍需要正确的 semver 序）。
+ */
+function stripPrerelease(version: string): string {
+  return version.trim().split("-", 1)[0] ?? version;
+}
+
 export function resolveForceUpdateRequirement(params: {
   currentVersion: string;
   forceUpdate?: ForceUpdateConfig | null;
@@ -125,7 +142,11 @@ export function resolveForceUpdateRequirement(params: {
     return null;
   }
 
-  const comparison = compareSemverVersions(params.currentVersion, minimalVersion);
+  // 用剥离预发布标识后的版本比较，避免 `-ce.N` 后缀被误判为"低于最低版本"而阻断启动。
+  const comparison = compareSemverVersions(
+    stripPrerelease(params.currentVersion),
+    stripPrerelease(minimalVersion),
+  );
   if (comparison === null || comparison >= 0) {
     return null;
   }

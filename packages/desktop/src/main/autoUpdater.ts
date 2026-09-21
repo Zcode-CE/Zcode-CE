@@ -45,6 +45,10 @@ let activeAutoUpdateCheckChannel: ElectronReleaseChannel | null = null;
 let settlingAutoUpdateCheckId: number | null = null;
 let availableUpdateReleaseNotes: PostUpdateReleaseNotesPayload | null = null;
 let availableUpdateChannel: ElectronReleaseChannel = "stable";
+// 社区版默认不再注入官方 manifest provider：让 electron-updater 读取 electron-builder 写进
+// 安装包的 app-update.yml（GitHub Release）。只有显式传了更新源覆盖时才切回 manifest provider，
+// 该状态同时决定发布通道与 provider 注入，避免两处各判一次导致分叉。
+let usesManifestUpdateProvider = false;
 let downloadingUpdateVersion: string | null = null;
 let downloadingUpdateReleaseNotes: PostUpdateReleaseNotesPayload | null = null;
 let downloadingUpdateChannel: ElectronReleaseChannel | null = null;
@@ -656,6 +660,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object";
 }
 
+/** 更新源必须是 https：正式包放开覆盖后，这是唯一还能挡住明文更新链路的约束。 */
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function redactUpdateFeedUrlForLog(value: string): string {
   try {
     const url = new URL(value);
@@ -704,10 +717,14 @@ export function resolveUpdateFeedSourceFromStartupConfig(
   if (!feedUrl) {
     return undefined;
   }
-  // 更新源覆盖仅供开发构建联调;正式包按 isPackaged 忽略,避免更新请求被环境变量/启动参数改道
-  if (app.isPackaged) {
+  // 更新源覆盖原先在正式包里被无条件忽略，只留给开发构建联调。
+  // 国内网络直连 GitHub 不稳定时，用户和企业内网需要把更新源指向镜像或自建 feed，
+  // 因此正式包放开这条限制，但**只接受 https**：更新产物本身要下载并执行，
+  // 允许 http 等于让更新链路可被中间人替换。原有的「防止被环境变量改道」意图由
+  // 协议约束承担，而不是靠一刀切禁用。
+  if (app.isPackaged && !isHttpsUrl(feedUrl)) {
     logger.warn(
-      `[auto-update] ignore update feed override in packaged app: ${redactUpdateFeedUrlForLog(feedUrl)}`,
+      `[auto-update] ignore non-https update feed override in packaged app: ${redactUpdateFeedUrlForLog(feedUrl)}`,
     );
     return undefined;
   }
@@ -717,6 +734,13 @@ export function resolveUpdateFeedSourceFromStartupConfig(
 async function resolveUpdateReleaseChannel(
   settingService: SettingServiceLike | undefined,
 ): Promise<ElectronReleaseChannel> {
+  // 官方 manifest 有 stable/preview 两条发布流，我们的 GitHub Release 只有一条。
+  // 原生 provider 下固定 stable：否则「接受预览版更新」开关会把同一个 Release 标成 preview，
+  // 污染 skippedElectronUpdateVersions 的通道 key 和菜单里展示的通道。
+  if (!usesManifestUpdateProvider) {
+    return "stable";
+  }
+
   if (!settingService) {
     return "stable";
   }
@@ -751,8 +775,32 @@ async function syncAutoUpdateCheckChannelFromSettings(
   activeAutoUpdateCheckChannel = nextChannel;
 }
 
-function applyManifestUpdateProvider(options: InitAutoUpdaterOptions): void {
+/**
+ * 按构建目标决定更新源，不再无条件注入官方 manifest provider。
+ *
+ * - 打包态（发布产物）：不调用 setFeedURL，让 electron-updater 读取 electron-builder 依据
+ *   publish 配置写进安装包的 app-update.yml（provider: github + owner/repo），
+ *   即本项目自己的 GitHub Release；
+ * - 未打包的开发态：没有 app-update.yml，只有联调用的 dev-app-update.yml（占位 generic
+ *   url，不是可用更新源），因此继续注入 ManifestUpdateProvider，保住
+ *   ZCODE_AUTO_UPDATE_DEV 那套本地验证链路不被改成打不通的地址；
+ * - 显式传入更新源覆盖（镜像 / 自建 feed）时：也走 ManifestUpdateProvider，
+ *   因为 GitHub provider 只接受 {owner, repo, host} 三元组，会丢弃 URL 的路径部分，
+ *   无法表达镜像前缀或自建地址。
+ *
+ * ManifestUpdateProvider 本身保留：它是官方 manifest 协议的完整实现，后续若改为自建更新
+ * 服务（返回同协议 manifest）可直接复用，不必重写。
+ */
+function applyUpdateProvider(options: InitAutoUpdaterOptions): void {
   const manifestUrl = options.updateFeedSource?.url.trim();
+  usesManifestUpdateProvider = Boolean(manifestUrl) || !app.isPackaged;
+  if (!usesManifestUpdateProvider) {
+    // 不设置 feed：electron-updater 会走安装包内的 app-update.yml。这里只记日志，
+    // 便于线上排查「更新检查打到哪个源」。
+    logger.info("[auto-update] use packaged app-update.yml provider (github release)");
+    return;
+  }
+
   autoUpdater.setFeedURL({
     provider: "custom",
     updateProvider: ManifestUpdateProvider,
@@ -767,10 +815,12 @@ function applyManifestUpdateProvider(options: InitAutoUpdaterOptions): void {
       return availableUpdateChannel;
     },
   });
+  // 未打包态没有 feed 覆盖时 manifestUrl 为空，此时 provider 仍按官方端点解析，
+  // 日志里显式区分这两种来源，避免排查时误以为配了镜像。
   logger.info(
     manifestUrl
       ? `[auto-update] service manifest provider applied platform=${getElectronReleasePlatform()} manifestUrl=${redactUpdateFeedUrlForLog(manifestUrl)}`
-      : `[auto-update] service manifest provider applied platform=${getElectronReleasePlatform()}`,
+      : `[auto-update] service manifest provider applied platform=${getElectronReleasePlatform()} source=dev-default`,
   );
 }
 
@@ -1360,6 +1410,14 @@ export function refreshAutoUpdaterReleaseChannel(
     return;
   }
 
+  // 原生 provider 下没有 preview 发布流，切开关不需要换通道重查。
+  // 这里必须早退：否则会把 availableUpdateChannel 改成 preview 并多打一次更新检查，
+  // 让同一个 GitHub Release 被当成预览通道记录（跳过版本 key、菜单通道都会跟着变）。
+  if (!usesManifestUpdateProvider) {
+    logger.info(`[auto-update] skip ${reason}: native provider has a single release channel`);
+    return;
+  }
+
   if (menuState.kind === "download-progress" || menuState.kind === "update-downloaded") {
     logger.info(`[auto-update] skip ${reason}: state=${menuState.kind} channel=${nextChannel}`);
     return;
@@ -1504,7 +1562,7 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
   // 这里仅在 Windows 关闭“退出即自动安装”，要求用户显式点更新；其他平台保持原有行为，避免改动既有升级链路。
   autoUpdater.autoInstallOnAppQuit = process.platform !== "win32";
   autoUpdater.logger = logger;
-  applyManifestUpdateProvider(options);
+  applyUpdateProvider(options);
 
   const triggerCheckForUpdates = (reason: string) => {
     if (checkForUpdatesInFlight) {

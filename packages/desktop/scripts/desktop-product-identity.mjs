@@ -1,25 +1,27 @@
 /**
  * 构建期开关：为真时安装包使用 Preview 身份，而后端环境仍由 `ZCODE_ENV` 单独决定。
  * 典型用法是 `ZCODE_ENV=production ZCODE_PREVIEW_IDENTITY=1`，得到一个连接生产后端、
- * 可与正式版并排安装的 `ZCode Preview`。
+ * 可与正式版并排安装的 `ZCode-CE Preview`。
  */
 export const ZCODE_PREVIEW_IDENTITY_ENV = "ZCODE_PREVIEW_IDENTITY";
 
+// 社区版（ZCode-CE）使用独立身份：appId / productName / Linux 可执行名与包名
+// 全部加 ce 标记，使 CE 与官方 ZCode 成为两个独立应用，可并存安装、互不覆盖快捷方式。
 const PRODUCTION_IDENTITY = Object.freeze({
   flavor: "production",
-  appId: "dev.zcode.app",
-  productName: "ZCode",
-  linuxExecutableName: "zcode",
-  linuxPackageName: "zcode",
+  appId: "dev.zcode.app.ce",
+  productName: "ZCode-CE",
+  linuxExecutableName: "zcode-ce",
+  linuxPackageName: "zcode-ce",
   cuaHelperInstallVariant: null,
 });
 
 const PREVIEW_IDENTITY = Object.freeze({
   flavor: "preview",
-  appId: "dev.zcode.app.preview",
-  productName: "ZCode Preview",
-  linuxExecutableName: "zcode-preview",
-  linuxPackageName: "zcode-preview",
+  appId: "dev.zcode.app.ce.preview",
+  productName: "ZCode-CE Preview",
+  linuxExecutableName: "zcode-ce-preview",
+  linuxPackageName: "zcode-ce-preview",
   cuaHelperInstallVariant: "preview",
 });
 
@@ -69,7 +71,7 @@ export function resolveDesktopProductIdentity(env = process.env) {
 
 /**
  * 产物文件名后缀标记的是后端环境而不是身份：`_TEST` 只出现在测试后端的安装包上。
- * 生产后端的 Preview 包靠 productName（`ZCode Preview-<version>-...`）与正式包区分。
+ * 生产后端的 Preview 包靠 productName（`ZCode-CE Preview-<version>-...`）与正式包区分。
  */
 export function resolveDesktopArtifactSuffix(env = process.env) {
   return normalizeDesktopZCodeEnv(env) === "test" ? "_TEST" : "";
@@ -81,6 +83,10 @@ export function resolveDesktopArtifactSuffix(env = process.env) {
  * 打包态必须复用 electron-builder 的 appId，否则快捷方式里的 AUMID、开始菜单索引
  * 和运行中的 Electron 进程会被 Windows 视为三个不同的应用。开发态继续保留旧身份，
  * 避免本地调试快捷方式和正式/Preview 安装包互相污染。
+ *
+ * 注意：开发态返回值 `cn.aminer.zcode` 是**刻意保留的历史身份**，不属于 CE 改名范围 ——
+ * 它与打包态的 `dev.zcode.app.ce` 不同，正是为了让本地调试的快捷方式/开始菜单项
+ * 与已安装的正式包分属两个应用，避免互相覆盖。
  */
 export function resolveWindowsAppUserModelIdForFlavor(flavor, runtime = { isPackaged: true }) {
   if (runtime.isPackaged === false) {
