@@ -3,7 +3,12 @@
   "compilerOptions": {
     "outDir": "out/host",
     "rootDir": "src/host",
-    "lib": ["es2025"]
+    "lib": ["es2025"],
+    // 真正的产物由 tsup 从 src/ 打包（见 run-production-build.mjs 与 out/.host-build-ready），
+    // tsc 的 emit 是残留的：它会用纯编译结果覆盖同名的 tsup bundle（out/host/index.js），
+    // 后者缺 esbuild 的 define 注入（__ZCODE_VERSION__ 等），一旦覆盖运行期就会 ReferenceError。
+    // renderer 早就这么做了，这里补齐。
+    "noEmit": true
   },
   "include": ["src/host"],
   // host 既直接依赖 services/shared，也直接 import 了 rpc；补 references 是为了避免它再次把 rpc 源码拉进来检查。

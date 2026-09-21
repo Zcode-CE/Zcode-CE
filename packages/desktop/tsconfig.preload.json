@@ -3,7 +3,9 @@
   "compilerOptions": {
     "outDir": "out/preload",
     "rootDir": "src",
-    "lib": ["es2025", "dom"]
+    "lib": ["es2025", "dom"],
+    // 同 host：preload 产物由 tsup 输出为 .cjs，tsc 只做类型检查，禁止 emit。
+    "noEmit": true
   },
   "include": ["src/preload", "src/shared/armsRumBridgeForward.ts"],
   "references": [{ "path": "../shared" }]

@@ -4,6 +4,8 @@
     "outDir": "out/scheduler",
     "rootDir": "src/scheduler",
     "lib": ["es2025"],
+    // 同 host：产物由 tsup 打包，tsc 只做类型检查，禁止 emit 以免覆盖 bundle。
+    "noEmit": true,
     // scheduler 只把 Electron.MessageEvent 当类型用、不 import "electron" 值，
     // 故显式引入 node + electron 全局类型（process/setInterval/Electron 命名空间）。
     "types": ["node", "electron"]

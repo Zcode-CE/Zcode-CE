@@ -2,10 +2,12 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "out/main",
-    "rootDir": "src/main",
-    "lib": ["es2025"]
+    "rootDir": "src",
+    "lib": ["es2025"],
+    // 同 host：产物由 tsup 打包，tsc 只做类型检查，禁止 emit 以免覆盖 bundle。
+    "noEmit": true
   },
-  "include": ["src/main"],
+  "include": ["src/main", "src/scheduler/schedulerProtocol.ts"],
   // main 直接依赖 shared 和 services；把引用补齐后，desktop 子工程也能稳定复用上游声明产物。
   "references": [{ "path": "../shared" }, { "path": "../services" }]
 }
