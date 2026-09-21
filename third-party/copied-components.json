@@ -250,5 +250,21 @@
     "license": "MIT",
     "scope": "Vendored React/Next.js guidance and local adaptations; local README preserves Shu Ding / Vercel attribution.",
     "reviewRequired": "Pinned upstream README and skill declare MIT, but a complete original copyright/license notice has not been obtained."
+  },
+  {
+    "id": "DeepSeek Harness skill-office",
+    "referenceRevision": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+    "source": "https://github.com/deepseek-ai/deepseek-harness (packages/skill/skill-office)",
+    "file": "third-party/upstream/ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be.txt",
+    "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
+    "importRevision": null,
+    "provenance": "Copied from a local checkout of deepseek-harness; the original copy revision is not recorded in this workspace. The pinned license snapshot is the upstream MIT LICENSE.",
+    "roots": [
+      "apps/zcode-cli/packages/documents-plugin",
+      "apps/zcode-cli/packages/presentations-plugin",
+      "apps/zcode-cli/packages/spreadsheets-plugin"
+    ],
+    "scope": "Office document authoring skills (docx/pptx/xlsx SKILL.md), the shared OOXML structural checker (scripts/check_office.py), and the MIT license text. Adapted for ZCode-CE: the upstream `load_workspace_dependencies` / `render_document` / `present` tool references were replaced with system-Python and file-path equivalents, and the skill directory was renamed from `assets/` to `skills/` to match this repository's plugin layout. The `agents/visual-judge.md` file is an independent ZCode-CE implementation, not copied from upstream.",
+    "license": "MIT"
   }
 ]

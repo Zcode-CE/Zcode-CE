@@ -32,7 +32,6 @@
     "@zcode/provider": "workspace:*",
     "@zcode/provider-node": "workspace:*",
     "@zcode/shared": "workspace:*",
-    "@zcode/telemetry": "workspace:*",
     "diff": "^9.0.0",
     "zod": "4.6.5"
   },

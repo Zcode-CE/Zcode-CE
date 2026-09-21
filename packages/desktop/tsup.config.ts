@@ -139,7 +139,9 @@ export default defineConfig([
     entry: {
       "main/index": "src/main/index.ts",
       "main/browserWebmRecorder": "src/main/browserView/electronBrowserWebmRecorder.ts",
-      "main/zcodeDataSizeWorker": "src/main/zcodeDataSizeWorker.ts",
+      // 遥测移除（P1）：原 "main/zcodeDataSizeWorker" 入口已删除 ——
+      // 它唯一的生产者是 desktopZCodeDataSizeTelemetry.ts（数据目录体积上报），随 ARMS 一并移除；
+      // 连带 zcodeDataSizeWorkerClient.ts / zcodeDataSizeScanner.ts 成为死链，已同时删除。
       // 资源管理器「存储」tab 的扫描 Worker：main 持有 StorageService，遍历放独立线程，供 new Worker(new URL()) 解析。
       "main/storageScanWorker": "src/main/storageScanWorker.ts",
     },
