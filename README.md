@@ -56,7 +56,7 @@ ZCode-CE 基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0�
 
 **数据目录**：与官方 ZCode 共享 `~/.zcode/v2`，两者**可并存安装**（安装身份独立），但**不建议同时运行**。
 
-> **关于 Windows 签名**：官方发行版使用 DigiCert 签发的组织验证（OV）证书签名。本项目作为社区项目无法申请同类证书，正在申请 [SignPath Foundation](https://signpath.org/) 的免费开源代码签名（证书签发给 SignPath Foundation，非本项目），通过后将消除 SmartScreen 提示。
+> **关于 Windows 签名**：官方发行版使用 DigiCert 签发的组织验证（OV）证书签名。本项目作为社区项目无法申请同类证书，正在申请 [SignPath Foundation](https://signpath.org/) 的免费开源代码签名（证书签发给 SignPath Foundation，非本项目），通过后将消除 SmartScreen 提示。详见 [Code signing policy](docs/operations/code-signing-policy.md)。
 
 想从源码构建或参与开发？见下方[初始化](#初始化)与[开发与运行](#开发与运行)。
 

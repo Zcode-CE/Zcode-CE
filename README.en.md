@@ -56,7 +56,7 @@ Download the installer for your platform from [Releases](https://github.com/Zcod
 
 **Data directory**: shared with the official ZCode at `~/.zcode/v2`. Both can be installed side by side (separate install identities), but running them simultaneously is not recommended.
 
-> **About Windows signing**: the official distribution is signed with a DigiCert organization-validated (OV) certificate. As a community project we cannot obtain that class of certificate, and are applying for free open-source code signing from [SignPath Foundation](https://signpath.org/) (the certificate is issued to SignPath Foundation, not to this project). Once approved, the SmartScreen prompt goes away.
+> **About Windows signing**: the official distribution is signed with a DigiCert organization-validated (OV) certificate. As a community project we cannot obtain that class of certificate, and are applying for free open-source code signing from [SignPath Foundation](https://signpath.org/) (the certificate is issued to SignPath Foundation, not to this project). Once approved, the SmartScreen prompt goes away. See the [Code signing policy](docs/operations/code-signing-policy.md).
 
 Prefer to build from source or contribute? See [Setup](#setup) and [Development](#development) below.
 
