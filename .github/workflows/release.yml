@@ -1,0 +1,117 @@
+# ZCode-CE 发布构建流水线
+#
+# 触发：
+#   - push tag `v*`（如 v3.14.1-ce.1）→ 构建 + 发布到 GitHub Release
+#   - workflow_dispatch               → 构建 + 上传 artifact（默认不新建 Release，见下）
+#
+# 为什么必须走 CI：Windows 安装包（nsis）无法在 Linux 上交叉打包，必须由 windows-latest 产出。
+#
+# 说明文档：docs/operations/ci.md、docs/operations/release.md
+# ⚠️ 本文件尚未在真实 GitHub runner 上验证过（本地无法运行 Actions），详见 .reverse/21-release/R3b-ci.md
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+# electron-builder 需要写权限把产物发到 Release；使用自带 GITHUB_TOKEN，无需 PAT。
+permissions:
+  contents: write
+
+# 同一 tag 重复触发时串行化，避免两次运行同时向同一个 Release 上传产物。
+# 不用 cancel-in-progress：打包耗时约 20 分钟，中途取消会留下不完整 Release。
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build ${{ matrix.artifact }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # 一个平台失败不应阻止另一个平台产出（Windows 包只能在这里产出，尤其不能被 Linux 失败连坐）。
+      fail-fast: false
+      # ⚠️ 必须串行：本流水线依赖 electron-builder 的 GitHub publisher 上传产物，
+      # 而它在两个平台并行时会各自尝试创建同一个 tag 的 Release。electron-publish 的
+      # getOrCreateRelease() 是「先列 Release 再 POST 创建」，创建失败没有重试
+      # （只有资产上传失败才重试），并发创建会以 422 already_exists 直接让整个构建失败。
+      # 代价是总时长约为两平台之和（约 40 分钟）而非取最大值；发布频率低，换取可靠性。
+      max-parallel: 1
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            artifact: linux
+          - os: windows-latest
+            platform: win
+            arch: x64
+            artifact: windows
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 不传 version：pnpm/action-setup 会读取根 package.json 的
+      # "packageManager": "pnpm@10.33.2"。同时传 version 会因版本冲突直接报错。
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      # rpm target 需要 rpmbuild，缺失时 electron-builder 在 rpm 阶段报
+      # "Need executable 'rpmbuild' to convert dir to rpm"。
+      # libarchive-tools 提供 bsdtar，pacman target 依赖它（本机已自带，CI 镜像不保证有）。
+      - name: Install packaging tools (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm libarchive-tools
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ⚠️ 只调用一次 bundle:desktop：scripts/bundle.mjs 内部已经依次执行
+      # prepare:runtime-assets → build → electron-builder → 产物校验 → 体积审计。
+      # 不要在它之前再单独跑一次 prepare/build，那会把约 10 分钟的资产准备重复做一遍。
+      #
+      # ⚠️ bundle:desktop 的脚本定义是 "pnpm --filter @zcode/desktop run bundle --"（末尾已有 --）。
+      # 调用时不要再补一个 --，否则参数会被当成位置参数丢掉，bundle.mjs 回退到默认目标
+      - name: Build installers
+        env:
+          ZCODE_ENV: production
+          # electron-builder 的 GitHub publisher 读取 GH_TOKEN / GITHUB_TOKEN。
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 重新运行一个已发布超过 2 小时的 tag 时，electron-publish 默认会认为
+          # "existing release published more than 2 hours ago" 而**静默跳过上传**
+          # （只打 warn，构建仍然成功）。打开此开关让重跑真正覆盖上传。
+          EP_GH_IGNORE_TIME: "true"
+          # ⚠️ 必须显式指向官方源。scripts/bundle.mjs:114-117 的默认值是 npmmirror
+          # （国内 CDN，为本地开发优化）：ELECTRON_MIRROR → npmmirror.com/mirrors/electron/，
+          # electron-builder-binaries → registry.npmmirror.com。
+          # GitHub runner 在境外访问国内 CDN 可能很慢甚至失败，所以这里覆盖为官方地址。
+          # 本地构建不受影响（本地仍走国内源更快）。
+          ELECTRON_MIRROR: "https://github.com/electron/electron/releases/download/"
+          ELECTRON_BUILDER_BINARIES_MIRROR: "https://github.com/electron-userland/electron-builder-binaries/releases/download/"
+        run: pnpm bundle:desktop --os ${{ matrix.platform }} --arch ${{ matrix.arch }}
+      # .blockmap 必须一起留存，否则 electron-updater 的差分下载会退化为全量包。
+      - name: Upload installers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zcode-ce-${{ matrix.artifact }}
+          if-no-files-found: warn
+          path: |
+            packages/desktop/dist/*.AppImage
+            packages/desktop/dist/*.deb
+            packages/desktop/dist/*.rpm
+            packages/desktop/dist/*.pkg.tar.zst
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/*.yml
+            packages/desktop/dist/*.blockmap

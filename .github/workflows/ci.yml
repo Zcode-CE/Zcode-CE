@@ -1,0 +1,58 @@
+# ZCode-CE 持续集成：类型检查 / Lint / 测试 / 格式 / 架构检查
+#
+# ⚠️ 本文件尚未在真实 GitHub runner 上验证过（本地无法运行 Actions），详见 .reverse/21-release/R3b-ci.md
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # architecture:check --changed 需要基线对比，浅克隆会让变更集判断失真。
+          fetch-depth: 0
+
+      # 不传 version：读取根 package.json 的 "packageManager": "pnpm@10.33.2"。
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm fmt:check
+
+      - name: Test
+        run: pnpm test
+
+      - name: Architecture check
+        run: pnpm run architecture:check -- --changed
+
+      # 刻意不跑 pnpm licenses:check：它依赖平台包集合，CI 环境与本地平台差异会误报。
