@@ -51,17 +51,13 @@ export interface FeedbackDiagnosticsController {
   prefillCopied: boolean;
   archiveDirectory: string | null;
   archiveSize: number | null;
-  preparingArchive: boolean;
-  /** 日志归档依赖 IFeedbackService；宿主没提供时按钮保持禁用。 */
-  canPrepareArchive: boolean;
   setDescription: (next: string) => void;
   selectChannel: (next: FeedbackChannelKind) => void;
   updateCustomUrlTemplate: (next: string) => void;
   toggleDiagnosticField: (fieldId: FeedbackDiagnosticFieldId, checked: boolean) => void;
   openPrefilledIssue: () => void;
   copyPrefilledUrl: () => Promise<void>;
-  exportLogs: () => void;
-  prepareArchive: () => Promise<void>;
+  exportLogs: () => Promise<void>;
   revealArchive: () => Promise<void>;
 }
 
@@ -84,7 +80,6 @@ export function useFeedbackDiagnostics(): FeedbackDiagnosticsController {
   const [prefillCopied, setPrefillCopied] = useState(false);
   const [archiveDirectory, setArchiveDirectory] = useState<string | null>(null);
   const [archiveSize, setArchiveSize] = useState<number | null>(null);
-  const [preparingArchive, setPreparingArchive] = useState(false);
 
   // 偏好是纯 renderer 展示配置，挂载时一次性读取；写回按用户操作即时落盘。
   useEffect(() => {
@@ -231,31 +226,16 @@ export function useFeedbackDiagnostics(): FeedbackDiagnosticsController {
     return () => clearTimeout(timer);
   }, [prefillCopied]);
 
-  const exportLogs = useCallback(() => {
-    void runExportLogsAction(platform, intl);
-  }, [intl, platform]);
-
-  const prepareArchive = useCallback(async () => {
-    if (!feedbackService || preparingArchive) {
+  const exportLogs = useCallback(async () => {
+    const result = await runExportLogsAction(platform, intl);
+    if (!result?.path) {
       return;
     }
-    setPreparingArchive(true);
-    try {
-      // 复用反馈链路的紧凑归档：与「提交反馈时自动附带日志」走同一份脱敏与体积上限，
-      // 不新增第二条日志打包路径。
-      const archive = await feedbackService.prepareCompactLogArchive();
-      setArchiveDirectory(getContainingDirectoryPath(archive.path) ?? archive.path);
-      setArchiveSize(archive.size);
-      toast(intl.formatMessage({ id: "settings.feedback.logs.prepared" }));
-    } catch (error) {
-      logger.warn("[feedback-diagnostics] 生成本地日志包失败", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      toast(intl.formatMessage({ id: "settings.feedback.logs.failed" }));
-    } finally {
-      setPreparingArchive(false);
-    }
-  }, [feedbackService, intl, preparingArchive]);
+    // 导出成功后把产物路径显示出来并给出「在文件管理器中显示」。
+    // 这是原「生成日志包」那条路径上唯一不重复、且确实有用的信息，随两个按钮合并一并保留。
+    setArchiveDirectory(getContainingDirectoryPath(result.path) ?? result.path);
+    setArchiveSize(null);
+  }, [intl, platform]);
 
   const revealArchive = useCallback(async () => {
     if (!archiveDirectory) {
@@ -278,8 +258,6 @@ export function useFeedbackDiagnostics(): FeedbackDiagnosticsController {
     prefillCopied,
     archiveDirectory,
     archiveSize,
-    preparingArchive,
-    canPrepareArchive: Boolean(feedbackService),
     setDescription,
     selectChannel,
     updateCustomUrlTemplate,
@@ -287,7 +265,6 @@ export function useFeedbackDiagnostics(): FeedbackDiagnosticsController {
     openPrefilledIssue,
     copyPrefilledUrl,
     exportLogs,
-    prepareArchive,
     revealArchive,
   };
 }

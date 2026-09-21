@@ -1,4 +1,4 @@
-import { Check, Copy, Download, ExternalLink, FolderOpen, LifeBuoy, Ticket } from "lucide-react";
+import { Check, Copy, Download, ExternalLink, FolderOpen, Ticket } from "lucide-react";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { Button } from "@/components/ui/button.js";
 import { useFeedbackStore } from "@/feedback/feedbackStore.js";
@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input.js";
 import { Label } from "@/components/ui/label.js";
 import { Textarea } from "@/components/ui/textarea.js";
 import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
-import { StatusDot } from "@/settings/StatusDot.js";
 import { formatBytes } from "@/resource-manager/resourceUsageView.js";
 import {
   DEFAULT_FEEDBACK_REPOSITORY_URL,
@@ -33,26 +32,18 @@ const FEEDBACK_CHANNEL_LABEL_IDS: Record<FeedbackChannelKind, string> = {
   off: "settings.feedback.channel.off",
 };
 
-export function FeedbackDiagnosticsSection({
-  isDesktop = false,
-  workspacePath,
-  workspaceIdentity,
-}: {
-  isDesktop?: boolean;
-  /** 仅用于提示诊断信息的作用范围，不进入预填正文。 */
-  workspacePath?: string | null;
-  workspaceIdentity?: string;
-}) {
+export function FeedbackDiagnosticsSection({ isDesktop = false }: { isDesktop?: boolean }) {
+  // 作用范围不再单列一行说明：它属于「讲给自己听的保证」，不是设置项。
+  // 保留 workspacePath / workspaceIdentity 的入参只服务过那行提示，已一并移除。
   const { intl } = useZCodeIntl();
   const diagnostics = useFeedbackDiagnostics();
   const openOfficialSubmit = useFeedbackStore((state) => state.openSubmit);
-  const hasWorkspaceContext = Boolean(workspacePath?.trim() || workspaceIdentity?.trim());
 
   return (
     <div className="space-y-4">
       <SettingsGroupCard>
         <SettingsRow
-          controlLayout="wide"
+          controlLayout="stacked"
           label={intl.formatMessage({ id: "settings.feedback.channel.label" })}
           description={intl.formatMessage({ id: "settings.feedback.channel.description" })}
           control={
@@ -101,7 +92,7 @@ export function FeedbackDiagnosticsSection({
         ) : null}
         {diagnostics.channel === "custom" ? (
           <SettingsRow
-            controlLayout="wide"
+            controlLayout="stacked"
             label={intl.formatMessage({ id: "settings.feedback.customUrl.label" })}
             description={intl.formatMessage({ id: "settings.feedback.customUrl.description" })}
             control={null}
@@ -146,7 +137,7 @@ export function FeedbackDiagnosticsSection({
 
       <SettingsGroupCard>
         <SettingsRow
-          controlLayout="wide"
+          controlLayout="stacked"
           label={intl.formatMessage({ id: "settings.feedback.diagnostics.label" })}
           description={intl.formatMessage({ id: "settings.feedback.diagnostics.description" })}
           control={null}
@@ -196,6 +187,7 @@ export function FeedbackDiagnosticsSection({
           }
         />
         <SettingsRow
+          controlLayout="stacked"
           label={intl.formatMessage({ id: "settings.feedback.preview.label" })}
           description={intl.formatMessage({ id: "settings.feedback.preview.description" })}
           control={
@@ -242,37 +234,24 @@ export function FeedbackDiagnosticsSection({
 
       <SettingsGroupCard>
         <SettingsRow
+          controlLayout="stacked"
           label={intl.formatMessage({ id: "settings.feedback.logs.label" })}
           description={intl.formatMessage({ id: "settings.feedback.logs.description" })}
           control={
             <div className="flex flex-wrap items-center justify-end gap-2">
+              {/* 原有两个按钮其实是两条日志打包路径（feedbackService 的紧凑归档 vs
+                  侧边栏同源的完整导出），用户视角分不出差别。统一保留完整导出这一个入口，
+                  并把紧凑归档原本那份有用的反馈（产物路径 + 在文件管理器中显示）补给它。 */}
               <Button
                 type="button"
                 variant="outline"
                 size="lg"
-                disabled={!diagnostics.canPrepareArchive || diagnostics.preparingArchive}
-                onClick={() => void diagnostics.prepareArchive()}
+                disabled={!isDesktop}
+                onClick={() => void diagnostics.exportLogs()}
               >
                 <Download className="size-4" />
-                <span>
-                  {intl.formatMessage({
-                    id: diagnostics.preparingArchive
-                      ? "settings.feedback.logs.preparing"
-                      : "settings.feedback.logs.prepare",
-                  })}
-                </span>
+                <span>{intl.formatMessage({ id: "sidebar.exportLogs" })}</span>
               </Button>
-              {isDesktop ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  onClick={() => void diagnostics.exportLogs()}
-                >
-                  <Download className="size-4" />
-                  <span>{intl.formatMessage({ id: "sidebar.exportLogs" })}</span>
-                </Button>
-              ) : null}
             </div>
           }
           detail={
@@ -293,38 +272,6 @@ export function FeedbackDiagnosticsSection({
                 </Button>
               </div>
             ) : null
-          }
-        />
-        <SettingsRow
-          label={intl.formatMessage({ id: "settings.feedback.attachment.label" })}
-          description={intl.formatMessage({ id: "settings.feedback.attachment.description" })}
-          control={null}
-        />
-      </SettingsGroupCard>
-
-      <SettingsGroupCard>
-        <SettingsRow
-          label={intl.formatMessage({ id: "settings.feedback.telemetry.label" })}
-          description={intl.formatMessage({ id: "settings.feedback.telemetry.description" })}
-          control={
-            <span className="inline-flex items-center gap-2 text-ui-base text-foreground-subtle">
-              <StatusDot tone="muted" />
-              {intl.formatMessage({ id: "settings.feedback.telemetry.disabled" })}
-            </span>
-          }
-        />
-        <SettingsRow
-          label={intl.formatMessage({ id: "settings.feedback.scope.label" })}
-          description={intl.formatMessage({
-            id: hasWorkspaceContext
-              ? "settings.feedback.scope.workspace"
-              : "settings.feedback.scope.app",
-          })}
-          control={
-            <span className="inline-flex items-center gap-2 text-ui-base text-foreground-subtle">
-              <LifeBuoy className="size-4" />
-              {intl.formatMessage({ id: "settings.feedback.scope.local" })}
-            </span>
           }
         />
       </SettingsGroupCard>

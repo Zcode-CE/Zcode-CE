@@ -6257,23 +6257,8 @@ const zhCN: Record<string, string> = {
   "settings.feedback.logs.label": "诊断日志",
   "settings.feedback.logs.description":
     "在本机打包一份脱敏日志 zip；反馈渠道关闭时也可以单独导出交给维护者。",
-  "settings.feedback.logs.prepare": "生成日志包",
-  "settings.feedback.logs.preparing": "正在打包…",
-  "settings.feedback.logs.prepared": "日志包已生成",
-  "settings.feedback.logs.failed": "日志包生成失败",
   "settings.feedback.logs.reveal": "打开所在目录",
   "settings.feedback.logs.revealFailed": "无法在系统文件管理器中打开",
-  "settings.feedback.attachment.label": "附件",
-  "settings.feedback.attachment.description":
-    "GitHub 预填链接无法自动上传文件；请在浏览器里手动把日志 zip 拖进 issue 正文。",
-  "settings.feedback.telemetry.label": "遥测状态",
-  "settings.feedback.telemetry.description": "本项目构建不包含任何后台上报通道，此处为只读状态。",
-  "settings.feedback.telemetry.disabled": "已全部关闭",
-  "settings.feedback.scope.label": "作用范围",
-  "settings.feedback.scope.local": "仅本机",
-  "settings.feedback.scope.app": "本分区只读写本机配置，不跟随工作区切换。",
-  "settings.feedback.scope.workspace":
-    "本分区只读写本机配置；诊断信息不包含当前工作区路径或远端目标。",
   "settings.feedback.official.label": "官方工单服务",
   "settings.feedback.official.description":
     "连接官方反馈接口（需要官方账号与设备标识）。对社区版构建通常不可用，仅在你确有官方渠道时使用。",

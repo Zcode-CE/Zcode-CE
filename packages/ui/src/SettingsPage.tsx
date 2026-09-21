@@ -1956,11 +1956,7 @@ export function SettingsPage({
                         ) : activeSection === "feedback" ? (
                           // 「反馈与诊断」只依赖本机能力（GitHub 预填链接 / 本地日志归档），
                           // 因此不接 workspace 参数，也不跟随远端 workspace 切换。
-                          <FeedbackDiagnosticsSection
-                            isDesktop={Boolean(isDesktop)}
-                            workspacePath={activeWorkspacePath}
-                            workspaceIdentity={activeWorkspaceIdentity}
-                          />
+                          <FeedbackDiagnosticsSection isDesktop={Boolean(isDesktop)} />
                         ) : null}
                       </div>
                     </div>

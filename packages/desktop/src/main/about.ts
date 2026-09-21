@@ -64,6 +64,7 @@ const ABOUT_MESSAGES: Record<
     versionLabel: string;
     okButtonLabel: string;
     optimizedForAppleSilicon: string;
+    noTelemetry: string;
     copyright: (year: number) => string;
   }
 > = {
@@ -72,6 +73,8 @@ const ABOUT_MESSAGES: Record<
     versionLabel: "版本",
     okButtonLabel: "确定",
     optimizedForAppleSilicon: "已针对 Apple Silicon 优化。",
+    // 「反馈与诊断」里原有一行只读的遥测状态说明，它不是设置项，移到 About 作为一句事实陈述。
+    noTelemetry: "本构建不含任何后台上报通道。",
     copyright: (year) => `版权所有 © ${year} ZCode。`,
   },
   "en-US": {
@@ -79,6 +82,7 @@ const ABOUT_MESSAGES: Record<
     versionLabel: "version",
     okButtonLabel: "OK",
     optimizedForAppleSilicon: "Optimized for Apple Silicon.",
+    noTelemetry: "This build contains no background reporting channel.",
     copyright: (year) => `Copyright © ${year} ZCode.`,
   },
 };
@@ -259,6 +263,7 @@ export async function showAboutDialog(
         appVersion: snapshot.appVersion,
         copyright: formatAboutCopyright(undefined, locale),
         optimizationLine: formatAboutOptimizationLine(snapshot, locale),
+        telemetryLine: aboutMessages.noTelemetry,
         versionLabel: aboutMessages.versionLabel,
         okButtonLabel: aboutMessages.okButtonLabel,
       }),

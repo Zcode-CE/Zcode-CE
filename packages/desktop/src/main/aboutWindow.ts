@@ -3,6 +3,7 @@ interface CustomAboutDialogHtmlInput {
   appVersion: string;
   copyright: string;
   optimizationLine: string;
+  telemetryLine: string;
   versionLabel: string;
   okButtonLabel: string;
 }
@@ -119,7 +120,9 @@ export function createCustomAboutDialogHtml(input: CustomAboutDialogHtmlInput): 
         margin-top: 28px;
         display: flex;
         flex-direction: column;
-        gap: 17px;
+        /* 卡片高度固定 280px，meta 现在最多 3 行（优化提示 / 无遥测 / 版权），
+           原 17px 行距会让 Apple Silicon 上溢出约 6px，收紧到 12px 留出余量。 */
+        gap: 12px;
         font-size: 13px;
         line-height: 1.2;
         font-weight: 400;
@@ -197,6 +200,7 @@ export function createCustomAboutDialogHtml(input: CustomAboutDialogHtmlInput): 
           </h1>
           <div class="meta">
             ${input.optimizationLine ? `<div>${escapeHtml(input.optimizationLine)}</div>` : ""}
+            ${input.telemetryLine ? `<div>${escapeHtml(input.telemetryLine)}</div>` : ""}
             <div>${escapeHtml(input.copyright)}</div>
           </div>
         </div>

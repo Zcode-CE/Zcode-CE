@@ -6560,25 +6560,8 @@ const enUS: Record<string, string> = {
   "settings.feedback.logs.label": "Diagnostic logs",
   "settings.feedback.logs.description":
     "Builds a redacted log zip locally. You can export it even when the feedback channel is off.",
-  "settings.feedback.logs.prepare": "Build log zip",
-  "settings.feedback.logs.preparing": "Packaging…",
-  "settings.feedback.logs.prepared": "Log zip created",
-  "settings.feedback.logs.failed": "Could not create the log zip",
   "settings.feedback.logs.reveal": "Show in folder",
   "settings.feedback.logs.revealFailed": "Could not open the system file manager",
-  "settings.feedback.attachment.label": "Attachments",
-  "settings.feedback.attachment.description":
-    "A pre-filled link cannot upload files. Drag the log zip into the issue body yourself.",
-  "settings.feedback.telemetry.label": "Telemetry status",
-  "settings.feedback.telemetry.description":
-    "This build contains no background reporting channel. This status is read-only.",
-  "settings.feedback.telemetry.disabled": "All disabled",
-  "settings.feedback.scope.label": "Scope",
-  "settings.feedback.scope.local": "This machine only",
-  "settings.feedback.scope.app":
-    "This section only reads and writes local configuration; it does not follow workspace switches.",
-  "settings.feedback.scope.workspace":
-    "This section only reads and writes local configuration; diagnostics never include the workspace path or remote target.",
   "settings.feedback.official.label": "Official ticket service",
   "settings.feedback.official.description":
     "Uses the official feedback API (requires an official account and device identity). Usually unreachable from community builds; use it only if you really have access.",

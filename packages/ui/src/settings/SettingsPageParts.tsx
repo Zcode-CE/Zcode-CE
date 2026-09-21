@@ -117,16 +117,24 @@ export function SettingsRow({
   description?: ReactNode;
   control: ReactNode;
   detail?: ReactNode;
-  controlLayout?: "default" | "wide";
+  controlLayout?: "default" | "wide" | "stacked";
 }) {
+  // stacked：标签在上、内容占满整行。给「内容本身是一整块」的行用（表单、勾选组、预览框、多按钮），
+  // 默认与 wide 两档的控制列是固定宽度（192px / 280px），塞这类内容会把它们挤成一条窄缝。
+  const stacked = controlLayout === "stacked";
   return (
     <div className="border-t border-border px-4 py-3 first:border-t-0">
       <div
         className={cn(
-          "grid items-center gap-4",
-          controlLayout === "wide"
-            ? "grid-cols-1 sm:grid-cols-[minmax(0,1fr)_280px]"
-            : "grid-cols-[minmax(0,1fr)_192px]",
+          "grid gap-4",
+          stacked
+            ? "grid-cols-1"
+            : cn(
+                "items-center",
+                controlLayout === "wide"
+                  ? "grid-cols-1 sm:grid-cols-[minmax(0,1fr)_280px]"
+                  : "grid-cols-[minmax(0,1fr)_192px]",
+              ),
         )}
       >
         <div className="min-w-0">
@@ -135,10 +143,18 @@ export function SettingsRow({
             <div className="mt-1 text-ui-base leading-6 text-foreground-subtle">{description}</div>
           ) : null}
         </div>
-        <div className="flex w-full flex-nowrap items-center justify-end gap-2">
-          {controlLayout === "wide" ? detail : null}
-          {control}
-        </div>
+        {/* stacked 下若无 control 就不渲染该行，否则会多出一个空网格行、白白撑开间距。 */}
+        {stacked && !control ? null : (
+          <div
+            className={cn(
+              "flex w-full items-center justify-end gap-2",
+              stacked ? "flex-wrap" : "flex-nowrap",
+            )}
+          >
+            {controlLayout === "wide" ? detail : null}
+            {control}
+          </div>
+        )}
       </div>
       {detail && controlLayout !== "wide" ? <div className="mt-3">{detail}</div> : null}
     </div>
