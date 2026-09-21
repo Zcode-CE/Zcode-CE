@@ -3076,6 +3076,9 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.modelCatalog.clearAll": "Clear selection",
   "settings.modelProvider.modelCatalog.alreadyExists": "Already added",
   "settings.modelProvider.modelCatalog.addSelected": "Add {count} models",
+  "settings.modelProvider.modelCatalog.searchPlaceholder": "Search models",
+  "settings.modelProvider.modelCatalog.clearSearch": "Clear search",
+  "settings.modelProvider.modelCatalog.noMatch": "No models match your search.",
   "settings.modelProvider.modelCatalog.partialFailure": "Some models could not be added",
   "settings.modelProvider.hiddenModels.title": "Hidden models ({count})",
   "settings.modelProvider.hiddenModels.description":

@@ -2879,6 +2879,9 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.modelCatalog.clearAll": "取消全选",
   "settings.modelProvider.modelCatalog.alreadyExists": "已存在",
   "settings.modelProvider.modelCatalog.addSelected": "添加 {count} 个模型",
+  "settings.modelProvider.modelCatalog.searchPlaceholder": "搜索模型",
+  "settings.modelProvider.modelCatalog.clearSearch": "清除搜索",
+  "settings.modelProvider.modelCatalog.noMatch": "没有匹配的模型，换个关键词试试。",
   "settings.modelProvider.modelCatalog.partialFailure": "部分模型添加失败",
   "settings.modelProvider.hiddenModels.title": "已隐藏的模型（{count}）",
   "settings.modelProvider.hiddenModels.description":
