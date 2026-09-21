@@ -69,7 +69,9 @@ export const desktopBrowserPlatformBridge = {
         originsSkipped: 0,
         originsFailed: 0,
       },
-      error: "unsupported",
+      // "unsupported" 不在 shared 的 ChromeBrowserDataImportError 联合里（renderer 之前不参与
+      // typecheck，这个值一直没被校验）；与 packages/web/src/main.tsx 的同类兜底保持一致改成契约错误码。
+      error: "chrome_import_not_supported",
     }),
   clearEmbeddedBrowserData: (mode) =>
     window.zcode.clearEmbeddedBrowserData?.(mode) ??

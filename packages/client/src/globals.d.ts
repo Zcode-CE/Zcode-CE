@@ -44,6 +44,17 @@ import type {
   UpdateCheckResultPayload,
   UpdateStatePayload,
   OpenInEditorOptions,
+  // window.zcode 镜像补齐：renderer 实际消费、此前漏声明的平台能力类型（类型全部取自 shared 协议）。
+  BindRemoteWorkspaceSessionContextRequest,
+  CreateTempTextAttachmentRequest,
+  CreateTempTextAttachmentResult,
+  LoadCliMcpFromUserDirectoryRequest,
+  LoadCliMcpFromUserDirectoryResult,
+  SaveCliMcpToUserDirectoryRequest,
+  MigrateLegacyCommonMcpRequest,
+  MigrateLegacyCommonMcpResult,
+  WindowControlsOverlayMetrics,
+  ZCodeStdioTapDevState,
 } from "@zcode/shared";
 
 /**
@@ -66,11 +77,9 @@ declare global {
       /** 取消当前窗口尚未建立完成的远程连接 */
       cancelPendingRemoteConnection?(requestId?: string): Promise<void>;
       /** 绑定远程 logical session 的 canonical workspace context */
-      bindRemoteWorkspaceSessionContext?(context: {
-        remoteSessionId: string;
-        workspacePath: string;
-        workspaceIdentity?: string;
-      }): Promise<BrowserGuestAttachResult>;
+      bindRemoteWorkspaceSessionContext?(
+        context: BindRemoteWorkspaceSessionContextRequest,
+      ): Promise<void>;
       /** 释放当前窗口里的远程 session */
       disposeRemoteSession(sessionId: string): Promise<void>;
       /** 检查本机 Docker daemon 是否可用 */
@@ -95,8 +104,16 @@ declare global {
       ): Promise<import("@zcode/shared").SaveFileResult>;
       /** 将当前页面的 print 媒体版面导出为 PDF（Chromium 打印引擎，矢量文本） */
       printPageToPdf?(): Promise<import("@zcode/shared").PrintPageToPdfResult>;
-      /** 从系统拖拽/文件输入得到的 Web File 解析真实本地路径 */
-      getPathForFile?(file: File): string | null;
+      /** 长文本粘贴落盘为真正的本地附件；preload 无条件暴露，renderer 直接调用。 */
+      createTempTextAttachment(
+        payload: CreateTempTextAttachmentRequest,
+      ): Promise<CreateTempTextAttachmentResult>;
+      /**
+       * 从系统拖拽/文件输入得到的 Web File 解析真实本地路径。
+       * 入参按 IPlatformService 的契约声明为 unknown（适配层拿到的是没收窄的拖拽/输入值），
+       * 由 preload 内部交给 webUtils.getPathForFile 处理。
+       */
+      getPathForFile?(file: unknown): string | null;
       /** 订阅当前窗口内远程连接过程日志，返回 disposer */
       onRemoteConnectionLog(handler: (entry: RemoteConnectionRuntimeLog) => void): () => void;
       /** 订阅远程 workspace session 关闭事件，返回 disposer */
@@ -110,6 +127,8 @@ declare global {
       syncActiveTaskSession(sessionId: string | null): void;
       /** 同步需要 main 进程即时感知的应用设置 */
       syncAppSettings?(patch: Partial<AppSettings>): void;
+      /** 同步快捷键录制态，避免录制期间被全局快捷键抢键 */
+      setShortcutRecordingActive?(active: boolean): void;
       /** 注册 main 进程要求聚焦指定 workspace tab 的回调，返回 disposer */
       onFocusTab(handler: (path: string) => void): () => void;
       /** 注册 main 进程触发新建 tab 的回调，返回 disposer */
@@ -163,6 +182,12 @@ declare global {
       onOpenWorkspace?(handler: () => void): () => void;
       /** 注册 main 进程通过 deep link 直接打开本地工作区目录的回调，返回 disposer */
       onOpenWorkspacePath?(handler: (path: string) => void): () => void;
+      /** 注册 main 进程请求关闭当前上下文的回调，返回 disposer */
+      onCloseActiveContextRequest?(handler: () => void): () => void;
+      /** 订阅 main 进程打开反馈对话框事件，返回 disposer */
+      onOpenFeedbackDialog?(handler: () => void): () => void;
+      /** 订阅 main 进程打开工单面板事件，返回 disposer */
+      onOpenTicketsPanel?(handler: () => void): () => void;
       /** 注册窗口全屏状态变化回调，返回 disposer */
       onWindowFullscreenChanged(handler: (isFullscreen: boolean) => void): () => void;
       /** 读取窗口最大化状态与系统原生圆角能力 */
@@ -170,6 +195,12 @@ declare global {
       /** 订阅窗口最大化状态与系统原生圆角能力变化 */
       onDesktopWindowChromeStateChanged?(
         handler: (state: DesktopWindowChromeState) => void,
+      ): () => void;
+      /** 同步读取当前原生窗口控制区安全边距；preload 缓存最近一次读数，始终返回非空。 */
+      getWindowControlsOverlayMetrics?(): WindowControlsOverlayMetrics;
+      /** 注册原生窗口控制区安全边距变化回调（注册时立即回调一次当前值），返回 disposer */
+      onWindowControlsOverlayChanged?(
+        handler: (metrics: WindowControlsOverlayMetrics) => void,
       ): () => void;
       /** 读取当前桌面窗口页面缩放档位 */
       getDesktopZoomLevel?(): Promise<DesktopZoomState>;
@@ -185,6 +216,18 @@ declare global {
       openInFileManager(path: string): Promise<{ success: boolean; error?: string }>;
       /** 使用系统默认应用打开本地文件 */
       openExternalFile(path: string): Promise<{ success: boolean; error?: string }>;
+      /** 读取宿主 MCP 用户目录配置；preload 无条件暴露，renderer 直接调用。 */
+      loadMcpFromUserDirectory(
+        payload?: LoadCliMcpFromUserDirectoryRequest,
+      ): Promise<LoadCliMcpFromUserDirectoryResult>;
+      /** 写入宿主 MCP 用户目录配置 */
+      saveMcpToUserDirectory(
+        payload: SaveCliMcpToUserDirectoryRequest,
+      ): Promise<{ success: boolean; error?: string }>;
+      /** 迁移旧版 Common MCP 配置 */
+      migrateLegacyCommonMcp(
+        payload?: MigrateLegacyCommonMcpRequest,
+      ): Promise<MigrateLegacyCommonMcpResult>;
       /** 打开 ZCode Computer Use 完整权限引导 */
       openCuaPermissionOnboarding?(
         options?: OpenCuaPermissionOnboardingOptions,
@@ -201,6 +244,8 @@ declare global {
       onOAuthCallback(cb: (url: string) => void): () => void;
       /** 注册支付 deep link 回调，返回 disposer */
       onPaymentCallback(cb: (url: string) => void): () => void;
+      /** 订阅“导入分享会话”通知；preload 会补发注册前已到达的 payload，返回 disposer */
+      onShareImport?(callback: (payload: { shareCode: string }) => void): () => void;
       /** 通知 main process renderer 已就绪 */
       notifyRendererReady(): void;
       // 遥测已移除（P1）：syncTelemetryContext / reportTelemetryEvent /
@@ -218,6 +263,8 @@ declare global {
       }>;
       /** 截取当前窗口，用于错误反馈携带现场画面 */
       captureWindowScreenshot?(): Promise<WindowScreenshotResult | null>;
+      /** 读取开发态 stdio tap proxy 开关状态 */
+      getZCodeStdioTapDevState?(): Promise<ZCodeStdioTapDevState>;
       browserViewAttachGuest?(payload: {
         key: string;
         webContentsId: number;
@@ -226,7 +273,7 @@ declare global {
         remoteSessionId?: string;
         sessionId?: string;
         residencyGeneration?: number;
-      }): Promise<void>;
+      }): Promise<BrowserGuestAttachResult>;
       /** 重建 `<webview>` 前让 main 精确断开旧 guest 的 CDP。 */
       browserViewDetachGuest?(payload: { key: string; webContentsId: number }): Promise<boolean>;
       browserViewCloseTab?(payload: BrowserViewCloseTabRequest): Promise<void>;

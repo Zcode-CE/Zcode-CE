@@ -237,13 +237,22 @@ async function handleOffPeakClaimed(task: ZCodeOffPeakTask, now: number): Promis
     await offPeakRepo.releaseClaim(task.offPeakTaskId, { now });
     return;
   }
+  // claimDue 已按 readOffPeakModelSelection 逐行过滤：缺 Provider 身份的历史行不会被认领。
+  // 类型上 modelSelection 仍是可选，这里显式收窄，不放宽 schedulerProtocol 的必填约定
+  // （main→host 的 OffPeakRun 同样要求完整 Selection）。真出现空值时释放认领、留在队列等修复。
+  const modelSelection = task.modelSelection;
+  if (!modelSelection) {
+    await offPeakRepo.releaseClaim(task.offPeakTaskId, { now });
+    log("warn", `off-peak task ${task.offPeakTaskId} has no model selection; dispatch skipped`);
+    return;
+  }
   offPeakInFlight.add(task.offPeakTaskId);
   const request: SchedulerToMainMessage = {
     type: "offpeak-dispatch-request",
     offPeakTaskId: task.offPeakTaskId,
     prompt: task.prompt,
     permissionMode: task.permissionMode,
-    modelSelection: task.modelSelection,
+    modelSelection,
     ...(task.conversationId ? { conversationId: task.conversationId } : {}),
     ...(task.sessionId ? { sessionId: task.sessionId } : {}),
     ...(task.serverTicketId ? { serverTicketId: task.serverTicketId } : {}),
