@@ -1,6 +1,6 @@
 # 发布流程
 
-> 状态：草稿 · 待补充实际发布步骤
+> 面向发布维护者。构建产物与 CI 细节见 [持续集成与发布构建](./ci.md)。
 
 ## 平台支持
 
@@ -147,6 +147,77 @@ electron-builder 会为每个平台生成更新清单与差分块，**必须一�
 上游有 `stable` / `preview` 两条发布流，本项目只维护**一条**：GitHub Release 本身就是
 唯一的发布流，因此原生 provider 下更新通道固定为 `stable`。设置里的「接受预览版更新」
 开关只在走更新源覆盖（manifest 协议）时才有意义。
+
+## 发布一个版本
+
+### 1. 确认版本号
+
+版本号只有一个权威来源 —— 根 `package.json` 的 `version`。改这一处即可，
+其余位置在构建期自动同步（见上文「版本号的来源与传播」）。
+
+```bash
+node -e "console.log(require('./package.json').version)"
+```
+
+### 2. 本地预检
+
+发布前至少确认这几项通过（CI 也会跑，本地先跑能省一轮往返）：
+
+```bash
+pnpm fmt:check
+pnpm lint
+pnpm typecheck
+pnpm test
+```
+
+> `pnpm licenses:check` 的 `--strict` 模式**当前不通过**（30 项材料待补齐），
+> 基础检查通过不代表合规完成。发布前需确认这是已知状态，详见
+> [与上游的差异](../development/upstream-diff.md) 的技术债 #5。
+
+### 3. 打 tag 并推送
+
+CI 的 `release.yml` 由 **push `v*` tag** 触发。tag 采用 `v` 前缀，与 electron-builder
+默认的 `vPrefixedTagName` 一致：
+
+```bash
+git tag -a v3.14.1-ce.1 -m "ZCode-CE v3.14.1-ce.1"
+git push origin v3.14.1-ce.1
+```
+
+推送后 GitHub Actions 会构建 Linux x64 与 Windows x64 两个平台，并把安装包与更新清单
+发布到同一个 Release。**矩阵是串行执行的**（原因见 [持续集成](./ci.md)），
+总时长约为两平台之和（约 40 分钟）。
+
+### 4. 演练（不发布）
+
+不想真正建 Release 时，用 `workflow_dispatch` 手动触发：它只构建并上传 artifact，
+不新建 Release。适合验证工作流本身或产出包供人工验收。
+
+### 5. 核对 Release 内容
+
+Release 必须包含**安装包 + 更新清单 + 差分块**，三者缺一会让更新链路降级或失效：
+
+| 平台    | 更新清单           | 安装包                                | 差分块      |
+| ------- | ------------------ | ------------------------------------- | ----------- |
+| Linux   | `latest-linux.yml` | `AppImage` / `deb` / `rpm` / `pacman` | `.blockmap` |
+| Windows | `latest.yml`       | `nsis`（`.exe`）                      | `.blockmap` |
+
+**Release 必须是已发布状态，不能是 draft。** draft 对 `electron-updater` 完全不可见
+（`releases.atom` 与 `/releases/latest` 都不返回），会让更新链路**静默失效**。
+`electron-builder.config.js` 已显式设 `releaseType: "release"`。
+
+### 6. 验证更新链路
+
+发布后用一个旧版本安装包实测升级：应能检测到新版本、下载差分块并完成安装。
+这一步不能省 —— 更新配置的错误（provider、清单缺失、draft 状态）在构建阶段都不会报错。
+
+> **CI 尚未在真实 runner 上验证过**。`.github/workflows/` 只能在 GitHub 的 runner 上执行，
+> 本地无法运行，因此工作流本身只做过 YAML 语法与命令级核对。首次打 tag 时需确认实际结果。
+
+### 重跑已发布超过 2 小时的 tag
+
+`electron-publish` 对已存在的 Release 有一条时间保护：发布时间超过 2 小时就**只打 warn 并跳过上传**，
+构建仍然显示成功（是个静默失效点）。`release.yml` 已设 `EP_GH_IGNORE_TIME: "true"` 让重跑真正覆盖上传。
 
 ## 签名
 

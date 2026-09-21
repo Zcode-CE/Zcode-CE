@@ -1,8 +1,12 @@
 # 发布设计：包名、构建产物与更新渠道
 
-> 状态：**设计稿**（未实施）· 2026-09-21
-> 决策依据：用户确认「包名改 ZCode-CE 作区别，构建安装包发布到 release，更新渠道从官方接到我们的仓库」
-> 平台范围：**Linux + Windows**（macOS 暂不发，无签名证书）
+> 状态：**已实施**（2026-09-21 设计，当日落地）· 平台范围 **Linux + Windows**（macOS 暂不发，无签名证书）
+>
+> 决策依据：「包名改 ZCode-CE 作区别，构建安装包发布到 release，更新渠道从官方接到我们的仓库」。
+>
+> 本文保留**设计期视角**：第一、二节的「现状 / 要改成」对照记录当时的决策过程，
+> 其中「要改成」「方案选择」描述的是已落地的目标形态。落地后的运维说明见
+> [发布流程](./release.md) 与 [持续集成](./ci.md)。
 
 ## 一、产品身份
 
@@ -83,20 +87,95 @@ getAppConfigDir() = {homedir}/.zcode/v2     ← 硬编码 ".zcode"，与 appId/p
 
 **保留 `ManifestUpdateProvider` 文件本身**（不删）—— 它是官方 manifest 协议的实现，未来若要支持自建更新服务可复用。
 
-### 2.4 待确认
+### 2.4 更新源覆盖（已定）
 
-- 打包态忽略 `ZCODE_UPDATE_FEED_URL` 的行为（`autoUpdater.ts:703-714`）是否要保留？
-  - 保留：与官方一致，避免更新源被环境变量改道
-  - 放开：便于自建镜像与企业内网部署
-  - **建议保留**（安全默认），但在文档中说明可通过构建期配置改更新源
+打包态忽略 `ZCODE_UPDATE_FEED_URL` 的行为**已放开**，改为「仅忽略非 https」：
+打包态接受 https 覆盖，非 https 取值被忽略并记一条 `warn`。理由与安全约束见第五节第 1 条。
 
 ## 三、构建与产物
 
-### 3.1 待补充
+### 3.1 构建流程与产物（已实施）
 
-- `pnpm build:zcode` / `bundle:desktop` 的实际流程
-- Linux 产物：`AppImage` / `deb` / `rpm` / `pacman`（`manifestUpdateProvider.ts` 里已 import 这 4 种 updater）
-- Windows 产物：`nsis` / `portable`
+#### 两条构建入口，用途不同
+
+| 命令                  | 产物                         | 用途                                    |
+| --------------------- | ---------------------------- | --------------------------------------- |
+| `pnpm bundle:desktop` | 桌面安装包（AppImage/deb/…） | **发布用**，见 [发布流程](./release.md) |
+| `pnpm build:zcode`    | `dist/zcode/` 服务端 tar 包  | 服务端分发，与桌面安装包无关            |
+
+两者互不依赖。桌面发布只需 `bundle:desktop`。
+
+#### `bundle:desktop` 内部流程
+
+```bash
+pnpm bundle:desktop --os <mac|win|linux> --arch <x64|arm64>
+```
+
+该脚本（`packages/desktop/scripts/bundle.mjs`）**依次**执行五步，不要在其前后重复跑 prepare/build：
+
+| #   | 阶段                          | 说明                                 |
+| --- | ----------------------------- | ------------------------------------ |
+| 1   | `prepare:runtime-assets`      | 准备运行时资产（约 10 分钟，最耗时） |
+| 2   | `build`                       | 构建各包                             |
+| 3   | `electron-builder`            | 打包，带 3 次重试与心跳日志          |
+| 4   | `verify-runtime-dependencies` | 机械校验必需运行时模块已进包         |
+| 5   | `audit-bundle-size`           | 体积审计，超限则**构建失败**         |
+
+两个易踩点：
+
+1. **`--os` 必须显式传**。`DEFAULT_TARGET_OS` 是 `"mac"`、`DEFAULT_TARGET_ARCH` 是 `"arm64"`；
+   不传会静默产出 macOS 包。也可用 `ZCODE_TARGET_OS` / `ZCODE_TARGET_ARCH` 环境变量。
+2. **不要再补 `--`**。`bundle:desktop` 的定义末尾已有 `--`，再加一个会让参数变成位置参数被丢掉。
+
+体积审计的上限（`scripts/audit-bundle-size.mjs`）：`AppImage`/`deb`/`dmg`/`zip`/`exe` 均为
+**500 MiB**，其它扩展名走 `default` 同样是 500 MiB。超限即退出码 1。
+
+#### Linux 产物：4 种格式
+
+`electron-builder.config.js` 的 `linux.target` 为 `["AppImage", "deb", "rpm", "pacman"]`。
+本机实测 `pnpm bundle:desktop --os linux --arch x64` 产出：
+
+| 格式     | 文件                                         | 体积      |
+| -------- | -------------------------------------------- | --------- |
+| AppImage | `ZCode-CE-3.14.1-ce.1-linux-x86_64.AppImage` | 176.5 MiB |
+| deb      | `ZCode-CE-3.14.1-ce.1-linux-amd64.deb`       | 133.4 MiB |
+| rpm      | `ZCode-CE-3.14.1-ce.1-linux-x86_64.rpm`      | 110.1 MiB |
+| pacman   | `ZCode-CE-3.14.1-ce.1-linux-x64.pkg.tar.zst` | 117.4 MiB |
+
+产物命名规则为 `${productName}-${version}-linux-${arch}.<ext>`。解包目录
+（`linux-unpacked/`）另有约 612 MiB，属中间产物。
+
+两个格式特例：
+
+- **pacman 的扩展名是 `.pkg.tar.zst`**，不是 electron-builder 默认的 `.pacman`；由 fpm 调用
+  `bsdtar` 生成，构建机需有 `libarchive-tools`。
+- **rpm 需要 `rpmbuild`**（`rpm` 包），且额外 `-d mesa-libgbm -d alsa-lib` —— electron-builder 的
+  rpm 默认 `Requires` 不含 Electron ELF 实际依赖的这两个库，最小化容器装完会启动失败。
+
+#### Windows 产物：只有 nsis
+
+`win.target` 为 `["nsis"]`，产出单个 `.exe` 安装包。
+
+> **修正**：早先设计中列的 `portable` **没有配置**，`target` 里只有 `nsis`。若将来要加，
+> 需同时考虑 `portable` 不写注册表、不走安装器，更新链路需另行验证。
+
+**Windows 包无法在 Linux 上交叉打包**：原生依赖（`node-pty` 预编译产物、`bundled-tools` 里的
+ripgrep 等）按平台分目录准备，Linux 机器上拿不到 Windows 的原生产物，必须由 `windows-latest` 产出。
+
+#### 产物名后缀与身份
+
+产物名只标记**后端环境**：测试后端加 `_TEST`，生产后端无后缀。身份（正式 / Preview）靠
+`productName` 区分，不体现在后缀里：
+
+| 场景                | 产物名示例                                                |
+| ------------------- | --------------------------------------------------------- |
+| 生产后端 + 正式身份 | `ZCode-CE-3.14.1-ce.1-linux-x86_64.AppImage`              |
+| 测试后端 + Preview  | `ZCode-CE Preview-3.14.1-ce.1-linux-x86_64_TEST.AppImage` |
+
+#### CI 上的构建
+
+发布构建由 GitHub Actions 承担（Linux x64 + Windows x64 矩阵），流程、额外系统依赖与踩坑点
+见 [持续集成](./ci.md)。
 
 ### 3.2 签名
 
