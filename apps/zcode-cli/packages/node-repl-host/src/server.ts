@@ -372,11 +372,26 @@ if (!isMainThread && isWorkerCallData(workerData)) {
 export function captureComputerUseRuntimeFromEnvironment(
   env: NodeJS.ProcessEnv = process.env,
 ): ComputerUseRuntime | undefined {
-  const socketPath = env.ZCODE_CUA_PERMISSION_BROKER_SOCKET?.trim();
-  if (!socketPath) return undefined;
+  // 只有桌面/共享宿主会话才提供 Computer Use：ZCODE_CUA_NODE_REPL_HOST 由宿主在把
+  // node_repl 作为 Computer Use 宿主拉起时设置。没有它时不要凭空创建运行时 ——
+  // 否则每个普通 MCP 客户端（含 CI、测试）都会拉起一次原生驱动。
+  // 取值口径与 plugin-host-command.ts 一致（严格等于 "1"）：宿主只在确实要提供
+  // Computer Use 时才注入该值，写成 "0" 或空串都视为不提供。
+  if (env.ZCODE_CUA_NODE_REPL_HOST !== "1") return undefined;
+  // 实现选择：默认走 MIT 许可的 @trycua/cua-driver。
+  //
+  // 这里**不再**按 ZCODE_CUA_PERMISSION_BROKER_SOCKET 决定实现。那个 socket 是官方
+  // Helper（未标注许可的私有二进制）的连接材料，本项目不使用它；仅 Linux 与 macOS
+  // 的官方 Helper 也都不支持，而 cua-driver 三平台都有预编译产物。
+  // 仍读取它只为把「宿主为何以为有官方 Helper」写进诊断，不改变实现选择。
   return createComputerUseRuntime({
-    brokerSocketPath: socketPath,
-    refreshMarkerPath: env.ZCODE_CUA_PERMISSION_BROKER_REFRESH_MARKER?.trim(),
+    driver: "open-source",
+    ...(env.ZCODE_CUA_PERMISSION_BROKER_SOCKET?.trim()
+      ? { brokerSocketPath: env.ZCODE_CUA_PERMISSION_BROKER_SOCKET.trim() }
+      : {}),
+    ...(env.ZCODE_CUA_PERMISSION_BROKER_REFRESH_MARKER?.trim()
+      ? { refreshMarkerPath: env.ZCODE_CUA_PERMISSION_BROKER_REFRESH_MARKER.trim() }
+      : {}),
   });
 }
 

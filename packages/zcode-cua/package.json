@@ -2,13 +2,29 @@
   "name": "@zcode/zcode-cua",
   "version": "0.6.3",
   "private": true,
-  "description": "API-compatible placeholder package for Computer Use. This build ships without Computer Use: every runtime surface reports unavailable and fails closed.",
+  "description": "Computer Use runtime for ZCode. Ships an adapter over the MIT-licensed @trycua/cua-driver (Linux, macOS, Windows); the broker/Helper surfaces remain API-compatible placeholders that fail closed.",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": {
       "types": "./index.d.ts",
       "import": "./index.js"
+    },
+    "./cua-driver-runtime": {
+      "types": "./cua-driver-runtime.d.ts",
+      "import": "./cua-driver-runtime.js"
+    },
+    "./cua-driver-errors": {
+      "types": "./cua-driver-errors.d.ts",
+      "import": "./cua-driver-errors.js"
+    },
+    "./cua-driver-targets": {
+      "types": "./cua-driver-targets.d.ts",
+      "import": "./cua-driver-targets.js"
+    },
+    "./cua-driver-actions": {
+      "types": "./cua-driver-actions.d.ts",
+      "import": "./cua-driver-actions.js"
     },
     "./frame-contract": {
       "types": "./frame-contract.d.ts",
@@ -54,5 +70,8 @@
       "types": "./broker-helper-health.d.ts",
       "import": "./broker-helper-health.js"
     }
+  },
+  "dependencies": {
+    "@trycua/cua-driver": "0.28.2"
   }
 }
