@@ -12,10 +12,10 @@
 
 两个缺陷各自都足以让界面无法渲染，共同表现是永远停在启动 logo：
 
-| # | 位置 | 问题 |
-| - | ---- | ---- |
-| 1 | `packages/desktop/src/preload/index.ts` | 残留一处对已被删除的 `scheduleArmsEventBridgePatch()` 的调用，preload 抛 `ReferenceError`，导致 preload 脚本加载失败、IPC 桥残缺 |
-| 2 | `packages/services/src/logger/serviceLogger.ts` | `process.pid` 在浏览器环境不存在；该模块被打进渲染包后抛 `ReferenceError: process is not defined`，React 无法挂载 |
+| #   | 位置                                            | 问题                                                                                                                             |
+| --- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `packages/desktop/src/preload/index.ts`         | 残留一处对已被删除的 `scheduleArmsEventBridgePatch()` 的调用，preload 抛 `ReferenceError`，导致 preload 脚本加载失败、IPC 桥残缺 |
+| 2   | `packages/services/src/logger/serviceLogger.ts` | `process.pid` 在浏览器环境不存在；该模块被打进渲染包后抛 `ReferenceError: process is not defined`，React 无法挂载                |
 
 两个缺陷的成因不同但后果相同，因此只修其中一个仍会是坏版本。
 
@@ -68,10 +68,10 @@ host 会猝死且 main 不重建，渲染进程永远等不到 host。本版把�
 
 Either one alone is enough to prevent the interface from rendering:
 
-| # | Location | Problem |
-| - | -------- | ------- |
-| 1 | `packages/desktop/src/preload/index.ts` | A leftover call to the removed `scheduleArmsEventBridgePatch()` made the preload script throw `ReferenceError`, so it failed to load and the IPC bridge was left incomplete |
-| 2 | `packages/services/src/logger/serviceLogger.ts` | `process.pid` does not exist in a browser context; the module is bundled into the renderer and threw `ReferenceError: process is not defined`, so React never mounted |
+| #   | Location                                        | Problem                                                                                                                                                                     |
+| --- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `packages/desktop/src/preload/index.ts`         | A leftover call to the removed `scheduleArmsEventBridgePatch()` made the preload script throw `ReferenceError`, so it failed to load and the IPC bridge was left incomplete |
+| 2   | `packages/services/src/logger/serviceLogger.ts` | `process.pid` does not exist in a browser context; the module is bundled into the renderer and threw `ReferenceError: process is not defined`, so React never mounted       |
 
 ### 2. Why it was not caught earlier
 
