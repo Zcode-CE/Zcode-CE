@@ -223,6 +223,10 @@ function assertStructuredFail(probe, label) {
     `${label}: stdout 不能为空（空 stdout 正是修复前的失效形态）`,
   );
   assert.equal(probe.traceback, false, `${label}: 不允许裸 traceback`);
+  // 与 traceback 分开断言：子进程可能没打 "Traceback"（例如被信号杀死、或非 Python 的裸错误），
+  // 但 stderr 里仍出现 "Error" —— 那就是异常逃逸到栈顶的形态，调用方无法区分「文档非法」与
+  // 「检查器崩了」。审计实测过这条真的会失效（ReferenceError 逃逸 → 裸堆栈），当时没有断言锁住。
+  assert.equal(probe.stack, false, `${label}: 不允许异常逃逸到栈顶（stderr 含 Error）`);
   const report = JSON.parse(probe.stdout);
   assert.equal(report.verdict, "fail", `${label}: 超预算输入必须判 fail`);
   const failed = report.checks.find((check) => check.status === "fail");

@@ -253,7 +253,7 @@
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
     "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md": "fded1712def8814d2e65981412518dd6b0dc8e18969e6d77f4491a937272723e",
-    "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "46a5d3e732dc04d34866e811a9be9f79f6a98bce24db84db33ed23defb9420f4",
+    "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "6197dfe9c2481378c3de489a8566b3840ae4941aa334ef83e6ace50b8bd7bded",
     "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "f8dab813c3b9f236b593d4d04f1b78e511e15d586cb7dcdd74147e7d1c22ec5c",
     "apps/zcode-cli/packages/dynamic-workflow/package.json": "aac5891463ddeb419ff6f73fc95b7c407964b06f8aeff66b6a9ba4d999164f99",
     "apps/zcode-cli/packages/i18n/package.json": "025e4620d80f39cac3df06249866fcaed531615b6b8a4c4a727c4557066f7b1b",
@@ -2752,7 +2752,7 @@
     "scripts/license-texts/Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
     "scripts/remote-native-search-tools-config.mjs": "472322a66f84c7452f96aa9e16e9c4e0600f7c2588a03dc6bc869229161b1cb2",
-    "third-party/copied-components.json": "505757224eac3d5d1270a5f4c782ee717081a4ea6519d285c92021b1d4873d5a",
+    "third-party/copied-components.json": "4713c670abc09e231b2859a694e12884b2fcbb9f0c266c74827dc2a97e575de8",
     "third-party/embedded-components.json": "9586ccca15897f56d4ca1d703dffe9e02880fedd766c1dff93f7ac1f52ea891a",
     "third-party/native-search/licenses/00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce.txt": "00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce",
     "third-party/native-search/licenses/01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f.txt": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
@@ -29939,7 +29939,7 @@
         "apps/zcode-cli/packages/presentations-plugin",
         "apps/zcode-cli/packages/spreadsheets-plugin"
       ],
-      "scope": "Office document authoring skills (docx/pptx/xlsx SKILL.md), the shared OOXML structural checker (scripts/check_office.py), and the MIT license text. Adapted for ZCode-CE: the upstream `load_workspace_dependencies` / `render_document` / `present` tool references were replaced with system-Python and file-path equivalents, and the skill directory was renamed from `assets/` to `skills/` to match this repository's plugin layout. The `agents/visual-judge.md` file is an independent ZCode-CE implementation, not copied from upstream, as are each plugin's `package.json`, `.zcode-plugin/plugin.json` and `documents-plugin/test/checkOffice.test.mjs`.",
+      "scope": "Office document authoring skills (docx/pptx/xlsx SKILL.md), the shared OOXML structural checker (scripts/check_office.py, kept as the behavioral baseline; scripts/check_office.mjs + scripts/lib/*.mjs is the Node rewrite actually invoked by the skills), and the MIT license text. Adapted for ZCode-CE: the upstream `load_workspace_dependencies` / `render_document` / `present` tool references were replaced with a self-contained Node payload (docx/pptxgenjs/exceljs bundled under scripts/office-node/) and file-path equivalents, and the skill directory was renamed from `assets/` to `skills/` to match this repository's plugin layout. The `agents/visual-judge.md` file is an independent ZCode-CE implementation, not copied from upstream, as are each plugin's `package.json`, `.zcode-plugin/plugin.json` and `documents-plugin/test/checkOffice.test.mjs`.",
       "locallyModifiedFiles": [
         "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md",
         "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md",
@@ -30016,7 +30016,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs",
-          "sha256": "46a5d3e732dc04d34866e811a9be9f79f6a98bce24db84db33ed23defb9420f4"
+          "sha256": "6197dfe9c2481378c3de489a8566b3840ae4941aa334ef83e6ace50b8bd7bded"
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/.zcode-plugin/plugin.json",
