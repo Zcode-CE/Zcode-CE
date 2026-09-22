@@ -326,7 +326,7 @@
     "apps/zcode-cli/packages/zcode-guide-plugin/skills/zcode-configuration-guide/SKILL.md": "c173c54d3d125e5a3228f01a154c6a55e760dce07835226f0fa8dea644b0570d",
     "apps/zcode-cli/tools/prompt-trajectory/package.json": "7f161fc87f36691f01eb8c2034bd89cf28107da36db02bc20e76f059edd36af6",
     "apps/zcode-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
-    "package.json": "4ba787e9e74f68e5fff0f56d18e0965af4f8f84a9bc3d1735762058cad8826f6",
+    "package.json": "da6bbb22e5c3c62be2fdc18f3d3944ce41ad61014c897c9b2433c7e58a87427e",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
     "packages/desktop/package.json": "bafff01fd85e4b57e32d0c3bc5acf2bceb6b90744dce35b9b1466c3626e9d9d3",
     "packages/desktop/src/renderer/public/material-icons/3d.svg": "9527b849f0fba57ca7640e2717b3a19cb5f5e046712cbbd8b75d73af338c68fb",
