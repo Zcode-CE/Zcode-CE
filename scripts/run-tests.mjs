@@ -17,14 +17,30 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-/** 含测试的包目录（相对仓库根）。新增测试包时在此登记。 */
-const TEST_PACKAGES = ["packages/services", "packages/ui"];
+/**
+ * 含测试的包目录（相对仓库根）。新增测试包时在此登记。
+ *
+ * 为什么登记制而不是自动发现：各包运行方式不同（有的要 cwd 在包内，有的要 --import tsx），
+ * 自动发现容易在 CI 上跑出与环境相关的假失败。
+ */
+const TEST_PACKAGES = [
+  "packages/services",
+  "packages/ui",
+  // office 三插件的校验器测试：**必须在这里登记**，否则 4 条有牙齿的断言
+  // （峰值内存受预算约束、命名空间密集 O(N²)、三份逐字节一致、staging 护栏）不进 CI。
+  // 审计实测：未登记前 `pnpm test` 只跑 20 个文件，完全覆盖不到这些断言。
+  // 注意它们用 .mjs（校验器本身是 Node 脚本），见下面的后缀列表。
+  "apps/zcode-cli/packages/documents-plugin",
+];
+
+/** 允许的测试文件后缀：packages 下用 TS（走 tsx），apps 下的脚本测试用 .mjs。 */
+const TEST_FILE_SUFFIXES = [".test.ts", ".test.mjs"];
 
 function collectTests(packageDir) {
   const testDir = join(repoRoot, packageDir, "test");
   if (!existsSync(testDir)) return [];
   return readdirSync(testDir)
-    .filter((name) => name.endsWith(".test.ts"))
+    .filter((name) => TEST_FILE_SUFFIXES.some((suffix) => name.endsWith(suffix)))
     .map((name) => join("test", name));
 }
 
