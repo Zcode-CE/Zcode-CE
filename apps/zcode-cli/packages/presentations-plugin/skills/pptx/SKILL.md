@@ -2,74 +2,72 @@
 name: pptx
 metadata:
   upstream: "@deepseek-ai/dsh-skill-office (MIT)"
-  modified: "ZCode-CE: 工具引用改为系统 Python 与文件路径交付，见 NOTICE.md"
+  modified: "ZCode-CE: 工具链由系统 Python(python-pptx) 改为随包 Node 库(pptxgenjs 4.0.1)；修正校验器相对路径为 ../../scripts/；补充降级边界，见 docs/development/office-plugins.md"
 description: Create, read, edit, and check PowerPoint presentations (.pptx), including slide text, tables, images, and charts. Use when a PPTX file is an input or requested deliverable.
 ---
 
 # PowerPoint presentations
 
-Follow an explicit user or applicable AGENTS.md requirement for an environment or library.
+Create PPTX files with the bundled `pptxgenjs` library, loaded from this plugin's own payload. Follow an explicit user or applicable AGENTS.md requirement for an environment or library.
 
-This build has no managed Python provisioning tool. Use the system `python3` (verify with `command -v python3`), and check the library before the first write:
+## Runtime
 
-```bash
-python3 -c "import python-pptx" || python3 -m pip install --user python-pptx
+The library ships with the plugin at `<skill-directory>/../../scripts/office-node/pptxgenjs.cjs`, a self-contained bundle. `<skill-directory>` is this loaded skill's resource base, and `${ZCODE_SKILL_DIR}` expands to the same path.
+
+```js
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const PptxGenJS = require("${ZCODE_SKILL_DIR}/../../scripts/office-node/pptxgenjs.cjs");
 ```
 
-Install only when the missing dependency actually blocks the requested operation, and report it to the user when you do. Prefer an already-configured environment (virtualenv, conda, project interpreter) when the workspace provides one.
+The anchor must be the bundle file itself. Do **not** point `createRequire` at a `node_modules` directory next to the skill, and do not expect a bare `require("pptxgenjs")` to resolve: Node searches `node_modules` only in *ancestor* directories, and this payload is a sibling of `skills/`, so such a lookup fails with `MODULE_NOT_FOUND`.
 
-Keep scripts and output files in the task workspace. The runtime and skill directory contain shared read-only resources. Match the requested slide language and the supplied presentation's design when editing it.
+**Never install anything.** Do not run `npm install` / `pnpm add` / `pip install`, do not fetch a package, and do not rewrite this skill to make a dependency appear. The payload is provided by the plugin; a missing bundle means the build is incomplete, not that a package needs installing. Report that instead.
 
-## Create and edit
+Keep source scripts, intermediate files, and final decks in the task workspace; the runtime and this skill directory are read-only resources. Match the requested slide language and the supplied presentation's design when editing it.
 
-Use `python-pptx` to inspect or modify an existing presentation. Inspect slide layouts, text runs, images, tables, and charts before editing. Change only the requested content, preserve mixed text formatting, and save to a new file unless the user requests an in-place edit. Rebuilding slides can discard unsupported animation, SmartArt, or other extension content.
+## Create
 
-For a new deck, use `python-pptx` with editable text, tables, and charts. Use local image assets rather than network-dependent image URLs. Set slide dimensions, text sizes, and chart data explicitly.
+For a new deck, use editable text, tables, and charts. Use local image assets rather than network-dependent image URLs. Set slide dimensions, text sizes, and chart data explicitly.
 
-A minimal editable deck, run with the selected Python executable:
+```js
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const PptxGenJS = require("${ZCODE_SKILL_DIR}/../../scripts/office-node/pptxgenjs.cjs");
 
-```python
-from pptx import Presentation
-from pptx.chart.data import CategoryChartData
-from pptx.enum.chart import XL_CHART_TYPE
-from pptx.util import Inches, Pt
-
-presentation = Presentation()
-presentation.slide_width = Inches(13.333)
-presentation.slide_height = Inches(7.5)
-slide = presentation.slides.add_slide(presentation.slide_layouts[6])
-title = slide.shapes.add_textbox(Inches(0.6), Inches(0.4), Inches(12), Inches(0.8))
-run = title.text_frame.paragraphs[0].add_run()
-run.text = "Quarterly report"
-run.font.size = Pt(30)
-data = CategoryChartData()
-data.categories = ["Q1", "Q2"]
-data.add_series("Revenue", [12, 18])
-slide.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED,
-                       Inches(0.8), Inches(1.6), Inches(11.5), Inches(4.8), data)
-presentation.save("report.pptx")
+const presentation = new PptxGenJS();
+presentation.defineLayout({ name: "WIDE", width: 13.333, height: 7.5 });
+presentation.layout = "WIDE";
+const slide = presentation.addSlide();
+slide.addText("Quarterly report", { x: 0.6, y: 0.4, w: 12, h: 0.8, fontSize: 30 });
+slide.addChart(presentation.ChartType.bar, [{ name: "Revenue", labels: ["Q1", "Q2"], values: [12, 18] }], {
+  x: 0.8, y: 1.6, w: 11.5, h: 4.8,
+});
+await presentation.writeFile({ fileName: "report.pptx" });
 ```
 
-Use `Inches` or `Cm` for positions and sizes and `Pt` for font sizes. To edit a generated title while retaining its other slides and charts:
+Use inches for positions and sizes and points for font sizes. Set fonts explicitly on every run rather than relying on inherited theme fonts.
 
-```python
-from pptx import Presentation
+Check that text and images fit the slide dimensions, titles form a useful sequence, and chart labels agree with source values. A native chart's embedded workbook is part of the deliverable and must contain the intended data.
 
-presentation = Presentation("report.pptx")
-for shape in presentation.slides[0].shapes:
-    if shape.has_text_frame and shape.text == "Quarterly report":
-        shape.text_frame.paragraphs[0].runs[0].text = "Quarterly results"
-presentation.save("report-edited.pptx")
-```
+## Edit an existing presentation
 
-Check that text and images fit the slide dimensions, titles form a useful sequence, and chart labels agree with source values. A native chart's embedded workbook is part of the deliverable and must contain the intended data. Library support for writing PPTX is not a rendering engine or a guarantee that every PowerPoint feature survives editing.
+**The bundled library is a generator: it has no read or edit API.** It cannot open an existing PPTX. `python-pptx`-style operations (inspect layouts, runs, images, tables, charts, then change only the requested content) are not available here.
+
+Therefore:
+
+- **Light, precisely-locatable edits are acceptable** only when you can do them without guessing — e.g. a text substitution the user spelled out, applied to the raw package with your own ZIP + XML handling. Verify the result by reopening the file and re-reading the affected content.
+- **Heavy or structural editing of an existing PPTX is not supported by this build.** Do not attempt it by reconstructing the deck, and do not silently discard parts you cannot represent (animations, SmartArt, and other extension content are the usual casualties).
+- When a request needs editing beyond that boundary, **say so plainly**: tell the user the current build cannot edit an existing PPTX reliably, state what you *can* do (create a new deck, or apply the specific precise change if it is safe), and ask how to proceed. Never present a rebuilt deck as a faithful edit of theirs.
+
+A deeper editing capability is planned as an optional enhancement; it is not part of this version.
 
 ## Check and deliver
 
-Run the shared checker with the selected Python executable; `<skill-directory>` is this loaded skill's resource base:
+Run the shared checker with Node; `<skill-directory>` is this loaded skill's resource base:
 
 ```text
-<python> <skill-directory>/../scripts/check_office.py <presentation.pptx> --out <checks.json>
+node ${ZCODE_SKILL_DIR}/../../scripts/check_office.mjs <presentation.pptx> --out <checks.json>
 ```
 
 It checks ZIP/XML integrity and internal relationships and reports slide count and extracted text. Use repeated `--contains TEXT` arguments for required slide text and `--count N` for a requested slide count; `--contains` excludes chart text and speaker notes. Reopen the file to check the requested edits, chart data, and notes. Structural success does not establish text fit, alignment, readable contrast, or rendering fidelity.
@@ -82,8 +80,6 @@ If the user explicitly asks for a visual check, convert to PDF with LibreOffice 
 soffice --headless --convert-to pdf report.pptx
 ```
 
-Do not require the user to install a renderer. When rendering is unavailable, preserve the usable file and report the inspection limit rather than blocking delivery.
-
-Use the available rendering tool for this check. Inspect `warnings`, especially missing fonts. LibreOffice previews do not certify pixel-identical PowerPoint or Keynote output, animation, or media playback. If the rendering tool is unavailable or fails, retain the usable source and report the inspection limit; do not require the user to install another tool.
+Do not require the user to install a renderer. When rendering is unavailable, preserve the usable file and report the inspection limit rather than blocking delivery. LibreOffice previews do not certify pixel-identical PowerPoint output, animation, or media playback.
 
 This build has no file-presentation tool. Provide the final PPTX path in your reply and keep the file in place so the user can open it directly. Do not create intermediate images or QA reports unless the user asks for them.
