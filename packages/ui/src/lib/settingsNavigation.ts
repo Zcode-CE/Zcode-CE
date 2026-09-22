@@ -20,7 +20,8 @@ export type SettingsSectionId =
   | "computerUse"
   | "automations"
   | "shortcuts"
-  | "feedback";
+  | "feedback"
+  | "toolPolicy";
 
 type SettingsUsageTabTarget = "app" | "codingPlan";
 type SettingsPluginTabTarget = "plugins" | "mcps" | "skills" | "commands";
@@ -85,7 +86,8 @@ function isSettingsSectionId(value: string): value is SettingsSectionId {
     value === "computerUse" ||
     value === "automations" ||
     value === "shortcuts" ||
-    value === "feedback"
+    value === "feedback" ||
+    value === "toolPolicy"
   );
 }
 

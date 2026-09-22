@@ -42,6 +42,7 @@ import type {
   ModelToolSideEffectScope,
   PermissionBrokerReasonSource,
   PermissionCapabilityGroup,
+  PermissionOptionsPolicy,
   PermissionRuleBehavior,
   PermissionRuleValue,
   PermissionUpdate,
@@ -55,6 +56,7 @@ import type {
   ToolExecutionSpanWriter,
   ToolExecutionTelemetry,
 } from "@zcode/contracts";
+import type { DangerousCommandPolicy } from "@zcode/shared";
 import type { PersistedReadFileStateMetadata } from "./read-file-state-metadata.js";
 import type { RuntimeTaskRegistry } from "../runtime-task/registry.js";
 
@@ -363,6 +365,18 @@ export interface ToolPermissionRulePolicy {
     rules: readonly PermissionRuleValue[],
   ) => boolean;
   suggestedPermissionUpdates: PermissionUpdate[];
+  /**
+   * 工具在**运行时**收窄这次 ask 的选项集，覆盖 entry 上的静态
+   * `permission.askOptions.allowAlways`。
+   *
+   * 只能收窄：`no-always-allow` 会裁掉「始终允许」；`session-always-allow` 只在静态声明
+   * 也是 session 时才生效（见 approval-gate 的 resolveToolApproval）。工具不得用它
+   * **新增**持久授权 —— 那会让权限面随输入内容变宽，是安全审计反复点名的一类缺陷。
+   *
+   * 存在的理由：Bash 的「危险命令不得持久授权」取决于**这次命令的内容**，
+   * 静态声明（entry.permission）表达不了它。
+   */
+  optionsPolicy?: PermissionOptionsPolicy;
 }
 
 export interface ToolPersistedModelContentInput {
@@ -387,6 +401,12 @@ export interface ToolRuntimePermissionCapabilityContext {
   runtimeScope?: ToolRuntimeScope;
   workingDirectory?: string;
   workspaceRoot?: string;
+  /**
+   * 危险命令策略（工具与权限页）。**缺席即严格** —— 消费方必须用
+   * resolveDangerousCommandPolicy(context?.dangerousCommandPolicy) 解释，
+   * 不要用 `?? {}` 之外的自定义默认值，否则会把默认态从严格悄悄改成宽松。
+   */
+  dangerousCommandPolicy?: DangerousCommandPolicy;
 }
 
 export interface ToolExecutionModelContext {

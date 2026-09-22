@@ -69,6 +69,7 @@ import {
   zcodeWorkspaceGenerateTextParamsSchema,
   getConversationMessageProjectionPolicy,
   parseRemoteWorkspaceIdentity,
+  type DangerousCommandPolicy,
   type ZCodeSessionCreateParams,
   type ZCodeDeliveryKind,
   type IntegratedTerminalShellSelection,
@@ -143,6 +144,8 @@ interface SessionStartupPreferences {
   memoryEnabled: boolean;
   modelContextBudgetStrategy: ZCodeModelContextBudgetStrategy;
   nativeSearchEnhancementsEnabled: boolean;
+  /** 工具与权限页的危险命令策略。缺席即严格（core 侧解释）。 */
+  dangerousCommandPolicy?: DangerousCommandPolicy;
   resolveInitialBashShellSelection: () => Promise<ExecutionShellSelection | undefined>;
 }
 
@@ -3235,6 +3238,9 @@ async function resolveSessionStartupPreferences(
       memoryEnabled: source.parent.memoryEnabled,
       modelContextBudgetStrategy: DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
       nativeSearchEnhancementsEnabled: source.parent.nativeSearchEnhancementsEnabled,
+      // 子会话继承父会话冻结的策略，而不是重新去问 Host：
+      // 否则「新建会话后生效」会在子代理上变成"立即生效"，用户看到的语义就不一致了。
+      dangerousCommandPolicy: source.parent.dangerousCommandPolicy,
       resolveInitialBashShellSelection: async () => inheritedShellSelection,
     };
   }
@@ -3245,6 +3251,9 @@ async function resolveSessionStartupPreferences(
     "runtime-materialization",
     trace,
   );
+  // 危险命令策略随 runtime-materialization 一次性冻结：与 nativeSearchEnhancementsEnabled
+  // 同一条链路、同一个时机。**已运行的会话不重新读** —— 这是产品决策（工具与权限页如实
+  // 标注"新建会话后生效"），不是实现偷懒。
   // 必须在 session runtime 可发出第一次提问前应用；关闭路径会等待已有 snooze 持久化完成。
   await context.v4Interactions.initializeAskUserQuestionAutoResolutionEnabled(
     runtimePreferences.askUserQuestionAutoResolutionEnabled,
@@ -3253,6 +3262,7 @@ async function resolveSessionStartupPreferences(
     memoryEnabled: runtimePreferences.memoryEnabled,
     modelContextBudgetStrategy: DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
     nativeSearchEnhancementsEnabled: runtimePreferences.nativeSearchEnhancementsEnabled,
+    dangerousCommandPolicy: runtimePreferences.dangerousCommandPolicy,
     resolveInitialBashShellSelection: async () => {
       const executionPreferences = await requestSessionRuntimePreferences(
         context,
@@ -3343,6 +3353,10 @@ async function createRecord(
       toolDisallowlist: "toolDenylist" in params ? params.toolDenylist : undefined,
       nativeSearchEnhancementsEnabled: startupPreferences.nativeSearchEnhancementsEnabled,
       modelContextBudgetStrategy: startupPreferences.modelContextBudgetStrategy,
+      // 危险命令策略是 session 级冻结的授权面：只在创建/恢复边界写入 runtimeConfig。
+      ...(startupPreferences.dangerousCommandPolicy
+        ? { dangerousCommandPolicy: startupPreferences.dangerousCommandPolicy }
+        : {}),
       // Memory Settings 是现有 CLI features.memory/use 之外的总开关。只在关闭时
       // 写入 override，避免开启值反向覆盖用户已有的 CLI 禁用配置。
       ...(startupPreferences.memoryEnabled ? {} : { memory: { enabled: false } }),
@@ -3404,6 +3418,10 @@ async function createRecord(
     memoryEnabled: startupPreferences.memoryEnabled,
     modelContextBudgetStrategy: startupPreferences.modelContextBudgetStrategy,
     nativeSearchEnhancementsEnabled: startupPreferences.nativeSearchEnhancementsEnabled,
+    // 记在 record 上供子会话 inherit（见 resolveSessionStartupPreferences 的 inherit 分支）。
+    ...(startupPreferences.dangerousCommandPolicy
+      ? { dangerousCommandPolicy: startupPreferences.dangerousCommandPolicy }
+      : {}),
     ...(parentSessionId ? { parentSessionId } : {}),
     persistence: "persistence" in params ? (params.persistence ?? "immediate") : "immediate",
     protocolEventSequences: new Map(),

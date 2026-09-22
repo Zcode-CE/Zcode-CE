@@ -25,6 +25,14 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
  */
 const TEST_PACKAGES = [
   "packages/services",
+  // 危险命令清单的判据测试：**必须在这里登记**，否则 task-73 的 11 条断言
+  // （提权 wrapper 参与判定、关闭可逆、放宽只认精确规则）不进 CI。
+  "packages/shared",
+  // Bash 授权链路的端到端行为测试：危险命令永不生成 :*、默认不投放持久授权、
+  // 加严后此前落盘的规则不再放行。这是 task-73 的核心安全断言，同样必须进 CI。
+  "apps/zcode-cli/packages/core",
+  // TUI 的批准范围可视化：与 GUI 同构，是 task-72 P1 兜底缺口的第二个实例。
+  "apps/zcode-cli/packages/tui",
   "packages/ui",
   // office 三插件的校验器测试：**必须在这里登记**，否则 4 条有牙齿的断言
   // （峰值内存受预算约束、命名空间密集 O(N²)、三份逐字节一致、staging 护栏）不进 CI。

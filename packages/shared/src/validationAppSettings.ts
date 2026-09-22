@@ -11,6 +11,11 @@ import {
 } from "./browser-use/command-metadata.js";
 import { providerFamilyConnectionSelectionSettingsSchema } from "./provider-family-connection-selection.js";
 import { resolveGithubMirrorPrefix } from "./githubMirror.js";
+import {
+  MAX_CUSTOM_DANGEROUS_ENTRIES,
+  MAX_DANGEROUS_PATTERN_LENGTH,
+  normalizeDangerousPattern,
+} from "./dangerousCommands.js";
 
 /** 引导职业枚举；单独导出供 onboarding 记录回填 settings 时做窄化校验。 */
 const appSettingsOccupationSchema = z.enum([
@@ -56,6 +61,38 @@ export const integratedTerminalShellSelectionSchema = z.discriminatedUnion("mode
   }),
 ]);
 const providerFamilyDomainSchema = z.enum(["zai", "bigmodel"]);
+
+/**
+ * 危险命令清单的用户偏差。三项都是可选的：**缺席即默认**（严格 + 默认项全开），
+ * 所以老配置不需要任何迁移（AGENTS.md：取"关闭态"而非"开启态"字段可省迁移）。
+ *
+ * pattern 用 normalizeDangerousPattern 归一：非法（空、过长、含 shell 元字符）直接拒绝，
+ * 而不是静默存下一条永远匹配不上的项 —— 静默失效是唯一不被允许的。
+ */
+const dangerousCommandCustomEntrySchema = z.object({
+  pattern: z
+    .string()
+    .trim()
+    .min(1)
+    .max(MAX_DANGEROUS_PATTERN_LENGTH)
+    .refine((value) => normalizeDangerousPattern(value) !== undefined, {
+      message: "Dangerous command pattern must be an executable name or a plain command prefix",
+    }),
+  enabled: z.boolean().optional(),
+});
+
+export const dangerousCommandPolicySchema = z
+  .object({
+    allowPersistentAuthorization: z.boolean().optional(),
+    disabledEntries: z.array(z.string().trim().min(1)).max(64).optional(),
+    customEntries: z
+      .array(dangerousCommandCustomEntrySchema)
+      .max(MAX_CUSTOM_DANGEROUS_ENTRIES)
+      .optional(),
+  })
+  .strict();
+
+export type DangerousCommandPolicyInput = z.infer<typeof dangerousCommandPolicySchema>;
 
 /**
  * GitHub 加速前缀：空串表示关闭；非空时必须能通过 githubMirror 的 https/无凭据/无查询串约束。
@@ -478,6 +515,10 @@ const appSettingsObjectSchema = z.object({
   providerFamilyDomainUpdatedAt: z.number().int().nonnegative().optional(),
   providerFamilyDomainMigrated: z.boolean().default(false),
   nativeSearchEnhancementsEnabled: z.boolean().default(true),
+  // 缺省即严格：dangerousCommandPolicy 缺席时 resolveDangerousCommandPolicy 按
+  // allowPersistentAuthorization=false + 默认项全开解释，所以这里**不设 default**，
+  // 免得给每个老配置都写进一份看起来像"用户选过"的显式值。
+  dangerousCommandPolicy: dangerousCommandPolicySchema.optional(),
   onboardingOccupation: appSettingsOccupationSchema.nullish(),
   proactiveSuggestionsEnabled: z.boolean().optional(),
   memoryEnabled: z.boolean().default(false),
@@ -547,6 +588,7 @@ export const appSettingsPatchSchema = z.object({
   providerFamilyDomainUpdatedAt: z.number().int().nonnegative().optional(),
   providerFamilyDomainMigrated: z.boolean().optional(),
   nativeSearchEnhancementsEnabled: z.boolean().optional(),
+  dangerousCommandPolicy: dangerousCommandPolicySchema.optional(),
   onboardingOccupation: z
     .enum([
       "office",

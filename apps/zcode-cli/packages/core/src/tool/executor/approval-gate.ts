@@ -4,7 +4,7 @@ import {
   type ToolResultDisplayPayload,
   type TraceContext,
 } from "@zcode/contracts";
-import type { ExecutableToolCall, ToolEntry } from "../types.js";
+import type { ExecutableToolCall, ToolEntry, ToolPermissionRulePolicy } from "../types.js";
 import type { ToolExecutorDeps } from "./types.js";
 
 interface ResolvedToolApproval {
@@ -33,16 +33,35 @@ function resolveOptionsPolicy(
   }
 }
 
+/**
+ * 把工具的静态声明与**运行时**策略合并成这次 ask 的选项策略。
+ *
+ * 方向是单向收窄（与 approval-gate 的整体纪律一致）：运行时策略只能**更严**。
+ * 具体地，只有 `no-always-allow` 允许在运行时引入；`session-always-allow` 不是运行时能力
+ * —— 它是 entry 的静态声明，工具不得按输入内容把授权面变宽。
+ */
+function mergeOptionsPolicy(
+  declared: PermissionOptionsPolicy | undefined,
+  runtime: PermissionOptionsPolicy | undefined,
+): PermissionOptionsPolicy | undefined {
+  if (runtime === "no-always-allow") return "no-always-allow";
+  return declared;
+}
+
 export function resolveToolApproval(
   deps: ToolExecutorDeps,
   toolCall: ExecutableToolCall,
   entry: ToolEntry,
   executionInput: unknown,
   traceContext: TraceContext,
+  rulePolicy?: ToolPermissionRulePolicy,
 ): ResolvedToolApproval {
   // `permission` 类型上是必填，但 executor 也会被只声明了一部分字段的 entry 驱动
   // （测试桩、动态注册的工具）。周边代码靠 spread 而不是读字段来容忍这一点，gate 同理。
-  const optionsPolicy = resolveOptionsPolicy(entry.permission?.askOptions?.allowAlways);
+  const optionsPolicy = mergeOptionsPolicy(
+    resolveOptionsPolicy(entry.permission?.askOptions?.allowAlways),
+    rulePolicy?.optionsPolicy,
+  );
 
   if (!entry.prepareApproval) {
     return { gate: "ask", ...(optionsPolicy ? { optionsPolicy } : {}) };

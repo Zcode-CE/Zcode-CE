@@ -2288,6 +2288,10 @@ export function createLocalServices(options: {
               nativeSearchEnhancementsEnabled: settings.nativeSearchEnhancementsEnabled !== false,
               memoryEnabled: settings.memoryEnabled === true,
               modelContextBudgetStrategy,
+              // 工具与权限页的危险命令策略。缺席即严格（CLI 侧解释），所以这里原样透传
+              // undefined 而不是补一份默认值 —— 补默认值会让"用户没配过"与"用户显式选了严格"
+              // 变成同一个事实，日后无法区分。
+              dangerousCommandPolicy: settings.dangerousCommandPolicy,
               // user-execution 只消费 Shell；共享默认策略是统一 result schema 的兼容占位，
               // 不会覆盖 runtime-materialization 阶段已经固定的 strategy。
               ...(scope === "user-execution" && settings.integratedTerminalShell

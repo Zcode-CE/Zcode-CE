@@ -88,16 +88,43 @@ export function previewPermissionInput(input: unknown): string {
   }
 }
 
+export type ApprovalPermissionScopeKind = "any" | "exact" | "prefix";
+
+export interface ApprovalPermissionScope {
+  kind: ApprovalPermissionScopeKind;
+  /** `any` 形态下装的是**工具名**（文案由渲染侧补）；其余形态是规则内容。 */
+  text: string;
+}
+
+/**
+ * 抽出「这次批准会记住什么」，供 TUI 确认面板展示。
+ *
+ * 与 GUI 的 `readPermissionRuleScopes`（packages/ui/src/lib/permissionRuleScopes.ts）
+ * **必须同构** —— 两处各写一份就会漂移，而它们服务的是同一个安全语义。
+ *
+ * 三种形态都必须展示，缺一种就是静默放大授权（安全审计 task-72 的 P1）：
+ * - `any`：无 ruleContent ⇒ 该工具**任意命令**。core 的 bash-command-rule-evaluator
+ *   第 14 行 `if (input.rules.some((rule) => !rule.ruleContent)) return true;` 让这条规则
+ *   匹配一切。原实现 `if (!content) continue;` 恰好把它从可视化里剔除 ——
+ *   用户在没有任何范围提示的情况下批准了整个工具的任意命令。
+ * - `prefix`：`:*` 后缀 ⇒ 同前缀族全部命令。
+ * - `exact`：精确规则 ⇒ 仅此一条。
+ */
 export function approvalPermissionScopes(
   request: PermissionBrokerRequest,
-): Array<{ kind: "exact" | "prefix"; text: string }> {
-  const scopes: Array<{ kind: "exact" | "prefix"; text: string }> = [];
+): ApprovalPermissionScope[] {
+  const scopes: ApprovalPermissionScope[] = [];
   for (const update of permissionUpdatesForApproval(request)) {
     if (update.type !== "addRules" || update.behavior !== "allow") continue;
     for (const rule of update.rules) {
-      if (rule.toolName.toLowerCase() !== "bash") continue;
       const content = rule.ruleContent?.trim();
-      if (!content) continue;
+      // 无 ruleContent 的检查必须排在 Bash 过滤之前：它匹配一切，
+      // 对任何工具都是「整工具授权」，不是 Bash 专属现象。
+      if (!content) {
+        scopes.push({ kind: "any", text: rule.toolName });
+        continue;
+      }
+      if (rule.toolName.toLowerCase() !== "bash") continue;
       scopes.push(
         content.endsWith(":*")
           ? { kind: "prefix", text: `${content.slice(0, -2)} …` }

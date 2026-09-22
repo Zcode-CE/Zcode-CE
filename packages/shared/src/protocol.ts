@@ -5,6 +5,7 @@ import type { ProviderFamilyConnectionSelectionSettings } from "./provider-famil
 import type { ZCodeProvider } from "./zcode-task-types-core.js";
 import type { WorkspacePurpose } from "./workspacePurpose.js";
 import type { EmbeddedBrowserViewportPreference } from "./browser-use/command-metadata.js";
+import type { DangerousCommandPolicy } from "./dangerousCommands.js";
 
 // ── Domain types ──
 
@@ -372,4 +373,12 @@ export interface AppSettings {
   settingsSyncFirstRunPromptHandled?: boolean;
   /** 设置页里的临时 endpoint override；正式/测试默认 base url 由 ZCODE_BASE_URL env 管理。 */
   zcodeEndpointOrigin?: string;
+  /**
+   * 「工具与权限」页的危险命令策略。**缺省即严格**（fail-safe 收紧，ce.2 起的行为变更）：
+   * 危险命令只能逐次确认，且此前落盘的授权规则不再放行（评估时撤销，见 dangerousCommands.ts）。
+   *
+   * 生效时机：**新建会话**。策略经 session 运行时偏好链路下发（与 nativeSearchEnhancementsEnabled
+   * 同一条路径），已运行的会话不重新读取——设置页据此如实标注。
+   */
+  dangerousCommandPolicy?: DangerousCommandPolicy;
 }

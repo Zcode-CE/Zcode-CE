@@ -1721,6 +1721,37 @@ const zhCN: Record<string, string> = {
   "settings.nativeSearchEnhancements": "增强 Find 和 Grep",
   "settings.nativeSearchEnhancementsDescription":
     "在新建会话或应用重启后恢复的会话中使用增强 Find 和 Grep。当前会话保持现有设置；Windows 的 Find 保持不变。",
+  // ── task-73「工具与权限」分区 ──
+  // 定位：全局授权策略（危险命令能否被记住、哪些命令算危险）。资源级启停归各自资源页。
+  "settings.toolPolicy.title": "工具与权限",
+  "settings.toolPolicy.persistent.label": "允许危险命令进入项目级授权",
+  "settings.toolPolicy.persistent.description":
+    "关闭时，危险命令每次都要重新确认，之前记住的授权也不再放行。开启后可以记住，但只记住确切的这一条命令，不会记住整类命令。",
+  "settings.toolPolicy.persistent.behaviorChange":
+    "本次升级默认改为关闭：以前能被记住的危险命令，现在每次都会重新询问。",
+  "settings.toolPolicy.appliesToNewSessions": "对新建的会话生效；当前已打开的会话保持原有设置。",
+  "settings.toolPolicy.list.title": "危险命令",
+  "settings.toolPolicy.list.hint": "关闭某项即放宽该项：它不再被特殊对待。",
+  "settings.toolPolicy.list.defaultsNotDeletable":
+    "默认项可以关闭，也可以重新打开；如需移除请关闭它。",
+  "settings.toolPolicy.entry.privilege": "{name}（提权）",
+  "settings.toolPolicy.entry.privilege.description":
+    "任何通过它提权的命令都按危险处理，无论后面跟的是什么命令。",
+  "settings.toolPolicy.entry.executable.description": "该命令不做前缀记忆，只按确切命令确认。",
+  "settings.toolPolicy.entry.enable": "重新打开 {name}",
+  "settings.toolPolicy.entry.disable": "关闭 {name}",
+  "settings.toolPolicy.custom.title": "自定义危险命令",
+  "settings.toolPolicy.custom.executable.description": "按命令名匹配。",
+  "settings.toolPolicy.custom.prefix.description": "按命令前缀匹配，覆盖该前缀下的全部命令。",
+  "settings.toolPolicy.custom.delete": "删除 {name}",
+  "settings.toolPolicy.custom.add.label": "添加危险命令",
+  "settings.toolPolicy.custom.add.description":
+    "填命令名（如 kubectl）或命令前缀（如 docker run）。加进来只会让它更保守，不会放行任何命令。",
+  "settings.toolPolicy.custom.add.placeholder": "docker run",
+  "settings.toolPolicy.custom.add.action": "添加",
+  "settings.toolPolicy.custom.invalid": "请填命令名或命令前缀，不要包含引号、管道等符号。",
+  "settings.toolPolicy.custom.duplicate": "这一项已经在列表里了。",
+  "settings.toolPolicy.custom.tooMany": "自定义项已达上限，请先删除一些。",
   "settings.memory": "记忆",
   "settings.memory.workspaceMemory": "工作区记忆",
   "settings.memoryDescription":
@@ -5274,6 +5305,10 @@ const zhCN: Record<string, string> = {
   "chat.permission.allowCommand.description": "项目范围内，后续相同命令不再询问",
   "chat.permission.allowCommand": "始终允许此命令",
   "chat.permission.allowForProject": "始终允许本项目",
+  // ── task-73「工具与权限」：批准范围可视化（settings.toolPolicy.* 与本块同属 task-73）──
+  // 用户必须能看出这次「记住」覆盖多大范围。无 ruleContent 的规则匹配该工具的**全部调用**，
+  // 原实现把它从可视化里静默剔除（安全审计 task-72 的 P1，三层 UI 兜底全部失效）。
+  "chat.permission.ruleScope.anyToolCommand": "{toolName} 的任意命令",
   "chat.permission.cua.allowForProject": "始终允许本项目中的电脑控制",
   "chat.permission.cua.allowForProject.description": "本项目后续官方电脑控制操作不再询问",
   "chat.permission.deny": "拒绝",
@@ -5358,9 +5393,14 @@ const zhCN: Record<string, string> = {
   "chat.askQuestion.noAnswerProvided": "未提供回答",
   "chat.askQuestion.autoContinued": "未回答，已自动继续",
   "chat.permission.allowOnce.description": "仅允许这一次",
-  "chat.permission.allowAlways.description.command": "后续相同命令不再询问",
-  "chat.permission.allowAlways.description.file": "后续相同文件操作不再询问",
-  "chat.permission.allowAlways.description.generic": "后续相同权限请求不再询问",
+  // ── task-73：让「记住」的真实范围可见（用户决策「立场 A」）──
+  // 原文案「后续相同命令不再询问」读起来像"这次"或"同一个请求"，而实际授予的是
+  // 「本项目内、匹配该规则的请求，永久」。前缀规则的范围更大（npm install:* 覆盖任意包），
+  // 无 ruleContent 的规则更是整个工具。弹窗里前缀/精确/任意三种范围现在会内联展示，
+  // 这三条 description 是**没有规则可视化时**的兜底，必须自己说清范围与持久性。
+  "chat.permission.allowAlways.description.command": "本项目内，后续相同命令不再询问",
+  "chat.permission.allowAlways.description.file": "本项目内，后续相同文件操作不再询问",
+  "chat.permission.allowAlways.description.generic": "本项目内，此类权限请求之后都不再询问",
   "chat.permission.denyOnce.description": "这次先拒绝",
   "chat.permission.denyAlways.description.command": "后续相同命令也会直接拒绝",
   "chat.permission.denyAlways.description.file": "后续相同文件操作也会直接拒绝",

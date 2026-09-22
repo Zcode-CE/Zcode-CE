@@ -45,5 +45,10 @@ export function resolveRuntimePermissionContext(
     runtimeScope: deps.runtimeScope,
     workingDirectory: deps.getWorkingDirectory(),
     workspaceRoot: deps.getWorkspaceRoot(),
+    // 危险命令策略随上下文下发，而不是让 handler 自己去读 deps：
+    // resolvePermissionRulePolicy 的签名只收 (input, context)，这是它唯一的注入点。
+    // 缺席即严格（resolveDangerousCommandPolicy(undefined)）—— TUI / headless /
+    // workflow_child 不设该字段，因此也落在产品默认的严格态。
+    dangerousCommandPolicy: deps.dangerousCommandPolicy,
   };
 }

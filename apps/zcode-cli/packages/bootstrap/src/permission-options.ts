@@ -68,7 +68,9 @@ export function buildProtocolPermissionOptions(
       : source.optionsPolicy === "session-always-allow"
         ? [
             {
-              description: "Do not ask again for this tool in this session",
+              // 会话授权的真实范围是「本会话内该工具的全部调用」（无 ruleContent ⇒ 匹配一切）。
+              // 文案写明"every call"，不留"同一个请求"的误读空间。
+              description: "Do not ask again for every call of this tool in this session",
               kind: SESSION_ALLOW_PERMISSION_OPTION_KIND,
               name: SESSION_ALLOW_PERMISSION_OPTION_NAME,
               optionId: SESSION_ALLOW_PERMISSION_OPTION_ID,
@@ -80,9 +82,14 @@ export function buildProtocolPermissionOptions(
           ]
         : [
             {
+              // 文案必须说出**真实范围**（用户决策「立场 A」）：授予的是
+              // 「本项目内、匹配该规则的请求，永久」，而不是"这次"或"同一个请求"。
+              // 原文案 "Do not ask again for matching requests in this project" 里的
+              // "matching requests" 会被读成"这一条请求"，而前缀规则实际覆盖整个命令族
+              // （npm install:* 覆盖任意包）—— 这是安全审计 task-72 判定 P2 的文案面。
               description: officialCuaProjectScope
                 ? "Do not ask again for official Computer Use tools in this project"
-                : "Do not ask again for matching requests in this project",
+                : "Do not ask again for matching commands in this project, until you remove the rule",
               kind: "allow_always" as const,
               name: officialCuaProjectScope
                 ? "Always allow Computer Use in this project"

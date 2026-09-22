@@ -181,6 +181,8 @@ function createRuntimeToolExecutor(
     pdfDocumentPort: deps.pdfDocumentPort,
     embeddedSearchBackend: runtime.config.embeddedSearchBackend,
     nativeSearchEnhancementsEnabled: runtime.config.nativeSearchEnhancementsEnabled,
+    // 危险命令策略随 session 创建固定（工具与权限页）。缺席即严格。
+    dangerousCommandPolicy: runtime.config.dangerousCommandPolicy,
     skillPort: deps.skillPort,
     subagentPort: runtime.subagentPort,
     coordinatorResponsePort: deps.coordinatorResponsePort,

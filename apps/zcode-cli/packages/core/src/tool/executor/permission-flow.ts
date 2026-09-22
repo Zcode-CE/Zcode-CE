@@ -151,7 +151,16 @@ export async function resolveToolPermission(
     };
   }
 
-  const approval = resolveToolApproval(deps, toolCall, entry, executionInput, traceContext);
+  // 传 rulePolicy：Bash 用它在运行时收窄选项集（危险命令不得持久授权），
+  // 静态的 entry.permission.askOptions 表达不了「取决于这次命令内容」的策略。
+  const approval = resolveToolApproval(
+    deps,
+    toolCall,
+    entry,
+    executionInput,
+    traceContext,
+    rulePolicy,
+  );
   if (approval.gate === "proceed") {
     telemetry?.setPermissionDecision("not_required");
     return { allowed: true, executionInput };

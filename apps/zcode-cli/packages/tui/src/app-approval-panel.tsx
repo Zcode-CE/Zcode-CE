@@ -7,6 +7,7 @@ import {
   approvalPermissionScopes,
   approvalRequestDescription,
   previewPermissionInput,
+  type ApprovalPermissionScopeKind,
 } from "./app-approval.js";
 import { truncateDisplay, wordWrappedLineCount } from "./app-terminal-width.js";
 import { QuestionPanel } from "./app-question-panel.js";
@@ -16,6 +17,16 @@ const h = React.createElement as (
   props?: Record<string, unknown> | null,
   ...children: React.ReactNode[]
 ) => React.ReactElement;
+
+/**
+ * 批准范围的三档文案。`any` 是范围最大的一档（该工具的**全部调用**），
+ * 必须与"仅此一条"用词区分开，否则用户看不出自己批准了多大范围。
+ */
+const APPROVAL_SCOPE_LABELS: Record<ApprovalPermissionScopeKind, string> = {
+  any: "Any command of this tool",
+  exact: "Exact command only",
+  prefix: "Command prefix",
+};
 
 const APPROVAL_PANEL_CHROME_ROWS = 4;
 const APPROVAL_FALLBACK_CONTENT_WIDTH = 80;
@@ -98,8 +109,10 @@ function approvalRows(approval: ApprovalPrompt, contentWidth: number): ApprovalT
     rows.push(
       approvalTextRow(
         `scope-${index}`,
-        `${scope.kind === "prefix" ? "Command prefix" : "Exact command only"}: ${scope.text}`,
-        palette.muted,
+        // 三种范围都要有自己的文案：无 ruleContent 的规则匹配该工具的**全部调用**，
+        // 是三者里范围最大的那个，不能与"仅此一条"混为一谈（task-72 的 P1）。
+        `${APPROVAL_SCOPE_LABELS[scope.kind]}: ${scope.text}`,
+        scope.kind === "any" ? palette.warning : palette.muted,
         contentWidth,
       ),
     );

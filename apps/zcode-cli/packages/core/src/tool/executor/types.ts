@@ -1,3 +1,4 @@
+import type { DangerousCommandPolicy } from "@zcode/shared";
 import type {
   AgentExecutionTelemetryPort,
   AgentTelemetryActorKind,
@@ -97,6 +98,8 @@ export interface ToolExecutorOptions {
   model?: Model;
   embeddedSearchBackend?: EmbeddedSearchBackend;
   nativeSearchEnhancementsEnabled?: boolean;
+  /** 危险命令策略（工具与权限页）。缺席即严格，见 resolveRuntimePermissionContext。 */
+  dangerousCommandPolicy?: DangerousCommandPolicy;
   skillPort?: SkillPort;
   subagentPort?: SubagentPort;
   coordinatorResponsePort?: CoordinatorResponsePort;
@@ -201,6 +204,8 @@ export interface ToolExecutorDeps {
   model?: Model;
   embeddedSearchBackend?: EmbeddedSearchBackend;
   nativeSearchEnhancementsEnabled?: boolean;
+  /** 危险命令策略（工具与权限页）。缺席即严格，见 resolveRuntimePermissionContext。 */
+  dangerousCommandPolicy?: DangerousCommandPolicy;
   skillPort?: SkillPort;
   subagentPort?: SubagentPort;
   coordinatorResponsePort?: CoordinatorResponsePort;

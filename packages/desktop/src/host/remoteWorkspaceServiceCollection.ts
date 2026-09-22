@@ -267,6 +267,9 @@ export function createRemoteWorkspaceServiceCollection(params: {
               nativeSearchEnhancementsEnabled: settings.nativeSearchEnhancementsEnabled !== false,
               memoryEnabled: settings.memoryEnabled === true,
               modelContextBudgetStrategy,
+              // 与本地 Host 同源：远端 workspace 的危险命令策略也来自同一份设置。
+              // 缺席即严格（CLI 侧解释），不在这里补默认值。
+              dangerousCommandPolicy: settings.dangerousCommandPolicy,
               // remote workspace 与本地 Host 保持同一 scope 边界，首次执行不得再次等待 client config。
               ...(request.scope === "user-execution" && settings.integratedTerminalShell
                 ? { integratedTerminalShell: settings.integratedTerminalShell }

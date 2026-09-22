@@ -88,6 +88,12 @@ export const SETTINGS_USER_ACTION_FEATURES = {
   "settings.task": ["toggle_auto_archive", "change_auto_archive_days"],
   "settings.storage": ["change_data_directory"],
   "settings.memory": ["toggle_memory", "refresh_memory", "change_memory_scope"],
+  // 工具与权限：全局授权策略（危险命令能否被记住、哪些命令算危险）。
+  "settings.toolPolicy": [
+    "update_dangerous_command_policy",
+    "add_dangerous_command",
+    "remove_dangerous_command",
+  ],
   "settings.browser": [
     "toggle_browser_use",
     "import_browser_data",

@@ -27,6 +27,7 @@ import {
   sortPermissionOptions,
   type PermissionRequestScope,
 } from "@/lib/permissionRequest.js";
+import { readPermissionRuleScopes, type PermissionRuleScope } from "@/lib/permissionRuleScopes.js";
 import type { TaskChatToolCall } from "@/lib/taskChatMessageTypes.js";
 import {
   readRawToolCallFileSummaries,
@@ -66,43 +67,10 @@ interface PermissionBlockInteraction {
   forceOpen: boolean;
 }
 
-interface PermissionRuleScope {
-  display: string;
-  truncated: boolean;
-}
-
-const PERMISSION_RULE_SCOPE_MAX_DISPLAY_CHARS = 160;
 const NON_USER_FACING_PERMISSION_REASONS = new Set([
   "High risk tools require explicit approval",
   "Tool has side effects and requires approval",
 ]);
-
-function formatPermissionRuleScope(content: string): PermissionRuleScope {
-  const lineBreakIndex = content.search(/\r?\n/);
-  const firstLine = lineBreakIndex === -1 ? content : content.slice(0, lineBreakIndex);
-  const truncated =
-    lineBreakIndex !== -1 || firstLine.length > PERMISSION_RULE_SCOPE_MAX_DISPLAY_CHARS;
-
-  const suffix = " …";
-  const visible = firstLine
-    .slice(0, PERMISSION_RULE_SCOPE_MAX_DISPLAY_CHARS - suffix.length)
-    .trimEnd();
-  return { display: `${visible}${suffix}`, truncated };
-}
-
-function readPermissionRuleScopes(option: ZCodePermissionOption): PermissionRuleScope[] {
-  const scopes: PermissionRuleScope[] = [];
-  for (const update of option.response?.permissionUpdates ?? []) {
-    if (update.type !== "addRules" || update.behavior !== "allow") continue;
-    for (const rule of update.rules) {
-      if (rule.toolName.toLowerCase() !== "bash") continue;
-      const content = rule.ruleContent?.trim();
-      if (!content?.endsWith(":*")) continue;
-      scopes.push(formatPermissionRuleScope(content.slice(0, -2)));
-    }
-  }
-  return scopes.slice(0, 5);
-}
 
 function isOfficialCuaProjectPermission(option: ZCodePermissionOption): boolean {
   return (option.response?.permissionUpdates ?? []).some(
@@ -122,7 +90,17 @@ function isWorkflowRefineOption(option: ZCodePermissionOption): boolean {
   return option.optionId === WORKFLOW_REFINE_PERMISSION_OPTION_ID;
 }
 
-function InlinePermissionPrefixScopes({ scopes }: { scopes: readonly PermissionRuleScope[] }) {
+/**
+ * 把「这次批准会记住什么」内联渲染在选项标题旁边。
+ *
+ * 三种形态的文案不同，因为用户要据此判断风险：
+ * - `any`：该工具**任意命令** —— 最需要警示，它覆盖整个工具；
+ * - `prefix`：同前缀族（`npm install:*` 覆盖任意包）；
+ * - `exact`：仅此一条。
+ * 无 ruleContent 的规则原来被静默丢弃（安全审计 task-72 的 P1），现在必须可见。
+ */
+function InlinePermissionRuleScopes({ scopes }: { scopes: readonly PermissionRuleScope[] }) {
+  const { intl } = useZCodeIntl();
   if (scopes.length === 0) return null;
   return (
     <span
@@ -132,12 +110,20 @@ function InlinePermissionPrefixScopes({ scopes }: { scopes: readonly PermissionR
     >
       {scopes.map((scope, index) => (
         <code
-          key={`${scope.display}:${index}`}
-          className="min-w-0 whitespace-pre-wrap break-all font-mono text-ui-base leading-5 text-foreground-subtle"
-          data-permission-rule-scope="prefix"
+          key={`${scope.kind}:${scope.display}:${index}`}
+          className={cn(
+            "min-w-0 whitespace-pre-wrap break-all font-mono text-ui-base leading-5",
+            scope.kind === "any" ? "text-destructive" : "text-foreground-subtle",
+          )}
+          data-permission-rule-scope={scope.kind}
           data-permission-rule-scope-truncated={scope.truncated ? "true" : undefined}
         >
-          {scope.display}
+          {scope.kind === "any"
+            ? intl.formatMessage(
+                { id: "chat.permission.ruleScope.anyToolCommand" },
+                { toolName: scope.toolName },
+              )
+            : scope.display}
         </code>
       ))}
     </span>
@@ -814,7 +800,7 @@ export function PermissionDialog({
                       <span className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
                         <span className="text-ui-base font-medium text-foreground">{label}</span>
                         {ruleScopes.length > 0 ? (
-                          <InlinePermissionPrefixScopes scopes={ruleScopes} />
+                          <InlinePermissionRuleScopes scopes={ruleScopes} />
                         ) : description ? (
                           <span className="text-ui-base leading-4 text-foreground-subtle">
                             {description}

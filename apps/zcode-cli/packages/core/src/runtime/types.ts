@@ -20,7 +20,7 @@ import type {
   WorkspaceHookBundleSnapshot,
   WorkspaceId,
 } from "@zcode/contracts";
-import type { ZCodeProviderAccountAccess } from "@zcode/shared";
+import type { DangerousCommandPolicy, ZCodeProviderAccountAccess } from "@zcode/shared";
 import type { EffectiveModelSelectionResult } from "@zcode/shared/model-selection";
 import type { RuntimeMessageEntry } from "../agent/message-history.js";
 import type {
@@ -194,6 +194,16 @@ export interface AgentRuntimeConfig {
   embeddedSearchBackend?: EmbeddedSearchBackend;
   /** 根 Session runtime 创建时固定；false 只关闭 Bash 的 bfs/ugrep prelude。 */
   nativeSearchEnhancementsEnabled?: boolean;
+  /**
+   * 危险命令策略（工具与权限页）。**根 Session runtime 创建时固定**，与
+   * nativeSearchEnhancementsEnabled 同一条链路：Host 在 session create/resume 时下发，
+   * 已运行的会话不重新读取。
+   *
+   * 缺席即严格：core 侧 resolveDangerousCommandPolicy(undefined) 得到
+   * allowPersistentAuthorization=false + 默认清单全开。TUI / headless / workflow_child
+   * 不设置它，因此也落在严格态 —— 这正是产品默认（fail-safe）。
+   */
+  dangerousCommandPolicy?: DangerousCommandPolicy;
   memory?: MemoryRuntimeConfig;
   /** 历史恢复允许未绑定；只有完整选择才能创建本轮执行 Model。 */
   modelSelection?: ModelSelection;

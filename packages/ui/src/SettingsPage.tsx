@@ -10,6 +10,7 @@ import {
 } from "react";
 import type {
   AppSettings,
+  DangerousCommandPolicy,
   IntegratedTerminalShellOption,
   IntegratedTerminalShellSelection,
   Locale,
@@ -75,6 +76,7 @@ import { ComputerUseSection } from "@/settings/ComputerUseSection.js";
 import { ShortcutSettingsSection } from "@/settings/ShortcutSettingsSection.js";
 import { MigrationSection } from "@/settings/MigrationSection.js";
 import { FeedbackDiagnosticsSection } from "@/settings/FeedbackDiagnosticsSection.js";
+import { ToolPolicySection } from "@/settings/ToolPolicySection.js";
 import { SETTINGS_FRAME_CONTENT_CLASSNAME } from "@/settings/SettingsPageParts.js";
 import { GithubMirrorSetting } from "@/settings/GithubMirrorSetting.js";
 import {
@@ -685,6 +687,8 @@ export function SettingsPage({
   const askUserQuestionAutoResolutionEnabled =
     sharedSettings?.askUserQuestionAutoResolutionEnabled !== false;
   const modelIoFullRetentionEnabled = sharedSettings?.modelIoFullRetentionEnabled === true;
+  // 「工具与权限」的保存态：策略写入要走设置队列，期间禁用控件避免连点产生乱序写入。
+  const [toolPolicySaving, setToolPolicySaving] = useState(false);
   const [dataBaseDir, setDataBaseDir] = useState("");
   const [terminalInheritSystemProfile, setTerminalInheritSystemProfile] = useState(true);
   const [terminalFontFamily, setTerminalFontFamily] = useState("");
@@ -892,6 +896,29 @@ export function SettingsPage({
           stateAfter: enabled ? "enabled" : "disabled",
         },
       });
+    },
+    [updateSharedSettings],
+  );
+  const handleDangerousCommandPolicyChange = useCallback(
+    async (next: DangerousCommandPolicy) => {
+      setToolPolicySaving(true);
+      try {
+        await runSettingsActionAsync({
+          featureId: "settings.toolPolicy",
+          action: "update_dangerous_command_policy",
+          trigger: "switch",
+          operation: () => updateSharedSettings({ dangerousCommandPolicy: next }),
+          completed: {
+            resultSource: "shared_settings",
+            // 复用既有的二值状态词：放宽 = enabled（危险命令可被记住），严格 = disabled。
+            // 不新增 "relaxed"/"strict" 字面量 —— UserActionStateAfter 是封闭联合，
+            // 为一次上报扩协议面不值得。
+            stateAfter: next.allowPersistentAuthorization ? "enabled" : "disabled",
+          },
+        });
+      } finally {
+        setToolPolicySaving(false);
+      }
     },
     [updateSharedSettings],
   );
@@ -1952,6 +1979,14 @@ export function SettingsPage({
                             remoteSessionId={activeWorkspaceTab?.remoteSessionId}
                             remoteTarget={activeWorkspaceTab?.remoteTarget}
                             localWorkspacePath={activeWorkspaceTab?.localWorkspacePath}
+                          />
+                        ) : activeSection === "toolPolicy" ? (
+                          // 「工具与权限」是全局策略：不接 workspace 参数 —— 策略按会话冻结，
+                          // 与当前打开哪个 workspace 无关。资源级启停归各自资源页。
+                          <ToolPolicySection
+                            policy={sharedSettings?.dangerousCommandPolicy}
+                            saving={toolPolicySaving}
+                            onChange={handleDangerousCommandPolicyChange}
                           />
                         ) : activeSection === "feedback" ? (
                           // 「反馈与诊断」只依赖本机能力（GitHub 预填链接 / 本地日志归档），

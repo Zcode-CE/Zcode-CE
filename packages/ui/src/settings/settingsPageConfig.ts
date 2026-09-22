@@ -19,6 +19,7 @@ import {
   Keyboard,
   FileSearch,
   LifeBuoy,
+  ShieldAlert,
 } from "lucide-react";
 import { isSettingsSectionEnabled, type SettingsSectionId } from "@/lib/settingsNavigation.js";
 import type { Theme } from "@/useTheme.js";
@@ -121,6 +122,15 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     id: "hooks",
     icon: Anchor,
     titleId: "settings.hooks.title",
+    groupId: "agentCapabilities",
+  },
+  // 「工具与权限」跟随 hooks：同属"Agent 能做什么"的边界配置。
+  // 它管的是全局授权策略（危险命令能否被记住、哪些命令算危险），
+  // 资源级启停仍归各自的资源页 —— 本页不重复提供，避免两个真相源。
+  {
+    id: "toolPolicy",
+    icon: ShieldAlert,
+    titleId: "settings.toolPolicy.title",
     groupId: "agentCapabilities",
   },
   {

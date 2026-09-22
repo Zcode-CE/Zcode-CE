@@ -69,6 +69,8 @@ export {
   normalizeZCodeProductFlavor,
 } from "./env.js";
 export * from "./errors.js";
+// 危险命令清单：工具与权限策略页与 core 的 Bash 授权判据共用的唯一真相源。
+export * from "./dangerousCommands.js";
 export type { SessionCreateSource } from "./sessionCreateSource.js";
 export { resolveSafeEndpointHostname } from "./endpointHostname.js";
 export * from "./validation.js";

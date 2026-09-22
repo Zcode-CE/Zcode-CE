@@ -35,7 +35,10 @@ import {
   browserSessionContextKindSchema,
 } from "../browser-use/backend.js";
 import { browserCommandResultSchema } from "../browser-use/result.js";
-import { integratedTerminalShellSelectionSchema } from "../validationAppSettings.js";
+import {
+  dangerousCommandPolicySchema,
+  integratedTerminalShellSelectionSchema,
+} from "../validationAppSettings.js";
 import { zcodeTaskModeSchema } from "../zcode-task-mode-schema.js";
 import { OFFICIAL_MCP_AUTH_PORT_FAILURE_REASONS } from "../official-mcp-auth.js";
 import {
@@ -1709,6 +1712,11 @@ export const zcodeSessionRuntimePreferencesResultSchema = z
     modelContextBudgetStrategy: zcodeModelContextBudgetStrategySchema.default(
       DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
     ),
+    // 「工具与权限」页的危险命令策略。**缺省即严格**：不认识的旧 Host 或没同步到
+    // 该字段的启动窗口里，危险命令一律不可持久授权（fail-closed）。
+    // 与 nativeSearchEnhancementsEnabled 同一条链路：只在 session 创建/恢复时读取，
+    // 已运行的会话不重新读（设置页据此如实标注"新建会话后生效"）。
+    dangerousCommandPolicy: dangerousCommandPolicySchema.optional(),
   })
   .strict();
 export type ZCodeSessionRuntimePreferencesResult = z.infer<

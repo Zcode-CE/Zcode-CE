@@ -1,4 +1,5 @@
 import type { PermissionRuleValue, PermissionUpdate } from "@zcode/contracts";
+import { resolveDangerousCommandPolicy, type ResolvedDangerousCommandPolicy } from "@zcode/shared";
 import type { ToolPermissionRulePolicy, ToolRuntimePermissionCapabilityContext } from "../types.js";
 import {
   analyzeBashCommand,
@@ -8,6 +9,15 @@ import {
 } from "./bash-command-parser.js";
 import { evaluateBashRules } from "./bash-command-rule-evaluator.js";
 import {
+  filterDangerousAllowRules,
+  isDangerousInvocation,
+} from "./bash-command-dangerous-policy.js";
+import {
+  executableBasename,
+  isStaticAssignmentToken,
+  unwrapCommand,
+} from "./bash-command-wrapper.js";
+import {
   BASH_COMMAND_REGISTRY,
   type BashCommandRegistryNode,
 } from "./generated/bash-command-registry.js";
@@ -16,55 +26,6 @@ import { isRuntimeReadOnlyBashCommand } from "./bash-semantics.js";
 const MAX_SUGGESTED_RULES = 5;
 const ARG_IS_COMMAND = 1;
 const ARG_IS_MODULE = 2;
-const HIGH_RISK_ROOT_COMMANDS = new Set([
-  "bash",
-  "chgrp",
-  "chmod",
-  "chown",
-  "cmd",
-  "dd",
-  "fish",
-  "mkfs",
-  "mount",
-  "powershell",
-  "pwsh",
-  "rm",
-  "rmdir",
-  "sh",
-  "umount",
-  "zsh",
-]);
-const WRAPPER_OPTIONS_WITH_VALUES: Readonly<Record<string, ReadonlySet<string>>> = {
-  command: new Set(),
-  env: new Set(["-C", "-S", "-u", "--argv0", "--chdir", "--split-string", "--unset"]),
-  nohup: new Set(),
-  sudo: new Set([
-    "-C",
-    "-D",
-    "-R",
-    "-T",
-    "-a",
-    "-c",
-    "-g",
-    "-h",
-    "-p",
-    "-r",
-    "-t",
-    "-u",
-    "--askpass",
-    "--chdir",
-    "--chroot",
-    "--close-from",
-    "--group",
-    "--host",
-    "--prompt",
-    "--role",
-    "--type",
-    "--user",
-  ]),
-  time: new Set(["-f", "-o", "--format", "--output"]),
-};
-const WRAPPER_OPTIONS = new Set(["-p", "-v", "-V", "--ignore-environment"]);
 const SCRIPT_ACTIONS = new Map([
   ["bun", new Set(["run"])],
   ["deno", new Set(["task"])],
@@ -99,33 +60,66 @@ function createBashPermissionRulePolicy(
   const exactCommands = command === rawCommand ? [rawCommand] : [command, rawCommand];
   const analysis = analyzeBashCommand(command);
   const safe = isAnalysisSafeForPrefix(analysis);
-  const allSubjectGroups = safe ? analysis.commands.map(buildInvocationRuleSubjects) : [];
+  // 危险命令策略（工具与权限页）。**缺席即严格** —— 不要在这里加「宽松」默认分支。
+  // 必须在算 subject group 之前拿到：subject group 里的稳定前缀要经过危险门控。
+  const dangerous = resolveDangerousCommandPolicy(context?.dangerousCommandPolicy);
+  const guard = (invocation: BashCommandInvocation) =>
+    buildInvocationRuleSubjects(invocation, dangerous);
+  const allSubjectGroups = safe ? analysis.commands.map(guard) : [];
   const requiredCommands = safe
     ? analysis.commands.filter(
         (invocation) => !isRuntimeReadOnlyBashCommand(invocation.commandText, context),
       )
     : [];
-  const requiredSubjectGroups = requiredCommands.map(buildInvocationRuleSubjects);
-  const suggestedPermissionUpdates = buildSuggestedUpdates(rawCommand, safe, requiredCommands);
+  const requiredSubjectGroups = requiredCommands.map(guard);
+  // 逐 invocation 判危险，而不是整条命令判一次：evaluateBashRules 对 allow 的语义是
+  // 「每个 required invocation 都要命中一条规则」，保守化必须按同一粒度施加，
+  // 否则复合命令里的一条危险 invocation 会把整条命令的规则集过滤掉（过度收紧）。
+  const hasDangerousCommand = requiredCommands.some((invocation) =>
+    isDangerousInvocation(dangerous, invocation, resolveRawStableCommandPrefix(invocation)),
+  );
+  const suggestedPermissionUpdates = buildSuggestedUpdates(
+    rawCommand,
+    safe,
+    requiredCommands,
+    dangerous,
+  );
 
   return {
     evaluateRules(behavior, rules) {
+      // 裁决 3「评估时撤销」：加严后，此前落盘的授权规则不得再静默放行。
+      // 只对含危险命令的 allow 判定生效 —— deny / ask 继续用完整规则集。
+      const effectiveRules =
+        behavior === "allow" && hasDangerousCommand
+          ? filterDangerousAllowRules(dangerous, rules)
+          : rules;
       return evaluateBashRules({
         allSubjectGroups,
         behavior,
         exactCommands,
         requiredSubjectGroups,
-        rules,
+        rules: effectiveRules,
         safe,
       });
     },
     suggestedPermissionUpdates,
+    // 严格态下危险命令不进入持久授权（任务裁决 1 的"策略开关"落点）：
+    // 复用既有的 PermissionOptionsPolicy 机制（save-workflow.ts 已用 allowAlways:false），
+    // 由 approval-gate 折进这次 ask 的选项集，最终由 permission-options.ts 裁掉
+    // allow_project / allowSession。**只在严格态 + 命中危险命令时收窄** ——
+    // 放宽态与普通命令完全不改变现有行为。
+    ...(hasDangerousCommand && !dangerous.allowPersistentAuthorization
+      ? { optionsPolicy: "no-always-allow" as const }
+      : {}),
   };
 }
 
-function buildInvocationRuleSubjects(invocation: BashCommandInvocation): string[] {
+function buildInvocationRuleSubjects(
+  invocation: BashCommandInvocation,
+  dangerous: ResolvedDangerousCommandPolicy,
+): string[] {
   const rawSubject = normalizeInvocation(invocation);
-  const stablePrefix = resolveStableCommandPrefix(invocation);
+  const stablePrefix = resolveStableCommandPrefix(invocation, dangerous);
   // 保存规则会移除 --dir/-C 等全局 flag，但旧 evaluator 只拿原始 invocation
   // 比较，导致 UI 明明保存了 `pnpm run lint:*`，下一轮仍无法命中。保留 raw subject
   // 兼容历史 wildcard，同时加入相同 resolver 得出的稳定 action subject。
@@ -136,6 +130,7 @@ function buildSuggestedUpdates(
   rawCommand: string,
   safe: boolean,
   requiredCommands: readonly BashCommandInvocation[],
+  dangerous: ResolvedDangerousCommandPolicy,
 ): PermissionUpdate[] {
   if (rawCommand.length === 0) return [];
   if (!safe || requiredCommands.length === 0 || requiredCommands.length > MAX_SUGGESTED_RULES) {
@@ -145,7 +140,9 @@ function buildSuggestedUpdates(
   const rules: PermissionRuleValue[] = [];
   const seen = new Set<string>();
   for (const invocation of requiredCommands) {
-    const prefix = resolveStableCommandPrefix(invocation);
+    // 危险命令在这里天然退化为精确规则：resolveStableCommandPrefix 对它返回 undefined
+    // （见那里的注释）。所以「永不生成 :*」不需要第二个判据 —— 保持单一决策点。
+    const prefix = resolveStableCommandPrefix(invocation, dangerous);
     if (!prefix) return exactUpdate(rawCommand);
     const ruleContent = `${prefix}:*`;
     if (seen.has(ruleContent)) continue;
@@ -184,13 +181,37 @@ function normalizeInvocation(invocation: BashCommandInvocation): string {
   return [...(staticAssignmentTokens(invocation) ?? []), ...invocation.argv].join(" ");
 }
 
-function resolveStableCommandPrefix(invocation: BashCommandInvocation): string | undefined {
+/**
+ * 稳定命令前缀，**带危险命令门控**。
+ *
+ * 危险命令返回 undefined ⇒ 上层退化为精确规则（任务裁决 2 / 安全审计 P2）。
+ * 这里取代了原 `HIGH_RISK_ROOT_COMMANDS.has(executableName)` 的硬编码表：判据扩到
+ * **生效清单**（默认项 − 关闭项 ∪ 用户自加项）**并含 wrapper 链** —— 原表只看内层
+ * 可执行名，所以 `sudo` 永不触发保守化（task-67 §7.5「债 1」）。
+ */
+function resolveStableCommandPrefix(
+  invocation: BashCommandInvocation,
+  dangerous: ResolvedDangerousCommandPolicy,
+): string | undefined {
+  if (isDangerousInvocation(dangerous, invocation, resolveRawStableCommandPrefix(invocation))) {
+    return undefined;
+  }
+  return resolveRawStableCommandPrefix(invocation);
+}
+
+/**
+ * 稳定命令前缀的**纯解析**（不含危险命令门控）。
+ *
+ * 单独保留是因为危险判定本身需要它：用户自加项可以写成带参数的形式（`docker run`），
+ * 那种项按前缀匹配，所以判定必须先拿到前缀 —— 用带门控的版本会自相矛盾
+ * （危险 ⇒ 无前缀 ⇒ 带参数项永远匹配不上）。
+ */
+function resolveRawStableCommandPrefix(invocation: BashCommandInvocation): string | undefined {
   const assignments = staticAssignmentTokens(invocation);
   if (!assignments || invocation.argv.length === 0) return undefined;
   const unwrapped = unwrapCommand(invocation.argv);
   if (!unwrapped) return undefined;
   const executableName = executableBasename(unwrapped.executable);
-  if (HIGH_RISK_ROOT_COMMANDS.has(executableName)) return undefined;
 
   const prefix = [...assignments, ...unwrapped.prefix, unwrapped.executable];
   const remaining = invocation.argv.slice(unwrapped.nextIndex);
@@ -250,51 +271,6 @@ function skipLeadingKnownOptions(
   return args.slice(index);
 }
 
-interface UnwrappedCommand {
-  executable: string;
-  nextIndex: number;
-  prefix: string[];
-}
-
-function unwrapCommand(argv: readonly string[]): UnwrappedCommand | undefined {
-  const prefix: string[] = [];
-  let index = 0;
-  let wrapperDepth = 0;
-  while (index < argv.length) {
-    const token = argv[index]!;
-    const name = executableBasename(token);
-    const optionsWithValues = WRAPPER_OPTIONS_WITH_VALUES[name];
-    if (!optionsWithValues) {
-      return { executable: token, nextIndex: index + 1, prefix };
-    }
-    wrapperDepth += 1;
-    if (wrapperDepth > 2) return undefined;
-    prefix.push(token);
-    index += 1;
-    while (index < argv.length) {
-      const wrapperToken = argv[index]!;
-      if (name === "env" && isStaticAssignmentToken(wrapperToken)) {
-        prefix.push(wrapperToken);
-        index += 1;
-        continue;
-      }
-      const optionName = wrapperToken.includes("=")
-        ? wrapperToken.slice(0, wrapperToken.indexOf("="))
-        : wrapperToken;
-      if (optionsWithValues.has(optionName)) {
-        index += wrapperToken.includes("=") ? 1 : 2;
-        continue;
-      }
-      if (WRAPPER_OPTIONS.has(optionName) || wrapperToken.startsWith("-")) {
-        index += 1;
-        continue;
-      }
-      break;
-    }
-  }
-  return undefined;
-}
-
 function resolveDepthOverride(
   executableName: string,
   args: readonly string[],
@@ -343,10 +319,6 @@ function staticAssignmentTokens(invocation: BashCommandInvocation): string[] | u
   return tokens;
 }
 
-function isStaticAssignmentToken(token: string): boolean {
-  return /^[A-Za-z_][A-Za-z0-9_]*=[A-Za-z0-9_./:@,+-]*$/.test(token);
-}
-
 function isStableActionToken(token: string | undefined): token is string {
   return (
     Boolean(token) && !token!.startsWith("-") && !looksLikePathOrUrl(token!) && !/\s/.test(token!)
@@ -369,11 +341,6 @@ function serializePrefix(tokens: readonly string[]): string | undefined {
     return undefined;
   }
   return tokens.join(" ");
-}
-
-function executableBasename(token: string): string {
-  const normalized = token.replaceAll("\\", "/");
-  return normalized.slice(normalized.lastIndexOf("/") + 1).toLowerCase();
 }
 
 function readCommand(input: unknown): string | undefined {

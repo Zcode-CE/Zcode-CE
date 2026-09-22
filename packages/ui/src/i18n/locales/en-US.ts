@@ -1826,6 +1826,44 @@ const enUS: Record<string, string> = {
   "settings.nativeSearchEnhancements": "Enhanced Find and Grep",
   "settings.nativeSearchEnhancementsDescription":
     "Use enhanced Find and Grep in new sessions and sessions restored after an app restart. Active sessions keep their current setting; Find remains unchanged on Windows.",
+  // ── task-73 Tool & Permissions section ──
+  // Scope: global authorization policy (whether dangerous commands can be remembered, and
+  // which commands count as dangerous). Per-resource enablement stays on each resource page.
+  "settings.toolPolicy.title": "Tools & Permissions",
+  "settings.toolPolicy.persistent.label": "Let dangerous commands be remembered for the project",
+  "settings.toolPolicy.persistent.description":
+    "When off, dangerous commands ask every time and previously remembered grants no longer apply. When on, they can be remembered, but only the exact command — never a whole family of commands.",
+  "settings.toolPolicy.persistent.behaviorChange":
+    "This upgrade turns it off by default: dangerous commands you previously remembered now ask again.",
+  "settings.toolPolicy.appliesToNewSessions":
+    "Applies to new sessions; sessions already open keep their current setting.",
+  "settings.toolPolicy.list.title": "Dangerous commands",
+  "settings.toolPolicy.list.hint":
+    "Turning an entry off relaxes it: it is no longer treated as dangerous.",
+  "settings.toolPolicy.list.defaultsNotDeletable":
+    "Built-in entries can be turned off and on again; turn one off to remove it from effect.",
+  "settings.toolPolicy.entry.privilege": "{name} (privilege escalation)",
+  "settings.toolPolicy.entry.privilege.description":
+    "Any command escalated through it is treated as dangerous, whatever follows.",
+  "settings.toolPolicy.entry.executable.description":
+    "This command is never remembered by prefix — only the exact command is remembered.",
+  "settings.toolPolicy.entry.enable": "Turn {name} back on",
+  "settings.toolPolicy.entry.disable": "Turn {name} off",
+  "settings.toolPolicy.custom.title": "Custom dangerous commands",
+  "settings.toolPolicy.custom.executable.description": "Matched by command name.",
+  "settings.toolPolicy.custom.prefix.description":
+    "Matched by command prefix, covering every command under it.",
+  "settings.toolPolicy.custom.delete": "Delete {name}",
+  "settings.toolPolicy.custom.add.label": "Add a dangerous command",
+  "settings.toolPolicy.custom.add.description":
+    "Enter a command name (such as kubectl) or a command prefix (such as docker run). Adding one only makes things stricter; it never allows anything.",
+  "settings.toolPolicy.custom.add.placeholder": "docker run",
+  "settings.toolPolicy.custom.add.action": "Add",
+  "settings.toolPolicy.custom.invalid":
+    "Enter a command name or prefix, without quotes, pipes, or similar symbols.",
+  "settings.toolPolicy.custom.duplicate": "That entry is already in the list.",
+  "settings.toolPolicy.custom.tooMany":
+    "You have reached the limit for custom entries. Delete some first.",
   "settings.memory": "Memory",
   "settings.memory.workspaceMemory": "Workspace Memory",
   "settings.memoryDescription":
@@ -5512,6 +5550,11 @@ const enUS: Record<string, string> = {
     "Do not ask again for matching commands in this project",
   "chat.permission.allowCommand": "Always allow this command",
   "chat.permission.allowForProject": "Always allow in this project",
+  // ── task-73 Tool & Permissions: granted-scope visualization ──
+  // The user must see how far a "remember" reaches. A rule without ruleContent matches
+  // every call of that tool; the previous implementation silently dropped it from the
+  // visualization (security audit task-72 P1 — all three UI fallbacks failed).
+  "chat.permission.ruleScope.anyToolCommand": "Any {toolName} command",
   "chat.permission.cua.allowForProject": "Always allow Computer Use in this project",
   "chat.permission.cua.allowForProject.description":
     "Do not ask again for official Computer Use actions in this project",
@@ -5585,10 +5628,19 @@ const enUS: Record<string, string> = {
   "chat.askQuestion.noAnswerProvided": "No answer provided",
   "chat.askQuestion.autoContinued": "No answer; continued automatically",
   "chat.permission.allowOnce.description": "Allow only this time",
-  "chat.permission.allowAlways.description.command": "Do not ask again for the same command",
-  "chat.permission.allowAlways.description.file": "Do not ask again for the same file operation",
+  // ── task-73: make the real scope of "remember" visible (user decision "position A") ──
+  // The previous copy ("Do not ask again for the same command") read like "this once" or
+  // "the same request", while the grant is actually "matching requests in this project,
+  // permanently". Prefix rules reach further (npm install:* covers any package), and a rule
+  // without ruleContent covers the whole tool. The dialog now inlines prefix/exact/any scope,
+  // so these three descriptions are the fallback when no scope is rendered and must state
+  // both the scope and the persistence themselves.
+  "chat.permission.allowAlways.description.command":
+    "Do not ask again for the same command in this project",
+  "chat.permission.allowAlways.description.file":
+    "Do not ask again for the same file operation in this project",
   "chat.permission.allowAlways.description.generic":
-    "Do not ask again for the same permission request",
+    "Do not ask again for this kind of request in this project",
   "chat.permission.denyOnce.description": "Reject it for now",
   "chat.permission.denyAlways.description.command": "Always reject the same command in the future",
   "chat.permission.denyAlways.description.file":
