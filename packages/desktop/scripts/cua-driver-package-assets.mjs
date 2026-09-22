@@ -60,7 +60,9 @@ function directorySize(dir) {
  * 必须是**子目录**下的 node_modules（原因见模块头注释），且要在 node-repl-host
  * bundle 的祖先链上。
  */
-const CUA_DRIVER_NODE_MODULES_RELATIVE = "packages/node-repl-host/node_modules";
+export const CUA_DRIVER_PLUGIN_DIR_NAME = "node-repl-host";
+
+const CUA_DRIVER_NODE_MODULES_RELATIVE = `packages/${CUA_DRIVER_PLUGIN_DIR_NAME}/node_modules`;
 
 /** 运行时必需的包；平台变体由 {@link platformPackagesFor} 追加。 */
 const CUA_DRIVER_RUNTIME_PACKAGES = ["@trycua/cua-driver", "@ubjs/core", "@ubjs/node"];

@@ -78,8 +78,14 @@ import { builtinModules } from "node:module";
 import { join, resolve, sep } from "node:path";
 import { build } from "esbuild";
 
-/** 三个库 → 所属插件 → 产物文件名。库与插件的对应关系由各插件 package.json 的依赖声明决定。 */
-const OFFICE_NODE_BUNDLES = [
+/**
+ * 三个库 → 所属插件 → 产物文件名。库与插件的对应关系由各插件 package.json 的依赖声明决定。
+ *
+ * 导出是给 **dev 链**用的（packages/desktop/scripts/dev-agent-payloads.mjs）：dev 也要 stage
+ * 同一批载荷，而「哪些插件需要载荷」只能有一处事实源 —— 再手写一份清单就是本项目
+ * 反复踩过的「平行清单各自漂移」根因。
+ */
+export const OFFICE_NODE_BUNDLES = [
   { file: "docx.cjs", library: "docx", plugin: "documents-plugin" },
   { file: "pptxgenjs.cjs", library: "pptxgenjs", plugin: "presentations-plugin" },
   { file: "exceljs.cjs", library: "exceljs", plugin: "spreadsheets-plugin" },

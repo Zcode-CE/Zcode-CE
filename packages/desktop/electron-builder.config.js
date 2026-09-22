@@ -459,6 +459,29 @@ function assertPackagedCuaDriver(context) {
   }
 }
 
+/**
+ * koffi 原生 addon 必须随包。
+ *
+ * 为什么要有这条校验（**此前是「有定义没调用」**）：`stageKoffiIntoBundledAgents` 已在
+ * prepare-agent-node-bundle.mjs 里接上调用点，但它的**出包期校验** `verifyStagedKoffi`
+ * 一直只被 import、从未被调用 —— 同一个「验证停在中间产物」模式：stage 出文件 ≠ 文件在包里。
+ * 缺 koffi 时构建全程绿灯，要到运行时第一次走 Windows Job Object 清理才暴露
+ * （windows-job-object.ts 会 return undefined 退回 taskkill，所以是静默降级而非崩溃）。
+ *
+ * 只在 win32 断言：koffi 只被 Windows 的 Job Object 路径使用，Linux/macOS 的包不带它，
+ * 在那里断言会把正常的跨平台打包判成失败。
+ */
+function assertPackagedKoffi(context) {
+  if (targetPlatform.os !== "win32") return;
+  const issues = verifyStagedKoffi({
+    resourcesDir: resolvePackagedResourcesDir(context),
+    targetPlatform,
+  });
+  if (issues.length > 0) {
+    throw new Error(`koffi 原生运行时校验失败:\n- ${issues.join("\n- ")}`);
+  }
+}
+
 /** @type {import("electron-builder").Configuration} */
 export default {
   appId: desktopProductIdentity.appId,
@@ -571,6 +594,7 @@ export default {
       assertPackagedNodePtyPrebuild(context),
     );
     runTimedSync("afterPack:assertPackagedCuaDriver", () => assertPackagedCuaDriver(context));
+    runTimedSync("afterPack:assertPackagedKoffi", () => assertPackagedKoffi(context));
     if (actualWindowsTarget) {
       await runTimedAsync("afterPack:writeWindowsInstallManifest", () =>
         writeWindowsInstallManifest(context),

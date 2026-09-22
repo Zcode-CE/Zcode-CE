@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { access } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stageDevAgentPayloads } from "../packages/desktop/scripts/dev-agent-payloads.mjs";
 import { stageAgentBundle } from "../packages/desktop/scripts/stage-agent-bundle.mjs";
 import { runCommand } from "./spawn-command.mjs";
 
@@ -100,6 +101,28 @@ function stageDevAgentBundle() {
   });
 }
 
+/**
+ * 暂存 dev 运行链真正会读的构建期载荷（office 三库 bundle + Computer Use 驱动）。
+ *
+ * 为什么必须在这里、而不是复用打包链已有的 stage：dev 的 agent 入口是
+ * `cli/dist/zcode.cjs`（findUpward，见 zcodeAgentProcessManager），seed 的候选基目录
+ * 是 `[cli/dist, cli/dist, cwd]` —— **里面没有 bundled-agents/`**。所以打包链 stage 到
+ * `bundled-agents/<key>/glm` 的那两步对 dev 完全无效：源树里既没有
+ * `scripts/office-node/*.cjs`，也没有 `node-repl-host/node_modules/@trycua`，
+ * 于是 dev 下 office 技能 require 失败、第一次调 CUA 拿到
+ * `Cannot find package '@trycua/cua-driver'`。
+ *
+ * 落点 `cli/dist/packages/<plugin>` 与 agent 入口同目录，正是候选基目录的第一顺位；
+ * 实现与打包链**共用同一对** stage 函数（见 dev-agent-payloads.mjs 的模块注释）。
+ *
+ * 每次构建都重跑：实测 office 三库 esbuild 冷启动 ~150 ms、CUA 拷贝 ~20 ms，
+ * 代价远小于「加了增量判断却在某条路径上漏判」的复发风险（本项目已三次踩过
+ * 「验证停在中间产物」）。三条构建出口都经过这里，不存在只修好其中一条的形态。
+ */
+async function stageDevAgentPayloadsForRun() {
+  await stageDevAgentPayloads({ repoRoot });
+}
+
 async function runBootstrapWithRemoteBuild() {
   if (existsSync(resolve(repoRoot, "apps/zcode-cli/packages/cli/dist/zcode.cjs"))) {
     await stageBuiltinProviderConfig({
@@ -141,6 +164,7 @@ async function runBootstrapWithRemoteBuild() {
 if (useBootstrapWithRemoteBuild) {
   await runBootstrapWithRemoteBuild();
   stageDevAgentBundle();
+  await stageDevAgentPayloadsForRun();
   process.exit(0);
 }
 
@@ -162,6 +186,7 @@ if (!useTurboBuild) {
     stdio: "inherit",
   });
   stageDevAgentBundle();
+  await stageDevAgentPayloadsForRun();
   process.exit(0);
 }
 
@@ -183,3 +208,4 @@ runCommand(
   },
 );
 stageDevAgentBundle();
+await stageDevAgentPayloadsForRun();
