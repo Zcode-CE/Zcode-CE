@@ -37,9 +37,15 @@ interface PermissionOptionSource {
 export function buildProtocolPermissionOptions(
   source: PermissionOptionSource,
 ): ZCodePermissionOption[] {
-  const permissionUpdates = source.suggestedPermissionUpdates?.length
-    ? source.suggestedPermissionUpdates
-    : defaultPermissionUpdates(source);
+  // 必须区分「工具说它没有可建议的规则」（空数组）与「工具没有策略」（undefined）：
+  // 空数组是**刻意的信号**（Bash 对空命令返回 []），而 defaultPermissionUpdates 在拿不到
+  // ruleContent 时会产出一条**无 ruleContent 的规则 —— 它匹配一切**（见 core 的
+  // permission/service.ts 的 `if (!rule.ruleContent) return true;`）。
+  // 用 `.length ? :` 会把前者当成后者，于是 `Bash {command:""}` 的「始终允许本项目」
+  // 退化成「本项目内任意 Bash 永久免问」（安全审计 P1，实测 sudo rm -rf / 也被放行）。
+  const permissionUpdates = source.suggestedPermissionUpdates ?? defaultPermissionUpdates(source);
+  // 规则集为空时不投放 allow_project：没有规则可授予，按钮只会误导用户。
+  const hasProjectScope = permissionUpdates.some((update) => update.rules.length > 0);
   const officialCuaProjectScope = permissionUpdates.some((update) =>
     update.rules.some((rule) => rule.toolName === OFFICIAL_CUA_PERMISSION_RULE_TOOL_NAME),
   );
@@ -57,7 +63,7 @@ export function buildProtocolPermissionOptions(
     // 而是把这道确认永久关掉。session-always-allow 则换成会话作用域的免确认：response 里
     // **没有** permissionUpdates——wire 上 zcodePermissionUpdateSchema 是 strict，会话语义由
     // broker 在应答侧合成为 sessionPermissionUpdates（纯内存，绝不落项目规则）。
-    ...(source.optionsPolicy === "no-always-allow"
+    ...(source.optionsPolicy === "no-always-allow" || !hasProjectScope
       ? []
       : source.optionsPolicy === "session-always-allow"
         ? [

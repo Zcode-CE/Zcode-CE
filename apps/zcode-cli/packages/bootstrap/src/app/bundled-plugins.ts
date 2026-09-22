@@ -47,23 +47,17 @@ const includedTopLevelPaths = new Set([
   "dist",
   "docs",
   "hooks",
-  // Computer Use 驱动（@trycua/cua-driver）是 uniffi 生成的 Rust 原生库：.node/.so 由
-  // createRequire 在运行时解析，esbuild 无法内联，所以 node-repl-host 的 bundle 里保留
-  // `await import(DRIVER_PACKAGE)`（变量 specifier）。打包链按设计把它 stage 到
-  // <plugin>/node_modules（packages/desktop/scripts/cua-driver-package-assets.mjs:52），
-  // 但不白名单 node_modules 时这里会**整棵静默丢弃** ⇒ 正式包里驱动永远解析不到，
-  // 且因为驱动是懒加载（packages/zcode-cua/cua-driver-runtime.js:144），症状要等到首次
-  // CUA 调用才出现：「Computer Use driver is unavailable … Cannot find package
-  // '@trycua/cua-driver'」——点名包名的文案正是让模型自行 npm install 猜包名的诱因。
+  // 注意：这里**刻意不放 node_modules**。Computer Use 驱动（@trycua/cua-driver，uniffi 生成的
+  // Rust 原生库）确实需要插件根直属的 node_modules 才能被 seed 保留，但那是 **node-repl-host
+  // 单个插件**的需求，已由该插件自己的 runtimeTopLevelPaths 声明（见 official-plugin-definitions.ts）。
   //
-  // 为什么必须是**插件根直属**的 node_modules：shouldSkipDirectory 只放行 depth === 0，
-  // 任何更深层（实测 dist/node_modules、scripts/node_modules、vendor/…/node_modules）
-  // 一律丢弃，白名单救不了。详见 .reverse/29-cua-seed/CUA-SEED-PAYLOAD.md。
+  // 为什么不能放全局白名单：includedTopLevelPaths 是**模块级常量**，对所有官方插件生效。
+  // 安全审计实测：放进全局后 browser-use-plugin 的 node_modules（85 MiB，全是 @esbuild/esbuild/
+  // typescript 这类**构建期 devDeps**）也会被 seed 搬进用户 cache，且它完全不需要 ——
+  // 两个插件合计多搬约 166 MiB。runtimeTopLevelPaths 是 per-plugin 的，
+  // collectFilesystemPluginFiles 在 :379-382 已把它并进 allowedTopLevelPaths，零新机制。
   //
-  // 注意：不要把它写进 node-repl-host 的 requiredSeedPaths —— 那会让「载荷缺失」升级成
-  // 「整个插件被拒收」，连 node_repl 宿主一起消失（同 office 的结论，见
-  // .reverse/28-office-provenance/OFFICE-SEED-VENDOR.md §3.1）。
-  "node_modules",
+  // 详见 .reverse/29-cua-seed/CUA-SEED-PAYLOAD.md 与 .reverse/31-audit/SECURITY-AUDIT.md。
   "output-styles",
   "package.json",
   // Browser skill 会从官方插件根目录动态导入 scripts/browser-client.mjs。

@@ -105,6 +105,29 @@ def make_media_heavy(path, media_mb=160):
                 f.write(blob)
     return path
 
+def make_namespace_dense(path, depth=16_000):
+    """深层嵌套且**每层声明不同前缀**的命名空间，元素数与声明体积都在预算内。
+
+    这条覆盖另一条绕过路径（安全审计 P0）：office-xml-scan.mjs 曾对每个声明 xmlns 的元素
+    执行 new Map(element.scope) 复制整条父链，而 scopeLookup 本来就沿 parent 上溯 ——
+    复制纯冗余，嵌套 N 层即 O(N²)。实测 16000 层、每层 22 字节（ZIP 仅 40.6 KB）时：
+      - 旧写法峰值 RSS 4263 MiB，SIGABRT，stdout 为空（调用方无法区分「文档非法」与「检查器崩了」）
+      - 两条预算都拦不住：声明体积 351 KB（上限 64 MiB，差 191 倍）、元素 32,011（上限 200 万，差 62 倍）
+      - 改为空 Map（只挂 parent 链）后 77 MiB，与 .py 版行为一致
+    注意：上面的 make_element_dense 是 300 万个扁平兄弟元素（深度恒为 2），
+    永远碰不到作用域链，所以覆盖不到本条。
+    """
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+        seed(z)
+        with z.open("bomb.xml", "w") as f:
+            f.write(b'<root xmlns:p0="u0">')
+            for i in range(1, depth):
+                f.write(('<p%d xmlns:p%d="u%d">' % (i, i, i)).encode())
+            for i in range(1, depth):
+                f.write(('</p%d>' % i).encode())
+            f.write(b"</root>")
+    return path
+
 def make_element_dense(path, elements=3_000_000):
     """声明体积在字节预算内，但元素数远超元素预算。
 
@@ -141,7 +164,7 @@ def command(path):
 
 result = {}
 for label, maker in (("ok", make_ok), ("oversized", make_oversized), ("dense", make_element_dense),
-                     ("media", make_media_heavy)):
+                     ("nsdense", make_namespace_dense), ("media", make_media_heavy)):
     path = maker(os.path.join(workdir, label + ".docx"))
     argv, preexec = command(path)
     proc = subprocess.run(argv, capture_output=True, text=True, preexec_fn=preexec)
@@ -298,6 +321,31 @@ for (const implementation of IMPLEMENTATIONS) {
       );
       const detail = assertStructuredFail(dense, "dense");
       assert.match(detail, /element/i, `detail 应说明是元素数问题，实际: ${detail}`);
+    },
+  );
+
+  // 命名空间密集：深层嵌套 + 每层声明不同前缀。
+  // 与上面的 dense 互补 —— dense 是**扁平兄弟**元素（深度恒为 2），永远碰不到作用域链；
+  // 本用例专门打「每个 xmlns 元素复制整条父链」那条 O(N²) 路径（安全审计 P0）。
+  // 判据是**结构性**的：要么正常 pass（修复后），要么结构化 fail（超预算）；
+  // **不允许**崩溃（rc 异常）或 stdout 为空 —— 那正是修复前 4263 MiB / SIGABRT 的形态。
+  test(
+    `[${implementation.label}] 命名空间密集 XML 不崩溃、不空输出（作用域链 O(N²) 回归）`,
+    { skip },
+    () => {
+      const nsdense = probe().nsdense;
+      assert.ok(
+        nsdense.declaredBytes < 64 * 1024 * 1024,
+        `夹具声明体积应落在成员字节预算内（否则测的是字节预算），实际 ${nsdense.declaredBytes}`,
+      );
+      assert.ok(
+        nsdense.stdout.length > 0,
+        `必须产出结构化输出；stdout 为空意味着检查器崩溃（修复前 16000 层会吃掉 4 GiB 并 SIGABRT）`,
+      );
+      assert.ok(
+        nsdense.rc === 0 || nsdense.rc === 1,
+        `退出码应为 0（通过）或 1（结构化 fail），实际 ${nsdense.rc}（134/负数表示被信号杀死）`,
+      );
     },
   );
 

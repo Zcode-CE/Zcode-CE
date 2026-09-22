@@ -244,16 +244,16 @@
     "apps/zcode-cli/packages/documents-plugin/scripts/check_office.mjs": "a12311cbb12d56a42369d9effc3ccdea1160497908fa91a79a5df986bb7d79f1",
     "apps/zcode-cli/packages/documents-plugin/scripts/check_office.py": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-cli.mjs": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae",
-    "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-main.mjs": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08",
+    "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-main.mjs": "3d1d226e8b428e6d29bf538cf484acf4667983a89ffefc604993855c0ec8426a",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-parts.mjs": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-spec.mjs": "88f18c5c834aec0ab8322da2e9505a79ea3c6cedfbb6047cfc725fa40dae0fc5",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-decl.mjs": "84f32fdcb001713e5c8240f5e7d0536e7750547c3a0f8c2726be3a1cd4f437d3",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-lex.mjs": "51fc83428a4e077d07a5b8a20e483d93e9ed4554f9c15b24c280463caa5b7c78",
-    "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-scan.mjs": "823f995b7750a63b8b9a05c2e5b75938db522b954b522863340a846b461b5759",
+    "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-scan.mjs": "936fbbef85a7c1d548d043556f10e65336bee95463b9a905d96e58b607def4e8",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
-    "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md": "f2c7a254fe539780426e5236a24353506d55c2ce4dd5f56a679c186a1a714cba",
-    "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "17e08ef3509c5b91e5cc39c5245276b042e0d944b91a122f60932f37eae470ad",
+    "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md": "fded1712def8814d2e65981412518dd6b0dc8e18969e6d77f4491a937272723e",
+    "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "46a5d3e732dc04d34866e811a9be9f79f6a98bce24db84db33ed23defb9420f4",
     "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "f8dab813c3b9f236b593d4d04f1b78e511e15d586cb7dcdd74147e7d1c22ec5c",
     "apps/zcode-cli/packages/dynamic-workflow/package.json": "aac5891463ddeb419ff6f73fc95b7c407964b06f8aeff66b6a9ba4d999164f99",
     "apps/zcode-cli/packages/i18n/package.json": "025e4620d80f39cac3df06249866fcaed531615b6b8a4c4a727c4557066f7b1b",
@@ -274,15 +274,15 @@
     "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.mjs": "a12311cbb12d56a42369d9effc3ccdea1160497908fa91a79a5df986bb7d79f1",
     "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.py": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-cli.mjs": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae",
-    "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-main.mjs": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-main.mjs": "3d1d226e8b428e6d29bf538cf484acf4667983a89ffefc604993855c0ec8426a",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-parts.mjs": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-spec.mjs": "88f18c5c834aec0ab8322da2e9505a79ea3c6cedfbb6047cfc725fa40dae0fc5",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-decl.mjs": "84f32fdcb001713e5c8240f5e7d0536e7750547c3a0f8c2726be3a1cd4f437d3",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-lex.mjs": "51fc83428a4e077d07a5b8a20e483d93e9ed4554f9c15b24c280463caa5b7c78",
-    "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-scan.mjs": "823f995b7750a63b8b9a05c2e5b75938db522b954b522863340a846b461b5759",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-scan.mjs": "936fbbef85a7c1d548d043556f10e65336bee95463b9a905d96e58b607def4e8",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
-    "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md": "832a56d1d6526bbe2a9942c34530e46a100b9313abbef25780eef6b671a558f6",
+    "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md": "2ddea27121fce2defbc116b678f16c384065e2985011c08e58644bc2a4a644ef",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/.zcode-plugin/plugin.json": "74580ca50246dd14e747321f25925755c1f091969166f01470de30dd0f3fdb8d",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/commands/restore-legacy-sessions.md": "50fefcf09f13e4e8c8fa424adf5cda4385a9da6e020f337f3517447ff4fc9aff",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/README.md": "c0f365788e147d6e5a6b70a30260aac9a19f913e6800a27f8ff81ef7cb1ec0ae",
@@ -299,15 +299,15 @@
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.mjs": "a12311cbb12d56a42369d9effc3ccdea1160497908fa91a79a5df986bb7d79f1",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.py": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-cli.mjs": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae",
-    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-main.mjs": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-main.mjs": "3d1d226e8b428e6d29bf538cf484acf4667983a89ffefc604993855c0ec8426a",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-parts.mjs": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-spec.mjs": "88f18c5c834aec0ab8322da2e9505a79ea3c6cedfbb6047cfc725fa40dae0fc5",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-decl.mjs": "84f32fdcb001713e5c8240f5e7d0536e7750547c3a0f8c2726be3a1cd4f437d3",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-lex.mjs": "51fc83428a4e077d07a5b8a20e483d93e9ed4554f9c15b24c280463caa5b7c78",
-    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-scan.mjs": "823f995b7750a63b8b9a05c2e5b75938db522b954b522863340a846b461b5759",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-scan.mjs": "936fbbef85a7c1d548d043556f10e65336bee95463b9a905d96e58b607def4e8",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
-    "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md": "e59da43aba6852ad23246678bdb189a915eb2d85abb396b2b1d043b484907d6a",
+    "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md": "055256bc83a5f7bc7ffc027c7aa4e4a1e3aa8d2dd4f897981564a10ed0916686",
     "apps/zcode-cli/packages/superpowers-plugin/LICENSE": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
     "apps/zcode-cli/packages/swift-bridge/package.json": "958674fcd44c789564ee672b0e6c687f1f900f4286174280700ddfb442d23906",
     "apps/zcode-cli/packages/tui/package.json": "097d5896b0b37a455eafaf015f21113dfbea7b05bb3f92666f423f7753720eb1",
@@ -2869,7 +2869,7 @@
     "third-party/native-search/licenses/f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af.txt": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
     "third-party/native-search/licenses/f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505.txt": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505",
     "third-party/native-search/sources.json": "5a7b2d7abf5bd5f310712710cbbd0ca70dc9491e723cbf070b5c696fe155a962",
-    "third-party/npm-overrides.json": "15e32578a8879c4baadc84dc885039a9af8cca814da4127d3912427046263c8d",
+    "third-party/npm-overrides.json": "114a62fef7e60d5529238e913fb76b8080aea7256aebb456c320d2f761334645",
     "third-party/runtime/node-22.16.0-LICENSE.txt": "1ae62e2015784ba438db7b04ebd33f3c4ff3efdb824c111c4ececd99945fd52d",
     "third-party/runtime/node-24.14.0-LICENSE.txt": "4573185d56580da2b890ba34a85a409257640f1c5632eade4300137266194d18",
     "third-party/runtime/sources.json": "b27bc8d81aeb71108e523602364ffbb6a1b19c2d5d47733fd43094b769006741",
@@ -29980,7 +29980,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-main.mjs",
-          "sha256": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08"
+          "sha256": "3d1d226e8b428e6d29bf538cf484acf4667983a89ffefc604993855c0ec8426a"
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-parts.mjs",
@@ -30000,7 +30000,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-scan.mjs",
-          "sha256": "823f995b7750a63b8b9a05c2e5b75938db522b954b522863340a846b461b5759"
+          "sha256": "936fbbef85a7c1d548d043556f10e65336bee95463b9a905d96e58b607def4e8"
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-tree.mjs",
@@ -30012,11 +30012,11 @@
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md",
-          "sha256": "f2c7a254fe539780426e5236a24353506d55c2ce4dd5f56a679c186a1a714cba"
+          "sha256": "fded1712def8814d2e65981412518dd6b0dc8e18969e6d77f4491a937272723e"
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs",
-          "sha256": "17e08ef3509c5b91e5cc39c5245276b042e0d944b91a122f60932f37eae470ad"
+          "sha256": "46a5d3e732dc04d34866e811a9be9f79f6a98bce24db84db33ed23defb9420f4"
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/.zcode-plugin/plugin.json",
@@ -30048,7 +30048,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-main.mjs",
-          "sha256": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08"
+          "sha256": "3d1d226e8b428e6d29bf538cf484acf4667983a89ffefc604993855c0ec8426a"
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-parts.mjs",
@@ -30068,7 +30068,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-scan.mjs",
-          "sha256": "823f995b7750a63b8b9a05c2e5b75938db522b954b522863340a846b461b5759"
+          "sha256": "936fbbef85a7c1d548d043556f10e65336bee95463b9a905d96e58b607def4e8"
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-tree.mjs",
@@ -30080,7 +30080,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md",
-          "sha256": "832a56d1d6526bbe2a9942c34530e46a100b9313abbef25780eef6b671a558f6"
+          "sha256": "2ddea27121fce2defbc116b678f16c384065e2985011c08e58644bc2a4a644ef"
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/.zcode-plugin/plugin.json",
@@ -30112,7 +30112,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-main.mjs",
-          "sha256": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08"
+          "sha256": "3d1d226e8b428e6d29bf538cf484acf4667983a89ffefc604993855c0ec8426a"
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-parts.mjs",
@@ -30132,7 +30132,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-scan.mjs",
-          "sha256": "823f995b7750a63b8b9a05c2e5b75938db522b954b522863340a846b461b5759"
+          "sha256": "936fbbef85a7c1d548d043556f10e65336bee95463b9a905d96e58b607def4e8"
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-tree.mjs",
@@ -30144,7 +30144,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md",
-          "sha256": "e59da43aba6852ad23246678bdb189a915eb2d85abb396b2b1d043b484907d6a"
+          "sha256": "055256bc83a5f7bc7ffc027c7aa4e4a1e3aa8d2dd4f897981564a10ed0916686"
         }
       ]
     },

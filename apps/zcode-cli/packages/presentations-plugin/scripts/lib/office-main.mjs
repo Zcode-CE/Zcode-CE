@@ -1,8 +1,24 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import process from "node:process";
 
 import { MAIN_PARTS, suffixOf } from "./office-spec.mjs";
+
+/**
+ * 解析成真实路径用于比较，**跟随符号链接**；目标不存在时回退到 path.resolve()。
+ *
+ * 为什么不能只用 resolve()：它只做路径规范化。若 --out 是一个指向输入文档的软链，
+ * 两者字符串不同却被判为「不同文件」，写入会**穿透软链覆盖输入文档**（安全审计 P1）。
+ * .py 版用 Path.resolve() 跟随软链，这里对齐。
+ */
+function realpathOrResolve(target) {
+  try {
+    return realpathSync(target);
+  } catch {
+    // --out 通常指向尚不存在的新文件 ⇒ ENOENT 属正常路径
+    return resolve(target);
+  }
+}
 import { inspect } from "./office-parts.mjs";
 import {
   argumentError,
@@ -34,7 +50,12 @@ async function runCheckOffice() {
     argumentError("--count must be non-negative and applies only to slides or sheets");
     return 2;
   }
-  if (args.out !== undefined && resolve(args.out) === resolve(args.input)) {
+  // 必须**跟随软链**再比较：path.resolve() 只做路径规范化，不解析符号链接，
+  // 于是 `ln -sf target.docx link.json` 后 `--out link.json` 会被判为「与输入不同」，
+  // 实际写穿软链覆盖掉输入文档（安全审计 P1 实测：target.docx 从 864 B 变成 199 B）。
+  // .py 版用 Path.resolve()（跟随软链）能正确拦下，这里对齐其语义。
+  // realpathSync 在目标不存在时抛 ENOENT（--out 通常指向新文件）⇒ 回退到 resolve()。
+  if (args.out !== undefined && realpathOrResolve(args.out) === realpathOrResolve(args.input)) {
     argumentError("--out must differ from the input document");
     return 2;
   }

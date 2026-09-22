@@ -231,7 +231,12 @@ function readAttributes(context, region, regionStart, element, tagOpen) {
     if (rawName === "xmlns" || rawName.startsWith("xmlns:")) {
       // 只有真的声明了命名空间才复制作用域帧（链式），避免每个元素一个 Map。
       if (!declared) {
-        const frame = new Map(element.scope);
+        // 只挂 parent 链，**不复制父链**：scopeLookup（office-xml-tree.mjs）本来就沿 parent
+        // 上溯查找，复制父链是纯冗余，且使嵌套 N 层的开销变成 O(N²)。
+        // 实测（安全审计 P0）：16000 层、每层声明不同前缀的 40 KB docx，
+        // 旧写法峰值 RSS 4263 MiB 并 SIGABRT（stdout 为空）；改为空 Map 后 77 MiB，
+        // 与 .py 版（28~33 MiB、stdout 195 字节）行为一致。
+        const frame = new Map();
         frame.parent = element.scope;
         element.scope = frame;
         declared = true;

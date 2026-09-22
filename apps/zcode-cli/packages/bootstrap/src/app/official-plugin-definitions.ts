@@ -118,6 +118,19 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     defaultEnabled: true,
     name: OFFICIAL_NODE_REPL_HOST_PLUGIN_NAME,
     requiredSeedPaths: OFFICIAL_NODE_REPL_HOST_REQUIRED_SEED_PATHS,
+    // Computer Use 驱动（@trycua/cua-driver）是 uniffi 生成的 Rust 原生库：.node/.so 由
+    // 运行时解析，esbuild 无法内联，所以打包链把它 stage 到 <plugin>/node_modules
+    // （packages/desktop/scripts/cua-driver-package-assets.mjs:52），seed 必须保留它。
+    //
+    // 用 **per-plugin** 的 runtimeTopLevelPaths，而不是全局 includedTopLevelPaths：后者是
+    // 模块级常量，对所有官方插件生效 —— 安全审计实测，放进全局后 browser-use-plugin 的
+    // 85 MiB node_modules（@esbuild/esbuild/typescript 等构建期 devDeps）也会被搬进用户
+    // cache，两个插件合计多搬约 166 MiB，而 browser-use 完全不需要它。
+    //
+    // 必须是插件根直属：shouldSkipDirectory 只放行 depth === 0，实测 dist/node_modules、
+    // scripts/node_modules、vendor/…/node_modules 一律被丢弃，白名单救不了。
+    // 详见 .reverse/29-cua-seed/CUA-SEED-PAYLOAD.md 与 .reverse/31-audit/SECURITY-AUDIT.md。
+    runtimeTopLevelPaths: ["node_modules"],
     rootCandidates: [
       "packages/node-repl-host",
       "../node-repl-host",

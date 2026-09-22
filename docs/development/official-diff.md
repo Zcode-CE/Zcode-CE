@@ -285,11 +285,11 @@ MCP server、没有 hooks、没有编译产物，全部是技能文档（Markdow
 [`deepseek-ai/deepseek-harness`](https://github.com/deepseek-ai/deepseek-harness)
 （`packages/skill/skill-office`），并做了本地适配：
 
-| 插件            | 技能   | 官方对应        | 本仓库         | 官方            |
-| --------------- | ------ | --------------- | -------------- | --------------- |
-| `documents`     | `docx` | `documents`     | 65 行 SKILL.md | 315 行 SKILL.md |
-| `presentations` | `pptx` | `presentations` | 89 行 SKILL.md | 783 行 SKILL.md |
-| `spreadsheets`  | `xlsx` | `spreadsheets`  | 75 行 SKILL.md | 349 行 SKILL.md |
+| 插件            | 技能   | 官方对应        | 本仓库          | 官方            |
+| --------------- | ------ | --------------- | --------------- | --------------- |
+| `documents`     | `docx` | `documents`     | 96 行 SKILL.md  | 315 行 SKILL.md |
+| `presentations` | `pptx` | `presentations` | 88 行 SKILL.md  | 783 行 SKILL.md |
+| `spreadsheets`  | `xlsx` | `spreadsheets`  | 106 行 SKILL.md | 349 行 SKILL.md |
 
 **必须诚实说明：这是精简实现，不是官方实现的移植。** 官方版每个技能附带 `references/`、
 `scenes/`、`routes/`、`env_setup/` 等数十个文档与脚本，本仓库版本没有这些内容。差异体现
@@ -299,9 +299,14 @@ MCP server、没有 hooks、没有编译产物，全部是技能文档（Markdow
 本仓库版本的适配点：
 
 - 上游引用的 `load_workspace_dependencies` / `render_document` / `present` 工具，替换为
-  系统 `python3` 与文件路径等价物
+  **随包 Node 载荷**与文件路径等价物 —— 文档生成与结构校验**零外部依赖**
+  （`scripts/office-node/{docx,pptxgenjs,exceljs}.cjs`，esbuild 自包含 bundle，约 3.4 MB；
+  不再依赖用户系统里的 Python）
 - 技能目录从 `assets/` 改名为 `skills/`，匹配本仓库插件布局
-- 附带独立的 OOXML 结构检查脚本 `scripts/check_office.py`
+- 附带独立的 OOXML 结构检查脚本 `scripts/check_office.mjs`（Node，零第三方依赖；
+  契约与 `.py` 版逐项一致，`.py` 保留为行为基准）
+- 渲染（转 PDF / 视觉检查）是**可选增强**：需要 LibreOffice，缺失时如实声明未做该检查，
+  不阻塞交付、不静默降级
 - `agents/visual-judge.md` 是本仓库独立实现，不是从上游复制
 
 ### 移除遥测、国内加速、CI 构建
