@@ -11,6 +11,8 @@ import { XmlParseError } from "./office-spec.mjs";
 const XML_ENTITY_NAMES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
 const XML_NAMESPACE_PREFIX = "xml";
 const XML_NAMESPACE_URI = "http://www.w3.org/XML/1998/namespace";
+// 保留 URI：xmlns 前缀自身绑定的命名空间，除 xml 前缀外任何前缀（含默认）都不得绑定它。
+const XMLNS_NAMESPACE_URI = "http://www.w3.org/2000/xmlns/";
 
 function isXmlSpace(ch) {
   return ch === " " || ch === "\t" || ch === "\n" || ch === "\r";
@@ -130,6 +132,7 @@ function decodeXmlBytes(data, part) {
 export { XML_ENTITY_NAMES };
 export { XML_NAMESPACE_PREFIX };
 export { XML_NAMESPACE_URI };
+export { XMLNS_NAMESPACE_URI };
 export { decodeEntities };
 export { decodeXmlBytes };
 export { firstNonSpace };

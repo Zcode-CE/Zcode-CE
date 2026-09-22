@@ -1,5 +1,6 @@
 import { CheckError, MAX_MEMBER_ELEMENTS, MAX_TOTAL_ELEMENTS } from "./office-spec.mjs";
 import {
+  XMLNS_NAMESPACE_URI,
   XML_NAMESPACE_PREFIX,
   XML_NAMESPACE_URI,
   decodeEntities,
@@ -186,10 +187,29 @@ function readMarkup(context, stack, open) {
   return tagEnd + 1;
 }
 
-/** 解析开始标签里的属性；xmlns 声明进作用域，其余按 XML 规则解析前缀（默认命名空间不作用于属性）。 */
+/**
+ * 解析开始标签里的属性；xmlns 声明进作用域，其余按 XML 规则解析前缀（默认命名空间不作用于属性）。
+ *
+ * 为什么必须分两遍（FIX-DOCX 修复的真实缺陷）：命名空间声明的作用范围是**整个元素**，
+ * 与属性的文档序无关（Namespaces in XML 1.0 §6.2：声明作用于「其所在元素及其属性」）。
+ * 而 docx@9.7.1 产出的根标签顺序是 `mc:Ignorable="w14 w15 wp14"` 在前、`xmlns:mc` 在后 ——
+ * 单遍按文档序解析会在第 0 个属性上就抛 `unbound prefix`，把**合法**文档判成 fail。
+ * 实测：同一份 docx 库产物，`.mjs` 判 fail（`unbound prefix: line 1, column 55`）、`.py`（expat）判 pass。
+ *
+ * 修复方向是**对齐 expat 的语义**，不是放松检查：第一遍只做词法校验并收集本元素的 xmlns 声明，
+ * 第二遍才按文档序解析其余属性的前缀。真正未声明的前缀（`<r zz:x="1"/>`）仍然照旧报错，
+ * 因为第二遍解析时作用域里同样没有 `zz`。
+ */
 function readAttributes(context, region, regionStart, element, tagOpen) {
   let cursor = 0;
   let declared = false;
+  // 第一遍收集、第二遍解析的非 xmlns 属性；扁平三元组 [rawName, value, nameStart, ...]，
+  // 与 element.attrib 同样用扁平数组而不是对象数组，避免每个属性多付一个对象的常驻开销
+  // （元素/属性单实例开销直接决定峰值内存，见 docs/development/office-plugins.md §4bis）。
+  const pending = [];
+  // 本元素已声明过的命名空间前缀（默认命名空间用 "" 表示）。只在元素真的写了 xmlns 时分配，
+  // 保持「没有命名空间声明的元素不付额外开销」这条既有性质（见 §4bis）。
+  let declaredPrefixes = null;
   while (cursor < region.length) {
     while (cursor < region.length && isXmlSpace(region[cursor])) cursor += 1;
     if (cursor >= region.length) break;
@@ -229,6 +249,48 @@ function readAttributes(context, region, regionStart, element, tagOpen) {
       character: () => tagOpen,
     });
     if (rawName === "xmlns" || rawName.startsWith("xmlns:")) {
+      const prefix = rawName === "xmlns" ? "" : rawName.slice(6);
+      if (declaredPrefixes === null) declaredPrefixes = new Set();
+      // 同一元素里重复声明同一前缀：expat 报 duplicate attribute（报在第二个声明的名字上）。
+      // 不分两遍时这条被「先声明的会被后声明的静默覆盖」掩盖 —— 校验器放行非法输入，
+      // 是最不该有的失效方向。补齐后 readAttributes 与 .py（expat）在这一类上一致。
+      if (declaredPrefixes.has(prefix)) {
+        throw xmlError(context.text, regionStart + nameStart, "duplicate attribute");
+      }
+      declaredPrefixes.add(prefix);
+      // 以下保留前缀/保留 URI 规则都对齐 expat（Namespaces in XML 1.0 §3、§4），
+      // 顺序也与 expat 一致：先查「重复声明」，再查值与前缀的合法性。
+      // 报错位置统一是**标签起点**（expat 实测：`<r><a xmlns:xmlns="v"/></r>` 报 col 3 = "<a" 的 "<"）。
+      if (prefix !== "" && value === "") {
+        // 非默认前缀不得取消声明（XML 1.0 无 undeclare；默认命名空间置空是合法的）。
+        throw xmlError(context.text, tagOpen, "must not undeclare prefix");
+      }
+      if (prefix === "xmlns") {
+        // 保留前缀 xmlns 不得被声明。若只按 slice(6) 取前缀，`xmlns:xmlns="x"` 会把 "xmlns"
+        // 当成普通前缀静默写进作用域 —— 校验器放行非法输入。
+        throw xmlError(
+          context.text,
+          tagOpen,
+          "reserved prefix (xmlns) must not be declared or undeclared",
+        );
+      }
+      if (prefix === "xml" && value !== XML_NAMESPACE_URI) {
+        // xml 前缀只能绑定到它自己的命名空间（未声明时的隐式绑定由 rootScope 提供）。
+        throw xmlError(
+          context.text,
+          tagOpen,
+          "reserved prefix (xml) must not be undeclared or bound to another namespace name",
+        );
+      }
+      if (value === XMLNS_NAMESPACE_URI || (value === XML_NAMESPACE_URI && prefix !== "xml")) {
+        // 保留 URI 不得被其它前缀（含默认命名空间）绑定；唯一例外是 xml 前缀绑定自己的 URI，
+        // 那条在上面的分支里已放行（实测 expat：`xmlns:xml="<XML_URI>"` 合法）。
+        throw xmlError(
+          context.text,
+          tagOpen,
+          "prefix must not be bound to one of the reserved namespace names",
+        );
+      }
       // 只有真的声明了命名空间才复制作用域帧（链式），避免每个元素一个 Map。
       if (!declared) {
         // 只挂 parent 链，**不复制父链**：scopeLookup（office-xml-tree.mjs）本来就沿 parent
@@ -241,14 +303,20 @@ function readAttributes(context, region, regionStart, element, tagOpen) {
         element.scope = frame;
         declared = true;
       }
-      element.scope.set(rawName === "xmlns" ? "" : rawName.slice(6), value);
+      element.scope.set(prefix, value);
       continue;
     }
+    // 第一遍只做词法校验与收集，**不解析前缀**：此时本元素后面的 xmlns 声明可能还没读到。
+    pending.push(rawName, value, nameStart);
+  }
+  // 第二遍：本元素的 xmlns 声明已全部进作用域，再按文档序解析其余属性。
+  for (let index = 0; index < pending.length; index += 3) {
+    const rawName = pending[index];
     const key = resolveName(context, rawName, element.scope, true, tagOpen);
     if (attributeOf(element, key) !== undefined) {
-      throw xmlError(context.text, regionStart + nameStart, "duplicate attribute");
+      throw xmlError(context.text, regionStart + pending[index + 2], "duplicate attribute");
     }
-    setAttribute(element, key, value);
+    setAttribute(element, key, pending[index + 1]);
   }
 }
 
