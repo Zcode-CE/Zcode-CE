@@ -1115,16 +1115,6 @@ const enUS: Record<string, string> = {
   "codeBlock.mermaid.ariaLabel": "Mermaid diagram",
   "codeBlock.wrapLines": "Wrap lines",
   "codeBlock.copyCode": "Copy code",
-  "codeBlock.sendToTerminal": "Send to terminal (won't run until you press Enter there)",
-  "codeBlock.sendToTerminalElevated":
-    "Send to terminal (needs administrator privileges; won't run until you press Enter there)",
-  "codeBlock.sendToTerminalDelivered":
-    "Sent to the terminal. Review it there and press Enter to run.",
-  "codeBlock.sendToTerminalNeedsBracketedPaste":
-    "This multi-line command can't be pasted safely in one go here. Send it line by line or copy it manually.",
-  "codeBlock.sendToTerminalUnavailable":
-    "No integrated terminal is available. Open a terminal first.",
-  "codeBlock.sendToTerminalOpenFailed": "Could not open a terminal. Please try again.",
   "codeBlock.mermaid.empty": "Mermaid source is empty.",
   "codeBlock.mermaid.error": "Mermaid diagram render failed",
   "codeBlock.mermaid.openPreview": "Open preview",

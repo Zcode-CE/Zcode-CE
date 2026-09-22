@@ -9,7 +9,7 @@
 import { Button } from "../ui/button.js";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.js";
 import { cn } from "../lib/utils.js";
-import { CheckIcon, CopyIcon, Maximize2Icon, SquareTerminalIcon, WrapTextIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, Maximize2Icon, WrapTextIcon } from "lucide-react";
 import type { ComponentProps, CSSProperties, HTMLAttributes } from "react";
 import {
   createContext,
@@ -23,11 +23,6 @@ import {
 import type { BundledTheme } from "shiki";
 import { CodeViewer } from "@/components/ui/code-viewer.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import {
-  resolveGuidedTerminalCommand,
-  type GuidedTerminalCommandPlan,
-} from "@/lib/guidedTerminalCommand.js";
-import { useGuidedTerminalSend } from "@/lib/guidedTerminalSendContext.js";
 import { FileDisplayIcon, resolveFileDisplayDescriptor } from "@/lib/fileDisplay.js";
 import { isMermaidLanguage, shouldRenderMermaidCodeBlock } from "@/lib/mermaidLanguage.js";
 import {
@@ -69,7 +64,6 @@ type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
 
 interface CodeBlockContextType {
   code: string;
-  language: string;
   mermaidPreviewAvailable: boolean;
   openMermaidPreview: () => void;
   toggleWrapLongLines: () => void;
@@ -144,7 +138,6 @@ function useDocumentVisibilityRevision(enabled: boolean): number {
 // Context
 const CodeBlockContext = createContext<CodeBlockContextType>({
   code: "",
-  language: "",
   mermaidPreviewAvailable: false,
   openMermaidPreview: () => {},
   toggleWrapLongLines: () => {},
@@ -211,7 +204,6 @@ export const CodeBlockHeader = ({
             ) : showWrapButton ? (
               <CodeBlockWrapButton />
             ) : null}
-            <CodeBlockSendToTerminalButton />
             <CodeBlockCopyButton />
           </CodeBlockActions>
         </>
@@ -319,13 +311,12 @@ export const CodeBlock = ({
   const contextValue = useMemo(
     () => ({
       code,
-      language,
       mermaidPreviewAvailable: Boolean(mermaidPreviewSvg),
       openMermaidPreview,
       toggleWrapLongLines,
       wrapLongLines: isWrapped,
     }),
-    [code, language, isWrapped, mermaidPreviewSvg, openMermaidPreview, toggleWrapLongLines],
+    [code, isWrapped, mermaidPreviewSvg, openMermaidPreview, toggleWrapLongLines],
   );
 
   return (
@@ -515,69 +506,6 @@ export const CodeBlockCopyButton = ({
         {...props}
       >
         {children ?? <Icon className="size-3.5" />}
-      </Button>
-    </ControlHintTooltip>
-  );
-};
-
-/**
- * 「发送到集成终端」按钮（引导式授权，ENH-2）。
- *
- * 语义边界（必须保持）：
- *   - **只把命令写进终端输入缓冲，不发回车**。执行由用户按下回车完成 ——
- *     审批与执行是同一个动作，所以不存在"批准的是 A、执行的是 B"的 TOCTOU 窗口。
- *   - 因此文案是「发送到终端」而不是「运行」，它准确描述了实际行为。
- *
- * 不渲染的两种情况：
- *   1. 没注入 handler（公开分享页 / 无壳层 / 单测）—— 同 workflowRunOpenContext 的纪律；
- *   2. 该代码块不是可投递的 shell 命令（语言不在白名单、内容为空、含控制字符）。
- */
-export const CodeBlockSendToTerminalButton = ({
-  "aria-label": ariaLabel,
-  children,
-  className,
-  onClick,
-  title,
-  ...props
-}: ComponentProps<typeof Button>) => {
-  const { code, language } = useContext(CodeBlockContext);
-  const send = useGuidedTerminalSend();
-  const { intl } = useZCodeIntl();
-
-  const resolution = useMemo(
-    () => (send ? resolveGuidedTerminalCommand({ code, language }) : null),
-    [code, language, send],
-  );
-  const plan: GuidedTerminalCommandPlan | null =
-    resolution && resolution.ok ? resolution.plan : null;
-
-  if (!send || !plan) {
-    return null;
-  }
-
-  // 提权命令额外标注：用户需要知道这条命令会要管理员权限，而不是被动撞上密码提示。
-  const label =
-    plan.privilege === "elevated"
-      ? intl.formatMessage({ id: "codeBlock.sendToTerminalElevated" })
-      : intl.formatMessage({ id: "codeBlock.sendToTerminal" });
-
-  return (
-    <ControlHintTooltip title={title ?? label} side="top">
-      <Button
-        aria-label={ariaLabel ?? label}
-        className={cn("shrink-0", className)}
-        onClick={(event) => {
-          onClick?.(event);
-          if (!event.defaultPrevented) {
-            send({ plan });
-          }
-        }}
-        size="icon-md"
-        type="button"
-        variant="ghost"
-        {...props}
-      >
-        {children ?? <SquareTerminalIcon className="size-3.5" />}
       </Button>
     </ControlHintTooltip>
   );
