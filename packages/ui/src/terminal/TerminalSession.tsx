@@ -27,6 +27,7 @@ import {
   type TerminalInputFallbackKeydownCandidate,
   type TerminalInputFallbackHandledData,
 } from "@/terminal/terminalComposedInputFallback.js";
+import { registerGuidedTerminalTarget } from "@/lib/guidedTerminalDelivery.js";
 import { normalizePowerShellReadlineRedraw } from "@/terminal/terminalDataTransform.js";
 import { getHttpLinksForTerminalBufferLine } from "@/terminal/terminalLinks.js";
 import { mergeTerminalTheme } from "@/terminal/terminalTheme.js";
@@ -644,6 +645,34 @@ export function TerminalSession({
               void services.terminalService.write({ id, data });
             }),
           );
+
+          // 引导式授权（ENH-2）投递口：把本终端登记为「发送到终端」的可投递目标。
+          //
+          // 位置是刻意的 —— 必须在上面 term.onData 接线**之后**。registry 的 entry 在 effect 里
+          // 同步 register，而 onData 要等 terminalService.create() 的 .then() 才接线；两者之间
+          // 调用 term.paste() 会把字节写进没有订阅者的 xterm，静默丢失。
+          // 登记进 registryDisposers（而非 localDisposers）：detach 只搬 DOM，切 workspace 后
+          // 终端仍然活着，投递口必须跟着 entry 常驻。
+          registryDisposers.push({
+            dispose: registerGuidedTerminalTarget({
+              key: persistentKey,
+              workspaceKey: entry.workspaceKey,
+              // 用 term.paste 而不是自己拼字节：xterm 会按终端当前的括号粘贴（DECSET 2004）
+              // 状态决定是否包 \x1b[200~…\x1b[201~，并把换行规整为 CR —— 与用户 Ctrl+V 同一条路径。
+              // **不发回车**：执行必须由用户按下回车完成（task-67 §6.2 方案 D 的核心）。
+              //
+              // 这里刻意**不检查 ptyCancelled**：它是单次 effect 闭包变量，切 workspace 触发 detach 后
+              // 会变 true，而 term/PTY/onData 都还常驻在 registry 里 —— 检查它会让投递口在切回 workspace
+              // 后永久失效（同下方输入法兜底注释里记录的同一个坑）。
+              // 生命周期由 registryDisposers 负责：release 时 entry.dispose 会注销本目标，
+              // 此后 deliverGuidedTerminalCommand 自然返回 target-unavailable。
+              paste: (text) => {
+                term.paste(text);
+                return true;
+              },
+              isBracketedPasteMode: () => term.modes.bracketedPasteMode,
+            }),
+          });
 
           // Windows 输入法兜底（进 registry，随 term 常驻，与 onData 同生命周期）。
           // textarea 元素随 term 实例常驻，监听绑一次即可；detach 不取消，重挂后中文输入法兜底仍生效。

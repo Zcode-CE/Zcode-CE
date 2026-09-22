@@ -152,15 +152,15 @@ node scripts/licenses.mjs check      # 门禁：输入哈希 + 许可分桶
 
 三个插件目录结构一致，差异只在技能与插件清单；下表按 `documents` 列文件，其余两个同名。
 
-| 文件                                             | 来源                             | 许可                   | 本地改动                                                                                                                                                                                    | 跟进方式                                                      |
-| ------------------------------------------------ | -------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `skills/{docx,pptx,xlsx}/SKILL.md`               | `derived-from-dsh`               | MIT                    | frontmatter `metadata.modified`：工具链由**系统 Python(python-docx) 改为随包 Node 库**（docx 9.7.1 / pptxgenjs 4.0.1 / exceljs 4.4.0）；校验器相对路径修正为 `../../scripts/`；补充降级边界 | 上游同名文件每次发版都 diff；**不能整体覆盖**（我们已改口径） |
-| `agents/visual-judge.md`                         | `self`                           | 随本仓库               | 本项目独立实现（三份逐字节相同）                                                                                                                                                            | 不跟上游                                                      |
-| `scripts/check_office.py`                        | `derived-from-dsh`（**已分叉**） | MIT                    | 追加式安全修复：成员白名单、4 个 `MAX_*` 预算、`PackageBudget`、分块解析、`except` 补 `LookupError`（见 §7）                                                                                | 上游更新需按 §4 手工合并；改一处同步三处                      |
-| `scripts/check_office.mjs` + `scripts/lib/*.mjs` | `self`                           | 随本仓库               | OFFICE-5 的 Node 重写（主路径）：契约与 .py 逐项一致；按 `apps/zcode-cli/AGENTS.md` 的 400 行上限拆成 10 个文件（见 §7bis）                                                                 | 不跟上游；但**必须与 .py 保持契约一致**，改一边核对另一边     |
-| `test/checkOffice.test.mjs`（仅 documents）      | `self`                           | 随本仓库               | 上述安全修复的回归测试；OFFICE-5 起**两条实现路径同型断言**（4 条预算用例 × 2 路径）                                                                                                        | 不跟上游；改动脚本行为时要同步                                |
-| `.zcode-plugin/plugin.json`、`package.json`      | `self`                           | 随本仓库               | ZCode 插件清单与包元数据（本仓库布局，非上游布局）                                                                                                                                          | 不跟上游                                                      |
-| `LICENSE.dsh`                                    | `upstream-dsh` 的许可文本副本    | MIT（© 2026 DeepSeek） | 无                                                                                                                                                                                          | 上游许可变更时同步                                            |
+| 文件                                             | 来源                             | 许可                   | 本地改动                                                                                                                                                                                                                                                                 | 跟进方式                                                      |
+| ------------------------------------------------ | -------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `skills/{docx,pptx,xlsx}/SKILL.md`               | `derived-from-dsh`               | MIT                    | frontmatter `metadata.modified`：工具链由**系统 Python(python-docx) 改为随包 Node 库**（docx 9.7.1 / pptxgenjs 4.0.1 / exceljs 4.4.0）；校验器相对路径修正为 `../../scripts/`；补充降级边界；**提权安装场景给出确切命令并声明所需权限**（引导式授权，task-71，见 §7ter） | 上游同名文件每次发版都 diff；**不能整体覆盖**（我们已改口径） |
+| `agents/visual-judge.md`                         | `self`                           | 随本仓库               | 本项目独立实现（三份逐字节相同）                                                                                                                                                                                                                                         | 不跟上游                                                      |
+| `scripts/check_office.py`                        | `derived-from-dsh`（**已分叉**） | MIT                    | 追加式安全修复：成员白名单、4 个 `MAX_*` 预算、`PackageBudget`、分块解析、`except` 补 `LookupError`（见 §7）                                                                                                                                                             | 上游更新需按 §4 手工合并；改一处同步三处                      |
+| `scripts/check_office.mjs` + `scripts/lib/*.mjs` | `self`                           | 随本仓库               | OFFICE-5 的 Node 重写（主路径）：契约与 .py 逐项一致；按 `apps/zcode-cli/AGENTS.md` 的 400 行上限拆成 10 个文件（见 §7bis）                                                                                                                                              | 不跟上游；但**必须与 .py 保持契约一致**，改一边核对另一边     |
+| `test/checkOffice.test.mjs`（仅 documents）      | `self`                           | 随本仓库               | 上述安全修复的回归测试；OFFICE-5 起**两条实现路径同型断言**（4 条预算用例 × 2 路径）                                                                                                                                                                                     | 不跟上游；改动脚本行为时要同步                                |
+| `.zcode-plugin/plugin.json`、`package.json`      | `self`                           | 随本仓库               | ZCode 插件清单与包元数据（本仓库布局，非上游布局）                                                                                                                                                                                                                       | 不跟上游                                                      |
+| `LICENSE.dsh`                                    | `upstream-dsh` 的许可文本副本    | MIT（© 2026 DeepSeek） | 无                                                                                                                                                                                                                                                                       | 上游许可变更时同步                                            |
 
 **机器可读登记**：`third-party/copied-components.json` 的 `DeepSeek Harness skill-office` 条目 —— `roots` 覆盖三个插件目录，`license: MIT`，`scope` 里写明技能目录改名（`assets/`→`skills/`）与 `visual-judge.md` 属独立实现；`locallyModifiedFiles` 列出 §7 的分叉文件。**改本文档时同步检查该条目。**
 
@@ -205,6 +205,21 @@ node scripts/licenses.mjs check      # 门禁：输入哈希 + 许可分桶
 | **Python 按需增强**（载荷 + `load_workspace_dependencies` 契约） | `upstream-dsh`（含 **MPL-2.0** 的 `python-build-standalone` 与各 wheel） | 引入时按来源分别登记许可；**先有载荷、再改技能**                              |
 | `scripts/check_office.py`                                        | `derived-from-dsh`                                                       | 我们的安全加固必须保留；上游若也做了资源限制，合并时对齐语义而不是覆盖        |
 | `scripts/check_office.mjs`（+ `lib/*.mjs`）                      | `self`                                                                   | **技能正文调用的主路径**（见 §7bis）；与 `.py` 保持契约一致，改一边核对另一边 |
+
+### 7ter. 提权安装的引导方式（task-71）
+
+三个 SKILL.md 里「用户想要渲染但 `soffice` 缺失」这一段，原先只说「给出命令让用户自己跑」，
+没说这条命令**需要什么权限**、也没说界面提供了投递入口。task-71 补上这两点：
+
+- 明确这条命令**需要管理员权限**（给出 `sudo` 形式，并说明会询问账户密码）；
+- 明确界面在 shell 代码块上提供 **"send to terminal"**，它**只把命令粘进集成终端、不执行**，
+  由用户自己按回车；
+- 明确**不要**让用户把密码贴进对话。
+
+**为什么是「给出命令 + 用户自己回车」而不是「agent 代跑」**：`.reverse/30-sudo-auth/SUDO-AUTH-EVAL.md`
+（task-67）评估后**否决**了给 agent 一条可交互提权通道（PTY 透传 / 自建 askpass / 密码框）。
+理由中最硬的一条是 **TOCTOU 从结构上不可能发生** —— 用户按下的回车**就是**执行，
+不存在「批准的是 A、执行的是 B」的窗口。本节的写法是那份评估结论的落地，两者一致。
 
 **一条硬规则**：**技能与载荷是配套的，不能拆开搬**。技能里写「调用 `load_workspace_dependencies`」时，载荷必须已经在包里；反过来，当前技能走**随包 Node 库**时，不要引入一个只认系统解释器（`python3`）的技能文本。
 

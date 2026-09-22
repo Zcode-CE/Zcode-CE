@@ -73,6 +73,8 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { getPathLeaf, toFileUrl } from "@/lib/path.js";
 import { shouldOpenAssistantHtmlInBrowser } from "@/lib/assistantPreviewCards.js";
+import { GuidedTerminalSendProvider } from "@/lib/guidedTerminalSendContext.js";
+import { useGuidedTerminalSend } from "@/hooks/useGuidedTerminalSend.js";
 import { setWorkspaceSidebarResizeActive } from "@/lib/workspaceSidebarResizeState.js";
 import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
 import {
@@ -432,6 +434,13 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   const showTopOverlayNewTaskButton = !isSidebarVisible || isSidebarFileTreeOpen;
   const workspaceSidebarResizeLabel = intl.formatMessage({
     id: "workspaceSidebar.resizeSidebar",
+  });
+  // 引导式授权（ENH-2）：命令块 → 集成终端的投递实现。
+  // 目标固定为**侧栏终端**：它是唯一有稳定写入句柄的一条（sidePaneTerminalSessionRegistry），
+  // 底部终端的面板状态是组件内 useState、未暴露写入 API。这里不为了"对称"去改底部终端。
+  const handleSendCommandToTerminal = useGuidedTerminalSend({
+    workspaceKey,
+    openTerminalTab: handleOpenTerminalTab,
   });
 
   useEffect(() => {
@@ -1836,63 +1845,72 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                                   永远停在 draft。v4 语义下 sessionId ≡ taskId，meta 只服务 Header 显示。
                                   桌面主区升级为分屏宿主（Layout/Focus 两层）；primary pane
                                   绑定语义与 testid 契约（paneId=workspace-main）不变。 */}
-                            <V4WorkspaceChatArea
-                              readOnly={Boolean(workspaceReadOnlyReason)}
-                              foregroundEnabled={isWorkspaceVisible}
-                              workspacePath={workspaceAbsPath}
-                              workspaceIdentity={workspaceIdentity}
-                              isDesktop={isDesktop === true}
-                              remoteSessionId={workspaceRemoteSessionId}
-                              sessionId={activeTaskId}
-                              activeSelectionSideChatSessionId={activeSelectionSideChatSessionId}
-                              provider={activeTaskProvider ?? undefined}
-                              onSessionCreated={handleV4SessionCreated}
-                              onSessionDeleted={handleV4SessionDeleted}
-                              draftComposerHeader={draftComposerHeader}
-                              onPrimaryDraftDropTargetControllerChange={
-                                setDraftHeaderDropTargetController
-                              }
-                              gitSummary={gitState.summary}
-                              gitDirtyFileCount={gitDirtyFileCount}
-                              activeTaskChangeSummary={activeTaskChangeSummary}
-                              gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
-                              gitWorktreeChangeSummary={gitWorktreeChangeSummary}
-                              summaryPanelVariantOverride={summaryPanelVariantOverride}
-                              onSummaryPanelVariantOverrideChange={
-                                onSummaryPanelVariantOverrideChange
-                              }
-                              onRefreshGit={handleRefreshGit}
-                              onOpenGitReview={handleOpenGitReview}
-                              onPaneActiveSessionChange={handlePaneActiveSessionChange}
-                              onOpenBrowserUrl={handleOpenBrowserUrl}
-                              onOpenAutomationsMain={handleOpenAutomations}
-                              onOpenCodeViewer={handleOpenCodeViewer}
-                              onAutoOpenAssistantPptx={
-                                isDesktop ? handleAutoOpenAssistantPptx : undefined
-                              }
-                              onOpenBackgroundBash={handleOpenBackgroundBash}
-                              onOpenSubagentSession={handleOpenSubagentSession}
-                              onOpenSubagentDirectory={handleOpenSubagentDirectory}
-                              onSyncSubagentSessionTabs={handleSyncSubagentSessionTabs}
-                              onOpenSelectionSideChat={handleOpenSelectionSideChat}
-                              onOpenPlanDetail={handleOpenPlanDetail}
-                              onOpenWorkflowRun={handleOpenWorkflowRun}
-                              onOpenWorkflowArtifact={handleOpenWorkflowArtifact}
-                              onOpenWorkflowRunDirectory={handleOpenWorkflowRunDirectory}
-                              onOpenWorkflowActorSession={handleOpenWorkflowActorSession}
-                              onOpenWorkflowWorkspace={handleOpenWorkflowWorkspace}
-                              onOpenFileLink={handleOpenMarkdownFileLink}
-                              conversationFindQuery={conversationFindQuery}
-                              conversationFindActiveIndex={conversationFindActiveIndex}
-                              conversationFindNavigationRequestId={
-                                conversationFindNavigationRequestId
-                              }
-                              onConversationFindMatchStateChange={
-                                onConversationFindMatchStateChange
-                              }
-                              searchResultHighlightRequest={activeSearchResultHighlightRequest}
-                              onSearchResultHighlightDone={onSearchResultHighlightDone}
-                            />
+                            {/* 引导式授权（ENH-2）注入面：命令块上的「发送到终端」由壳层实现。
+                                provider 包在聊天区外层，让 6 层之下的 CodeBlock 直接取到 handler，
+                                不必为一条可选能力打穿 memo 组件的 props（漏一个就是"点了没反应"）。
+                                办公模式下终端能力整体关闭（supportsTerminal: !isOfficeMode），
+                                这里传 null 让按钮不渲染 —— 否则用户点下去只会拿到一个误导的"终端打开失败"。 */}
+                            <GuidedTerminalSendProvider
+                              onSend={isOfficeMode ? null : handleSendCommandToTerminal}
+                            >
+                              <V4WorkspaceChatArea
+                                readOnly={Boolean(workspaceReadOnlyReason)}
+                                foregroundEnabled={isWorkspaceVisible}
+                                workspacePath={workspaceAbsPath}
+                                workspaceIdentity={workspaceIdentity}
+                                isDesktop={isDesktop === true}
+                                remoteSessionId={workspaceRemoteSessionId}
+                                sessionId={activeTaskId}
+                                activeSelectionSideChatSessionId={activeSelectionSideChatSessionId}
+                                provider={activeTaskProvider ?? undefined}
+                                onSessionCreated={handleV4SessionCreated}
+                                onSessionDeleted={handleV4SessionDeleted}
+                                draftComposerHeader={draftComposerHeader}
+                                onPrimaryDraftDropTargetControllerChange={
+                                  setDraftHeaderDropTargetController
+                                }
+                                gitSummary={gitState.summary}
+                                gitDirtyFileCount={gitDirtyFileCount}
+                                activeTaskChangeSummary={activeTaskChangeSummary}
+                                gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
+                                gitWorktreeChangeSummary={gitWorktreeChangeSummary}
+                                summaryPanelVariantOverride={summaryPanelVariantOverride}
+                                onSummaryPanelVariantOverrideChange={
+                                  onSummaryPanelVariantOverrideChange
+                                }
+                                onRefreshGit={handleRefreshGit}
+                                onOpenGitReview={handleOpenGitReview}
+                                onPaneActiveSessionChange={handlePaneActiveSessionChange}
+                                onOpenBrowserUrl={handleOpenBrowserUrl}
+                                onOpenAutomationsMain={handleOpenAutomations}
+                                onOpenCodeViewer={handleOpenCodeViewer}
+                                onAutoOpenAssistantPptx={
+                                  isDesktop ? handleAutoOpenAssistantPptx : undefined
+                                }
+                                onOpenBackgroundBash={handleOpenBackgroundBash}
+                                onOpenSubagentSession={handleOpenSubagentSession}
+                                onOpenSubagentDirectory={handleOpenSubagentDirectory}
+                                onSyncSubagentSessionTabs={handleSyncSubagentSessionTabs}
+                                onOpenSelectionSideChat={handleOpenSelectionSideChat}
+                                onOpenPlanDetail={handleOpenPlanDetail}
+                                onOpenWorkflowRun={handleOpenWorkflowRun}
+                                onOpenWorkflowArtifact={handleOpenWorkflowArtifact}
+                                onOpenWorkflowRunDirectory={handleOpenWorkflowRunDirectory}
+                                onOpenWorkflowActorSession={handleOpenWorkflowActorSession}
+                                onOpenWorkflowWorkspace={handleOpenWorkflowWorkspace}
+                                onOpenFileLink={handleOpenMarkdownFileLink}
+                                conversationFindQuery={conversationFindQuery}
+                                conversationFindActiveIndex={conversationFindActiveIndex}
+                                conversationFindNavigationRequestId={
+                                  conversationFindNavigationRequestId
+                                }
+                                onConversationFindMatchStateChange={
+                                  onConversationFindMatchStateChange
+                                }
+                                searchResultHighlightRequest={activeSearchResultHighlightRequest}
+                                onSearchResultHighlightDone={onSearchResultHighlightDone}
+                              />
+                            </GuidedTerminalSendProvider>
                           </ScopedErrorBoundary>
                         </main>
                       )}
