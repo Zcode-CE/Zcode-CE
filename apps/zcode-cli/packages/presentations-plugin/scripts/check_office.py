@@ -12,6 +12,13 @@
 #      MAX_MEMBER_ELEMENTS(2000000) / MAX_TOTAL_ELEMENTS(4000000) + class PackageBudget
 #      —— 修复无界解压（实测 2.09MB 的 ZIP 可解出 2GiB、子进程峰值 RSS 4116MiB）
 #   3) PARSE_CHUNK_BYTES(1MiB) 分块解析；失败也给出结构化错误而不是空 stdout
+#   4) 2026-09-23：except 列表补 LookupError（含子类 IndexError）。未知 encoding 的成员会让
+#      ET 抛 LookupError，而它不属于上面任何一类 → 逃逸成「退出码 1 + 空 stdout + 裸
+#      traceback」，正是第 3 条要消灭的形态（OFFICE-CHECKER-JS.md §5.4 记录了该缺陷）
+# 状态:      本文件是 **Node 主路径之外的保留实现**（技能正文只引用 check_office.mjs）。
+#            保留理由：① 作为 JS 重写的**行为基准**（对比测试与 fuzz 都以它为准）；
+#            ② docs/development/office-plugins.md §8 把 Python 定位为「按需增强」路径。
+#            因此它必须与 .mjs **保持契约一致**：改一边要同时核对另一边。
 # 回归测试: apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs
 # ---------------------------------------------------------------------------
 """Read-only OOXML checks and structural summaries; no rendering or formula evaluation.
@@ -383,8 +390,13 @@ def main() -> int:
     # MemoryError / OverflowError / RecursionError 一并收进结构化 fail：本脚本跑在 agent
     # 子进程里，任何输入都不允许以「裸 traceback + 空 stdout」的形式失败。
     # （RecursionError 已是 RuntimeError 的子类，显式列出是为了表达意图。）
-    except (OSError, ValueError, KeyError, RuntimeError, ET.ParseError, zipfile.BadZipFile, zlib.error,
-            MemoryError, OverflowError, RecursionError) as error:
+    #
+    # LookupError（含其子类 IndexError）是 2026-09-23 补上的：成员声明未知编码时
+    # ET 的 XMLPullParser 抛 LookupError("unknown encoding: X")，它既不是 ValueError
+    # 也不是 OSError，于是直接逃逸 —— 实测该输入下本脚本「退出码 1 + 空 stdout +
+    # 裸 traceback」，正是上面这句注释要消灭的形态（同型缺陷见 OFFICE-CHECKER-JS.md §5.4）。
+    except (OSError, ValueError, KeyError, LookupError, RuntimeError, ET.ParseError, zipfile.BadZipFile,
+            zlib.error, MemoryError, OverflowError, RecursionError) as error:
         checks.append({"id": "package", "status": "fail", "detail": failure_detail(error)})
     failed = any(check["status"] == "fail" for check in checks)
     report = {"format": args.input.suffix.lower()[1:], "verdict": "fail" if failed else "pass", "checks": checks, "summary": summary}
