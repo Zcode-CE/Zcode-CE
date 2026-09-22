@@ -58,7 +58,9 @@ for (const [key, { pkg }] of scanned) {
 }
 // ---------- 分类 ----------
 const GREEN =
-  /^(MIT|MIT-0|ISC|BSD-2-Clause|BSD-3-Clause|BSD-4-Clause|0BSD|Unlicense|Apache-2\.0|Zlib|WTFPL|Artistic-2\.0|BlueOak-1\.0\.0|CC0-1\.0|CC-BY-4\.0|CC-BY-3\.0|BSD|Python-2\.0)$/i;
+  // `MIT/X11` 是 MIT 的历史写法（substack 系老包用它，例如 chainsaw@0.1.0、traverse@0.3.9）。
+  // 语义与 MIT 相同，因此按 MIT 归入 green；traverse 包内 LICENSE 全文亦为 MIT/X11 文本。
+  /^(MIT|MIT\/X11|MIT-0|ISC|BSD-2-Clause|BSD-3-Clause|BSD-4-Clause|0BSD|Unlicense|Apache-2\.0|Zlib|WTFPL|Artistic-2\.0|BlueOak-1\.0\.0|CC0-1\.0|CC-BY-4\.0|CC-BY-3\.0|BSD|Python-2\.0)$/i;
 function classify(raw) {
   const s = raw.replace(/[()]/g, " ").trim();
   if (s === "(missing)" || s === "missing" || s === "") return "missing";

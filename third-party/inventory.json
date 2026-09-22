@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "bcf8b632f1a4fc22ba5ee138c78fcb886095ecec05b7644bc8544981bb2bd64e",
+  "noticesSha256": "64407a0ed702b9e27dbb5c5167e88fdcebd81f5c6dc2d28082b7885078877617",
   "inputs": {
     ".agents/skills/agent-browser/references/authentication.md": "e2c3b0f4a1dc1368dee821f03c000d818a48421d09f3872525dddffe73f2112b",
     ".agents/skills/agent-browser/references/commands.md": "17522fc56d742663f47231ff06c4811abc87e12c7f78e11f94d253ddd540a909",
@@ -240,11 +240,20 @@
     "apps/zcode-cli/packages/documents-plugin/.zcode-plugin/plugin.json": "3af405c9b123eb9186f0825a5923432e3d7235264724bb2c77a0570a0c41be35",
     "apps/zcode-cli/packages/documents-plugin/agents/visual-judge.md": "fc6b9fc1b45a949998f62c767a205d25c3725268f84bcea9824bf782f68099cf",
     "apps/zcode-cli/packages/documents-plugin/LICENSE.dsh": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
-    "apps/zcode-cli/packages/documents-plugin/package.json": "3bec6be22c0e679081c2a7893845a51af8f18442fd0a23fd10946a08c7f05e33",
-    "apps/zcode-cli/packages/documents-plugin/scripts/__pycache__/check_office.cpython-314.pyc": "935685254d16f668f1a0d2ac2b9224c1242668d0dc55715d8a411cf0fc0e2519",
+    "apps/zcode-cli/packages/documents-plugin/package.json": "f63333fd5b86cb8ce51d290a8f3bcde17088d3c96e8b64f7d97a83fa1b86bc4d",
+    "apps/zcode-cli/packages/documents-plugin/scripts/check_office.mjs": "a12311cbb12d56a42369d9effc3ccdea1160497908fa91a79a5df986bb7d79f1",
     "apps/zcode-cli/packages/documents-plugin/scripts/check_office.py": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7",
-    "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md": "80f7769e85562e177469d11de918ae2b275b94b1962ead4fe56f5a229d34dc2f",
-    "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "40c382bfc8aec5fc4887a8def0876fba3c297c91d45900e78403728d1fd704ee",
+    "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-cli.mjs": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae",
+    "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-main.mjs": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08",
+    "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-parts.mjs": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd",
+    "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-spec.mjs": "88f18c5c834aec0ab8322da2e9505a79ea3c6cedfbb6047cfc725fa40dae0fc5",
+    "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-decl.mjs": "84f32fdcb001713e5c8240f5e7d0536e7750547c3a0f8c2726be3a1cd4f437d3",
+    "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-lex.mjs": "51fc83428a4e077d07a5b8a20e483d93e9ed4554f9c15b24c280463caa5b7c78",
+    "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-scan.mjs": "823f995b7750a63b8b9a05c2e5b75938db522b954b522863340a846b461b5759",
+    "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
+    "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
+    "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md": "f2c7a254fe539780426e5236a24353506d55c2ce4dd5f56a679c186a1a714cba",
+    "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "ca80a7ddb6480576e17adcaf167e87b734166eb04c42f765b7fcf63e5487604d",
     "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "f8dab813c3b9f236b593d4d04f1b78e511e15d586cb7dcdd74147e7d1c22ec5c",
     "apps/zcode-cli/packages/dynamic-workflow/package.json": "aac5891463ddeb419ff6f73fc95b7c407964b06f8aeff66b6a9ba4d999164f99",
     "apps/zcode-cli/packages/i18n/package.json": "025e4620d80f39cac3df06249866fcaed531615b6b8a4c4a727c4557066f7b1b",
@@ -261,9 +270,19 @@
     "apps/zcode-cli/packages/presentations-plugin/.zcode-plugin/plugin.json": "34b3c933faa96abc29fd49cc2ffcd4f65d8897828330287acdbc9bafb319d52c",
     "apps/zcode-cli/packages/presentations-plugin/agents/visual-judge.md": "fc6b9fc1b45a949998f62c767a205d25c3725268f84bcea9824bf782f68099cf",
     "apps/zcode-cli/packages/presentations-plugin/LICENSE.dsh": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
-    "apps/zcode-cli/packages/presentations-plugin/package.json": "cc5f3482f7a25c0503328ae181ecfc1bbcd9724601b7b69e776de60808bd3687",
+    "apps/zcode-cli/packages/presentations-plugin/package.json": "30c1c737972f7c5fe297eb827c25ac7a6b789602959f99347c256ad14347fea9",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.mjs": "a12311cbb12d56a42369d9effc3ccdea1160497908fa91a79a5df986bb7d79f1",
     "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.py": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7",
-    "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md": "606aa6a90252910dc417986bd183d149a86a507202fb4f9724f5f279c9c7b1d7",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-cli.mjs": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-main.mjs": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-parts.mjs": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-spec.mjs": "88f18c5c834aec0ab8322da2e9505a79ea3c6cedfbb6047cfc725fa40dae0fc5",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-decl.mjs": "84f32fdcb001713e5c8240f5e7d0536e7750547c3a0f8c2726be3a1cd4f437d3",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-lex.mjs": "51fc83428a4e077d07a5b8a20e483d93e9ed4554f9c15b24c280463caa5b7c78",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-scan.mjs": "823f995b7750a63b8b9a05c2e5b75938db522b954b522863340a846b461b5759",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
+    "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md": "832a56d1d6526bbe2a9942c34530e46a100b9313abbef25780eef6b671a558f6",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/.zcode-plugin/plugin.json": "74580ca50246dd14e747321f25925755c1f091969166f01470de30dd0f3fdb8d",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/commands/restore-legacy-sessions.md": "50fefcf09f13e4e8c8fa424adf5cda4385a9da6e020f337f3517447ff4fc9aff",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/README.md": "c0f365788e147d6e5a6b70a30260aac9a19f913e6800a27f8ff81ef7cb1ec0ae",
@@ -276,9 +295,19 @@
     "apps/zcode-cli/packages/spreadsheets-plugin/.zcode-plugin/plugin.json": "3d03553effa6ed83f91365e355c2508979200c7f87d5a88dcb29d93627353bc6",
     "apps/zcode-cli/packages/spreadsheets-plugin/agents/visual-judge.md": "fc6b9fc1b45a949998f62c767a205d25c3725268f84bcea9824bf782f68099cf",
     "apps/zcode-cli/packages/spreadsheets-plugin/LICENSE.dsh": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
-    "apps/zcode-cli/packages/spreadsheets-plugin/package.json": "3ff0149313e28a8534bfe1c96dd7063862701dab51c9a4e36ee2dcc99dbeab56",
+    "apps/zcode-cli/packages/spreadsheets-plugin/package.json": "0663c3933e4682acccd2f6e1883dba7bd969f3de2c806a09398f41cad7675dfe",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.mjs": "a12311cbb12d56a42369d9effc3ccdea1160497908fa91a79a5df986bb7d79f1",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.py": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7",
-    "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md": "51c6b9b2239049fab6b83426f17f51aaf8aba0bc4c07802b1ad3aca618cbac14",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-cli.mjs": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-main.mjs": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-parts.mjs": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-spec.mjs": "88f18c5c834aec0ab8322da2e9505a79ea3c6cedfbb6047cfc725fa40dae0fc5",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-decl.mjs": "84f32fdcb001713e5c8240f5e7d0536e7750547c3a0f8c2726be3a1cd4f437d3",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-lex.mjs": "51fc83428a4e077d07a5b8a20e483d93e9ed4554f9c15b24c280463caa5b7c78",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-scan.mjs": "823f995b7750a63b8b9a05c2e5b75938db522b954b522863340a846b461b5759",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
+    "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md": "e59da43aba6852ad23246678bdb189a915eb2d85abb396b2b1d043b484907d6a",
     "apps/zcode-cli/packages/superpowers-plugin/LICENSE": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
     "apps/zcode-cli/packages/swift-bridge/package.json": "958674fcd44c789564ee672b0e6c687f1f900f4286174280700ddfb442d23906",
     "apps/zcode-cli/packages/tui/package.json": "097d5896b0b37a455eafaf015f21113dfbea7b05bb3f92666f423f7753720eb1",
@@ -296,7 +325,7 @@
     "apps/zcode-cli/packages/zcode-guide-plugin/skills/zcode-configuration-guide/SKILL.md": "c173c54d3d125e5a3228f01a154c6a55e760dce07835226f0fa8dea644b0570d",
     "apps/zcode-cli/tools/prompt-trajectory/package.json": "7f161fc87f36691f01eb8c2034bd89cf28107da36db02bc20e76f059edd36af6",
     "apps/zcode-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
-    "package.json": "03bac7e78bf6e33c8fd57b6ca5861e91676be4069dc9d533243ecc3e3312618a",
+    "package.json": "4ba787e9e74f68e5fff0f56d18e0965af4f8f84a9bc3d1735762058cad8826f6",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
     "packages/desktop/package.json": "bafff01fd85e4b57e32d0c3bc5acf2bceb6b90744dce35b9b1466c3626e9d9d3",
     "packages/desktop/src/renderer/public/material-icons/3d.svg": "9527b849f0fba57ca7640e2717b3a19cb5f5e046712cbbd8b75d73af338c68fb",
@@ -2718,7 +2747,7 @@
     "packages/zcode-server-cli/package.json": "6e294c4409cb90863d85b2e3d60f92766b156ccee577ebfeaffcb85e94194004",
     "patches/@ai-sdk__anthropic@3.0.81.patch": "d3a7c381eba7f5157f765a0528003af17cf84544911dfb7412c7800168e01c18",
     "patches/@ai-sdk__openai-compatible@2.0.60.patch": "9632fe9d821b3dc20939ae509cc35b968d90d018bbd1d812390718898182a38b",
-    "pnpm-lock.yaml": "db25bda50470c607d8b72007426a992a92e65f52ce4b50dc4cf12e0266b14093",
+    "pnpm-lock.yaml": "b36f3e8e8389e631d4637d74e608559d70f1d4f357bd1d073f0d540e3beb64c1",
     "pnpm-workspace.yaml": "f18a18233e82cda1dc40be61bf2ad1bc99de25de63ad0be64bc652761a638372",
     "scripts/license-texts/Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
@@ -2840,7 +2869,7 @@
     "third-party/native-search/licenses/f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af.txt": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
     "third-party/native-search/licenses/f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505.txt": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505",
     "third-party/native-search/sources.json": "5a7b2d7abf5bd5f310712710cbbd0ca70dc9491e723cbf070b5c696fe155a962",
-    "third-party/npm-overrides.json": "c5c2f59bf4db9685e72817cf87420e4c952c3fa1f94801b7f16dffa99dc3c328",
+    "third-party/npm-overrides.json": "15e32578a8879c4baadc84dc885039a9af8cca814da4127d3912427046263c8d",
     "third-party/runtime/node-22.16.0-LICENSE.txt": "1ae62e2015784ba438db7b04ebd33f3c4ff3efdb824c111c4ececd99945fd52d",
     "third-party/runtime/node-24.14.0-LICENSE.txt": "4573185d56580da2b890ba34a85a409257640f1c5632eade4300137266194d18",
     "third-party/runtime/sources.json": "b27bc8d81aeb71108e523602364ffbb6a1b19c2d5d47733fd43094b769006741",
@@ -2850,6 +2879,7 @@
     "third-party/upstream/0ab717053f3e24736cd404a0801407fb305db75d1b58f7e6487d14feee30d28a.txt": "0ab717053f3e24736cd404a0801407fb305db75d1b58f7e6487d14feee30d28a",
     "third-party/upstream/0c74e86d37d6fc7e8f22b4b8e3b801f6737c263c27a71d81c86cd8de0b6a84e5.txt": "0c74e86d37d6fc7e8f22b4b8e3b801f6737c263c27a71d81c86cd8de0b6a84e5",
     "third-party/upstream/0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138.txt": "0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138",
+    "third-party/upstream/0fac2374380621b22e6b50451057721a9c52935b02d16d106a9f04897f061d0e.txt": "0fac2374380621b22e6b50451057721a9c52935b02d16d106a9f04897f061d0e",
     "third-party/upstream/1564074e13439397221ffd522e2e504d56561994a23d371aa5e3ad43e4f5423f.txt": "1564074e13439397221ffd522e2e504d56561994a23d371aa5e3ad43e4f5423f",
     "third-party/upstream/17510cf7a58b4879b887ec05a45d72cf1b73544dd9ec7e72f20110ed104229ee.txt": "17510cf7a58b4879b887ec05a45d72cf1b73544dd9ec7e72f20110ed104229ee",
     "third-party/upstream/1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d.txt": "1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d",
@@ -2881,6 +2911,7 @@
     "third-party/upstream/5f787c1dee3c56547f09ccc2906ab5f5293c4d8dd6c8654e573216c38e908dbd.txt": "5f787c1dee3c56547f09ccc2906ab5f5293c4d8dd6c8654e573216c38e908dbd",
     "third-party/upstream/66aa9feab8bb39aceebd69f2a357015d57ceab486d3c7a19ff8d3d4110a6d101.txt": "66aa9feab8bb39aceebd69f2a357015d57ceab486d3c7a19ff8d3d4110a6d101",
     "third-party/upstream/6ae13df543a24b3fb18c25182cf4f084132f799ea9225410f7037888401b7469.txt": "6ae13df543a24b3fb18c25182cf4f084132f799ea9225410f7037888401b7469",
+    "third-party/upstream/7261b3ab93df04c6d8f3398f87275d28f0e87d88cbd0033b788fb50402de03c5.txt": "7261b3ab93df04c6d8f3398f87275d28f0e87d88cbd0033b788fb50402de03c5",
     "third-party/upstream/75815e3bf6484201a3c3d17a1bbf10f2e8e3237f84df10a2357ea896db2a81d6.txt": "75815e3bf6484201a3c3d17a1bbf10f2e8e3237f84df10a2357ea896db2a81d6",
     "third-party/upstream/8405932022a556380c2d8c272eff154a923feb197233f348ce5f7334fb0a5ede.txt": "8405932022a556380c2d8c272eff154a923feb197233f348ce5f7334fb0a5ede",
     "third-party/upstream/8802fecf9da4367bc23bcf20b21cc143785fc6c92b152f3fa7fbe6ce08d344d6.txt": "8802fecf9da4367bc23bcf20b21cc143785fc6c92b152f3fa7fbe6ce08d344d6",
@@ -3760,6 +3791,30 @@
         {
           "member": "README.md (license section)",
           "sha256": "bca603cabc880342e6b5b1e6a3e7b498225df28fb0d4df747f63160e8daae7f0"
+        }
+      ]
+    },
+    {
+      "name": "@fast-csv/format",
+      "version": "4.3.5",
+      "license": "MIT",
+      "repository": "git+https://github.com/C2FO/fast-csv.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "2450088d1769a2b36e210a5a345a55b209944f4c6a9a89f7ce3aaba163680a42"
+        }
+      ]
+    },
+    {
+      "name": "@fast-csv/parse",
+      "version": "4.3.6",
+      "license": "MIT",
+      "repository": "git+https://github.com/C2FO/fast-csv.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "2450088d1769a2b36e210a5a345a55b209944f4c6a9a89f7ce3aaba163680a42"
         }
       ]
     },
@@ -7084,7 +7139,31 @@
     },
     {
       "name": "@types/node",
+      "version": "14.18.63",
+      "license": "MIT",
+      "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+        }
+      ]
+    },
+    {
+      "name": "@types/node",
       "version": "16.9.1",
+      "license": "MIT",
+      "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+        }
+      ]
+    },
+    {
+      "name": "@types/node",
+      "version": "22.20.4",
       "license": "MIT",
       "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
       "notices": [
@@ -7655,6 +7734,42 @@
       ]
     },
     {
+      "name": "archiver-utils",
+      "version": "2.1.0",
+      "license": "MIT",
+      "repository": "https://github.com/archiverjs/archiver-utils.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "19a37eba4fee8b33d904c46235c30bd668cff139f50b1fa5c7c57d2f920e6a4f"
+        }
+      ]
+    },
+    {
+      "name": "archiver-utils",
+      "version": "3.0.4",
+      "license": "MIT",
+      "repository": "https://github.com/archiverjs/archiver-utils.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "9fe335fb097fbff0b7f709ee14a77b1d1cf739d3400cd0b0e19118946772ea56"
+        }
+      ]
+    },
+    {
+      "name": "archiver",
+      "version": "5.3.2",
+      "license": "MIT",
+      "repository": "https://github.com/archiverjs/node-archiver.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "9e23899170d96e708b24a2afce11e96d169c8cebf1bd24ac60b675a400cb1cf1"
+        }
+      ]
+    },
+    {
       "name": "argparse",
       "version": "2.0.1",
       "license": "Python-2.0",
@@ -7800,6 +7915,22 @@
     },
     {
       "name": "balanced-match",
+      "version": "1.0.2",
+      "license": "MIT",
+      "repository": "git://github.com/juliangruber/balanced-match.git",
+      "notices": [
+        {
+          "member": "LICENSE.md",
+          "sha256": "a1bd5deadb6a06dd74efa852c1b8b23f63b67f2214fbe9c8bd591da51da69268"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "66aa9feab8bb39aceebd69f2a357015d57ceab486d3c7a19ff8d3d4110a6d101"
+        }
+      ]
+    },
+    {
+      "name": "balanced-match",
       "version": "4.0.4",
       "license": "MIT",
       "repository": "git://github.com/juliangruber/balanced-match.git",
@@ -7807,6 +7938,22 @@
         {
           "member": "LICENSE.md",
           "sha256": "d408f38ffa3355c5faec517153295338892eb0f1ea43f57874bb23c6075979b5"
+        }
+      ]
+    },
+    {
+      "name": "base64-js",
+      "version": "1.5.1",
+      "license": "MIT",
+      "repository": "git://github.com/beatgammit/base64-js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "5b37224c080cdcc97c871ada971c224e9926370fe74f11b539aa1cf9f3b1aca1"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "bcc62468ddfc1d8b468c44e6bef1f4d4149729eeafbdbbd86c6cfc87b6ab55f4"
         }
       ]
     },
@@ -7847,6 +7994,38 @@
         {
           "member": "README.md (license section)",
           "sha256": "0e00c860f4ae10ef7d21d31833d4dc187d866d2914b3a20e0037f3bd2c67d2fa"
+        }
+      ]
+    },
+    {
+      "name": "bl",
+      "version": "4.1.0",
+      "license": "MIT",
+      "repository": "https://github.com/rvagg/bl.git",
+      "notices": [
+        {
+          "member": "LICENSE.md",
+          "sha256": "9377db95383c8befacf05c6e465d969d756edf178487ca1344fdf3ba147c596f"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "c37c3f830189b5b46188ccc224a978e596ef3e5b71043b45fea0bf3cdc6a4dae"
+        }
+      ]
+    },
+    {
+      "name": "bluebird",
+      "version": "3.7.2",
+      "license": "MIT",
+      "repository": "git://github.com/petkaantonov/bluebird.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "87092fe7ffd1e92eba5d1dd39b73a73fdb4fdd4df3474beacc3d9f6b08ece82c"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "3b6b8e0ced23af4a5127940b99433c00b14b51fd7ea3aca94aa60c53826566dd"
         }
       ]
     },
@@ -7903,6 +8082,38 @@
         {
           "member": "README.md (license section)",
           "sha256": "5664c680d8430d77e20c55742343ded09ac1f50d72f24eb5bd5e37ce95af1ae0"
+        }
+      ]
+    },
+    {
+      "name": "brace-expansion",
+      "version": "1.1.14",
+      "license": "MIT",
+      "repository": "git://github.com/juliangruber/brace-expansion.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "68f12f6e2c33688699249c01d8f9623c534da20aa71989c57b061b7bc1676d14"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "66aa9feab8bb39aceebd69f2a357015d57ceab486d3c7a19ff8d3d4110a6d101"
+        }
+      ]
+    },
+    {
+      "name": "brace-expansion",
+      "version": "2.1.0",
+      "license": "MIT",
+      "repository": "git://github.com/juliangruber/brace-expansion.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "68f12f6e2c33688699249c01d8f9623c534da20aa71989c57b061b7bc1676d14"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "66aa9feab8bb39aceebd69f2a357015d57ceab486d3c7a19ff8d3d4110a6d101"
         }
       ]
     },
@@ -7975,6 +8186,22 @@
         {
           "member": "README.md (license section)",
           "sha256": "c6483fac297225119319fee0a87bb04bbd17dd65e30299f92317da30bcb9a9a1"
+        }
+      ]
+    },
+    {
+      "name": "buffer",
+      "version": "5.7.1",
+      "license": "MIT",
+      "repository": "git://github.com/feross/buffer.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "06bafa45fdad2579ba0e43b0c9b2c6290287c99c4203c300254a462b38a307f6"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "233f9392178f64b53517abc5b8a7b6b66c2802374a51ba48e3654876ca06ef14"
         }
       ]
     },
@@ -8535,6 +8762,34 @@
       ]
     },
     {
+      "name": "compress-commons",
+      "version": "4.1.2",
+      "license": "MIT",
+      "repository": "https://github.com/archiverjs/node-compress-commons.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "79bad9f51738814f83251ae89460326b2ff2ea19ff5f71ab8f7636b2e17bb231"
+        }
+      ]
+    },
+    {
+      "name": "concat-map",
+      "version": "0.0.1",
+      "license": "MIT",
+      "repository": "git://github.com/substack/node-concat-map.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "435a6722c786b0a56fbe7387028f1d9d3f3a2d0fb615bb8fee118727c3f59b7b"
+        },
+        {
+          "member": "README.markdown (license section)",
+          "sha256": "1617b045dd80cddf06277adc7fd5f4a06876bd15812bc938658fb11e9fb0b701"
+        }
+      ]
+    },
+    {
       "name": "confbox",
       "version": "0.1.8",
       "license": "MIT",
@@ -8723,6 +8978,34 @@
         {
           "member": "LICENSE",
           "sha256": "7c28463b739e2e73a49bf127d0bda427f8c55f0b37365a044c3c3f254716118b"
+        }
+      ]
+    },
+    {
+      "name": "crc-32",
+      "version": "1.2.2",
+      "license": "Apache-2.0",
+      "repository": "git://github.com/SheetJS/js-crc32.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c542ba7851b5d39a5face477e47a27cb7c00a9759e321b66824e79718bffe1ac"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "881788c69fcf010a0a25ffb2e09eb00f628c43b31eb90b989d0f0334fdb6f3e0"
+        }
+      ]
+    },
+    {
+      "name": "crc32-stream",
+      "version": "4.0.3",
+      "license": "MIT",
+      "repository": "https://github.com/archiverjs/node-crc32-stream.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "79bad9f51738814f83251ae89460326b2ff2ea19ff5f71ab8f7636b2e17bb231"
         }
       ]
     },
@@ -9627,6 +9910,18 @@
       ]
     },
     {
+      "name": "docx",
+      "version": "9.7.1",
+      "license": "MIT",
+      "repository": "git+https://github.com/dolanmiu/docx.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "b5b2364c0c95a26b2a2399d7e706a61acac680be1d5b180b00592ee85830bffb"
+        }
+      ]
+    },
+    {
       "name": "dom-serializer",
       "version": "2.0.0",
       "license": "MIT",
@@ -9707,6 +10002,22 @@
         {
           "member": "LICENSE",
           "sha256": "2b770a704c15de238c3f622b01b0044ddd60b49ee30608ea6991ebf19db7a7a1"
+        }
+      ]
+    },
+    {
+      "name": "duplexer2",
+      "version": "0.1.4",
+      "license": "BSD-3-Clause",
+      "repository": "deoxxa/duplexer2",
+      "notices": [
+        {
+          "member": "LICENSE.md",
+          "sha256": "252a200ba7a38686f7954ec4cb09b3ad7788fa099eb724de167d7ab16b1244b9"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "27c0e1498340178e73c69507d061c0e2f8afae8da9e4c3a08bdc4bdb8fc8b3ef"
         }
       ]
     },
@@ -9883,6 +10194,22 @@
         {
           "member": "README.md (license section)",
           "sha256": "7c59ffc1bdc8ebb3145afe526c0afb0d63e2b1a3233ce239eb3f62a6a79b0e2e"
+        }
+      ]
+    },
+    {
+      "name": "end-of-stream",
+      "version": "1.4.5",
+      "license": "MIT",
+      "repository": "git://github.com/mafintosh/end-of-stream.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "3fe8d55a98dbf260eace67c00cf9bc53edb46234e840098a0b93df3096b97fb6"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "daf005969aac8cb4283b3777361f0244f4cce898b9a983a60b7f0d9e96f559bf"
         }
       ]
     },
@@ -10211,6 +10538,22 @@
       ]
     },
     {
+      "name": "exceljs",
+      "version": "4.4.0",
+      "license": "MIT",
+      "repository": "https://github.com/exceljs/exceljs.git",
+      "notices": [
+        {
+          "member": "dist/LICENSE",
+          "sha256": "2ed526b7e7c7681dc2347995b5036ddf73dc27d0539cdea59b6d4a72b63a57a0"
+        },
+        {
+          "member": "LICENSE",
+          "sha256": "2ed526b7e7c7681dc2347995b5036ddf73dc27d0539cdea59b6d4a72b63a57a0"
+        }
+      ]
+    },
+    {
       "name": "execa",
       "version": "5.1.1",
       "license": "MIT",
@@ -10291,6 +10634,18 @@
         {
           "member": "README.md (license section)",
           "sha256": "96be1b98f5e3e3ff42bab4784541378aae45378d76c6b7fb09cc17e63ee60b1f"
+        }
+      ]
+    },
+    {
+      "name": "fast-csv",
+      "version": "4.3.6",
+      "license": "MIT",
+      "repository": "git+https://github.com/C2FO/fast-csv.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "2450088d1769a2b36e210a5a345a55b209944f4c6a9a89f7ce3aaba163680a42"
         }
       ]
     },
@@ -10571,6 +10926,22 @@
       ]
     },
     {
+      "name": "fs-constants",
+      "version": "1.0.0",
+      "license": "MIT",
+      "repository": "https://github.com/mafintosh/fs-constants.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "2281f2db407bdbb54f069eec38128b2dee2c0c952f52b786ef1faecb81767b3c"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "daf005969aac8cb4283b3777361f0244f4cce898b9a983a60b7f0d9e96f559bf"
+        }
+      ]
+    },
+    {
       "name": "fs-extra",
       "version": "10.1.0",
       "license": "MIT",
@@ -10588,6 +10959,22 @@
     },
     {
       "name": "fs-extra",
+      "version": "11.3.1",
+      "license": "MIT",
+      "repository": "https://github.com/jprichardson/node-fs-extra",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c6a7de1428955aa5a692f4d3a3d3ede658d959616944713337cda296736442e1"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "17f7fa5a10a40e614e14342fa1b18046fee2edcdfb9528bf67f4593ef2ff61fd"
+        }
+      ]
+    },
+    {
+      "name": "fs-extra",
       "version": "11.3.4",
       "license": "MIT",
       "repository": "git+https://github.com/jprichardson/node-fs-extra.git",
@@ -10599,6 +10986,18 @@
         {
           "member": "README.md (license section)",
           "sha256": "17f7fa5a10a40e614e14342fa1b18046fee2edcdfb9528bf67f4593ef2ff61fd"
+        }
+      ]
+    },
+    {
+      "name": "fs.realpath",
+      "version": "1.0.0",
+      "license": "ISC",
+      "repository": "git+https://github.com/isaacs/fs.realpath.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "8465b04b67f473341171b5c9c8b2c741a4a395b3f6ed58339b3a4f4db3db7472"
         }
       ]
     },
@@ -10787,6 +11186,18 @@
       ]
     },
     {
+      "name": "glob",
+      "version": "7.2.3",
+      "license": "ISC",
+      "repository": "git://github.com/isaacs/node-glob.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "6236fa0b88a4a0cce3dda0367979491b2052b3c8d6b1c10b3668de083e86a7f0"
+        }
+      ]
+    },
+    {
       "name": "gopd",
       "version": "1.2.0",
       "license": "MIT",
@@ -10859,6 +11270,22 @@
         {
           "member": "LICENSE",
           "sha256": "e2560e002e13281578c75c850061d9255c33d16d732939e8c2db64c2506642fa"
+        }
+      ]
+    },
+    {
+      "name": "hash.js",
+      "version": "1.1.7",
+      "license": "MIT",
+      "repository": "git@github.com:indutny/hash.js",
+      "notices": [
+        {
+          "member": "README.md (license section)",
+          "sha256": "f6ea0899d4a65578f4be7e01b61fa2ffb08268ca06571f4f53d8a82025179982"
+        },
+        {
+          "member": "https://raw.githubusercontent.com/indutny/hash.js/master/README.md (LICENSE section)",
+          "sha256": "7261b3ab93df04c6d8f3398f87275d28f0e87d88cbd0033b788fb50402de03c5"
         }
       ]
     },
@@ -11255,6 +11682,13 @@
       ]
     },
     {
+      "name": "https",
+      "version": "1.0.0",
+      "license": "ISC",
+      "acceptedMissingNotice": "占位包：tarball 仅含 package.json（main 指向不存在的 index.js），无代码、无 README、无 LICENSE。pptxgenjs 声明依赖它但运行时不 require（实测 grep 无命中）。包内许可字段为 ISC，无可登记的完整许可文本，故按「接受缺失上游文本」登记。",
+      "notices": []
+    },
+    {
       "name": "human-signals",
       "version": "2.1.0",
       "license": "Apache-2.0",
@@ -11347,6 +11781,18 @@
       ]
     },
     {
+      "name": "image-size",
+      "version": "1.2.1",
+      "license": "MIT",
+      "repository": "git://github.com/image-size/image-size.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "3109783dad7527b490aabc49c3cb148573c19b41b843e70cf9388a93f3d7fccd"
+        }
+      ]
+    },
+    {
       "name": "immediate",
       "version": "3.0.6",
       "license": "MIT",
@@ -11391,6 +11837,18 @@
         {
           "member": "license",
           "sha256": "5c932d88256b4ab958f64a856fa48e8bd1f55bc1d96b8149c65689e0c61789d3"
+        }
+      ]
+    },
+    {
+      "name": "inflight",
+      "version": "1.0.6",
+      "license": "ISC",
+      "repository": "https://github.com/npm/inflight.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "05dc4d785ac3a488676d3ed10e901b75ad89dafcc63f8e66610fd4a39cc5c7e8"
         }
       ]
     },
@@ -12231,6 +12689,18 @@
       ]
     },
     {
+      "name": "lazystream",
+      "version": "1.0.1",
+      "license": "MIT",
+      "repository": "https://github.com/jpommerening/node-lazystream.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "e7f5d28405c9fe6580db684634bace66953055b436d7fbb6f860d0c800c44a9f"
+        }
+      ]
+    },
+    {
       "name": "lexical",
       "version": "0.42.0",
       "license": "MIT",
@@ -12331,6 +12801,30 @@
       ]
     },
     {
+      "name": "lodash.defaults",
+      "version": "4.2.0",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "ffd8b33b354585f4ce119f19c53728281e48a97b074491eb6bf6d5c5ff305272"
+        }
+      ]
+    },
+    {
+      "name": "lodash.difference",
+      "version": "4.5.0",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "ffd8b33b354585f4ce119f19c53728281e48a97b074491eb6bf6d5c5ff305272"
+        }
+      ]
+    },
+    {
       "name": "lodash.escaperegexp",
       "version": "4.1.2",
       "license": "MIT",
@@ -12343,6 +12837,42 @@
       ]
     },
     {
+      "name": "lodash.flatten",
+      "version": "4.4.0",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "ffd8b33b354585f4ce119f19c53728281e48a97b074491eb6bf6d5c5ff305272"
+        }
+      ]
+    },
+    {
+      "name": "lodash.groupby",
+      "version": "4.6.0",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "ffd8b33b354585f4ce119f19c53728281e48a97b074491eb6bf6d5c5ff305272"
+        }
+      ]
+    },
+    {
+      "name": "lodash.isboolean",
+      "version": "3.0.3",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "25a399d4a42f419445101092a1fc3f9b4bfe06d614f84128222d79e3a2105fe7"
+        }
+      ]
+    },
+    {
       "name": "lodash.isequal",
       "version": "4.5.0",
       "license": "MIT",
@@ -12351,6 +12881,78 @@
         {
           "member": "LICENSE",
           "sha256": "e159c6d48c989185448658f276375bfb2300362ec6d4ae5525a2d49c4bcb947d"
+        }
+      ]
+    },
+    {
+      "name": "lodash.isfunction",
+      "version": "3.0.9",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "e159c6d48c989185448658f276375bfb2300362ec6d4ae5525a2d49c4bcb947d"
+        }
+      ]
+    },
+    {
+      "name": "lodash.isnil",
+      "version": "4.0.0",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "25a399d4a42f419445101092a1fc3f9b4bfe06d614f84128222d79e3a2105fe7"
+        }
+      ]
+    },
+    {
+      "name": "lodash.isplainobject",
+      "version": "4.0.6",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "ffd8b33b354585f4ce119f19c53728281e48a97b074491eb6bf6d5c5ff305272"
+        }
+      ]
+    },
+    {
+      "name": "lodash.isundefined",
+      "version": "3.0.1",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE.txt",
+          "sha256": "90df9e2220f682e1f77e24b1c0f72d2de18b818096c957a65698e74c41a4826f"
+        }
+      ]
+    },
+    {
+      "name": "lodash.union",
+      "version": "4.6.0",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "ffd8b33b354585f4ce119f19c53728281e48a97b074491eb6bf6d5c5ff305272"
+        }
+      ]
+    },
+    {
+      "name": "lodash.uniq",
+      "version": "4.5.0",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "ffd8b33b354585f4ce119f19c53728281e48a97b074491eb6bf6d5c5ff305272"
         }
       ]
     },
@@ -13543,6 +14145,18 @@
       ]
     },
     {
+      "name": "minimalistic-assert",
+      "version": "1.0.1",
+      "license": "ISC",
+      "repository": "https://github.com/calvinmetcalf/minimalistic-assert.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "136fee1129ea96ce18b41c26a72f5d4ba196ee41bfd73b55d0b8509cdda148e9"
+        }
+      ]
+    },
+    {
       "name": "minimatch",
       "version": "10.2.5",
       "license": "BlueOak-1.0.0",
@@ -13551,6 +14165,30 @@
         {
           "member": "LICENSE.md",
           "sha256": "2c7c5d22ed5a8ee968c64757710979afcd77438c48b4a265b94e615babd8a901"
+        }
+      ]
+    },
+    {
+      "name": "minimatch",
+      "version": "3.1.5",
+      "license": "ISC",
+      "repository": "git://github.com/isaacs/minimatch.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b"
+        }
+      ]
+    },
+    {
+      "name": "minimatch",
+      "version": "5.1.9",
+      "license": "ISC",
+      "repository": "git://github.com/isaacs/minimatch.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "d11323827fa4edeaafc437cc5b91b6971b335f0127efeeb42bf5122fe8657e8f"
         }
       ]
     },
@@ -13847,6 +14485,18 @@
       ]
     },
     {
+      "name": "node-int64",
+      "version": "0.4.0",
+      "license": "MIT",
+      "repository": "https://github.com/broofa/node-int64",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "8f85aab053e268546014761da47630a09886626afbd0d8d440cb2c69611bb8d3"
+        }
+      ]
+    },
+    {
       "name": "node-pty",
       "version": "1.1.0",
       "license": "MIT",
@@ -13875,6 +14525,22 @@
         {
           "member": "LICENSE",
           "sha256": "3706296ed611888111ceccc1dff4712844dea4bde0b185c82d718c3b69895abe"
+        }
+      ]
+    },
+    {
+      "name": "normalize-path",
+      "version": "3.0.0",
+      "license": "MIT",
+      "repository": "jonschlinkert/normalize-path",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "e70ff771504ba41f2be55de812a017ff46433d7a250c862e38fc419159e44500"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "f01e8d67b83bf33655fa832af835ef8350c58c0c0d7c058f20e2e1f3abf4c86b"
         }
       ]
     },
@@ -14411,6 +15077,22 @@
       ]
     },
     {
+      "name": "path-is-absolute",
+      "version": "1.0.1",
+      "license": "MIT",
+      "repository": "sindresorhus/path-is-absolute",
+      "notices": [
+        {
+          "member": "license",
+          "sha256": "6fb9754611c20f6649f68805e8c990e83261f29316e29de9e6cedae607b8634c"
+        },
+        {
+          "member": "readme.md (license section)",
+          "sha256": "0b8c7c0c5579b689ab841976b473ebe9269aa46347fc1295431e0fc3f2452d36"
+        }
+      ]
+    },
+    {
       "name": "path-key",
       "version": "3.1.1",
       "license": "MIT",
@@ -14767,6 +15449,18 @@
       ]
     },
     {
+      "name": "pptxgenjs",
+      "version": "4.0.1",
+      "license": "MIT",
+      "repository": "git+https://github.com/gitbrent/PptxGenJS.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "7a2bfe96150786ed1908b8e63f98ebab88875c1e79e28faff6649e0f11f77e52"
+        }
+      ]
+    },
+    {
       "name": "pretty-ms",
       "version": "9.3.0",
       "license": "MIT",
@@ -14943,6 +15637,22 @@
         {
           "member": "README.md (license section)",
           "sha256": "a3c7d5b41af742dce5b55e0b2cb165c39b857e3d48e51ed2ee1e66afe3b82887"
+        }
+      ]
+    },
+    {
+      "name": "queue",
+      "version": "6.0.2",
+      "license": "MIT",
+      "repository": "https://github.com/jessetane/queue.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "38d7c4d8410c68eeae9ce24a8b4ee2380199d6df4abb1d9c15dc70b135935fe8"
+        },
+        {
+          "member": "readme.md (license section)",
+          "sha256": "fd17f37c38b21a2e4b255786369ace8ce59ebae2a151f9c22cbba610f30fc2da"
         }
       ]
     },
@@ -15203,6 +15913,30 @@
         {
           "member": "LICENSE",
           "sha256": "ec62dc96da0099b87f4511736c87309335527fb7031639493e06c95728dc8c54"
+        }
+      ]
+    },
+    {
+      "name": "readable-stream",
+      "version": "3.6.2",
+      "license": "MIT",
+      "repository": "git://github.com/nodejs/readable-stream",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "ec62dc96da0099b87f4511736c87309335527fb7031639493e06c95728dc8c54"
+        }
+      ]
+    },
+    {
+      "name": "readdir-glob",
+      "version": "1.1.3",
+      "license": "Apache-2.0",
+      "repository": "git://github.com/Yqnn/node-readdir-glob.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "8cd23e2d76d2791765f7dd1025a9df99d81db91da9e2701f283987a1c0435aa3"
         }
       ]
     },
@@ -15739,6 +16473,22 @@
       ]
     },
     {
+      "name": "safe-buffer",
+      "version": "5.2.1",
+      "license": "MIT",
+      "repository": "git://github.com/feross/safe-buffer.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c7cc929b57080f4b9d0c6cf57669f0463fc5b39906344dfc8d3bc43426b30eac"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "4001f409f2886ac791b0be2131ca3ed8770b896314579ecb5d1eaf7a6e6f3eb8"
+        }
+      ]
+    },
+    {
       "name": "safer-buffer",
       "version": "2.1.2",
       "license": "MIT",
@@ -15759,6 +16509,18 @@
         {
           "member": "LICENSE.md",
           "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004"
+        }
+      ]
+    },
+    {
+      "name": "saxes",
+      "version": "5.0.1",
+      "license": "ISC",
+      "repository": "https://github.com/lddubeau/saxes.git",
+      "notices": [
+        {
+          "member": "https://raw.githubusercontent.com/lddubeau/saxes/v5.0.1/LICENSE",
+          "sha256": "0fac2374380621b22e6b50451057721a9c52935b02d16d106a9f04897f061d0e"
         }
       ]
     },
@@ -16271,6 +17033,18 @@
       ]
     },
     {
+      "name": "string_decoder",
+      "version": "1.3.0",
+      "license": "MIT",
+      "repository": "git://github.com/nodejs/string_decoder.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "11f2aafb37d06b3ee5bdaf06e9811141d0da05263c316f3d627f45c20d43261b"
+        }
+      ]
+    },
+    {
       "name": "string-width",
       "version": "4.2.3",
       "license": "MIT",
@@ -16547,6 +17321,22 @@
       ]
     },
     {
+      "name": "tar-stream",
+      "version": "2.2.0",
+      "license": "MIT",
+      "repository": "git+https://github.com/mafintosh/tar-stream.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "3fe8d55a98dbf260eace67c00cf9bc53edb46234e840098a0b93df3096b97fb6"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "98bb58f02f63428bdcf9153ac14c74149b50d3995e363c17a3faea9f8248858c"
+        }
+      ]
+    },
+    {
       "name": "tiny-invariant",
       "version": "1.3.3",
       "license": "MIT",
@@ -16623,6 +17413,18 @@
         {
           "member": "README.md (license section)",
           "sha256": "b009b9b1b7ce08c0e0c9bcb60b5d7b7e8386bfd5e7ef6331a68a57f54f17989c"
+        }
+      ]
+    },
+    {
+      "name": "tmp",
+      "version": "0.2.5",
+      "license": "MIT",
+      "repository": "https://github.com/raszi/node-tmp.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "162413c61e0982abe89a06bf7a02ec760dc49a7364d838bd9f01daebb5b95954"
         }
       ]
     },
@@ -16948,6 +17750,18 @@
     },
     {
       "name": "undici-types",
+      "version": "6.21.0",
+      "license": "MIT",
+      "repository": "git+https://github.com/nodejs/undici.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27"
+        }
+      ]
+    },
+    {
+      "name": "undici-types",
       "version": "7.19.2",
       "license": "MIT",
       "repository": "git+https://github.com/nodejs/undici.git",
@@ -17195,6 +18009,22 @@
       ]
     },
     {
+      "name": "unzipper",
+      "version": "0.12.5",
+      "license": "MIT",
+      "repository": "https://github.com/ZJONSSON/node-unzipper.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "b9e9abeaf8b92573dc28915d4948dbce30d55b30c688d109898b35e6105c4215"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "ed8a1e51777dfd46dcb9b07f1ef9f626aa25995fa1a0b5cba69c8f517acb066b"
+        }
+      ]
+    },
+    {
       "name": "update-browserslist-db",
       "version": "1.2.3",
       "license": "MIT",
@@ -17317,6 +18147,18 @@
     {
       "name": "uuid",
       "version": "11.1.0",
+      "license": "MIT",
+      "repository": "https://github.com/uuidjs/uuid.git",
+      "notices": [
+        {
+          "member": "LICENSE.md",
+          "sha256": "beaa6b04fb82e41dd2ad679e19e27953afb5999b1abbb455b6564e78ebfeb332"
+        }
+      ]
+    },
+    {
+      "name": "uuid",
+      "version": "8.3.2",
       "license": "MIT",
       "repository": "https://github.com/uuidjs/uuid.git",
       "notices": [
@@ -17863,6 +18705,22 @@
       ]
     },
     {
+      "name": "xml-js",
+      "version": "1.6.11",
+      "license": "MIT",
+      "repository": "git+https://github.com/nashwaan/xml-js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "8ada61091ef0ef154a69321483e5ffadf5c50693ca945047ffb90a6b4b12b088"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "dd73f89a6d4b458e6ae75e6f09de6fcb9bad05082e980c200d13c3baa894f077"
+        }
+      ]
+    },
+    {
       "name": "xml-parse-from-string",
       "version": "1.0.1",
       "license": "MIT",
@@ -17875,6 +18733,18 @@
         {
           "member": "README.md (license section)",
           "sha256": "b62b0f91d50a1729c834f1c0ced03edef1426592dcc90aa5fe88fc2850b353c3"
+        }
+      ]
+    },
+    {
+      "name": "xml",
+      "version": "1.0.1",
+      "license": "MIT",
+      "repository": "http://github.com/dylang/node-xml",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "d2b3e2f62078f282f21a8c5119a44cc7313fe6aa4a22094c8ad93f4b577b7901"
         }
       ]
     },
@@ -17899,6 +18769,18 @@
         {
           "member": "LICENSE",
           "sha256": "e368bc4263b466cf98c225af15e300549e00da8859416a4536109e9654d434a8"
+        }
+      ]
+    },
+    {
+      "name": "xmlchars",
+      "version": "2.2.0",
+      "license": "MIT",
+      "repository": "https://github.com/lddubeau/xmlchars.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "45d196313c2647d313cc65ca9b093d2d6974b64d35ee7346f2c60c9d518dff2c"
         }
       ]
     },
@@ -18115,6 +18997,18 @@
         {
           "member": "https://raw.githubusercontent.com/facebook/yoga/v3.2.1/LICENSE",
           "sha256": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85"
+        }
+      ]
+    },
+    {
+      "name": "zip-stream",
+      "version": "4.1.1",
+      "license": "MIT",
+      "repository": "https://github.com/archiverjs/node-zip-stream.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "79bad9f51738814f83251ae89460326b2ff2ea19ff5f71ab8f7636b2e17bb231"
         }
       ]
     },
@@ -29070,23 +29964,59 @@
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/package.json",
-          "sha256": "3bec6be22c0e679081c2a7893845a51af8f18442fd0a23fd10946a08c7f05e33"
+          "sha256": "f63333fd5b86cb8ce51d290a8f3bcde17088d3c96e8b64f7d97a83fa1b86bc4d"
         },
         {
-          "file": "apps/zcode-cli/packages/documents-plugin/scripts/__pycache__/check_office.cpython-314.pyc",
-          "sha256": "44f64284c9a8c51014ff64b01f647ce9687af0e9b5f61d330fa7c481e7264db4"
+          "file": "apps/zcode-cli/packages/documents-plugin/scripts/check_office.mjs",
+          "sha256": "a12311cbb12d56a42369d9effc3ccdea1160497908fa91a79a5df986bb7d79f1"
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/scripts/check_office.py",
           "sha256": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7"
         },
         {
+          "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-cli.mjs",
+          "sha256": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae"
+        },
+        {
+          "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-main.mjs",
+          "sha256": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08"
+        },
+        {
+          "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-parts.mjs",
+          "sha256": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd"
+        },
+        {
+          "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-spec.mjs",
+          "sha256": "88f18c5c834aec0ab8322da2e9505a79ea3c6cedfbb6047cfc725fa40dae0fc5"
+        },
+        {
+          "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-decl.mjs",
+          "sha256": "84f32fdcb001713e5c8240f5e7d0536e7750547c3a0f8c2726be3a1cd4f437d3"
+        },
+        {
+          "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-lex.mjs",
+          "sha256": "51fc83428a4e077d07a5b8a20e483d93e9ed4554f9c15b24c280463caa5b7c78"
+        },
+        {
+          "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-scan.mjs",
+          "sha256": "823f995b7750a63b8b9a05c2e5b75938db522b954b522863340a846b461b5759"
+        },
+        {
+          "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-tree.mjs",
+          "sha256": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281"
+        },
+        {
+          "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-zip.mjs",
+          "sha256": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1"
+        },
+        {
           "file": "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md",
-          "sha256": "80f7769e85562e177469d11de918ae2b275b94b1962ead4fe56f5a229d34dc2f"
+          "sha256": "f2c7a254fe539780426e5236a24353506d55c2ce4dd5f56a679c186a1a714cba"
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs",
-          "sha256": "40c382bfc8aec5fc4887a8def0876fba3c297c91d45900e78403728d1fd704ee"
+          "sha256": "ca80a7ddb6480576e17adcaf167e87b734166eb04c42f765b7fcf63e5487604d"
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/.zcode-plugin/plugin.json",
@@ -29102,15 +30032,55 @@
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/package.json",
-          "sha256": "cc5f3482f7a25c0503328ae181ecfc1bbcd9724601b7b69e776de60808bd3687"
+          "sha256": "30c1c737972f7c5fe297eb827c25ac7a6b789602959f99347c256ad14347fea9"
+        },
+        {
+          "file": "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.mjs",
+          "sha256": "a12311cbb12d56a42369d9effc3ccdea1160497908fa91a79a5df986bb7d79f1"
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.py",
           "sha256": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7"
         },
         {
+          "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-cli.mjs",
+          "sha256": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae"
+        },
+        {
+          "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-main.mjs",
+          "sha256": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08"
+        },
+        {
+          "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-parts.mjs",
+          "sha256": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd"
+        },
+        {
+          "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-spec.mjs",
+          "sha256": "88f18c5c834aec0ab8322da2e9505a79ea3c6cedfbb6047cfc725fa40dae0fc5"
+        },
+        {
+          "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-decl.mjs",
+          "sha256": "84f32fdcb001713e5c8240f5e7d0536e7750547c3a0f8c2726be3a1cd4f437d3"
+        },
+        {
+          "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-lex.mjs",
+          "sha256": "51fc83428a4e077d07a5b8a20e483d93e9ed4554f9c15b24c280463caa5b7c78"
+        },
+        {
+          "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-scan.mjs",
+          "sha256": "823f995b7750a63b8b9a05c2e5b75938db522b954b522863340a846b461b5759"
+        },
+        {
+          "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-tree.mjs",
+          "sha256": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281"
+        },
+        {
+          "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-zip.mjs",
+          "sha256": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1"
+        },
+        {
           "file": "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md",
-          "sha256": "606aa6a90252910dc417986bd183d149a86a507202fb4f9724f5f279c9c7b1d7"
+          "sha256": "832a56d1d6526bbe2a9942c34530e46a100b9313abbef25780eef6b671a558f6"
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/.zcode-plugin/plugin.json",
@@ -29126,15 +30096,55 @@
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/package.json",
-          "sha256": "3ff0149313e28a8534bfe1c96dd7063862701dab51c9a4e36ee2dcc99dbeab56"
+          "sha256": "0663c3933e4682acccd2f6e1883dba7bd969f3de2c806a09398f41cad7675dfe"
+        },
+        {
+          "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.mjs",
+          "sha256": "a12311cbb12d56a42369d9effc3ccdea1160497908fa91a79a5df986bb7d79f1"
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.py",
           "sha256": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7"
         },
         {
+          "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-cli.mjs",
+          "sha256": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae"
+        },
+        {
+          "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-main.mjs",
+          "sha256": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08"
+        },
+        {
+          "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-parts.mjs",
+          "sha256": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd"
+        },
+        {
+          "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-spec.mjs",
+          "sha256": "88f18c5c834aec0ab8322da2e9505a79ea3c6cedfbb6047cfc725fa40dae0fc5"
+        },
+        {
+          "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-decl.mjs",
+          "sha256": "84f32fdcb001713e5c8240f5e7d0536e7750547c3a0f8c2726be3a1cd4f437d3"
+        },
+        {
+          "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-lex.mjs",
+          "sha256": "51fc83428a4e077d07a5b8a20e483d93e9ed4554f9c15b24c280463caa5b7c78"
+        },
+        {
+          "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-scan.mjs",
+          "sha256": "823f995b7750a63b8b9a05c2e5b75938db522b954b522863340a846b461b5759"
+        },
+        {
+          "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-tree.mjs",
+          "sha256": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281"
+        },
+        {
+          "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-zip.mjs",
+          "sha256": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1"
+        },
+        {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md",
-          "sha256": "51c6b9b2239049fab6b83426f17f51aaf8aba0bc4c07802b1ad3aca618cbac14"
+          "sha256": "e59da43aba6852ad23246678bdb189a915eb2d85abb396b2b1d043b484907d6a"
         }
       ]
     },
@@ -29920,6 +30930,11 @@
           "LICENSE"
         ]
       }
+    },
+    {
+      "package": "https@1.0.0",
+      "license": "ISC",
+      "acceptedMissingNotice": "占位包：tarball 仅含 package.json（main 指向不存在的 index.js），无代码、无 README、无 LICENSE。pptxgenjs 声明依赖它但运行时不 require（实测 grep 无命中）。包内许可字段为 ISC，无可登记的完整许可文本，故按「接受缺失上游文本」登记。"
     }
   ],
   "embedded": [
@@ -30294,6 +31309,10 @@
     },
     {
       "id": "@ubjs/node-win32-x64-msvc@0.31.0-3",
+      "reason": "Original version-specific publisher copyright/license material remains incomplete."
+    },
+    {
+      "id": "https@1.0.0",
       "reason": "Original version-specific publisher copyright/license material remains incomplete."
     },
     {

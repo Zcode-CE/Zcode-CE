@@ -85,7 +85,8 @@
   "pnpm": {
     "overrides": {
       "react": "19.2.7",
-      "react-dom": "19.2.7"
+      "react-dom": "19.2.7",
+      "unzipper": "0.12.5"
     },
     "patchedDependencies": {
       "@ai-sdk/openai-compatible@2.0.60": "patches/@ai-sdk__openai-compatible@2.0.60.patch",

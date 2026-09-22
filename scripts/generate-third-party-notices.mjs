@@ -54,7 +54,20 @@ export async function generateThirdPartyNotices(root = repositoryRoot) {
       sha256: addText(bytes, `${item.name}@${item.version}`, member),
     })),
   }));
+  // 递归扫描时必须跳过**不进仓库的构建副产物**，否则它们会被当作源码输入登记进
+  // inventory.inputs，任何人跑一次相关工具就让 licenses:check 变红 —— 而这类文件被
+  // .gitignore 忽略、根本不会进版本库，重新生成声明也无法稳定复现。
+  //
+  // 已踩过的同类问题（见上方 workspaceManifests 的修复注释）：bundled-agents / mock-cdn 的
+  // 可删除缓存。本次补上 Python 编译缓存：`__pycache__/*.pyc` 由 `python3 -c "import ..."`
+  // 或 py_compile 生成，office 插件带 .py 校验器，跑一次就会产生
+  // （实测：documents-plugin/scripts/__pycache__/check_office.cpython-314.pyc）。
+  const SKIPPED_INPUT_DIRECTORIES = new Set(["__pycache__", ".turbo", "coverage", ".venv", "node_modules"]);
+  const SKIPPED_INPUT_SUFFIXES = [".pyc", ".pyo"];
   async function copiedFiles(file, files) {
+    const name = file.split("/").pop() ?? file;
+    if (SKIPPED_INPUT_DIRECTORIES.has(name)) return;
+    if (SKIPPED_INPUT_SUFFIXES.some((suffix) => name.endsWith(suffix))) return;
     if ((await stat(join(root, file))).isDirectory()) {
       for (const child of (await readdir(join(root, file))).sort())
         await copiedFiles(`${file}/${child}`, files);
