@@ -2322,7 +2322,7 @@ The original import revisions of copied components are not recorded in the curre
 
 - ZCode computer-use plugin shell (Z.ai) (MIT): apps/zcode-cli/packages/zcode-cua-plugin. License reference: Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-cua-plugin 0.6.1 in .zcode-plugin/plugin.json and package.json (author: Z.ai; license: MIT). The notice retained below is the full MIT license text carrying that attribution. Original import revision: not recorded.
 
-- ZCode zcode-guide plugin (Z.ai) (MIT): apps/zcode-cli/packages/zcode-guide-plugin. License reference: Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-guide-plugin 0.2.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages. Original import revision: not recorded.
+- ZCode zcode-guide plugin (Z.ai) (MIT): apps/zcode-cli/packages/zcode-guide-plugin. License reference: Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-guide-plugin in .zcode-plugin/plugin.json (author: Z.ai; license: MIT; version 0.3.0 in the official 3.14.3 distribution). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages. Original import revision: not recorded.
 
 - ZCode skill-creator plugin (Z.ai) (MIT): apps/zcode-cli/packages/skill-creator-plugin. License reference: Upstream ships no standalone LICENSE file. MIT is declared by the official package skill-creator-plugin 0.1.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages. Original import revision: not recorded.
 
@@ -2331,6 +2331,8 @@ The original import revisions of copied components are not recorded in the curre
 - ZCode restore-legacy-sessions plugin (Z.ai) (MIT): apps/zcode-cli/packages/restore-legacy-sessions-plugin. License reference: Upstream ships no standalone LICENSE file. MIT is declared by the official package restore-legacy-sessions-plugin 0.1.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages. Original import revision: not recorded.
 
 - Codex plugin-creator (workflow adapted by the ZCode plugin-creator plugin) (Apache-2.0): apps/zcode-cli/packages/plugin-creator-plugin/skills/plugin-creator/SKILL.md, apps/zcode-cli/packages/plugin-creator-plugin/skills/plugin-creator/references/installing-and-updating.md, apps/zcode-cli/packages/plugin-creator-plugin/skills/plugin-creator/references/plugin-json-spec.md. License reference: https://github.com/openai/codex — codex-rs/skills/src/assets/samples/plugin-creator/{SKILL.md,references/plugin-json-spec.md,references/installing-and-updating.md}. Apache-2.0 per the openai/codex repository LICENSE and the @openai/codex package metadata (license: Apache-2.0); the upstream skill files carry no copyright header of their own. Original import revision: not recorded.
+
+- ZCode bundled-skills pack (Z.ai) (MIT): apps/zcode-cli/packages/bundled-skills. License reference: The official bundled-skills package ships no LICENSE file and, unlike a plugin, no .zcode-plugin/plugin.json, so it carries no in-package license declaration. It is redistributed as part of the same MIT-declared official distribution (its sibling packages declare license: MIT, author Z.ai) and its content lineage is the MIT zcode-guide plugin; the notice retained below is that shared MIT text. Original import revision: not recorded.
 
 Fig autocomplete source carries the repository's MIT license; the generated registry records npm @withfig/autocomplete@2.692.3 metadata as ISC. The original source MIT notice is retained below.
 
@@ -37502,13 +37504,15 @@ SOFTWARE.
 
 - ZCode computer-use plugin shell (Z.ai): Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-cua-plugin 0.6.1 in .zcode-plugin/plugin.json and package.json (author: Z.ai; license: MIT). The notice retained below is the full MIT license text carrying that attribution
 
-- ZCode zcode-guide plugin (Z.ai): Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-guide-plugin 0.2.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages
+- ZCode zcode-guide plugin (Z.ai): Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-guide-plugin in .zcode-plugin/plugin.json (author: Z.ai; license: MIT; version 0.3.0 in the official 3.14.3 distribution). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages
 
 - ZCode skill-creator plugin (Z.ai): Upstream ships no standalone LICENSE file. MIT is declared by the official package skill-creator-plugin 0.1.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages
 
 - ZCode plugin-creator plugin (Z.ai): Upstream ships no standalone LICENSE file. MIT is declared by the official package plugin-creator-plugin 0.1.1 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages
 
 - ZCode restore-legacy-sessions plugin (Z.ai): Upstream ships no standalone LICENSE file. MIT is declared by the official package restore-legacy-sessions-plugin 0.1.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages
+
+- ZCode bundled-skills pack (Z.ai): The official bundled-skills package ships no LICENSE file and, unlike a plugin, no .zcode-plugin/plugin.json, so it carries no in-package license declaration. It is redistributed as part of the same MIT-declared official distribution (its sibling packages declare license: MIT, author Z.ai) and its content lineage is the MIT zcode-guide plugin; the notice retained below is that shared MIT text
 
 
 

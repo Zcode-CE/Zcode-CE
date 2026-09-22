@@ -18,24 +18,31 @@
 
 ### 插件清单对照
 
-官方发行版随包分发 14 个插件，本仓库分发 10 个（其中 5 个是从官方发行包逐字节搬运的 MIT 内容，见下文「本项目已补齐的部分」）。
+官方发行版随包分发 14 个插件，本仓库分发 10 个（其中 5 个是从官方发行包搬运的 MIT 内容，
+见下文「本项目已补齐的部分」；`computer-use` 有 3 个文件带本地修改，其余为逐字节原样）。
 
-| 插件                      | 官方 | 本仓库 | 说明                                         |
-| ------------------------- | ---- | ------ | -------------------------------------------- |
-| `browser-use`             | ✅   | ✅     | 上游开源，本仓库同步维护                     |
-| `node-repl-host`          | ✅   | ✅     | 上游开源，Browser Use 与 Computer Use 的宿主 |
-| `documents` (DOCX)        | ✅   | ✅     | 官方版授权受限，本仓库为独立 MIT 实现        |
-| `presentations`           | ✅   | ✅     | 同上                                         |
-| `spreadsheets`            | ✅   | ✅     | 同上                                         |
-| `pdf`                     | ✅   | ❌     | 官方授权仅限非商业使用                       |
-| `image-search`            | ✅   | ❌     | 依赖官方服务端与账号鉴权                     |
-| `android-emulator`        | ✅   | ❌     | 仅分发编译产物，无源码                       |
-| `ios-simulator`           | ✅   | ❌     | 仅分发编译产物，无源码                       |
-| `computer-use`            | ✅   | ✅     | 官方插件原样搬运（MIT），执行改用开源驱动    |
-| `plugin-creator`          | ✅   | ✅     | 官方插件原样搬运（MIT；工作流改编自 Codex）  |
-| `skill-creator`           | ✅   | ✅     | 官方插件原样搬运（MIT）                      |
-| `zcode-guide`             | ✅   | ✅     | 官方插件原样搬运（MIT）                      |
-| `restore-legacy-sessions` | ✅   | ✅     | 官方插件原样搬运（MIT）                      |
+| 插件                      | 官方 | 本仓库 | 说明                                                                                         |
+| ------------------------- | ---- | ------ | -------------------------------------------------------------------------------------------- |
+| `browser-use`             | ✅   | ✅     | 上游开源，本仓库同步维护                                                                     |
+| `node-repl-host`          | ✅   | ✅     | 上游开源，Browser Use 与 Computer Use 的宿主                                                 |
+| `documents` (DOCX)        | ✅   | ✅     | 官方版授权受限，本仓库为独立 MIT 实现                                                        |
+| `presentations`           | ✅   | ✅     | 同上                                                                                         |
+| `spreadsheets`            | ✅   | ✅     | 同上                                                                                         |
+| `pdf`                     | ✅   | ❌     | 官方授权仅限非商业使用                                                                       |
+| `image-search`            | ✅   | ❌     | 依赖官方服务端与账号鉴权                                                                     |
+| `android-emulator`        | ✅   | ❌     | 仅分发编译产物，无源码                                                                       |
+| `ios-simulator`           | ✅   | ❌     | 仅分发编译产物，无源码                                                                       |
+| `computer-use`            | ✅   | ✅     | 官方插件搬运（MIT），执行改用开源驱动；**本仓对其中 3 个文件有本地修改**（见下「本地修改」） |
+| `plugin-creator`          | ✅   | ✅     | 官方插件原样搬运（MIT；工作流改编自 Codex）                                                  |
+| `skill-creator`           | ✅   | ✅     | 官方插件原样搬运（MIT）                                                                      |
+| `zcode-guide`             | ✅   | ✅     | 官方插件原样搬运（MIT）                                                                      |
+| `restore-legacy-sessions` | ✅   | ✅     | 官方插件原样搬运（MIT）                                                                      |
+
+> 另有一个**非插件**的内置技能包：`bundled-skills`（官方 3.14.3 新增）。它不是插件（无
+> `.zcode-plugin/plugin.json`），由运行时按 `source:"bundled"` + `scope:"system"` 的 skill root 原地发现；
+> `dynamic-workflows` 自 3.14.3 起住在这里，`/workflow` 同时变成内置命令。本仓库已照搬
+> （`apps/zcode-cli/packages/bundled-skills`），详见 `docs/development/architecture.md` 与
+> `.reverse/25-v3143/BUNDLED-SKILLS.md`。`zcode-guide` 因此同步到官方 0.3.0：只剩 6 份自诊断/配置正文。
 
 ### 能力对照
 
@@ -223,19 +230,23 @@ PiP 传输层、broker RPC 仍是占位——**这三块没有被开源驱动替
 `zcode-guide`、`skill-creator`、`plugin-creator`、`restore-legacy-sessions` 四个插件没有
 MCP server、没有 hooks、没有编译产物，全部是技能文档（Markdown）与 `.mjs` 脚本，清单声明
 `license: MIT` / `author: Z.ai`。它们**不需要重新实现**：直接从官方发行包逐字节搬运到
-`apps/zcode-cli/packages/<name>-plugin/`（共 29 个文件，逐文件 sha256 与官方包相同），
+`apps/zcode-cli/packages/<name>-plugin/`（共 25 个文件，逐文件 sha256 与官方包相同），
 许可归属登记在 `third-party/copied-components.json`，许可全文随 `THIRD-PARTY-NOTICES.md` 分发。
 
-| 插件                      | 版本  | 搬运文件数 | 许可         | 备注                       |
-| ------------------------- | ----- | ---------- | ------------ | -------------------------- |
-| `zcode-guide`             | 0.2.0 | 12         | MIT (© Z.ai) | 9 个技能文档 + 命令 + 说明 |
-| `skill-creator`           | 0.1.0 | 2          | MIT (© Z.ai) | 1 个技能文档               |
-| `plugin-creator`          | 0.1.1 | 9          | MIT (© Z.ai) | 含 Codex 血缘，见下        |
-| `restore-legacy-sessions` | 0.1.0 | 6          | MIT (© Z.ai) | 技能 + 命令 + 2 个脚本     |
+| 插件                      | 版本  | 搬运文件数 | 许可         | 备注                   |
+| ------------------------- | ----- | ---------- | ------------ | ---------------------- |
+| `zcode-guide`             | 0.3.0 | 8          | MIT (© Z.ai) | 6 个技能文档 + 说明    |
+| `skill-creator`           | 0.1.0 | 2          | MIT (© Z.ai) | 1 个技能文档           |
+| `plugin-creator`          | 0.1.1 | 9          | MIT (© Z.ai) | 含 Codex 血缘，见下    |
+| `restore-legacy-sessions` | 0.1.0 | 6          | MIT (© Z.ai) | 技能 + 命令 + 2 个脚本 |
+
+> `zcode-guide` 由 0.2.0 升到 **0.3.0**：官方 3.14.3 把 `commands/workflow.md` 与
+> `skills/dynamic-workflows/` 三份正文迁出，改由内置技能包 `bundled-skills` 承担（见下文）。
+> 因此它的 `plugin.json` 也去掉了 `commands` 字段。
 
 两点如实说明：
 
-- **官方 `package.json` 有意不搬**（官方 13/3/10/7 个文件 → 本仓库 12/2/9/6）。原因：
+- **官方 `package.json` 有意不搬**（官方 9/3/10/7 个文件 → 本仓库 8/2/9/6）。原因：
   `apps/zcode-cli/packages/*` 是 pnpm workspace 的通配目录，放进去会让这 4 个目录变成
   workspace importer，CI 第一站 `pnpm install --frozen-lockfile` 直接失败；而插件加载只认
   `.zcode-plugin/plugin.json`，MIT 声明就在那份文件里，许可信息不因此缺失。
@@ -245,6 +256,28 @@ MCP server、没有 hooks、没有编译产物，全部是技能文档（Markdow
   （上游 SKILL.md 249 行 vs 本包 58 行；上游 5 个 Python 脚本 vs 本包 5 个独立的 Node 脚本），
   但仍按上游自述**如实登记**了一条独立的 Apache-2.0 归属条目——许可副本由
   `THIRD-PARTY-NOTICES.md` 承担，变更声明即 SKILL.md 里那句自述。
+
+### 内置技能包 `bundled-skills`（不是插件）
+
+官方 3.14.3 新增 `glm/packages/bundled-skills/`，本仓库已同步为
+`apps/zcode-cli/packages/bundled-skills/`（4 文件，逐字节）。
+
+它**不是插件**——没有 `.zcode-plugin/plugin.json`、没有 `package.json`，因此上文「官方
+随包分发 14 个插件」的计数**不受影响**（官方 `glm/packages/` 下有 15 个目录，其中 14 个是
+插件）。它走另一套发现机制：运行时把它的 `skills/` 原地识别为一个
+`source: "bundled"`、`scope: "system"` 的技能根。
+
+| 项         | 说明                                                                                |
+| ---------- | ----------------------------------------------------------------------------------- |
+| 内容       | `skills/dynamic-workflows/` 三份正文（`SKILL.md` / `patterns.md` / `examples.md`）  |
+| 定位       | 不进插件商店、**无开关、不可卸载**、不出现在设置技能列表与 `$` 选择器               |
+| 为什么内置 | 官方 README 自述：该特性的工具面由 runtime 注册，教模型用工具的正文必须同样不可移除 |
+| 关联变化   | `/workflow` 从「插件自定义命令」升格为 **CLI 内置命令**，不再依赖插件存在           |
+
+> 与官方的一处**已知差异**：官方另有 SEA 发行态的资产内嵌（`sea-bundled-skill-assets.mjs`
+>
+> - `~/.zcode/cli/bundled-skills/<hash>/` 物化）。本仓库的发布形态是 Electron 桌面 + AUR，
+>   不走 SEA，故未实现该分支。详见 `.reverse/25-v3143/V3143-CLOSEOUT.md`。
 
 ### Office 三件套：MIT 独立实现
 
@@ -354,14 +387,31 @@ Superpowers，本仓库用户没有这个入口。
 
 即使是双方都有的插件，资源规模也有差距：
 
-| 插件             | 官方                                               | 本仓库                    |
-| ---------------- | -------------------------------------------------- | ------------------------- |
-| `node-repl-host` | `dist/mcp/server.js` 约 5.1 MB                     | 约 2.0 MB                 |
-| `browser-use`    | `scripts/browser-client.mjs` 79,261 字节           | 78,937 字节               |
-| `computer-use`   | 技能 306 行 + 文档 450 行 + 客户端脚本 58,928 字节 | 无插件，仅自有文档 148 行 |
+| 插件             | 官方                                               | 本仓库                                                                                           |
+| ---------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `node-repl-host` | `dist/mcp/server.js` 约 5.1 MB                     | 约 2.0 MB                                                                                        |
+| `browser-use`    | `scripts/browser-client.mjs` 79,261 字节           | 78,937 字节                                                                                      |
+| `computer-use`   | 技能 306 行 + 文档 450 行 + 客户端脚本 58,928 字节 | 技能 332 行 + 文档 467 行 + 客户端脚本 59,140 字节（**有本地修改**，按 2026-09-23 修改后的快照） |
 
 `browser-use` 的差异来自上游持续更新，属于正常同步节奏。`computer-use` 的差异是结构性的：
 官方插件把技能、文档、客户端脚本打包在一起，本仓库只有自己的实现文档。
+
+### 本地修改（computer-use 插件壳，2026-09-23 · task 3143-3）
+
+本仓库对官方 `zcode-cua-plugin` 的**三个文件**做了有意修改，其余文件仍逐字节相同：
+
+| 文件                              | 修改内容                                                                                                                                                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `skills/computer-use/SKILL.md`    | 顶部硬约束：驱动由宿主提供，**严禁** `npm install`/`pnpm add`/猜包名/换驱动/改插件让驱动"出现"；新增「When Computer Use is unavailable」小节：遇到 bridge 错误立即停止、如实告知用户「Computer Use 未启用，可在 设置 → 电脑控制 开启」、不得自愈 |
+| `docs/computer-use.md`            | 「Bootstrap every call」一节后补同样约束与三步处置（先停止 / 告知用户在设置中开启 / 征得同意再换方案）                                                                                                                                           |
+| `scripts/computer-use-client.mjs` | bridge 缺失时的报错改为可操作版本：明确「不是缺依赖、不要安装任何驱动」，并指引用户去设置里开启                                                                                                                                                  |
+
+**动因**：`computer-use` 插件默认关闭，而 `node_repl` 只要 browser-use **或** cua 任一启用就注册，
+于是模型看得到 `mcp__node_repl__js`、尝试 CUA 时却撞上「bridge 不可用」；原报错只陈述不可用，
+实测模型会据此自行 `npm install` 并**猜错包名**（`@trycua/Cua.Driver` 与 `cua_drivers` 在 npm registry 上
+都不存在，正确包名只有 `@trycua/cua-driver`）。用户已定方案：bridge 不可用即报错停下、严禁自愈式安装。
+登记见 `third-party/copied-components.json` 的 `ZCode computer-use plugin shell (Z.ai)` 条目（字段名 `locallyModifiedFiles`）。
+**为什么不是 `modifiedFiles`**：声明解析器要求 `modifiedFiles` 里的每个文件**正文内**含字面量 `Modified by ZCode:`（`scripts/generate-third-party-notices.mjs:78-84`），而这 3 个文件是 MIT 材料、没有也不应加这种标记；改用自定义字段 `locallyModifiedFiles` 既保留机器可读的改动清单（进 `third-party/inventory.json`），又不动文件正文。MIT 本身不要求文件内变更声明，改动的书面说明就在本节的表格里。
 
 ## 可补齐性评估
 

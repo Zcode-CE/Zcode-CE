@@ -28,6 +28,46 @@ export const NODE_REPL_SERVER_INSTRUCTIONS =
   "Always provide `title` as a short user-facing description in the user's language. " +
   "Every `js` call starts fresh; reconstruct browser wrappers and recover persistent tabs from current BrowserControl facts.";
 
+/**
+ * CUA 未启用时，给 node_repl 的 server instructions 追加一句「本会话没有 CUA」的说明。
+ *
+ * 为什么需要：注册条件只看「browser-use 或 cua 任一启用」，所以 CUA 关闭时模型照样拿得到
+ * `mcp__node_repl__js`；它一旦尝试 Computer Use 只会撞上「桥不存在」，实测会转去自行安装驱动
+ * 并猜错包名。在会话开始就把「没有 CUA、也没有任何东西需要安装」讲清楚，比等它撞错再解释更早。
+ *
+ * 只追加说明，不改注册逻辑（是否注册 node_repl 仍由 bootstrap 决定，见 built-in-node-repl.ts）。
+ */
+/**
+ * CUA 未启用时追加到 `js` 工具描述末尾的一句。
+ *
+ * 为什么必须挂在**工具描述**上：本仓库的 MCP 集成只消费 tools/list，不消费 server 的
+ * initialize `instructions`（全 CLI src 无读取点），所以 server instructions 里的说明模型看不到；
+ * 工具描述是模型每次选工具时都会读到的那一份文案。
+ */
+export const JS_TOOL_DESCRIPTION_COMPUTER_USE_DISABLED_SUFFIX =
+  " Computer Use is not enabled for this session: the computer-use runtime is absent and no " +
+  "dependency is missing. If the user asks to control the desktop, tell them to enable Computer Use " +
+  "in Settings and stop; never install, upgrade or guess a driver package.";
+
+/** 按本会话是否启用了 CUA 解析 `js` 工具描述。 */
+export function resolveJsToolDescription(input: { computerUseEnabled: boolean }): string {
+  return input.computerUseEnabled
+    ? JS_TOOL_DESCRIPTION
+    : `${JS_TOOL_DESCRIPTION}${JS_TOOL_DESCRIPTION_COMPUTER_USE_DISABLED_SUFFIX}`;
+}
+
+export function withComputerUseAvailabilityNote(
+  instructions: string,
+  input: { computerUseEnabled: boolean },
+): string {
+  if (input.computerUseEnabled) return instructions;
+  return (
+    `${instructions} Computer Use is not enabled for this session: the computer-use runtime ` +
+    "is absent and no dependency is missing. If the user asks to control the desktop, tell them " +
+    "to enable Computer Use in Settings and stop; never install, upgrade or guess a driver package."
+  );
+}
+
 export const JS_TOOL_DESCRIPTION =
   "Browser Use and Computer Use only. Run JavaScript in a fresh Node-backed kernel with top-level await only as " +
   "instructed by the corresponding official skill to control a browser or computer. Do not use it as a general-purpose JavaScript runtime " +

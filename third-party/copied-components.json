@@ -274,21 +274,26 @@
     "file": "third-party/upstream/2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031.txt",
     "sha256": "2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031",
     "importRevision": null,
-    "provenance": "Copied from the official Linux distribution package /usr/lib/zcode/glm/packages/zcode-cua-plugin (zcode-bin 3.14.0-1). All four files are byte-identical to that package (sha256 verified on both sides); our copy also pins that same manifest as the license declaration. Upstream records no revision for this material. Reconstructed notice: upstream declares only the author name \"Z.ai\" — it provides neither a copyright line nor a year — so the copyright line below is ZCode-CE's attribution of the declared author, not an upstream-supplied notice.",
+    "provenance": "Copied from the official Linux distribution package /usr/lib/zcode/glm/packages/zcode-cua-plugin (zcode-bin 3.14.0-1). Three of the four files are NO LONGER byte-identical: ZCode-CE locally modified docs/computer-use.md, scripts/computer-use-client.mjs and skills/computer-use/SKILL.md on 2026-09-23 (task 3143-3) to add the bridge-unavailable fail-safe guidance — stop and report instead of letting the model install or guess a driver package; see locallyModifiedFiles and docs/development/official-diff.md. Only .zcode-plugin/plugin.json remains byte-identical to that package. Our copy also pins that same manifest as the license declaration. Upstream records no revision for this material. Reconstructed notice: upstream declares only the author name \"Z.ai\" — it provides neither a copyright line nor a year — so the copyright line below is ZCode-CE's attribution of the declared author, not an upstream-supplied notice.",
     "roots": ["apps/zcode-cli/packages/zcode-cua-plugin"],
-    "scope": "Official computer-use plugin shell only: .zcode-plugin/plugin.json, docs/computer-use.md, scripts/computer-use-client.mjs and skills/computer-use/SKILL.md from plugin version 0.6.1. Verbatim copy; no local modifications and no node_modules. The runtime this shell drives (packages/zcode-cua and the @trycua/cua-driver closure) is an independent ZCode-CE implementation and is registered separately by the npm dependency inventory.",
+    "scope": "Official computer-use plugin shell only: .zcode-plugin/plugin.json, docs/computer-use.md, scripts/computer-use-client.mjs and skills/computer-use/SKILL.md from plugin version 0.6.1. Copied verbatim and then locally modified on the three files listed in locallyModifiedFiles (fail-safe guidance for the bridge-unavailable case); .zcode-plugin/plugin.json is still byte-identical. No node_modules. The runtime this shell drives (packages/zcode-cua and the @trycua/cua-driver closure) is an independent ZCode-CE implementation and is registered separately by the npm dependency inventory.",
+    "locallyModifiedFiles": [
+      "apps/zcode-cli/packages/zcode-cua-plugin/docs/computer-use.md",
+      "apps/zcode-cli/packages/zcode-cua-plugin/scripts/computer-use-client.mjs",
+      "apps/zcode-cli/packages/zcode-cua-plugin/skills/computer-use/SKILL.md"
+    ],
     "license": "MIT"
   },
   {
     "id": "ZCode zcode-guide plugin (Z.ai)",
     "referenceRevision": null,
-    "source": "Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-guide-plugin 0.2.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages",
+    "source": "Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-guide-plugin in .zcode-plugin/plugin.json (author: Z.ai; license: MIT; version 0.3.0 in the official 3.14.3 distribution). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages",
     "file": "third-party/upstream/2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031.txt",
     "sha256": "2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031",
     "importRevision": null,
-    "provenance": "Copied from the official Linux distribution package /usr/lib/zcode/glm/packages/zcode-guide-plugin (zcode-bin 3.14.0-1). Every redistributed file is byte-identical to that package (sha256 verified per file: 12 of the upstream 13); no node_modules is copied.",
+    "provenance": "Copied from the official Linux distribution package /usr/lib/zcode/glm/packages/zcode-guide-plugin (zcode-bin 3.14.0-1, plugin version 0.2.0) in fix.3, then re-synced on 2026-09-23 (task 3143-1) to the official 3.14.3 distribution's copy of the same package (glm/packages/zcode-guide-plugin, plugin version 0.3.0; the source tree was extracted for comparison at /tmp/z3143/squashfs-root). All 8 redistributed files — including .zcode-plugin/plugin.json — are byte-identical to that 0.3.0 package (sha256 verified per file); the 9th upstream file is package.json, intentionally not redistributed. No node_modules. No local modifications.",
     "roots": ["apps/zcode-cli/packages/zcode-guide-plugin"],
-    "scope": "Official zcode-guide plugin content: 9 skill documents under skills/, commands/workflow.md, README.md and .zcode-plugin/plugin.json. Verbatim copy, no local modifications. The upstream package.json is intentionally not redistributed: apps/zcode-cli/packages/* is a pnpm workspace glob, so a copied manifest would register this directory as a workspace importer and break `pnpm install --frozen-lockfile`; the MIT declaration is retained in the copied .zcode-plugin/plugin.json.",
+    "scope": "Official zcode-guide plugin content version 0.3.0: 6 skill documents under skills/ (five diagnosing-* guides plus the configuration guide), README.md and .zcode-plugin/plugin.json. Verbatim copy, no local modifications. commands/workflow.md and skills/dynamic-workflows/* are no longer part of this plugin in 0.3.0 upstream either; /workflow is now a built-in command and dynamic-workflows ships in apps/zcode-cli/packages/bundled-skills (registered separately). The upstream package.json is intentionally not redistributed: apps/zcode-cli/packages/* is a pnpm workspace glob, so a copied manifest would register this directory as a workspace importer and break `pnpm install --frozen-lockfile`; the MIT declaration is retained in the copied .zcode-plugin/plugin.json.",
     "license": "MIT"
   },
   {
@@ -342,5 +347,17 @@
     ],
     "scope": "Covers the Codex lineage of the three Z.ai-authored Markdown files listed in roots; they are distributed verbatim from the official ZCode package and additionally carry the Z.ai MIT declaration (see the ZCode plugin-creator plugin entry). Apache-2.0 obligations are met by the Apache-2.0 license text shipped in THIRD-PARTY-NOTICES.md, this attribution entry naming the upstream path, and the change statement Z.ai already carries inside SKILL.md:8 — no marker is added to the redistributed files so they remain byte-identical to the official package.",
     "license": "Apache-2.0"
+  },
+  {
+    "id": "ZCode bundled-skills pack (Z.ai)",
+    "referenceRevision": null,
+    "source": "The official bundled-skills package ships no LICENSE file and, unlike a plugin, no .zcode-plugin/plugin.json, so it carries no in-package license declaration. It is redistributed as part of the same MIT-declared official distribution (its sibling packages declare license: MIT, author Z.ai) and its content lineage is the MIT zcode-guide plugin; the notice retained below is that shared MIT text",
+    "file": "third-party/upstream/2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031.txt",
+    "sha256": "2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031",
+    "importRevision": null,
+    "provenance": "Copied from the official 3.14.3 distribution package glm/packages/bundled-skills (the source tree was extracted for comparison at /tmp/z3143/squashfs-root). All 4 redistributed files are byte-identical to that package (sha256 verified per file), and the upstream package contains exactly these 4 files — no package.json. Upstream records no revision for this material. Notice caveat: the pack contains no license text of its own, so the MIT notice below is inherited from the distribution-level declaration and from the zcode-guide lineage, not quoted from a file inside the pack.",
+    "roots": ["apps/zcode-cli/packages/bundled-skills"],
+    "scope": "Official bundled-skills pack: README.md plus skills/dynamic-workflows/{SKILL.md,patterns.md,examples.md}. Verbatim copy, no local modifications. The pack carries the dynamic-workflows skill that upstream moved out of the zcode-guide plugin in version 0.3.0; patterns.md is byte-identical to the copy that shipped inside the MIT zcode-guide plugin, which is the license basis recorded here.",
+    "license": "MIT"
   }
 ]

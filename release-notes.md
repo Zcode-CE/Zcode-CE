@@ -1,61 +1,67 @@
-# ZCode-CE v3.14.1-ce.1.fix.3
+# ZCode-CE v3.14.3-ce.1
 
 **中文** · [English](#english)
 
-> 承接 `3.14.1-ce.1.fix.2`。本版把「本应可用、却在开源版里被摘掉或卡住的能力」补回来。
+> 本版跟进官方 v3.14.3，并把 `/workflow` 从插件形态升格为内置能力（与官方同构）。
+> 承接 `3.14.1-ce.1.fix.3` 的插件恢复与电脑控制修复。
 > 若你仍在 `3.14.1-ce.1`（界面卡在 logo），请直接升级到本版。
 
-## 本次修复
+## 本次变更
 
-### 1. 五个内置插件从未随包发出
+### 1. `/workflow` 升格为内置能力（跟进官方架构）
 
-官方发行包有 **14** 个内置插件，本仓库只发出 **5** 个。其余插件在源码里**声明都在**，包里没有实体 ——
-运行时会遍历候选路径全部落空后**静默跳过**，不报错、不警告。本版补入 5 个，现在共 **10** 个：
+官方在 v3.14.3 做了一次架构调整：把 `dynamic-workflows` 技能从 `zcode-guide` 插件里迁出，成为**内置技能包（bundled skills）** —— 不进插件商店、不可卸载、无开关、不出现在设置与 `$` 选择器中。
 
-- **`computer-use`** —— 见下节
-- **`zcode-guide`** —— 恢复 `/workflow` 命令与 `dynamic-workflows` 技能，见下节
-- **`skill-creator`** —— 让智能体帮你写技能
-- **`plugin-creator`** —— 让智能体帮你写插件（工作流改编自 OpenAI Codex，Apache-2.0，已登记归属）
-- **`restore-legacy-sessions`** —— 恢复旧版本会话。**默认关闭**，且它会写会话数据库
-  （`~/.zcode/v2/tasks-index.sqlite`、`~/.zcode/cli/db/db.sqlite`），只在显式启用并调用时运行
+理由是产品性的：动态工作流的工具由运行时注册，教模型怎么用它的技能就必须同样不可移除。
 
-全部按官方发行包逐字节原样搬运（MIT / Apache-2.0），未带官方 `node_modules`。
+本版照此重构：
 
-同时修了一处护栏缺失：`skill-creator` 与 `restore-legacy-sessions` 此前**完全没有声明必需资产**，
-少一个文件只会静默降级 —— 现已逐项钉住。
+- 新增 `bundled-skills` 包，由运行时在每次启动时按 `source: "bundled"` / `scope: "system"` 发现
+- `zcode-guide` 对齐官方 **0.3.0**（移除 `commands/workflow.md` 与 `skills/dynamic-workflows/`）
+- `/workflow` 改为 CLI 内置命令，**不再依赖任何插件是否存在**
 
-### 2. `/workflow` 命令在本构建里此前从未存在
+这对你意味着：**上一版里 `/workflow` 依赖 zcode-guide 插件，本版它始终可用。**
 
-本仓库为它建好了全套装配 —— 命令面板里专门把它排在 `goal` 之后、灰度开关、运行时包、界面文案 ——
-**但内容提供方 `zcode-guide` 插件从未随包发出**。结果是这个命令在我们的构建里从来没有出现过。
-本版补入该插件，`/workflow` 与 `dynamic-workflows` 技能恢复。
+### 2. 电脑控制：bridge 不可用时的指引（修复模型自行装错包）
 
-### 3. 电脑控制：解开 Helper 门控
+有用户反馈模型调用电脑控制时报「找不到驱动包」。排查后确认**不是构建缺陷** —— 而是：
 
-本构建的三个平台都**没有官方 Helper 实体**（打包配置里没有它，生成它的脚本也不在本仓库）。
-而官方原先只在存在私有 Helper 时才向智能体注入 broker 凭据 —— 于是这条能力在本仓库里恒不可用。
+- 电脑控制**默认关闭**，此时运行时不注册 CUA bridge；
+- 但 `node_repl` 工具因浏览器能力仍可用，模型于是**自行猜测驱动包名并尝试安装**，连猜两次都不存在。
 
-本版让开源驱动（`@trycua/cua-driver`，MIT）不再依赖 Helper：无 Helper 实体时直接生成
-socket 与 pluginAuthority 凭据，与官方为 macOS 写的懒启动契约同源。
+本版在四个层面加了指引（模型必经路径）：
 
-**如实标注的限制**：
+- **工具描述按会话解析**：未启用时直接写明「本会话没有电脑控制、没有东西需要安装、不要装或猜驱动包」（MCP 集成只消费 `tools/list`，不读 server instructions，所以必须挂在这里）
+- 技能正文与文档补「禁止自行安装/猜测驱动」的硬约束与三步处置
+- bridge 缺失的报错改成可操作文案：告知用户在 **设置 → 电脑控制** 开启，然后停止
 
-- **Windows 未在真机上实测** —— 只做了 CI 打包。驱动的 Windows 预编译产物能否在本机加载未经验证
-- **Linux 的 X11 / Wayland 覆盖度仍未验证** —— 鼠标键盘控制与截图可能不可用，设置页按「实验性」标注
-- **远端工作区（SSH / WSL / 容器）与 Web 不承载电脑控制** —— 本轮有意不碰
+这是**软约束**（靠文案劝阻）。模型仍具备执行安装命令的能力，若后续仍出现问题，我们会考虑在权限层加一次确认。
 
-### 4. 文档与许可
+### 3. 内置技能包与插件资产的许可登记
 
-- 修正 `NOTICE.md` 中「电脑控制不可用」等已过期陈述，以及 `official-diff.md` 里一处自相矛盾
-  （把纯 Markdown 的插件错写成「仅分发编译产物，无源码」）
-- 5 个插件的许可与第三方归属登记完成，`licenses:check` 通过
+- `bundled-skills`、`zcode-guide` 0.3.0 均已登记（MIT / © Z.ai）
+- 电脑控制的插件资产**有本地修改**（就是上面第 2 点的指引），已如实登记为 `locallyModifiedFiles`，差异文档同步说明
+- `licenses:check` 通过
 
-### 5. 仍未补齐的能力（有意不做，不是遗漏）
+### 4. 文档
 
-- `pdf` —— 官方版授权**仅限非商业使用**，不能进入本仓库；需基于开源排版链重新实现，已列入后续路线
-- `image-search` —— 能力在官方服务端，需要官方账号鉴权，本地实现无意义
-- `android-emulator` / `ios-simulator` —— 官方只分发编译产物，无源码
-- 官方 Office 四件套原版 —— 同为「禁止商用」许可；本仓库使用独立 MIT 实现提供同等能力
+修正多处随版本演进而过期的陈述，包括「与上游基线逐字节一致」（本版起已不成立）、插件文件计数、`/workflow` 的来源说明等。
+
+## 与官方 v3.14.3 的关系
+
+**本版对齐官方的架构与版本号，但能力实现不同。** 主要差异：
+
+- **电脑控制**：官方使用私有 Helper 二进制；本版使用 MIT 许可的开源驱动（trycua/cua）
+- **Office 三件套**：官方版授权禁止商业使用；本版为独立 MIT 实现
+- **未提供**：PDF（官方版禁商用，计划复用开源方案）、图片搜索（需官方账号鉴权）、Android/iOS 模拟器（官方仅发编译产物）
+
+完整清单见[与官方发行版的差异](https://github.com/Zcode-CE/Zcode-CE/blob/main/docs/development/official-diff.md)。
+
+## 如实标注的未验证范围
+
+- **Windows 未在真机实测** —— 仅经 CI 打包。驱动的 Windows 预编译产物能否加载未经验证
+- **Linux 的 X11 / Wayland 覆盖度未验证** —— 鼠标键盘与截图可能不可用，设置页标为实验性
+- **远端工作区（SSH / WSL / 容器）与 Web 不承载电脑控制**
 
 ## 平台
 
@@ -75,75 +81,84 @@ socket 与 pluginAuthority 凭据，与官方为 macOS 写的懒启动契约同�
 
 # English
 
-> Follows `3.14.1-ce.1.fix.2`. This release restores capabilities that should have been available
-> but were stripped from, or blocked in, the open-source build.
+> This release follows official v3.14.3 and promotes `/workflow` from a plugin to a built-in capability,
+> matching the official architecture. It continues the plugin restoration and Computer Use fix from
+> `3.14.1-ce.1.fix.3`.
 > If you are still on `3.14.1-ce.1` (UI stuck on the logo), upgrade straight to this version.
 
-## Fixes
+## Changes
 
-### 1. Five built-in plugins were never shipped
+### 1. `/workflow` becomes a built-in capability (following the official architecture)
 
-The official distribution ships **14** built-in plugins; this repository shipped **5**. The rest were
-still declared in source but had no package on disk — resolution silently skips them with no error and
-no warning. Five are added here, bringing the total to **10**:
+In v3.14.3 the official build moved the `dynamic-workflows` skill out of the `zcode-guide` plugin and made
+it a **bundled skill** — not in the plugin store, not uninstallable, no toggle, invisible in Settings and
+the `$` skill picker. The reasoning is product-level: the dynamic-workflow tools are registered by the
+runtime, so the skill that teaches the model to use them must be equally unremovable.
 
-- **`computer-use`** — see below
-- **`zcode-guide`** — restores the `/workflow` command and the `dynamic-workflows` skill, see below
-- **`skill-creator`** — let the agent write skills for you
-- **`plugin-creator`** — let the agent write plugins for you (workflow adapted from OpenAI Codex,
-  Apache-2.0; attribution registered)
-- **`restore-legacy-sessions`** — restore sessions from older versions. **Off by default**, and it
-  writes to the session database (`~/.zcode/v2/tasks-index.sqlite`, `~/.zcode/cli/db/db.sqlite`);
-  it only runs when explicitly enabled and invoked
+This release mirrors that:
 
-All copied byte-for-byte from the official distribution (MIT / Apache-2.0), without the official
-`node_modules`.
+- New `bundled-skills` pack, discovered at startup as `source: "bundled"` / `scope: "system"`
+- `zcode-guide` aligned to official **0.3.0** (drops `commands/workflow.md` and `skills/dynamic-workflows/`)
+- `/workflow` is now a CLI built-in command, **no longer depending on any plugin**
 
-A missing guardrail was fixed too: `skill-creator` and `restore-legacy-sessions` previously declared
-**no required assets at all**, so a missing file degraded silently — each is now pinned.
+For you this means: in the previous release `/workflow` required the zcode-guide plugin; now it is always
+available.
 
-### 2. The `/workflow` command never existed in this build
+### 2. Computer Use: guidance when the bridge is unavailable (fixes the model installing the wrong package)
 
-This repository has the entire wiring for it — the command palette even pins it right after `goal`,
-plus the feature gate, runtime packages and UI copy — **but its content provider, the `zcode-guide`
-plugin, was never shipped.** The command had therefore never appeared in our builds. It ships now,
-restoring `/workflow` and the `dynamic-workflows` skill.
+A user reported that the model tried to load a driver package that could not be found. Investigation showed
+**this was not a packaging defect**:
 
-### 3. Computer Use: the Helper gate is opened
+- Computer Use is **off by default**, so the runtime does not register the CUA bridge;
+- but `node_repl` remains available because of the browser capability, so the model **guessed a driver
+  package name and tried to install it** — twice, neither existing.
 
-None of the three platforms in this build has an official Helper binary (it is absent from the
-packaging config and the script that would produce it is not in this repository). The official code
-only injects broker credentials into the agent when a private Helper exists — so this capability was
-permanently unavailable here.
+This release adds guidance on four layers, all on paths the model must traverse:
 
-This release decouples the open-source driver (`@trycua/cua-driver`, MIT) from the Helper: without a
-Helper it mints the socket and pluginAuthority credentials directly, the same lazy-start contract the
-official code already uses for macOS.
+- **Tool description resolved per session**: when disabled it states plainly that this session has no
+  Computer Use, that there is nothing to install, and not to install or guess a driver package (the MCP
+  integration only consumes `tools/list` and does not read server instructions, so this is where it has
+  to live)
+- Skill body and docs gain a hard constraint against self-installing or guessing drivers, plus a
+  three-step disposition
+- The bridge-missing error now tells the user to enable it in **Settings → Computer Use**, then stops
 
-**Stated plainly:**
+This is a **soft constraint** (persuasion via copy). The model can still run install commands; if the
+problem recurs we will consider a confirmation at the permission layer.
 
-- **Windows has not been tested on real hardware** — CI packaging only. Whether the driver's
-  prebuilt Windows binary loads on a real machine is unverified
-- **Linux X11 / Wayland coverage is still unverified** — mouse/keyboard control and screenshots may
-  not work; the settings page labels it experimental
-- **Remote workspaces (SSH / WSL / containers) and Web do not carry Computer Use** — deliberately out
-  of scope this round
+### 3. Licensing for the bundled skill pack and plugin assets
 
-### 4. Docs and licensing
+- `bundled-skills` and `zcode-guide` 0.3.0 are registered (MIT / © Z.ai)
+- The Computer Use plugin assets now carry **local modifications** (the guidance above), truthfully
+  registered as `locallyModifiedFiles`, with the diff documented
+- `licenses:check` passes
 
-- Corrected stale claims in `NOTICE.md` ("Computer Use is unavailable") and one self-contradiction in
-  `official-diff.md` (plugins that are plain Markdown were mis-described as "compiled artifacts only,
-  no source")
-- License and third-party attribution registered for all five plugins; `licenses:check` passes
+### 4. Documentation
 
-### 5. Still missing on purpose (not oversights)
+Corrected several statements that had gone stale as versions advanced, including "byte-identical to the
+upstream baseline" (no longer true as of this release), plugin file counts, and the origin of `/workflow`.
 
-- `pdf` — the official plugin is licensed for **non-commercial use only** and cannot be included here;
-  it needs a rewrite on an open-source layout toolchain, now on the roadmap
-- `image-search` — the capability lives on official servers and requires official account auth
-- `android-emulator` / `ios-simulator` — the official builds ship compiled artifacts without source
-- The official Office plugins — also "no commercial use"; equivalent capability is provided by
-  independent MIT implementations
+## Relationship to official v3.14.3
+
+**This release follows the official architecture and version number, but not its capability
+implementations:**
+
+- **Computer Use**: the official build uses a private Helper binary; this build uses the MIT-licensed
+  open-source driver (trycua/cua)
+- **Office trio**: the official plugins are licensed for non-commercial use only; these are independent
+  MIT implementations
+- **Not provided**: PDF (official is non-commercial; an open-source route is planned), image search
+  (requires official account auth), Android/iOS emulators (official ships compiled artifacts only)
+
+See the full [diff against the official distribution](https://github.com/Zcode-CE/Zcode-CE/blob/main/docs/development/official-diff.md).
+
+## Stated plainly: what is not verified
+
+- **Windows has not been tested on real hardware** — CI packaging only. Whether the driver's prebuilt
+  Windows binary loads on a real machine is unverified
+- **Linux X11 / Wayland coverage is unverified** — mouse/keyboard control and screenshots may not work;
+  the settings page labels it experimental
+- **Remote workspaces (SSH / WSL / containers) and Web do not carry Computer Use**
 
 ## Platforms
 

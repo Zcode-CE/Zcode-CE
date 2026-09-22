@@ -10,6 +10,8 @@ apps/zcode-cli/          Agent CLI 与运行时（独立 workspace，有自己�
   packages/*-plugin/     内置插件（browser-use / node-repl-host / documents / presentations /
                          spreadsheets / zcode-cua / plugin-creator / skill-creator / zcode-guide /
                          restore-legacy-sessions）
+  packages/bundled-skills/ 内置技能包（非插件：无 plugin.json，运行时原地发现为
+                         source:"bundled" / scope:"system" 的技能根，不可卸载）
   tools/                 prompt-trajectory / typescript
 packages/
   desktop/               Electron main / host / renderer / preload / scheduler

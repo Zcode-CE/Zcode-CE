@@ -1,11 +1,12 @@
 # Worked dynamic-workflow examples
 
-Four complete scripts, end to end. Each is a whole arc — world read, topology, loop or
+Five complete scripts, end to end. Each is a whole arc — world read, topology, loop or
 fan-out, salvage, artifacts, return shape — so read one when you want to see how the pieces
 sit together rather than looking up a single shape (`patterns.md` is for that).
 
-Every script here is submitted as the `script` argument of the `CreateWorkflow` tool, whose
-description carries the API surface these scripts are written against.
+Every script here is submitted as the `script` argument of the `CreateWorkflow` tool. The
+API surface they are written against is `SKILL.md` §16 (the facade block in §16.2 and the
+rules in §16.3), not the tool description.
 
 ---
 
@@ -659,3 +660,142 @@ One artifact, deliberately. The report lists every attempt, which is more than t
 could follow is the round number and whether the checker passed, and the phase timeline
 lighting up "Repair what the checker rejected" again already shows exactly that. A metrics
 tile would repeat it, and the proof file is the repository's to show, not a card's.
+
+## 5. Changed-file review with confirmation as reviews land
+
+Review every changed file, triage its findings on one scale, confirm each kept finding
+independently, and hand back a report. Everything a file needs happens as soon as its own
+review lands; the only join is the cross-file deduplication that needs every finding.
+
+<!-- compile -->
+```ts
+interface Finding {
+  /** Workspace-relative path, with a line when it applies: "src/a.ts:42". */
+  where: string;
+  /** One sentence: what is wrong. */
+  what: string;
+  /** What showed it: the lines read, or the command and the output that proved it. */
+  evidence: string;
+  /** How much it matters. Reserve "high" for data loss, a crash, or a wrong result. */
+  severity: "low" | "medium" | "high";
+}
+interface Review {
+  findings: Finding[];
+}
+interface Keep {
+  /** True when this finding is worth putting in front of a human. */
+  keep: boolean;
+}
+interface Confirmation {
+  /** True only when you reproduced the problem yourself from the evidence. */
+  reproduced: boolean;
+  /** What you did to check, one sentence. */
+  note: string;
+}
+interface ReportedFinding extends Finding {
+  /** "verified" when the confirmer reproduced it; "unconfirmed" when it could not. */
+  status: "verified" | "unconfirmed";
+}
+interface Digest {
+  /** The confirmed findings with duplicates across files merged, one line each. */
+  lines: string[];
+  /** Two or three sentences a reader can act on. */
+  summary: string;
+}
+interface WorkflowReport {
+  /** Two or three sentences answering what the user asked for. */
+  conclusion: string;
+  findings: ReportedFinding[];
+  /** What the run checked and how. */
+  verified: string[];
+  /** What the run did not look at or could not check, and why. */
+  notCovered: string[];
+}
+
+phase("Review each changed file and confirm its findings as they land");
+let paths: string[];
+try {
+  paths = await git.changedFiles("origin/main");
+} catch {
+  paths = await files.glob("src/**/*.ts");
+}
+log(`reviewing ${paths.length} changed files`);
+
+// One triage subagent for all findings: severity only means anything if it is judged on a
+// consistent scale. It is a queue, not a barrier — asks on it run FIFO, so a finding reaches
+// it the moment its file's review lands, whichever file that is.
+const triage = agent("triage", "You decide which review findings deserve a human's attention. Be strict.");
+
+// One reviewer per file, fresh each: the files are unrelated, so nothing is gained by
+// sharing a context and everything is gained by running them at once. Triage and
+// confirmation live inside the same callback, so no file waits for the slowest review
+// before its findings move on; the outer `Promise.all` is the only join the report waits on.
+const perFile = await Promise.all(
+  paths.map(async (p) => {
+    const review = await agent(`reviewer-${p}`).ask<Review>(`Review ${p} for correctness bugs.`);
+
+    const kept: Finding[] = [];
+    for (const finding of review.findings) {
+      const verdict = await triage.ask<Keep>(`Worth reporting? ${JSON.stringify(finding)}`);
+      if (verdict.keep) kept.push(finding);
+    }
+
+    // A separate confirmer per kept finding, blind to the reviewer that raised it: it reads
+    // the code, runs a check if one decides it, and is told not to fix anything. The name
+    // carries the path and the index, because every subagent name in a run must be unique.
+    return Promise.all(
+      kept.map(async (finding, index) => {
+        const check = await agent(`confirmer-${p}-${index}`).ask<Confirmation>(
+          `Reproduce this finding from its evidence alone: read the code, run a check if one exists. Do not edit any file.\n${JSON.stringify(finding)}`,
+        );
+        const reported: ReportedFinding = {
+          ...finding,
+          status: check.reproduced ? "verified" : "unconfirmed",
+        };
+        report(reported); // published now, with its status, so it survives a later failure
+        return reported;
+      }),
+    );
+  }),
+);
+const confirmed = perFile.flat();
+log(`${confirmed.length} findings confirmed or labelled`);
+
+// The one stage that genuinely needs every finding: two reviewers can flag the same root
+// cause from two files, and only a reader of the whole list can merge them.
+phase("Merge duplicate findings across files and write them up");
+const digest = await agent("editor", "You merge review findings that share a root cause and write them up for the engineer who fixes them.")
+  .ask<Digest>(`Merge duplicates and write these up:\n${JSON.stringify(confirmed)}`);
+
+const verifiedCount = confirmed.filter((f) => f.status === "verified").length;
+await artifact.markdown(
+  "report",
+  [
+    `# Review of ${paths.length} changed files: ${confirmed.length} findings, ${verifiedCount} reproduced`,
+    "",
+    digest.summary,
+    "",
+    ...digest.lines.map((line) => `- ${line}`),
+    "",
+    "## Every finding",
+    ...confirmed.map((f) => `- **${f.where}** (${f.severity}, ${f.status}): ${f.what}\n  ${f.evidence}`),
+  ].join("\n"),
+  { title: "Review report" },
+);
+const result: WorkflowReport = {
+  conclusion: digest.summary,
+  findings: confirmed,
+  verified: paths.map((p) => `reviewed ${p}; every kept finding re-checked by a separate subagent`),
+  notCovered: ["files outside the change set", "runtime behaviour no existing test exercises"],
+};
+return result;
+```
+
+Three shapes in one script, each chosen for a reason. The reviewers are fresh and parallel
+because the files are unrelated. The triage subagent is shared because severity must mean the
+same thing twice — and sharing costs nothing here, because its FIFO queue is fed as reviews
+land rather than after all of them. The confirmers are fresh, per finding and blind to the
+reviewer, and they start the moment their file's triage is done: with twelve files and one
+slow reviewer, eleven files' findings are confirmed and reported while it is still reading.
+Nothing gets a second reader on top: each finding was confirmed, and the editor's job is
+merging and writing up, not re-checking.

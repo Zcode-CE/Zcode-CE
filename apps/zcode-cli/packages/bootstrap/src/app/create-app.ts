@@ -94,6 +94,7 @@ import {
 import { resolveBuiltInNodeReplMcpServers } from "./built-in-node-repl.js";
 import { resolveZCodeCustomCommandPrompt } from "../custom-command-prompt.js";
 import { resolveZCodeBuiltinPromptCommand } from "../builtin-prompt-command.js";
+import { resolveBundledSkillRoots } from "./bundled-skills.js";
 import { collectDisabledPaths } from "../skill-command-overrides.js";
 import { loadPluginAgentProfiles, loadZCodeAgentProfiles } from "../subagents.js";
 import { createRuntimeAiSdkModelExecutionConfig } from "../model-config.js";
@@ -717,6 +718,10 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       registry: options.providerRegistry,
       currentSelection: () => getRuntime().getSessionModelSelection(),
     });
+    // 内置技能包（bundled-skills）：官方 3.14.3 起 dynamic-workflows 住在这里
+    // （zcode-guide 插件已不再携带它）。与官方插件共用同一套候选基目录，每次启动都重新解析，
+    // 缺资产时只 warn 不抛错，见 bundled-skills.ts。
+    const bundledSkillRoots = resolveBundledSkillRoots({ logger });
     runtime = new AgentRuntime(sessionId, runtimeConfig, {
       // 主代理的模型请求过治理器的 observer：立即放行，但让治理器看见它的 429 / 成功。
       modelRequestAdmission: workflowConcurrencyGovernor.observer(),
@@ -740,13 +745,18 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
           ? (options.skillPort ??
             createNodeSkillAdapter({
               extraRoots: configResult.config.skills.roots,
-              extraResolvedRoots: pluginOutcome.skillRoots,
+              extraResolvedRoots: [...pluginOutcome.skillRoots, ...bundledSkillRoots],
               disabledPaths: [
                 ...collectDisabledPaths(configResult.config.skillOverrides),
                 // 动态工作流灰度关闭时不提供 dynamic-workflows 技能：
                 // 十个工具都不在场，再让模型读到「怎么写工作流脚本」只会诱导它去调不存在的工具。
+                // 该技能 3.14.3 起由 bundled-skills 提供，按 root 路径剔除的判据不变，
+                // 因此这里要把插件 root 与内置 root 一起交给门（两边都可能命中）。
                 ...(runtimeConfig.dynamicWorkflowEnabled === false
-                  ? collectDynamicWorkflowDisabledSkillPaths(pluginOutcome.skillRoots)
+                  ? collectDynamicWorkflowDisabledSkillPaths([
+                      ...pluginOutcome.skillRoots,
+                      ...bundledSkillRoots,
+                    ])
                   : []),
               ],
             }))
@@ -785,6 +795,9 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       artifactStore,
       customCommandPromptResolver: async (text, resolverOptions) => {
         const builtinPrompt = resolveZCodeBuiltinPromptCommand(text, {
+          // `/workflow` 3.14.3 起是内置命令（不再由 zcode-guide 插件提供），灰度门跟着搬到
+          // 内置展开这一跳：关闭时既不展开、也不出现在 `/` 目录。
+          dynamicWorkflowEnabled: runtimeConfig.dynamicWorkflowEnabled,
           workingDirectory,
         });
         if (builtinPrompt !== undefined) {

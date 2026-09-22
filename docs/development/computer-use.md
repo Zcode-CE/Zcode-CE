@@ -136,12 +136,12 @@ Linux x64 的原生部分约 42 MiB（未压缩），进安装包后被压缩。
 
 ## 许可
 
-| 包                                      | 许可            |
-| --------------------------------------- | --------------- |
-| `@trycua/cua-driver`                    | MIT             |
-| `@trycua/cua-driver-<platform>`         | MIT AND MPL-2.0 |
-| `@ubjs/core`、`@ubjs/node`              | MPL-2.0         |
-| `computer-use` 插件壳（官方包原样搬运） | MIT（© Z.ai）   |
+| 包                                             | 许可            |
+| ---------------------------------------------- | --------------- |
+| `@trycua/cua-driver`                           | MIT             |
+| `@trycua/cua-driver-<platform>`                | MIT AND MPL-2.0 |
+| `@ubjs/core`、`@ubjs/node`                     | MPL-2.0         |
+| `computer-use` 插件壳（官方包搬运 + 本地修改） | MIT（© Z.ai）   |
 
 MPL-2.0 是弱 copyleft：允许链接与分发，未修改时只需保留许可声明。
 在本项目的驱动包中，MPL-2.0 覆盖的是 N-API 运行时垫片 `cua_driver_node_runtime.node`
@@ -150,8 +150,11 @@ MPL-2.0 是弱 copyleft：允许链接与分发，未修改时只需保留许可
 
 插件壳本身（`apps/zcode-cli/packages/zcode-cua-plugin/` 的 4 个文件：`.zcode-plugin/plugin.json`、
 `docs/computer-use.md`、`scripts/computer-use-client.mjs`、`skills/computer-use/SKILL.md`）取自官方发行包
-`zcode-cua-plugin` 0.6.1：**逐字节原样、不带 `node_modules`**，上游 manifest 声明 `license: MIT`、
-`author: {name: "Z.ai"}`，但**包内没有独立 LICENSE 文件**。登记条目见
+`zcode-cua-plugin` 0.6.1，**不带 `node_modules`**。其中 **3 个文件有本地修改**（2026-09-23，加入
+「runtime 由宿主提供；bridge 不可用时停止并如实报告，不得自行安装或猜驱动包」的失败关闭指引）：
+`docs/computer-use.md`、`scripts/computer-use-client.mjs`、`skills/computer-use/SKILL.md`；
+只有 `.zcode-plugin/plugin.json` 保持逐字节原样。上游 manifest 声明 `license: MIT`、
+`author: {name: "Z.ai"}`，但**包内没有独立 LICENSE 文件**。登记条目（含 `modifiedFiles`）见
 `third-party/copied-components.json` 的「ZCode computer-use plugin shell (Z.ai)」，许可全文随
 `THIRD-PARTY-NOTICES.md` 分发。
 **不确定项**：`Copyright (c) Z.ai` 是据上游 `author` 字段**重建**的版权行（上游既未提供 LICENSE 文件、

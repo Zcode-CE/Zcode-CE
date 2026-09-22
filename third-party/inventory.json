@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "8efe17b340ef8d8661a7c4699743825f194a6f5b9fd11fbfdbe37c2eb0f45290",
+  "noticesSha256": "bcf8b632f1a4fc22ba5ee138c78fcb886095ecec05b7644bc8544981bb2bd64e",
   "inputs": {
     ".agents/skills/agent-browser/references/authentication.md": "e2c3b0f4a1dc1368dee821f03c000d818a48421d09f3872525dddffe73f2112b",
     ".agents/skills/agent-browser/references/commands.md": "17522fc56d742663f47231ff06c4811abc87e12c7f78e11f94d253ddd540a909",
@@ -228,6 +228,10 @@
     "apps/zcode-cli/packages/adapters/package.json": "da99aebdd4d463b7705a2a0febc12adb9ad7e792f74f4ba7c4e258b8bb6a13dc",
     "apps/zcode-cli/packages/bootstrap/package.json": "0e175ac8b64cd5b478c15e6bf71fb3940c17ddb7f95fb7cbcdd426bb61ce5bef",
     "apps/zcode-cli/packages/browser-use-plugin/package.json": "b7ecf0a222844419da9a27c66f6bcc0e17bdbb2db187183133c4fb0932b3d59a",
+    "apps/zcode-cli/packages/bundled-skills/README.md": "c11d87c736d552dee95b32998f285f798f076f4370b80da59c19222e4dc3ed77",
+    "apps/zcode-cli/packages/bundled-skills/skills/dynamic-workflows/examples.md": "c91419ad54f303b8aadb59a87e615f61d291c89d64a98a1d43072154f7885af3",
+    "apps/zcode-cli/packages/bundled-skills/skills/dynamic-workflows/patterns.md": "91e6c48a3b1e5891e0965134247d2c55f6a47e4b8e9751dcc290a1b4d58d2f5d",
+    "apps/zcode-cli/packages/bundled-skills/skills/dynamic-workflows/SKILL.md": "92b8980df6af83c94fc0e2e8a90e0f8d93312289dd7119c0b0e0f3c95ce2502d",
     "apps/zcode-cli/packages/cli/package.json": "81a0c3dbdff4fb6598ac5b7336578de102c54eef914e06f0f3a65bc1b6e734b9",
     "apps/zcode-cli/packages/contracts/package.json": "7443f402f58df867ad5f776b2e94823d2b3bb235b16d0155f7a939ba181aa3ac",
     "apps/zcode-cli/packages/core/package.json": "abf5a6c8715fe87ea4b5ef3a48b225f94980dc386fe2ccfe98844347aa16bcd8",
@@ -278,24 +282,20 @@
     "apps/zcode-cli/packages/swift-bridge/package.json": "958674fcd44c789564ee672b0e6c687f1f900f4286174280700ddfb442d23906",
     "apps/zcode-cli/packages/tui/package.json": "097d5896b0b37a455eafaf015f21113dfbea7b05bb3f92666f423f7753720eb1",
     "apps/zcode-cli/packages/zcode-cua-plugin/.zcode-plugin/plugin.json": "98a1214e42fe8bd9a6f2bb9e48e849c86ab056e538001c9006b30c8dfc1c90e1",
-    "apps/zcode-cli/packages/zcode-cua-plugin/docs/computer-use.md": "be3b7daa6dd4053590a7786c48eca771a050b9781d3a68cc51cf1775e62d4305",
-    "apps/zcode-cli/packages/zcode-cua-plugin/scripts/computer-use-client.mjs": "e44e8ecc6ea289076f61e6b62f7793947c6e9ab8c222a5e87353891d43db1143",
-    "apps/zcode-cli/packages/zcode-cua-plugin/skills/computer-use/SKILL.md": "28e0b26d85a2b9f8e94203ce20b64b0bfa87f63db2f0c50cb2aa22def662f07f",
-    "apps/zcode-cli/packages/zcode-guide-plugin/.zcode-plugin/plugin.json": "50bad11cc930ff6c68c00d63219b6f3532fd20488eb2f8492fdb0f9f76a33f78",
-    "apps/zcode-cli/packages/zcode-guide-plugin/commands/workflow.md": "c38b67c5094dcc332b5ecc4673f5a04d1fb179e48f4f745c46aa3fe54a1fcc87",
+    "apps/zcode-cli/packages/zcode-cua-plugin/docs/computer-use.md": "a12fca7c967c6745fad17e40650a8d838738a11c479942436a8abaddbc42e4c4",
+    "apps/zcode-cli/packages/zcode-cua-plugin/scripts/computer-use-client.mjs": "2085f7bd21818220deb827c3e660d100031f2dd6b5d8ee3a7418545bac743b12",
+    "apps/zcode-cli/packages/zcode-cua-plugin/skills/computer-use/SKILL.md": "b1c6ec39bd30d2eac4c43fa5e0d0e541894c2c4aaab85c5608c0aa8b14682aa6",
+    "apps/zcode-cli/packages/zcode-guide-plugin/.zcode-plugin/plugin.json": "c152575af93384a2c78e466d838b87c425fe893b0ed31c893cc861496a9f76c6",
     "apps/zcode-cli/packages/zcode-guide-plugin/README.md": "182415c3759d4e7f0baf264bb7283357ba4339d8f5fbc5b5740f645a667578df",
     "apps/zcode-cli/packages/zcode-guide-plugin/skills/diagnosing-commands/SKILL.md": "b11d692dbbad78d9c7fe75b88aef1e8a7909520fec3055ea35e7b1d56b303fd9",
     "apps/zcode-cli/packages/zcode-guide-plugin/skills/diagnosing-hooks/SKILL.md": "ee09829dfe3df45d4ecf582f35d217b55536ea71f2ddc479e3d3721079260c8a",
     "apps/zcode-cli/packages/zcode-guide-plugin/skills/diagnosing-mcp/SKILL.md": "e92a2a14eaf79de0cb63f3f1ff5a954e37916b58dd65b899f3cd5b8e56e330d8",
     "apps/zcode-cli/packages/zcode-guide-plugin/skills/diagnosing-plugins/SKILL.md": "4ff859291b7a8fd32d9ea7b9e29a6a6c97f4d8927a90fa1337a9407eef4a4684",
     "apps/zcode-cli/packages/zcode-guide-plugin/skills/diagnosing-skills/SKILL.md": "cf3ddb6d103dbb54672fbe730e4e889e536fd15b0c57a43875ab01c8b52ede49",
-    "apps/zcode-cli/packages/zcode-guide-plugin/skills/dynamic-workflows/examples.md": "8f1fae434d23c8aad5b61b085de4058beac16670dd3e928543df08a254a5807d",
-    "apps/zcode-cli/packages/zcode-guide-plugin/skills/dynamic-workflows/patterns.md": "91e6c48a3b1e5891e0965134247d2c55f6a47e4b8e9751dcc290a1b4d58d2f5d",
-    "apps/zcode-cli/packages/zcode-guide-plugin/skills/dynamic-workflows/SKILL.md": "1b22dbe5cc96f6862761b14508545732f6e6a830382b1d4638ec735fec6f2b6a",
     "apps/zcode-cli/packages/zcode-guide-plugin/skills/zcode-configuration-guide/SKILL.md": "c173c54d3d125e5a3228f01a154c6a55e760dce07835226f0fa8dea644b0570d",
     "apps/zcode-cli/tools/prompt-trajectory/package.json": "7f161fc87f36691f01eb8c2034bd89cf28107da36db02bc20e76f059edd36af6",
     "apps/zcode-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
-    "package.json": "badb3db6025e1a0bd5f4ffa6225d2a0b0d337e409800ada672e0ff329eab5d55",
+    "package.json": "03bac7e78bf6e33c8fd57b6ca5861e91676be4069dc9d533243ecc3e3312618a",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
     "packages/desktop/package.json": "bafff01fd85e4b57e32d0c3bc5acf2bceb6b90744dce35b9b1466c3626e9d9d3",
     "packages/desktop/src/renderer/public/material-icons/3d.svg": "9527b849f0fba57ca7640e2717b3a19cb5f5e046712cbbd8b75d73af338c68fb",
@@ -2722,7 +2722,7 @@
     "scripts/license-texts/Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
     "scripts/remote-native-search-tools-config.mjs": "472322a66f84c7452f96aa9e16e9c4e0600f7c2588a03dc6bc869229161b1cb2",
-    "third-party/copied-components.json": "67e65bdd2eb3d98a5c4b6315bec34992708b3367f1e4c4ab424807459a9ce1c1",
+    "third-party/copied-components.json": "4e68b7b829e22d5a89ed5d7a0e0e745b285c788913adc00c8302fb03fde6ebdd",
     "third-party/embedded-components.json": "9586ccca15897f56d4ca1d703dffe9e02880fedd766c1dff93f7ac1f52ea891a",
     "third-party/native-search/licenses/00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce.txt": "00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce",
     "third-party/native-search/licenses/01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f.txt": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
@@ -29132,11 +29132,16 @@
       "file": "third-party/upstream/2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031.txt",
       "sha256": "2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031",
       "importRevision": null,
-      "provenance": "Copied from the official Linux distribution package /usr/lib/zcode/glm/packages/zcode-cua-plugin (zcode-bin 3.14.0-1). All four files are byte-identical to that package (sha256 verified on both sides); our copy also pins that same manifest as the license declaration. Upstream records no revision for this material. Reconstructed notice: upstream declares only the author name \"Z.ai\" — it provides neither a copyright line nor a year — so the copyright line below is ZCode-CE's attribution of the declared author, not an upstream-supplied notice.",
+      "provenance": "Copied from the official Linux distribution package /usr/lib/zcode/glm/packages/zcode-cua-plugin (zcode-bin 3.14.0-1). Three of the four files are NO LONGER byte-identical: ZCode-CE locally modified docs/computer-use.md, scripts/computer-use-client.mjs and skills/computer-use/SKILL.md on 2026-09-23 (task 3143-3) to add the bridge-unavailable fail-safe guidance — stop and report instead of letting the model install or guess a driver package; see locallyModifiedFiles and docs/development/official-diff.md. Only .zcode-plugin/plugin.json remains byte-identical to that package. Our copy also pins that same manifest as the license declaration. Upstream records no revision for this material. Reconstructed notice: upstream declares only the author name \"Z.ai\" — it provides neither a copyright line nor a year — so the copyright line below is ZCode-CE's attribution of the declared author, not an upstream-supplied notice.",
       "roots": [
         "apps/zcode-cli/packages/zcode-cua-plugin"
       ],
-      "scope": "Official computer-use plugin shell only: .zcode-plugin/plugin.json, docs/computer-use.md, scripts/computer-use-client.mjs and skills/computer-use/SKILL.md from plugin version 0.6.1. Verbatim copy; no local modifications and no node_modules. The runtime this shell drives (packages/zcode-cua and the @trycua/cua-driver closure) is an independent ZCode-CE implementation and is registered separately by the npm dependency inventory.",
+      "scope": "Official computer-use plugin shell only: .zcode-plugin/plugin.json, docs/computer-use.md, scripts/computer-use-client.mjs and skills/computer-use/SKILL.md from plugin version 0.6.1. Copied verbatim and then locally modified on the three files listed in locallyModifiedFiles (fail-safe guidance for the bridge-unavailable case); .zcode-plugin/plugin.json is still byte-identical. No node_modules. The runtime this shell drives (packages/zcode-cua and the @trycua/cua-driver closure) is an independent ZCode-CE implementation and is registered separately by the npm dependency inventory.",
+      "locallyModifiedFiles": [
+        "apps/zcode-cli/packages/zcode-cua-plugin/docs/computer-use.md",
+        "apps/zcode-cli/packages/zcode-cua-plugin/scripts/computer-use-client.mjs",
+        "apps/zcode-cli/packages/zcode-cua-plugin/skills/computer-use/SKILL.md"
+      ],
       "license": "MIT",
       "files": [
         {
@@ -29145,43 +29150,39 @@
         },
         {
           "file": "apps/zcode-cli/packages/zcode-cua-plugin/docs/computer-use.md",
-          "sha256": "be3b7daa6dd4053590a7786c48eca771a050b9781d3a68cc51cf1775e62d4305"
+          "sha256": "a12fca7c967c6745fad17e40650a8d838738a11c479942436a8abaddbc42e4c4"
         },
         {
           "file": "apps/zcode-cli/packages/zcode-cua-plugin/scripts/computer-use-client.mjs",
-          "sha256": "e44e8ecc6ea289076f61e6b62f7793947c6e9ab8c222a5e87353891d43db1143"
+          "sha256": "2085f7bd21818220deb827c3e660d100031f2dd6b5d8ee3a7418545bac743b12"
         },
         {
           "file": "apps/zcode-cli/packages/zcode-cua-plugin/skills/computer-use/SKILL.md",
-          "sha256": "28e0b26d85a2b9f8e94203ce20b64b0bfa87f63db2f0c50cb2aa22def662f07f"
+          "sha256": "b1c6ec39bd30d2eac4c43fa5e0d0e541894c2c4aaab85c5608c0aa8b14682aa6"
         }
       ]
     },
     {
       "id": "ZCode zcode-guide plugin (Z.ai)",
       "referenceRevision": null,
-      "source": "Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-guide-plugin 0.2.0 in .zcode-plugin/plugin.json (author: Z.ai; license: MIT). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages",
+      "source": "Upstream ships no standalone LICENSE file. MIT is declared by the official package zcode-guide-plugin in .zcode-plugin/plugin.json (author: Z.ai; license: MIT; version 0.3.0 in the official 3.14.3 distribution). The notice retained below is the shared MIT text for the Z.ai-declared official plugin packages",
       "file": "third-party/upstream/2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031.txt",
       "sha256": "2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031",
       "importRevision": null,
-      "provenance": "Copied from the official Linux distribution package /usr/lib/zcode/glm/packages/zcode-guide-plugin (zcode-bin 3.14.0-1). Every redistributed file is byte-identical to that package (sha256 verified per file: 12 of the upstream 13); no node_modules is copied.",
+      "provenance": "Copied from the official Linux distribution package /usr/lib/zcode/glm/packages/zcode-guide-plugin (zcode-bin 3.14.0-1, plugin version 0.2.0) in fix.3, then re-synced on 2026-09-23 (task 3143-1) to the official 3.14.3 distribution's copy of the same package (glm/packages/zcode-guide-plugin, plugin version 0.3.0; the source tree was extracted for comparison at /tmp/z3143/squashfs-root). All 8 redistributed files — including .zcode-plugin/plugin.json — are byte-identical to that 0.3.0 package (sha256 verified per file); the 9th upstream file is package.json, intentionally not redistributed. No node_modules. No local modifications.",
       "roots": [
         "apps/zcode-cli/packages/zcode-guide-plugin"
       ],
-      "scope": "Official zcode-guide plugin content: 9 skill documents under skills/, commands/workflow.md, README.md and .zcode-plugin/plugin.json. Verbatim copy, no local modifications. The upstream package.json is intentionally not redistributed: apps/zcode-cli/packages/* is a pnpm workspace glob, so a copied manifest would register this directory as a workspace importer and break `pnpm install --frozen-lockfile`; the MIT declaration is retained in the copied .zcode-plugin/plugin.json.",
+      "scope": "Official zcode-guide plugin content version 0.3.0: 6 skill documents under skills/ (five diagnosing-* guides plus the configuration guide), README.md and .zcode-plugin/plugin.json. Verbatim copy, no local modifications. commands/workflow.md and skills/dynamic-workflows/* are no longer part of this plugin in 0.3.0 upstream either; /workflow is now a built-in command and dynamic-workflows ships in apps/zcode-cli/packages/bundled-skills (registered separately). The upstream package.json is intentionally not redistributed: apps/zcode-cli/packages/* is a pnpm workspace glob, so a copied manifest would register this directory as a workspace importer and break `pnpm install --frozen-lockfile`; the MIT declaration is retained in the copied .zcode-plugin/plugin.json.",
       "license": "MIT",
       "files": [
         {
           "file": "apps/zcode-cli/packages/zcode-guide-plugin/.zcode-plugin/plugin.json",
-          "sha256": "50bad11cc930ff6c68c00d63219b6f3532fd20488eb2f8492fdb0f9f76a33f78"
+          "sha256": "c152575af93384a2c78e466d838b87c425fe893b0ed31c893cc861496a9f76c6"
         },
         {
           "file": "apps/zcode-cli/packages/zcode-guide-plugin/README.md",
           "sha256": "182415c3759d4e7f0baf264bb7283357ba4339d8f5fbc5b5740f645a667578df"
-        },
-        {
-          "file": "apps/zcode-cli/packages/zcode-guide-plugin/commands/workflow.md",
-          "sha256": "c38b67c5094dcc332b5ecc4673f5a04d1fb179e48f4f745c46aa3fe54a1fcc87"
         },
         {
           "file": "apps/zcode-cli/packages/zcode-guide-plugin/skills/diagnosing-commands/SKILL.md",
@@ -29202,18 +29203,6 @@
         {
           "file": "apps/zcode-cli/packages/zcode-guide-plugin/skills/diagnosing-skills/SKILL.md",
           "sha256": "cf3ddb6d103dbb54672fbe730e4e889e536fd15b0c57a43875ab01c8b52ede49"
-        },
-        {
-          "file": "apps/zcode-cli/packages/zcode-guide-plugin/skills/dynamic-workflows/SKILL.md",
-          "sha256": "1b22dbe5cc96f6862761b14508545732f6e6a830382b1d4638ec735fec6f2b6a"
-        },
-        {
-          "file": "apps/zcode-cli/packages/zcode-guide-plugin/skills/dynamic-workflows/examples.md",
-          "sha256": "8f1fae434d23c8aad5b61b085de4058beac16670dd3e928543df08a254a5807d"
-        },
-        {
-          "file": "apps/zcode-cli/packages/zcode-guide-plugin/skills/dynamic-workflows/patterns.md",
-          "sha256": "91e6c48a3b1e5891e0965134247d2c55f6a47e4b8e9751dcc290a1b4d58d2f5d"
         },
         {
           "file": "apps/zcode-cli/packages/zcode-guide-plugin/skills/zcode-configuration-guide/SKILL.md",
@@ -29364,6 +29353,38 @@
         {
           "file": "apps/zcode-cli/packages/plugin-creator-plugin/skills/plugin-creator/references/plugin-json-spec.md",
           "sha256": "9ffea825cc42ee199a593dcf55863ab26f7113dbef11828ef2cd169079654f66"
+        }
+      ]
+    },
+    {
+      "id": "ZCode bundled-skills pack (Z.ai)",
+      "referenceRevision": null,
+      "source": "The official bundled-skills package ships no LICENSE file and, unlike a plugin, no .zcode-plugin/plugin.json, so it carries no in-package license declaration. It is redistributed as part of the same MIT-declared official distribution (its sibling packages declare license: MIT, author Z.ai) and its content lineage is the MIT zcode-guide plugin; the notice retained below is that shared MIT text",
+      "file": "third-party/upstream/2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031.txt",
+      "sha256": "2c00c46a83a058accf6052dccccf2cd76df0dfd77ed8431f845e6b114c246031",
+      "importRevision": null,
+      "provenance": "Copied from the official 3.14.3 distribution package glm/packages/bundled-skills (the source tree was extracted for comparison at /tmp/z3143/squashfs-root). All 4 redistributed files are byte-identical to that package (sha256 verified per file), and the upstream package contains exactly these 4 files — no package.json. Upstream records no revision for this material. Notice caveat: the pack contains no license text of its own, so the MIT notice below is inherited from the distribution-level declaration and from the zcode-guide lineage, not quoted from a file inside the pack.",
+      "roots": [
+        "apps/zcode-cli/packages/bundled-skills"
+      ],
+      "scope": "Official bundled-skills pack: README.md plus skills/dynamic-workflows/{SKILL.md,patterns.md,examples.md}. Verbatim copy, no local modifications. The pack carries the dynamic-workflows skill that upstream moved out of the zcode-guide plugin in version 0.3.0; patterns.md is byte-identical to the copy that shipped inside the MIT zcode-guide plugin, which is the license basis recorded here.",
+      "license": "MIT",
+      "files": [
+        {
+          "file": "apps/zcode-cli/packages/bundled-skills/README.md",
+          "sha256": "c11d87c736d552dee95b32998f285f798f076f4370b80da59c19222e4dc3ed77"
+        },
+        {
+          "file": "apps/zcode-cli/packages/bundled-skills/skills/dynamic-workflows/SKILL.md",
+          "sha256": "92b8980df6af83c94fc0e2e8a90e0f8d93312289dd7119c0b0e0f3c95ce2502d"
+        },
+        {
+          "file": "apps/zcode-cli/packages/bundled-skills/skills/dynamic-workflows/examples.md",
+          "sha256": "c91419ad54f303b8aadb59a87e615f61d291c89d64a98a1d43072154f7885af3"
+        },
+        {
+          "file": "apps/zcode-cli/packages/bundled-skills/skills/dynamic-workflows/patterns.md",
+          "sha256": "91e6c48a3b1e5891e0965134247d2c55f6a47e4b8e9751dcc290a1b4d58d2f5d"
         }
       ]
     }

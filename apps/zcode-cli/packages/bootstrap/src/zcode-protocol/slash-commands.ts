@@ -8,12 +8,9 @@ import {
   APP_PROTOCOL_VISIBLE_BUILTIN_SLASH_COMMAND_NAMES,
   isReservedZCodeSlashCommandName,
 } from "../slash-command-surface.js";
+import { DYNAMIC_WORKFLOW_SLASH_COMMAND_NAME } from "../app/dynamic-workflow-gate.js";
 
-/**
- * `workflow` 是 zcode-guide 内置插件的自定义命令，随 CLI 打包，不受用户 commandOverrides
- * 影响；灰度关闭时只能在装配目录时按名剔除。
- */
-const DYNAMIC_WORKFLOW_SLASH_COMMAND_NAME = "workflow";
+// /workflow 的名字由 dynamic-workflow-gate.ts 统一持有（展开点、目录点、灰度裁剪点三处共用）。
 
 export interface ListProtocolSlashCommandsOptions extends ListZCodeCustomCommandsOptions {
   /**
@@ -37,31 +34,32 @@ export async function listProtocolSlashCommands(
     customCommands = [];
   }
 
-  return pinWorkflowAfterGoal([
+  const catalog: ZCodeSlashCommand[] = [
     ...builtins,
     ...customCommands
       .filter((command) => !command.disableNonInteractive)
       .filter((command) => !isReservedZCodeSlashCommandName(command.name))
-      // 灰度关闭：composer 的加号菜单与 `/` 面板都只读这份目录，剔除即两个入口一起消失。开启时后面的 pinWorkflowAfterGoal 继续把它钉在 goal 之后。
-      .filter(
-        (command) =>
-          options.dynamicWorkflowEnabled !== false ||
-          command.name !== DYNAMIC_WORKFLOW_SLASH_COMMAND_NAME,
-      )
       .map((command) => ({
         description: command.description,
         inputHint: `/${command.name}${command.argumentHint ? ` ${command.argumentHint}` : ""}`,
         name: command.name,
         source: "custom" as const,
       })),
-  ]);
+  ];
+  // 灰度关闭：/workflow 整体消失（内置条目与任何残留的自定义命令一起剔除）——
+  // composer 的加号菜单与 `/` 面板都只读这份目录，剔除即两个入口一起消失；
+  // 手打命令名的展开侧另有同一判据（builtin-prompt-command.ts）。
+  const gated =
+    options.dynamicWorkflowEnabled === false
+      ? catalog.filter((command) => command.name !== DYNAMIC_WORKFLOW_SLASH_COMMAND_NAME)
+      : catalog;
+  return pinWorkflowAfterGoal(gated);
 }
 
 /**
  * App `/` 面板按本目录顺序展示，本函数是唯一的排序点（UI 不维护排序白名单）。
- * `workflow` 是 zcode-guide 内置插件的自定义命令，
- * 按发现顺序会沉在 custom 段末尾；产品要求它与 `goal` 一样作为「开启一段工作」的入口，
- * 紧随 goal 之后。
+ * `workflow` 现在是内置命令（3.14.3 起，此前由 zcode-guide 插件提供）；
+ * 产品要求它与 `goal` 一样作为「开启一段工作」的入口，紧随 goal 之后。
  * 只调顺序：来源、去重与 reserved 规则不变；任一方缺席时保持原序。
  */
 function pinWorkflowAfterGoal(commands: ZCodeSlashCommand[]): ZCodeSlashCommand[] {

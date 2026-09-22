@@ -6,10 +6,13 @@ when_to_use: "Only for CreateWorkflow scripts. A single delegation or a few inde
 
 # Writing dynamic workflows
 
-The `CreateWorkflow` tool's own description already carries the complete API surface and
-the hard authoring rules. **Read them there, not here** — this skill is the judgment layer:
-how many subagents a request deserves, which of them should share a context, what each one
-should hand back, and how to keep the run's work from dying with the run.
+This skill is the whole authoring contract for `CreateWorkflow`. The tool descriptions are
+short on purpose; the facade the compiler checks against, the rules a script must satisfy and
+the fields each tool takes are in §16, and `CreateWorkflow`, `AmendWorkflow`, `SaveWorkflow`
+and `EvalWorkflowSnippet` refuse to run until this skill has been loaded in the session. The
+rest is the judgment layer: how many subagents a request deserves, which of them should share
+a context, what each one should hand back, and how to keep the run's work from dying with the
+run.
 
 Two names collide in this codebase. `CreateWorkflow` is the dynamic-workflow tool and the
 only one this skill is about. The legacy `Workflow` tool and `/expert` are a different,
@@ -689,142 +692,11 @@ chart's points, so a card for it would say nothing new.
 
 ## 11. A complete example
 
-Review every changed file, triage its findings on one scale, confirm each kept finding
-independently, and hand back a report. Everything a file needs happens as soon as its own
-review lands; the only join is the cross-file deduplication that needs every finding.
-
-<!-- compile -->
-```ts
-interface Finding {
-  /** Workspace-relative path, with a line when it applies: "src/a.ts:42". */
-  where: string;
-  /** One sentence: what is wrong. */
-  what: string;
-  /** What showed it: the lines read, or the command and the output that proved it. */
-  evidence: string;
-  /** How much it matters. Reserve "high" for data loss, a crash, or a wrong result. */
-  severity: "low" | "medium" | "high";
-}
-interface Review {
-  findings: Finding[];
-}
-interface Keep {
-  /** True when this finding is worth putting in front of a human. */
-  keep: boolean;
-}
-interface Confirmation {
-  /** True only when you reproduced the problem yourself from the evidence. */
-  reproduced: boolean;
-  /** What you did to check, one sentence. */
-  note: string;
-}
-interface ReportedFinding extends Finding {
-  /** "verified" when the confirmer reproduced it; "unconfirmed" when it could not. */
-  status: "verified" | "unconfirmed";
-}
-interface Digest {
-  /** The confirmed findings with duplicates across files merged, one line each. */
-  lines: string[];
-  /** Two or three sentences a reader can act on. */
-  summary: string;
-}
-interface WorkflowReport {
-  /** Two or three sentences answering what the user asked for. */
-  conclusion: string;
-  findings: ReportedFinding[];
-  /** What the run checked and how. */
-  verified: string[];
-  /** What the run did not look at or could not check, and why. */
-  notCovered: string[];
-}
-
-phase("Review each changed file and confirm its findings as they land");
-let paths: string[];
-try {
-  paths = await git.changedFiles("origin/main");
-} catch {
-  paths = await files.glob("src/**/*.ts");
-}
-log(`reviewing ${paths.length} changed files`);
-
-// One triage subagent for all findings: severity only means anything if it is judged on a
-// consistent scale. It is a queue, not a barrier — asks on it run FIFO, so a finding reaches
-// it the moment its file's review lands, whichever file that is.
-const triage = agent("triage", "You decide which review findings deserve a human's attention. Be strict.");
-
-// One reviewer per file, fresh each: the files are unrelated, so nothing is gained by
-// sharing a context and everything is gained by running them at once. Triage and
-// confirmation live inside the same callback, so no file waits for the slowest review
-// before its findings move on; the outer `Promise.all` is the only join the report waits on.
-const perFile = await Promise.all(
-  paths.map(async (p) => {
-    const review = await agent(`reviewer-${p}`).ask<Review>(`Review ${p} for correctness bugs.`);
-
-    const kept: Finding[] = [];
-    for (const finding of review.findings) {
-      const verdict = await triage.ask<Keep>(`Worth reporting? ${JSON.stringify(finding)}`);
-      if (verdict.keep) kept.push(finding);
-    }
-
-    // A separate confirmer per kept finding, blind to the reviewer that raised it: it reads
-    // the code, runs a check if one decides it, and is told not to fix anything. The name
-    // carries the path and the index, because every subagent name in a run must be unique.
-    return Promise.all(
-      kept.map(async (finding, index) => {
-        const check = await agent(`confirmer-${p}-${index}`).ask<Confirmation>(
-          `Reproduce this finding from its evidence alone: read the code, run a check if one exists. Do not edit any file.\n${JSON.stringify(finding)}`,
-        );
-        const reported: ReportedFinding = {
-          ...finding,
-          status: check.reproduced ? "verified" : "unconfirmed",
-        };
-        report(reported); // published now, with its status, so it survives a later failure
-        return reported;
-      }),
-    );
-  }),
-);
-const confirmed = perFile.flat();
-log(`${confirmed.length} findings confirmed or labelled`);
-
-// The one stage that genuinely needs every finding: two reviewers can flag the same root
-// cause from two files, and only a reader of the whole list can merge them.
-phase("Merge duplicate findings across files and write them up");
-const digest = await agent("editor", "You merge review findings that share a root cause and write them up for the engineer who fixes them.")
-  .ask<Digest>(`Merge duplicates and write these up:\n${JSON.stringify(confirmed)}`);
-
-const verifiedCount = confirmed.filter((f) => f.status === "verified").length;
-await artifact.markdown(
-  "report",
-  [
-    `# Review of ${paths.length} changed files: ${confirmed.length} findings, ${verifiedCount} reproduced`,
-    "",
-    digest.summary,
-    "",
-    ...digest.lines.map((line) => `- ${line}`),
-    "",
-    "## Every finding",
-    ...confirmed.map((f) => `- **${f.where}** (${f.severity}, ${f.status}): ${f.what}\n  ${f.evidence}`),
-  ].join("\n"),
-  { title: "Review report" },
-);
-const result: WorkflowReport = {
-  conclusion: digest.summary,
-  findings: confirmed,
-  verified: paths.map((p) => `reviewed ${p}; every kept finding re-checked by a separate subagent`),
-  notCovered: ["files outside the change set", "runtime behaviour no existing test exercises"],
-};
-return result;
-```
-
-Three shapes in one script, each chosen for a reason. The reviewers are fresh and parallel
-because the files are unrelated. The triage subagent is shared because severity must mean the
-same thing twice — and sharing costs nothing here, because its FIFO queue is fed as reviews
-land rather than after all of them. The confirmers are fresh, per finding and blind to the
-reviewer, and they start the moment their file's triage is done: with twelve files and one
-slow reviewer, eleven files' findings are confirmed and reported while it is still reading.
-Nothing gets a second reader on top: each finding was confirmed, and the editor's job is
-merging and writing up, not re-checking.
+The complete review workflow that used to sit here — a reviewer per changed file, triage
+through one shared subagent that is fed as reviews land, a confirmer per kept finding chained
+inside the same callback, one join for the cross-file deduplication — is
+`${ZCODE_SKILL_DIR}/examples.md` §5. Read it when you want to see a whole script's arc; §7
+and §10 already carry its rules.
 
 ## 12. Anti-patterns
 
@@ -915,13 +787,14 @@ completed, or still running — can be superseded: edit the run's script file an
 `AmendWorkflow` with `run_id: "<runId>"` and that `path`. That starts a new run which
 imports the old one's finished work, matched per named subagent along its sequence of asks,
 so every step you did not touch settles from cache at no token cost and only the changed
-part actually runs — with one
-deliberate limit: the moment any subagent runs live, the workspace may no longer be the one
-the old results were computed against, so from that point every `world.run`, every world
-read and every ask to any subagent runs live even if its text is unchanged. A gate command
-therefore always tests the code the amended run actually
-produced; the price is that steps after the first re-run doer are re-paid. The old
-run is left exactly as it was. This is the move after a `ScriptError`, after a bad prompt
+part actually runs — with one deliberate limit: the moment a live subagent writes to the
+workspace (or a live `world.run` executes), the workspace may no longer be the one the old
+results were computed against, so from that point every cached `world.run`, every cached
+world read and every cached ask whose subagent had read or run something runs live even if
+its text is unchanged; asks whose subagent only answered keep settling from the cache. A gate
+command therefore always tests the code the amended run actually produced; the price is
+that doing steps after the first live write are re-paid. The old run is left exactly as it
+was. This is the move after a `ScriptError`, after a bad prompt
 produced a useless result, and when a completed analysis needs one more stage — rewriting
 the workflow from scratch throws away work that was already paid for. Two things make the
 cache hit: names that stay the same across the revision, and asks whose instructions stay
@@ -1040,3 +913,608 @@ chatter, not an allowance to spend.
   when you know the shape you want and want it written correctly.
 - `${ZCODE_SKILL_DIR}/examples.md` — complete worked scripts, including a two-subagent
   adversarial prove/disprove loop. Read one when you want to see a whole script's arc.
+
+## 16. Tool reference
+
+The four authoring tools — `CreateWorkflow`, `AmendWorkflow`, `SaveWorkflow` and
+`EvalWorkflowSnippet` — carry one-paragraph descriptions on purpose, and each of them refuses
+to run until this skill has been loaded in the session. This section is the part of their
+contract that the descriptions do not carry: the facade the compiler checks against, the
+rules a script must satisfy, and the fields each tool takes. Read it before writing or
+revising a script; the compiler holds you to it.
+
+### 16.1 `CreateWorkflow`
+
+Typechecks the script; on a clean compile asks the user to confirm and starts the run in the
+background; you are notified with the script's final `return` value when the run settles.
+Compilation errors come back as diagnostics, counted in the script's file (§13).
+
+**Three sources; pass exactly one.**
+
+- `script`: a one-off workflow written inline. It is saved to a file under
+  `.zcode/workflow-drafts/` and the result names that file, whether the script compiled or
+  not; revise it by editing the file and resubmitting with `path`, never by pasting the
+  script again.
+- `saved`: a workflow saved in this project or globally, by name —
+  `saved: { name: "pr-review", args: { pr: "123" } }`. Its arguments are validated against
+  its declaration (unknown keys, missing required values and wrong types are rejected)
+  before anything runs. Before writing a workflow from scratch, check `ListSavedWorkflows`:
+  a saved workflow the user reviewed and kept beats a rebuilt one. Running a saved workflow
+  is the one call that does not need this skill loaded.
+- `path`: a script file on disk, relative to the working directory or absolute — normally
+  the file a previous result named. Pass `args` alongside it when the file declares
+  arguments in its `/* zcode-workflow` block.
+
+Either way the user confirms the run, and the confirmation shows the actual script.
+
+**Fields.**
+
+- `name`: a short label for the run in the user's language ("PR review", "代码评审").
+  Always pass it for an inline script; it labels the run everywhere and names its draft
+  file. It defaults to the saved workflow's name.
+- `max_concurrency`: an upper bound on how many subagents work at once. Set it only when
+  the user asks to limit parallelism — never on your own initiative and never as a
+  reaction to provider rate limits or errors, which the runtime already adapts to. A value
+  above the machine's ceiling is lowered to it. Otherwise how many subagents run at once is
+  the runtime's decision, not the script's.
+- `subagent_model`: the model the subagents run on, as `providerId/modelId` or a bare
+  model id (optionally `$reasoningLevel`). Set it only when the user asks for a specific
+  model; pass the name the user used, and if the tool cannot resolve it, pick from the ids
+  it lists or call `ListModels`. You stay on the session model either way.
+
+This tool starts a new run. To change a run that exists — errored, completed, stopped or
+still running — call `AmendWorkflow` (§13, §16.4), never `CreateWorkflow` again.
+
+### 16.2 The facade
+
+Every script and snippet is checked against these declarations. They are the same constant
+the compiler is fed, so what you read here is what typechecks. The block uses `declare`
+because it is the host's ambient API description — do not imitate it; your script defines
+plain interfaces and never uses `declare`.
+
+<!-- facade-dts:start -->
+```ts
+/**
+ * A node: one task assigned to an actor, producing a typed result.
+ * Thenable — await it, or combine with Promise.all for joins.
+ */
+declare interface Node<T> extends PromiseLike<T> {}
+
+/**
+ * Persona of an actor: identity, fixed at creation (frozen for the actor's lifetime). Every
+ * actor has the regular working tools (reading, searching, editing, running commands); what
+ * it may do with them is said in the ask.
+ */
+declare interface AgentPersona {
+  /** System prompt describing the actor's role. */
+  system?: string;
+}
+
+/**
+ * An actor: a persistent conversational context that executes tasks serially.
+ * Context accumulates across asks; concurrent asks on one actor queue FIFO.
+ */
+declare interface Agent {
+  /**
+   * Assign one task. T is the task's output value: an interface you define in
+   * this script with a plain "interface" declaration (no "declare" modifier; the
+   * harness synthesizes its runtime schema from the type), or the final response
+   * text when the type argument is omitted.
+   */
+  ask<T = string>(instructions: string): Node<T>;
+}
+
+/**
+ * Create a fresh actor. Every call creates a new context; sharing context means
+ * sharing this reference.
+ *
+ * The name is optional, but a non-empty one is an identity, not a label. It must be
+ * unique within the run: two actors under the same name fail the whole run. It is
+ * also the key a revised re-run matches its cache on (AmendWorkflow imports the
+ * finished work of each named actor), so stable, meaningful
+ * names carry work across script revisions. Anonymous actors are legal and never
+ * reuse imported work.
+ *
+ * In a fan-out or a loop each iteration is a separate actor, so a single static name
+ * there is the duplicate case: give each one its own name (agent("reviewer-" + file))
+ * or leave them all anonymous. A literal name in a loop is reported when the script
+ * is compiled; a computed one fails at run time.
+ */
+declare function agent(name?: string, persona?: string | AgentPersona): Agent;
+
+/**
+ * The run's arguments: the values supplied when this workflow was started.
+ *
+ * A workflow saved into the project declares its arguments (name, type, whether they
+ * are required, defaults); the host validates the caller's values against that
+ * declaration and fills in defaults before the run starts, so what lands here is
+ * always a complete, checked bag. For an inline script — and inside a snippet — it is
+ * simply empty.
+ *
+ * Always defined, so reading args.target is a plain property read rather than a crash.
+ * The values are typed unknown on purpose: the compiler surface must not change from
+ * one workflow to the next, so narrow them in the script -- String(args.target), or a
+ * typeof guard -- exactly as you would any other external input.
+ */
+declare const args: Readonly<Record<string, unknown>>;
+
+/** Emit a progress message to the user. */
+declare function log(message: string): void;
+
+/**
+ * Publish one intermediate result while the run is still going. Like log() it
+ * returns nothing and there is nothing to await — a finding has no reply.
+ *
+ * Unlike log() it is journaled: a resumed run never shows the same item twice, and
+ * the items are delivered with the completion notification even when the run ends in
+ * failure. That is the point of it — a run that dies on its twelfth of forty tasks
+ * still did eleven tasks' worth of work, and reported items are how that work
+ * survives.
+ *
+ * Two caps, and both fail the whole run rather than the call (there is no rejection
+ * channel in a void return): at most 256 items per run, and at most 32KB per
+ * serialized item. They are generous on purpose — report findings, not chatter.
+ *
+ * The item must be JSON-serializable: plain objects, arrays, strings, numbers,
+ * booleans, null. Functions, class instances, Date and promises are rejected when
+ * the script is compiled.
+ *
+ * The optional second argument routes the item to a dashboard artifact: pass the id
+ * of a preset declared with artifact.chart / table / metrics / board, and this item
+ * becomes one more point, row, tile value or card on it — the dashboard is nothing
+ * but the items tagged with its id. The tag must be a compile-time string literal
+ * naming a preset the script declares (anywhere in the text, but the declaration must
+ * have executed by the time this call runs); a tag that names nothing, or names a
+ * file/markdown artifact, fails the run. An untagged report is unchanged: it goes to
+ * the run's Results, and a tagged one goes to both.
+ */
+declare function report(item: unknown, artifactId?: string): void;
+
+/** A published artifact version: the id it was published under, and which version this call minted. */
+declare interface ArtifactRef { id: string; version: number }
+/** Card metadata every artifact kind accepts. */
+declare interface ArtifactOptions {
+  /** Shown as the card title; defaults to the id. In the user's language. */
+  title?: string;
+  /** A sentence or two, shown beside the title when this artifact leads the card. */
+  description?: string;
+  /** The run's deliverable: the card and the run pane lead with it. At most one id per run; once set it stays set for later versions. */
+  primary?: boolean;
+}
+declare interface ArtifactFileOptions extends ArtifactOptions {
+  /** Overrides the type sniffed from the extension ("application/pdf", "text/html", …). */
+  contentType?: string;
+}
+/** One value taken from a reported item: a dot path into the item ("timing.after"). */
+declare interface ArtifactField { field: string; label?: string; unit?: string }
+declare interface ChartSpec extends ArtifactOptions {
+  type?: "line" | "bar" | "scatter";        // default "line"
+  x: ArtifactField;
+  y: ArtifactField | ArtifactField[];        // several = several series
+  scale?: "linear" | "log";                  // y axis, default "linear"
+  /** A reference value drawn as a horizontal rule, taken from the first item that has the field. */
+  baseline?: ArtifactField;
+}
+declare interface TableSpec extends ArtifactOptions {
+  columns: ArtifactField[];
+  /** Field that identifies a row; a later item with the same key replaces the row. Absent = append-only. */
+  key?: string;
+}
+declare interface MetricsSpec extends ArtifactOptions {
+  /** Each tile shows the value from the latest item that has the field. */
+  metrics: ArtifactField[];
+}
+declare interface BoardSpec extends ArtifactOptions {
+  /** Field identifying a card; a later item with the same key moves/updates the card. */
+  key: string;
+  /** Field holding the card's column. */
+  status: string;
+  /** Column order. Items whose status is not listed land in a trailing "other" column. */
+  columns: string[];
+  /** Field for the card title (default: the key) and extra fields shown on the card. */
+  cardTitle?: string;
+  detail?: ArtifactField[];
+}
+/**
+ * Publish what the user should see: the run's own deliverable surface, kept after it ends.
+ * Two habits. (1) EVERY RUN PUBLISHES ITS DELIVERABLE, whatever the user asked for: a webpage
+ * or PDF a subagent wrote goes out via file(); an answer (findings, a review) goes out as the
+ * long form of the facts the return summarises, usually via markdown(). Once, at the end;
+ * skip it only when the whole answer is one line. When the run publishes more than one
+ * artifact, mark the deliverable { primary: true }. (2) A DASHBOARD IS FOR THE PERSON WATCHING
+ * THE RUN: declare one when there is state worth watching mid-run (the key number per round,
+ * which items are done) and none when the run is over before anyone looks. Two tests keep it
+ * to what matters: would the user open it on its own? does it repeat another artifact? A CSV
+ * and a table of its rows: one of them is noise.
+ *
+ * Every id is a compile-time string literal (non-empty, at most 64 characters of
+ * [A-Za-z0-9_.-]); the set a run can publish is fixed at submit time, so the compiler
+ * rejects a computed one. Within one run an id belongs to exactly one member.
+ * The two families are deliberately asymmetric, and the asymmetry is the whole design:
+ * - CONTENT (file, markdown) are EFFECTS: async, resolve to an ArtifactRef, and REJECT
+ *   catchably — missing file, not a file, path outside the workspace, over the size cap, no
+ *   store. try { await artifact.file("book", "out/book.pdf") } catch { …ask a subagent to
+ *   write it… } is the intended idiom. Bytes are copied at publish time, so later workspace
+ *   edits never rewrite a version; republishing an id mints the NEXT version and keeps the
+ *   old ones (at most 16 per id).
+ * - PRESET (chart, table, metrics, board) are DECLARATIONS: synchronous, return nothing,
+ *   never touch a file; they say how items tagged with their id are drawn. Declare each ONCE,
+ *   at the top, then feed it with report(item, "<id>"). The same id with an identical spec is
+ *   a no-op; a DIFFERENT or malformed spec fails the whole run — a void return has no
+ *   rejection channel, exactly as with report().
+ * Caps: 32 ids per run, 16 versions per id, 20 MiB per file, 256 KB per markdown, 120
+ * characters of title and 500 of description.
+ */
+declare const artifact: {
+  /**
+   * Publish a file from the workspace. path is workspace-relative, resolved by the same
+   * resolver files.read() uses; the bytes are copied at publish time. The content type is
+   * read off the extension unless opts.contentType overrides it. Rejects (catchably)
+   * rather than publishing something empty.
+   */
+  file(id: string, path: string, opts?: ArtifactFileOptions): Promise<ArtifactRef>;
+  /** Publish markdown text the script composed: the usual shape of a report deliverable, the long form of what the return summarises. */
+  markdown(id: string, content: string, opts?: ArtifactOptions): Promise<ArtifactRef>;
+  /** Declare a chart fed by report(item, id): each tagged item is one point. */
+  chart(id: string, spec: ChartSpec): void;
+  /** Declare a table fed by report(item, id): each tagged item is one row. */
+  table(id: string, spec: TableSpec): void;
+  /** Declare a metric tile row fed by report(item, id): each tile shows the newest value it has. */
+  metrics(id: string, spec: MetricsSpec): void;
+  /** Declare a board fed by report(item, id): each tagged item is a card, placed by its status field. */
+  board(id: string, spec: BoardSpec): void;
+};
+
+/**
+ * Mark the start of a phase: a short, human-readable name for the group of steps that
+ * follow, shown as one node on the workflow graph the user reads and approves.
+ * Presentation only — it starts nothing, waits for nothing, returns nothing.
+ *
+ * Required in every script you submit, not optional: the phase graph is how the user
+ * experiences the workflow. Without markers they face one card per step and no story;
+ * group the whole script, top to bottom.
+ *
+ * Name phases for the user, in the language the user is speaking in this session: a short
+ * natural phrase saying what the stage accomplishes ("Research each changed file in parallel",
+ * "汇总并产出最终报告"). Graph-building vocabulary the user never chose — "fan-out", "gate",
+ * "aggregate" — is not a name; the user approves stages by what they do. Say it the way you
+ * would tell a colleague what is happening: "确认测试仍然通过", not "执行测试验证任务".
+ *
+ * The scope is the rest of the enclosing block: the marker claims every step issued
+ * from it to the end of the block it stands in — nested blocks and inlined helper
+ * calls included — and the enclosing phase resumes once that block ends. A marker
+ * inside an if-branch therefore groups that branch and does not leak past it. Two
+ * markers with the same name are one phase: repeating a name continues that phase,
+ * which is the opposite of an actor's name — that one has to be unique.
+ *
+ * Two rules the compiler enforces. The name must be a compile-time string literal
+ * ("review the diff" or a no-substitution template) and non-empty, because the phase
+ * names label the graph the user confirms before anything runs. And the call must
+ * stand alone as its own statement: a marker in expression position has no
+ * rest-of-block to claim.
+ *
+ * Every phase must contain at least one subagent ask or one world.run. A phase is a
+ * stage the user watches progress through; plain script logic between two asks (reading
+ * args, shaping a prompt, building the return) runs in a flash and shows no progress, so
+ * it is not a stage. Fold it into the phase before or after it; never open a phase for
+ * the setup at the top or the return at the bottom.
+ *
+ * Idiom: one marker at the head of each stage that does work — name the loop body and
+ * its check where they start, name the close-out that asks or runs after the loop.
+ */
+declare function phase(name: string): void;
+
+/** One matching line found by files.grep. */
+declare interface GrepMatch {
+  /** Workspace-relative path of the file the match was found in. */
+  path: string;
+  /** One-based line number of the match. */
+  line: number;
+  /** The full text of the matching line. */
+  text: string;
+}
+
+/**
+ * Journaled read-only observations of the workspace, executed by the harness.
+ * Replay returns the journal-recorded value. Prefer passing paths to agents and
+ * letting them read files with their own tools; read() and grep() are for when the
+ * script itself must shard or branch on content. There is no write — writing to the
+ * world is an agent task.
+ */
+declare const files: {
+  /**
+   * List workspace files matching a glob pattern, as workspace-relative paths sorted
+   * lexicographically. Capped at 2000 files: over the cap the call rejects instead of
+   * returning a partial view — narrow the pattern.
+   */
+  glob(pattern: string): Promise<string[]>;
+  /** Read one workspace file as UTF-8 text. Size-capped. */
+  read(path: string): Promise<string>;
+  /**
+   * Search file contents with a ripgrep-compatible regular expression, optionally
+   * narrowed to a glob over paths (the same syntax glob() takes: "*.ts", "src/**").
+   * Returns one entry per matching line, with workspace-relative paths and one-based
+   * line numbers.
+   *
+   * Capped at 2000 matches or 256KB of results, whichever comes first. Over the cap
+   * the call rejects instead of returning a partial view — a silently truncated search
+   * is the one result you cannot reason about — so narrow the pattern or add a glob.
+   */
+  grep(pattern: string, glob?: string): Promise<GrepMatch[]>;
+};
+
+/** The working tree's status, as reported by git.status(). */
+declare interface GitStatus {
+  /** Current branch name; absent when HEAD is detached. */
+  branch?: string;
+  /** True when nothing is staged, modified, or untracked. */
+  clean: boolean;
+  /** Workspace-relative paths staged for the next commit. */
+  staged: string[];
+  /** Workspace-relative paths modified in the working tree but not staged. */
+  unstaged: string[];
+  /** Workspace-relative paths git does not track (honouring .gitignore). */
+  untracked: string[];
+}
+
+/** One commit, as reported by git.log(). */
+declare interface GitCommit {
+  /** Full commit hash. */
+  hash: string;
+  /** First line of the commit message. */
+  subject: string;
+  /** Author name. */
+  author: string;
+  /** Author date, ISO 8601. */
+  date: string;
+}
+
+/**
+ * Journaled read-only git observations — the same bargain as files.*: executed by the
+ * harness, recorded in the journal, and replayed from the record, so a resumed run
+ * sees the repository as it was rather than as it is now.
+ *
+ * Read-only by construction rather than by permission: the harness builds a fixed
+ * argument list for one allowlisted subcommand and never a shell string, so there is
+ * no call this surface can express that writes. A base must name a single ref — no
+ * ".." ranges in this version — and paths are workspace-relative.
+ *
+ * Observations are scoped to the workspace, which is the same world files.* observes:
+ * every path you get back is relative to the workspace and safe to pass straight to
+ * files.read(). If the workspace is a subdirectory of the repository, changes outside
+ * it are not reported — the workspace is the world. git.log is the exception, because
+ * commits are repository-wide objects rather than paths.
+ *
+ * Caps reject rather than truncate (diff at 512KB, log at 100 commits), for the same
+ * reason grep does. Outside a git repository, or with no git available, every call
+ * rejects with a catchable error, so the idiom is try/catch with a files.glob fallback.
+ */
+declare const git: {
+  /**
+   * Workspace-relative paths that changed. With no base: files modified against HEAD
+   * plus untracked files, because a brand-new file is a change to anyone reading. With
+   * a base ref: files differing from that ref, tracked history only.
+   */
+  changedFiles(base?: string): Promise<string[]>;
+  /**
+   * Unified diff against base (default HEAD). Covers the whole workspace unless you
+   * narrow it to one workspace-relative path.
+   */
+  diff(base?: string, path?: string): Promise<string>;
+  /** The current working-tree status, for the workspace. */
+  status(): Promise<GitStatus>;
+  /**
+   * The most recent commits, newest first. Default 20, maximum 100. Unlike the other
+   * members this reads repository-wide history, not workspace paths.
+   */
+  log(count?: number): Promise<GitCommit[]>;
+};
+
+/** The outcome of one world.run command, including nonzero exits. */
+declare interface WorldRunResult {
+  /** The process exit code. Nonzero is a normal, returned outcome — branch on it. */
+  exitCode: number;
+  /** Captured stdout (UTF-8). Capped at 256KB; over the cap the call rejects. */
+  stdout: string;
+  /** Captured stderr (UTF-8). Same cap and rejection semantics as stdout. */
+  stderr: string;
+}
+
+/**
+ * Journaled command execution — the effect primitive. Executed by the harness exactly
+ * once per call site and iteration, recorded in the journal, and replayed from the
+ * record on resume (resume is crash recovery, not re-verification).
+ *
+ * Deliberately unlike git.*: a completed process with a NONZERO exit code RESOLVES to
+ * a WorldRunResult — a failing check is the gating loop's normal case and must not
+ * travel exception control flow. The promise only rejects (catchably) when the
+ * command could not run as an observation at all: spawn failure, or timeout (default
+ * 300000ms, override per call via timeoutMs, no upper cap).
+ *
+ * cmd must be a compile-time string literal: the script's command set is shown to the
+ * user when the run is confirmed, and only those commands are executable. Fixed argv,
+ * never a shell — no pipes, no redirection, no variable expansion; compose with
+ * multiple calls and plain code. cwd is the workspace. Idiom: model generates, code
+ * gates — run the check here, parse its output with pure script logic, and hand
+ * failures to an agent to fix. A helper that needs Node builtins can be inlined as
+ * world.run("node", ["-e", code]) — the code string lives inside the script, so it is
+ * pinned by the journal key like every other argument.
+ */
+declare const world: {
+  run(cmd: string, args?: string[], opts?: { timeoutMs?: number }): Promise<WorldRunResult>;
+};
+```
+<!-- facade-dts:end -->
+
+### 16.3 Rules the compiler and the analyzer enforce
+
+- Plain TypeScript. Define result types with a plain `interface Foo { ... }` or
+  `type Foo = ...` and pass them as `ask<T>` type arguments.
+- Compiled under `strict` with `noUncheckedIndexedAccess` off: indexing an array or record
+  (`items[i]`) needs no guard. `.find()`, `.match()`, `Map.get()` and optional properties
+  still yield `T | undefined` / `null` and must be guarded before use.
+- Never use the `declare` modifier: the script is compiled inside a function body, where
+  ambient declarations are illegal. No `export` statements — the workflow's output is its
+  final `return`. No `import` statements.
+- Top-level `await` and a final `return <value>` are allowed; the returned value is exactly
+  what the completion notification carries.
+- No Node or web APIs: `process`, `fetch`, `fs` do not exist and fail typechecking.
+- `world.run` executes a real command. Its first argument must be a compile-time string
+  literal — the script's command set is shown to the user at confirmation — so interpolate
+  runtime values into the args array, never into the command name. A nonzero exit code
+  comes back as a value (`{ exitCode, stdout, stderr }`), not an exception: branch on
+  `exitCode` for gate checks. Default timeout 300s; override per call with `timeoutMs` (no
+  cap). Spawn failures and timeouts reject; stdout or stderr over 256KB rejects like any
+  other over-cap world read.
+- Phases are required (§8): cover the whole script with `phase("...")` markers, one at the
+  head of each stage. The name is a compile-time string literal and the call is a standalone
+  statement; the marker claims the rest of its enclosing block, nested blocks and inlined
+  helper calls included, so a marker inside an `if` covers that branch only. Two markers
+  with the same name are one phase, which is how a retry loop stays two nodes instead of
+  per-round sprawl. Every phase contains at least one subagent `ask` or one `world.run`;
+  plain script logic between two asks is not a stage, so do not open a phase for the setup
+  at the top or the `return` at the bottom.
+- Subagent names: the name you pass to `agent("...")` is the card the user sees, so write
+  it for the user in the session's language (§9). It is also an identity: unique within the
+  run, and the key an amended run matches its cached results by. Keep names stable across
+  revisions of the same script, and give duplicates in a loop their own computed names.
+- Artifact ids and the `report` tag are compile-time literals; one id belongs to one
+  artifact kind; at most one artifact carries `primary: true`; a preset artifact is declared
+  at the top level, not inside a loop, callback or branch (§10). Publishing rejects
+  catchably when the file is missing or too large.
+- Model-side errors never reach the script. Rate limits, concurrency limits, overload,
+  network errors, timeouts and unknown provider errors are retried by the runtime without
+  limit while it adapts the fan-out to what the provider accepts; a deterministic one
+  (expired sign-in, model not in the plan, quota cap, invalid request) stops the whole run as
+  `stopped` so the user can fix the cause and resume it. So do not write retry loops or
+  `try`/`catch` for provider errors. Reserve them for logic failures — a subagent result
+  that failed validation, a gate that did not pass, a world read over its cap, an artifact
+  publish whose source file is missing, or a `ContextLimit` (the ask was too large for the
+  model's context even after compaction: split the work or send less).
+- The final `return` is the model-facing result; artifacts are the user-facing deliverable.
+  Never put the same content in both.
+- On diagnostics, edit the file the result names and call the tool again with `path`; never
+  paste the script a second time.
+
+### 16.4 `AmendWorkflow`
+
+Revises an existing run: it starts a new run that supersedes the old one and imports its
+finished work as a cache, so only what you changed is paid for again. §13 has the cache
+rules and the repair-while-running move. It works on any run of this project — completed,
+errored, stopped or still running; a running predecessor is stopped and superseded in the
+same call, so never `TaskStop` it first and never rewrite it from scratch with
+`CreateWorkflow`. To continue a stopped run unchanged, use `ResumeWorkflowRun` instead.
+
+**Fields — every field you omit keeps the predecessor's value.**
+
+- `run_id` (required): from a `CreateWorkflow` or `AmendWorkflow` result, a notification,
+  `GetWorkflowRun` or `ListWorkflowRuns`.
+- `path` or `script`, never both. `path` is the usual form: the errored notification and
+  `GetWorkflowRun` name the run's script file — edit it in place and pass the same path
+  back, so a revision costs one `Edit` instead of a second copy of the whole script. A file
+  whose bytes you did not change is refused (`script_unchanged`) unless the call also
+  changes `max_concurrency` or `subagent_model`; nothing is stopped and nothing is created.
+  `script` carries a whole revised script inline, written against the same facade and rules;
+  it is saved to a draft file the result names, so the next revision can go back to `path`.
+  Omit both to keep the predecessor's script byte for byte and change only the settings
+  below; its finished work still replays from the cache.
+- `name`: a new display label; defaults to the predecessor's.
+- `max_concurrency`: omit to keep the predecessor's limit, pass `null` to remove it, pass a
+  number to change it (only when the user asks). A call carrying nothing but `run_id` and
+  `max_concurrency`, against a run that is still going, retunes that run in place instead of
+  starting a new one: same run, nothing stopped, nothing re-run.
+- `subagent_model`: omit to keep the predecessor's choice, pass `null` to put the subagents
+  back on the session model, pass a model id to change it (only when the user asks).
+  `ListModels` lists the ids.
+
+Changing only a setting on a running run still stops it; what it had in flight runs again in
+the new run, except that a named subagent whose unfinished ask you did not change picks that
+ask up where it left off instead of starting it over.
+
+**How the cache works.** Named subagents are matched by name across the two scripts; each
+one's asks are matched in order by byte-identical instructions. A match settles from the
+recorded result at zero tokens; a changed or added ask runs live. The cache stays open until a
+live subagent makes its first write to the workspace (or a live `world.run` executes): from
+that moment, cached world reads and cached asks whose subagent had read or run something
+would describe a workspace that no longer exists, so they run live too. Asks that only
+answered keep settling from the cache. Editing an ask's text is how you force it to run
+again; keep names stable and keep tunable constants out of ask text (§13).
+
+An inline `script` that does not compile comes back as diagnostics: fix the file the result
+names and call again with `path` — nothing was stopped and nothing was started.
+
+**Confirmation.** A run this session started (through `CreateWorkflow`, a previous
+`AmendWorkflow` or the workflows hub) is amended without a confirmation window, even while
+it is running. A run the user stopped, or a run another session started, asks the user
+first. The result names the run that was superseded (if one was stopped) and the new run's
+id. The superseded run sends no notification of its own; the new run notifies when it
+settles. Do not wait for it or poll it with `TaskOutput`.
+
+### 16.5 `SaveWorkflow`
+
+Saves a script with its metadata so it can be run again by name — through `CreateWorkflow`'s
+`saved` source, discovered with `ListSavedWorkflows`. Project definitions go in
+`.zcode/workflows/<name>.dwf.ts`, committed with the repository and visible only inside it;
+global definitions go in `~/.zcode/workflows/<name>.dwf.ts` and are available from every
+project on this machine.
+
+**When to call it.**
+
+- Never unsolicited. Saving writes a file into the user's repository; that is their
+  decision, not yours.
+- When a workflow you just built looks reusable — it would plausibly run again with
+  different inputs — suggest saving it in prose, one sentence naming what you would save and
+  why, then stop and wait. Call `SaveWorkflow` only after the user agrees, or when the user
+  asks directly ("save this workflow", "保存这个工作流"). A one-off script tailored to a
+  single question is not worth suggesting; it wastes the user's attention and clutters the
+  project.
+
+**Fields.**
+
+- `name`: a file-safe identifier (letters, digits, dot, dash and underscore). Saving over an
+  existing name replaces that workflow; the confirmation tells the user whether this is a
+  new file or an overwrite, so reuse a name to update a workflow and pick a new one to add a
+  variant.
+- `description` (required) and `whenToUse`: written for a reader who has not seen this
+  conversation. `description` shows up wherever the workflow is listed.
+- `scope` (required, no default): `project` when the script references this repository's
+  files, commands, conventions or layout; `global` when it depends on nothing in the
+  project.
+- `script` or `script_path`, never both. `script_path` saves a draft a `CreateWorkflow` or
+  `AmendWorkflow` result named without re-emitting it; a `/* zcode-workflow` block in that
+  file is dropped, because the metadata comes from this call's fields. `script` is the body
+  only — no metadata block.
+- `args`: name exactly the values that would change between runs — a PR number, a
+  directory, a depth — and no more; every declared argument is one more thing a future
+  caller has to get right. Each declaration gives a `type` (`string`, `number`, `boolean`,
+  or `json` for anything else), and optionally a `description`, `required: true` and a
+  `default`. Declared arguments are the workflow's calling convention; every future call is
+  validated against them.
+
+The saved file is valid TypeScript: a `/* zcode-workflow` block of YAML metadata, then the
+script verbatim. The script is typechecked by the same compiler as `CreateWorkflow`, before
+the user is asked; diagnostics mean nothing was written. The rules in §16.3 apply, phases
+included — future callers did not see this conversation, so the phase names are all they
+get.
+
+### 16.6 `EvalWorkflowSnippet`
+
+Compiles and runs a small snippet synchronously against the same compiler, sandbox and
+world-read execution path a real run uses, and returns the result in the tool call. Nothing
+persists: no journal rows, no background task, no run. It is the test bench for authoring
+(§6): before writing or revising a script, check a parser against real command output, see
+what a glob actually returns (workspace-relative sorted paths, cap rejections), or exercise a
+gate predicate on real repository state, instead of guessing. It is not for orchestration:
+there is no `agent()` here.
+
+- `code` or `path`, never both: the snippet inline, or a file holding it, read whole with no
+  metadata handling.
+- `timeoutMs`: the wall clock for the whole snippet in milliseconds; default 60000, at most
+  600000.
+- The snippet facade is the `args`, `log`, `files`/`git` and `world.run` parts of the block
+  in §16.2; `agent()`, `report()`, `artifact.*` and the `phase` marker do not exist here and
+  fail typechecking. The language rules are a script's: plain interfaces, top-level `await`, a
+  final `return <value>`. The returned value is serialized into the result, so return a
+  summary, not a dump; over 256KB fails the call. `log(...)` lines come back in order. A
+  snippet that contains `world.run` asks the user for confirmation before running. On
+  diagnostics nothing ran: fix the snippet and call again.

@@ -30,9 +30,10 @@ import {
 } from "./process-lifecycle.js";
 import { toMcpRunResult } from "./result.js";
 import {
-  JS_TOOL_DESCRIPTION,
+  resolveJsToolDescription,
   NODE_REPL_DEFAULT_TIMEOUT_MS,
   NODE_REPL_SERVER_INSTRUCTIONS,
+  withComputerUseAvailabilityNote,
   NODE_REPL_SERVER_VERSION,
 } from "./tool-contract.js";
 
@@ -73,14 +74,19 @@ const requestContextSchema = z
   })
   .passthrough();
 
-const tools: Tool[] = [
-  {
-    name: "js",
-    description: JS_TOOL_DESCRIPTION,
-    // host MCP 曾手写出 title optional 的模型合同，和 built-in 合同分叉后 UI 只能显示固定完成文案。
-    inputSchema: JsInputJsonSchema as Tool["inputSchema"],
-  },
-];
+// `js` 工具的描述随「本会话是否启用 CUA」变化：CUA 关闭时要显式告诉模型「没有 CUA，也没有东西
+// 需要安装」，否则它拿到 node_repl 就会自行安装驱动并猜错包名（方案 a，见 tool-contract.ts）。
+// 工具名与 inputSchema 不变，只有描述多一句后缀。
+function buildNodeReplTools(input: { computerUseEnabled: boolean }): Tool[] {
+  return [
+    {
+      name: "js",
+      description: resolveJsToolDescription(input),
+      // host MCP 曾手写出 title optional 的模型合同，和 built-in 合同分叉后 UI 只能显示固定完成文案。
+      inputSchema: JsInputJsonSchema as Tool["inputSchema"],
+    },
+  ];
+}
 
 export interface NodeReplExecuteInput {
   code: string;
@@ -193,9 +199,17 @@ export function createNodeReplMcpRuntime(
 
   const server = new Server(
     { name: "node_repl", version: NODE_REPL_SERVER_VERSION },
-    { capabilities: { tools: {} }, instructions: NODE_REPL_SERVER_INSTRUCTIONS },
+    {
+      capabilities: { tools: {} },
+      // CUA 未启用时在 instructions 里显式说明「没有 CUA，也没有东西需要安装」，
+      // 避免模型拿到 node_repl 就自行安装驱动（方案 a，见 tool-contract.ts）。
+      instructions: withComputerUseAvailabilityNote(NODE_REPL_SERVER_INSTRUCTIONS, {
+        computerUseEnabled: cuaRuntime !== undefined,
+      }),
+    },
   );
 
+  const tools = buildNodeReplTools({ computerUseEnabled: cuaRuntime !== undefined });
   server.setRequestHandler("tools/list", async () => ({ tools }));
   server.setRequestHandler("tools/call", async (request, extra) => {
     if (disposed) throw new Error("node_repl runtime is disposed");

@@ -43,6 +43,23 @@ await app.click(42);
 await app.getAXState();
 ```
 
+The runtime comes from the host. Do **not** install, add, upgrade or substitute it
+yourself — no `npm install` / `pnpm add` / `pip install`, no guessing a package
+name, no alternative driver, and no patching the plugin to invent one. Computer Use
+is disabled by default, so a missing runtime usually means the plugin has not been
+enabled for this client.
+
+If the bootstrap (or the first call) fails with a bridge error — `Computer Use
+runtime bridge is unavailable.` from the SDK, or `Computer Use is unavailable for
+this node_repl session` from the host — stop there:
+
+1. Do not retry, rebuild, install or look for another driver.
+2. Tell the user Computer Use is not enabled or unavailable for this client, and
+   that they can enable it in **Settings → Computer Use**. Say plainly that the
+   desktop cannot be operated until then.
+3. Offer a different approach for the same goal (connector, API, CLI, or the
+   Browser Use skill for web content) — and only continue if the user agrees.
+
 ## API
 
 ```typescript

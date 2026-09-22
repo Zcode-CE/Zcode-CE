@@ -889,7 +889,10 @@ export async function setupComputerUseRuntime({ globals }) {
   const bridge = globals[BRIDGE_SYMBOL];
   if (!bridge || typeof bridge !== "object" || typeof bridge.call !== "function") {
     throw new Error(
-      "Computer Use runtime bridge is unavailable. Use Computer Use from a ZCode desktop or shared-host session.",
+      "Computer Use runtime bridge is unavailable: Computer Use is not enabled for",
+      "this session, and nothing needs to be installed. Tell the user to enable it in",
+      "Settings → Computer Use, then stop — do not install, upgrade or guess a driver",
+      "package, and do not look for an alternative runtime.",
     );
   }
   bridge.assertAvailable?.();

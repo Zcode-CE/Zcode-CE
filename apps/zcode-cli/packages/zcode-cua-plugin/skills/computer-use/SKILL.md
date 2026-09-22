@@ -13,6 +13,12 @@ Read or operate the UI of native apps on the user's computer.
   other UI-automation technology unless the user explicitly asks for that
   technology.
 - Main agent only. Never delegate Computer Use to a subagent.
+- The runtime is provided by the host. **Never** install, add, upgrade or
+  substitute it yourself: no `npm install` / `pnpm add` / `pip install`, no
+  guessing a package name, no looking for an alternative driver, and no editing
+  the plugin to make one appear. A missing runtime means Computer Use is not
+  enabled for this client — not that a dependency is missing. Stop and report it
+  (see "When Computer Use is unavailable" below).
 
 ## Bootstrap every call
 
@@ -35,6 +41,26 @@ const { setupComputerUseRuntime } = await import(
 );
 await setupComputerUseRuntime({ globals: globalThis });
 ```
+
+## When Computer Use is unavailable
+
+The host owns the runtime: there is nothing to install and no package name to
+guess. If the bootstrap or the first call fails with a bridge error — for example
+`Computer Use runtime bridge is unavailable.` or `Computer Use is unavailable for
+this node_repl session` — then:
+
+1. **Stop.** Do not retry the bootstrap, do not rebuild or install the runtime, do
+   not touch the package manager, and do not look for a different driver.
+2. Tell the user, in their own language, that Computer Use is not enabled (or not
+   available) for this client, and that they can turn it on in **Settings →
+   Computer Use** — the plugin ships disabled by default. Say plainly that you
+   cannot operate the desktop until then.
+3. Ask whether they want a different approach to the same goal (a dedicated
+   connector, API, CLI, or the Browser Use skill for anything inside a web page).
+   Never substitute one silently.
+
+Only an explicit user instruction can change this. Never present a self-installed
+driver as a fix: that path is unsupported and is precisely what this section forbids.
 
 ## Accessibility first
 

@@ -6,6 +6,14 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 export const NODE_REPL_CUA_BRIDGE_SYMBOL = Symbol.for("zcode.node-repl.computer-use-bridge");
 export const CUA_UNAVAILABLE_IN_SUBAGENT_MESSAGE = "Computer Use is not available in subagent";
+
+// 方案 (a)：bridge 不可用时**停下并如实报告**，严禁自愈式安装。实测原文案（仅陈述「不可用」）
+// 会被模型当成「环境缺依赖」，于是自行 npm install 猜包名（附图那次连猜两个不存在的包名）。
+// 文案必须同时给「谁来做」（用户在设置里开启）与「不要做什么」（装包/换驱动）。
+export const CUA_UNAVAILABLE_IN_SESSION_MESSAGE =
+  "Computer Use is unavailable for this node_repl session: the runtime is provided by the " +
+  "host and is not enabled for this client. Do not install, upgrade or guess a driver " +
+  "package. Tell the user to enable Computer Use in Settings → Computer Use, then stop.";
 const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
 
 export interface ActiveCuaNodeReplCall {
@@ -46,7 +54,9 @@ export function createComputerUseBridgeGlobals(input: {
       throw new Error(CUA_UNAVAILABLE_IN_SUBAGENT_MESSAGE);
     }
     if (!input.broker) {
-      throw new Error("Computer Use is unavailable for this node_repl session");
+      // 方案 (a)：bridge 不可用即停下，明确禁止自愈式安装。原文案只陈述「不可用」，
+      // 实测模型会据此自行 npm install 猜包名（附图那次连猜两个不存在的包名）。
+      throw new Error(CUA_UNAVAILABLE_IN_SESSION_MESSAGE);
     }
     return active;
   };

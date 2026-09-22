@@ -109,21 +109,17 @@ const officePluginPackages = [
 // 纯内容型官方插件：只有 commands/skills，无 MCP server、无编译产物。
 //
 // 为什么必须有这四条：仓库早就按「它们存在」写好了装配，包却从未被搬进来 ——
-//   · slash-commands.ts 的 `/workflow` 命令取自 zcode-guide 插件；
-//   · dynamic-workflow-gate.ts 按 <插件技能根>/dynamic-workflows/SKILL.md 做灰度裁剪，
-//     即动态工作流的技能正文同样由 zcode-guide 提供；
 //   · startup-marks.ts 的注释点名 skill-creator 是 defaultEnabled 的官方插件。
-// 缺包时这些装配全部静默落空（症状：/workflow 不存在、dynamic-workflows 技能缺失）。
+// 缺包时这些装配全部静默落空（症状：技能/命令在会话里找不到）。
+// 注意：`/workflow` 与 dynamic-workflows 技能自官方 3.14.3 起**不再由 zcode-guide 提供** ——
+// 命令成了内置命令、技能进了 bundled-skills（见下面的 stageBundledSkills）。
 // requiredSeedPaths 与 bootstrap/official-plugin-definitions.ts 的同名常量逐条一致；
 // 缺失时 stageOfficialPlugins() 抛 missing staged official plugin seed asset。
 const contentPluginPackages = [
   {
     name: "zcode-guide",
+    // 0.3.0 起该插件只剩自诊断 + 配置指南六份正文（workflow 命令与 dynamic-workflows 技能已迁出）。
     requiredSeedPaths: [
-      "commands/workflow.md",
-      "skills/dynamic-workflows/SKILL.md",
-      "skills/dynamic-workflows/examples.md",
-      "skills/dynamic-workflows/patterns.md",
       "skills/diagnosing-commands/SKILL.md",
       "skills/diagnosing-hooks/SKILL.md",
       "skills/diagnosing-mcp/SKILL.md",
@@ -399,6 +395,40 @@ function stageKoffiRuntime() {
   }
 }
 
+// 内置技能包（bundled-skills）：官方 3.14.3 起 dynamic-workflows 住在这里。
+//
+// 它不是插件（没有 `.zcode-plugin/plugin.json`），所以不能走 stageOfficialPlugins；
+// 但落点与官方插件同级（`packages/bundled-skills`），因为运行时用的是同一套候选基目录
+// （bootstrap/src/app/entrypoint-candidates.ts）。
+// 缺任一必需资产时运行时**整包拒收**并 warn（bundled-skills.ts），所以这里做同样的硬校验，
+// 让问题在构建期就暴露，而不是等用户发现技能没了。
+const bundledSkillsRequiredPaths = [
+  "skills/dynamic-workflows/SKILL.md",
+  "skills/dynamic-workflows/patterns.md",
+  "skills/dynamic-workflows/examples.md",
+];
+const bundledSkillsTopLevelPaths = ["README.md", "skills"];
+
+function stageBundledSkills() {
+  const sourceRoot = resolve(repoRoot, "apps/zcode-cli/packages/bundled-skills");
+  const targetRoot = resolve(glmDir, "packages/bundled-skills");
+  mkdirSync(targetRoot, { recursive: true });
+  for (const entryName of bundledSkillsTopLevelPaths) {
+    const sourcePath = resolve(sourceRoot, entryName);
+    if (!existsSync(sourcePath)) continue;
+    cpSync(sourcePath, resolve(targetRoot, entryName), { recursive: true });
+  }
+  for (const relativePath of bundledSkillsRequiredPaths) {
+    const stagedAssetPath = resolve(targetRoot, ...relativePath.split("/"));
+    if (!existsSync(stagedAssetPath)) {
+      throw new Error(
+        `[prepare:agent-bundle] missing staged bundled skill asset: ${stagedAssetPath}`,
+      );
+    }
+  }
+  console.log("[prepare:agent-bundle] staged bundled skills (packages/bundled-skills)");
+}
+
 function stageOfficialPlugins() {
   for (const plugin of officialPluginPackages) {
     const sourceRoot = resolve(repoRoot, plugin.relativePath);
@@ -441,3 +471,4 @@ stageBundle();
 stageCuaDriver();
 stageKoffiRuntime();
 stageOfficialPlugins();
+stageBundledSkills();

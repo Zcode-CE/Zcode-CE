@@ -106,11 +106,9 @@ const remoteOfficePluginPackages = [
 const remoteContentPluginPackages = [
   {
     name: "zcode-guide",
+    // 0.3.0 起只剩自诊断 + 配置指南六份正文（workflow 命令与 dynamic-workflows 技能已迁出，
+    // 见下面的 remoteBundledSkillsRequiredPaths）。
     requiredSeedPaths: [
-      "commands/workflow.md",
-      "skills/dynamic-workflows/SKILL.md",
-      "skills/dynamic-workflows/examples.md",
-      "skills/dynamic-workflows/patterns.md",
       "skills/diagnosing-commands/SKILL.md",
       "skills/diagnosing-hooks/SKILL.md",
       "skills/diagnosing-mcp/SKILL.md",
@@ -185,6 +183,35 @@ const remoteOfficialPluginPackages = [
     stagedPath: `packages/${name}-plugin`,
   })),
 ];
+// 内置技能包（bundled-skills）：不是插件（无 `.zcode-plugin/plugin.json`），但远端 glm 组件
+// 必须带上它 —— 官方 3.14.3 起 dynamic-workflows 住在这里，缺了远端 shared-host 就没有该技能。
+// 这三个路径同时进 glm 组件的文件清单与「可复用组件」的完整性判据，所以缺资产的旧 release
+// 会被判定为不可复用并重新 stage。
+const remoteBundledSkillsRequiredPaths = [
+  "skills/dynamic-workflows/SKILL.md",
+  "skills/dynamic-workflows/patterns.md",
+  "skills/dynamic-workflows/examples.md",
+];
+const remoteBundledSkillsTopLevelPaths = ["README.md", "skills"];
+
+function stageRemoteBundledSkills(glmDir) {
+  const sourceRoot = join(rootDir, "apps/zcode-cli/packages/bundled-skills");
+  const targetRoot = join(glmDir, "packages/bundled-skills");
+  mkdirSync(targetRoot, { recursive: true });
+  for (const entryName of remoteBundledSkillsTopLevelPaths) {
+    const sourcePath = join(sourceRoot, entryName);
+    if (!existsSync(sourcePath)) continue;
+    cpSync(sourcePath, join(targetRoot, entryName), { recursive: true });
+  }
+  for (const relativePath of remoteBundledSkillsRequiredPaths) {
+    const stagedAssetPath = join(targetRoot, ...relativePath.split("/"));
+    if (!existsSync(stagedAssetPath)) {
+      throw new Error(`[prepare-prebuilds] missing staged bundled skill asset: ${stagedAssetPath}`);
+    }
+  }
+  console.log("  [ok] mock-cdn glm bundled skills (packages/bundled-skills)");
+}
+
 const remoteOfficialPluginTopLevelPaths = new Set([
   ".mcp.json",
   ".zcode-plugin",
@@ -230,6 +257,12 @@ const remoteOfficialPluginRequiredPaths = [
     `packages/${name}-plugin/.zcode-plugin/plugin.json`,
     ...requiredSeedPaths.map((relativePath) => `packages/${name}-plugin/${relativePath}`),
   ]),
+  // 内置技能包（不是插件，所以没有 plugin.json 那条）：这两行同时是 glm 组件的文件清单
+  // 与「上一个 release 的组件是否可复用」的判据。
+  "packages/bundled-skills/README.md",
+  ...remoteBundledSkillsRequiredPaths.map(
+    (relativePath) => `packages/bundled-skills/${relativePath}`,
+  ),
 ];
 
 function readZCodeAgentRuntimeVersion() {
@@ -595,6 +628,7 @@ function stageRemoteAgentBundles() {
     mkdirSync(glmDir, { recursive: true });
     copyFileSync(cliBundlePath, join(glmDir, "zcode.cjs"));
     stageRemoteOfficialPlugins(glmDir);
+    stageRemoteBundledSkills(glmDir);
     console.log(`  [ok] mock-cdn glm/${platformKey}/zcode.cjs`);
   }
 }

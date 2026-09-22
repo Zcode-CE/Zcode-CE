@@ -12,6 +12,7 @@ import { dirname, join, resolve, sep } from "node:path";
 import { writeBundledOfficialMarketplacePartitionSync } from "@zcode/adapters";
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE, type Logger } from "@zcode/contracts";
 import { isZCodeCuaInternalFeatureEnabled, ZCODE_CUA_OFFICIAL_PLUGIN_ID } from "@zcode/shared";
+import { listEntrypointCandidateBaseDirs } from "./entrypoint-candidates.js";
 import {
   createOfficialPluginCacheRetryBudget,
   getOfficialPluginCacheRetryAttempts,
@@ -343,7 +344,8 @@ function readSeaManifest(sea: SeaModule): SeaOfficialPluginManifest | undefined 
 }
 
 function resolveFilesystemPluginRoot(definition: OfficialPluginDefinition): string | undefined {
-  for (const baseDir of candidateBaseDirs()) {
+  // 候选基目录与内置技能包（bundled-skills.ts）共用同一枚举器，理由见 entrypoint-candidates.ts。
+  for (const baseDir of listEntrypointCandidateBaseDirs()) {
     for (const relativePath of definition.rootCandidates) {
       const rootPath = resolve(baseDir, relativePath);
       if (existsSync(join(rootPath, ".zcode-plugin", "plugin.json"))) return rootPath;
@@ -628,22 +630,6 @@ function officialPluginCacheRoot(
   );
 }
 
-function candidateBaseDirs(): string[] {
-  // Electron app-server 运行在 resources/glm/zcode.cjs，官方插件资源也随桌面包
-  // stage 到同级 packages/*-plugin。候选目录必须优先看入口文件目录，避免生产态退回到
-  // monorepo-only 的 __dirname 查找假设。
-  return [entrypointDir(), runtimeDir(), process.cwd()].filter(
-    (dir): dir is string => typeof dir === "string",
-  );
-}
-
-function runtimeDir(): string | undefined {
-  return typeof __dirname === "string" ? __dirname : undefined;
-}
-
-function entrypointDir(): string | undefined {
-  return process.argv[1] ? dirname(process.argv[1]) : undefined;
-}
 
 function shouldSkipDirectory(
   name: string,

@@ -1,9 +1,8 @@
 {
   "name": "zcode-guide",
-  "version": "0.2.0",
-  "description": "ZCode usage and self-diagnosis guide: teaches agents and users how to configure MCP servers, commands, skills, hooks, and plugins, how to locate and fix configuration problems for each, and how to author dynamic workflows.",
+  "version": "0.3.0",
+  "description": "ZCode usage and self-diagnosis guide: teaches agents and users how to configure MCP servers, commands, skills, hooks, and plugins, and how to locate and fix configuration problems for each.",
   "author": { "name": "Z.ai" },
   "license": "MIT",
-  "commands": "commands",
   "skills": "skills"
 }

@@ -80,13 +80,12 @@ const OFFICIAL_CUA_REQUIRED_SEED_PATHS = [
 // zcode-guide 原本没有 requiredSeedPaths，seed 丢文件时会静默装出一个
 // 没有 /workflow 命令的插件——症状是命令不存在，没有任何诊断。commands/ 与技能正文都钉住。
 //
-// 2026-09-22（fix.3）：补上另外六份技能正文（五个自诊断 + 配置指南）。它们与 dynamic-workflows
-// 是该插件的两个能力面，漏钉时 seed 只会按实际拷贝结果静默建出一个半残插件。
+// 2026-09-23（对齐官方 3.14.3）：该插件从 0.3.0 起**不再携带** commands/workflow.md 与
+// skills/dynamic-workflows/*（官方把这项能力收成内置 bundled skill，见
+// bootstrap/src/app/bundled-skills.ts），所以这里必须同步摘掉那四条路径 —— 继续钉着一个
+// 已删文件会让 seed 整插件拒收（ZCODE_PLUGIN_SEED_INCOMPLETE，bundled-plugins.ts:316-324）。
+// 剩下的六份正文（五个自诊断 + 配置指南）仍是本插件的能力面，全部保留。
 const OFFICIAL_ZCODE_GUIDE_REQUIRED_SEED_PATHS = [
-  "commands/workflow.md",
-  "skills/dynamic-workflows/SKILL.md",
-  "skills/dynamic-workflows/examples.md",
-  "skills/dynamic-workflows/patterns.md",
   "skills/diagnosing-commands/SKILL.md",
   "skills/diagnosing-hooks/SKILL.md",
   "skills/diagnosing-mcp/SKILL.md",
