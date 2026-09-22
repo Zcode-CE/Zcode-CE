@@ -254,6 +254,45 @@ test("the koffi native addon stages next to the host bundle", async (t) => {
   assert.ok(nativePath.includes("packages/node-repl-host/node_modules/koffi"), nativePath);
 });
 
+test("the host reports Computer Use as unavailable when the driver payload is missing", async (t) => {
+  // 本用例守的是**载荷落点类缺陷的复发**（task-66）：
+  // 驱动是懒加载的（首次 CUA 调用才 import），所以「载荷不在」不会让
+  // createComputerUseRuntime 返回 undefined —— 它会照常返回对象，于是
+  // node-repl-host 的 computerUseEnabled 为 true，两道防「模型自行装包」的护栏同时失效：
+  //   ① js 工具描述不再追加 JS_TOOL_DESCRIPTION_COMPUTER_USE_DISABLED_SUFFIX；
+  //   ② cua-bridge 的 CUA_UNAVAILABLE_IN_SESSION_MESSAGE 不触发。
+  // 模型最终只看到「driver is unavailable … Cannot find package '@trycua/cua-driver'」——
+  // 点名包名，实测会被当成「环境缺依赖」而诱发 npm install 猜包名。
+  //
+  // 这里断言的是**修复后的判据**：驱动解析不到 ⇒ runtime 为 undefined ⇒ 护栏照常生效。
+  // 与「载荷在」的正向用例（上一个 test）成对，任何一侧退化都会失败。
+  const root = "/tmp/zcode-cua-staging-test-guard";
+  rmSync(root, { recursive: true, force: true });
+  const hostDir = resolve(root, "glm/packages/node-repl-host/dist/mcp");
+  mkdirSync(hostDir, { recursive: true });
+  const source = resolve(repoRoot, "apps/zcode-cli/packages/node-repl-host/dist/mcp/server.js");
+  if (!existsSync(source)) {
+    t.skip("node-repl-host bundle 未构建");
+    return;
+  }
+  const { copyFileSync } = require("node:fs");
+  copyFileSync(source, resolve(hostDir, "server.js"));
+  copyFileSync(
+    resolve(repoRoot, "apps/zcode-cli/packages/node-repl-host/package.json"),
+    resolve(root, "glm/packages/node-repl-host/package.json"),
+  );
+
+  // 刻意**不** stage 驱动：这棵树上 node_modules 不存在，正是 seed 丢掉载荷后的 cache 形态。
+  const module = await import(resolve(hostDir, "server.js"));
+  assert.equal(
+    module.captureComputerUseRuntimeFromEnvironment({ ZCODE_CUA_NODE_REPL_HOST: "1" }),
+    undefined,
+    "驱动不可解析时必须按 CUA 不可用降级，否则两道防自行装包的护栏会失效",
+  );
+  // 反向：没有宿主标识时同样为 undefined（既有语义，不能被本修复改坏）。
+  assert.equal(module.captureComputerUseRuntimeFromEnvironment({}), undefined);
+});
+
 test("the host bundle keeps the driver as a runtime import rather than inlining it", async (t) => {
   // esbuild 无法 bundle uniffi 的 .node；一旦被内联，staging 就失去意义，
   // 而症状只在正式包出现。这里把 bundle 策略本身钉住。

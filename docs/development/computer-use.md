@@ -118,6 +118,22 @@ X11 会话下窗口枚举与输入注入走 XTEST/XSendEvent，不需要 Wayland
 只 stage 目标平台 —— 驱动与 `@ubjs` 的平台包都是 optionalDependencies 全集，
 全拷会把六个平台的二进制一起打进安装包。
 
+**落点必须同时在 seed 白名单里（第二约束，2026-09-23 修）**：stage 到磁盘**不等于**
+运行时可加载 —— 官方插件在 seed 到用户 cache 时还会再走一遍顶层白名单
+（`bootstrap/src/app/bundled-plugins.ts` 的 `includedTopLevelPaths`）。`node_modules`
+不在白名单里时会被**整棵静默丢弃**（无任何告警），正式包表现为「Computer Use 装好了但
+首次调用报 `Cannot find package '@trycua/cua-driver'`」。
+
+两个约束缺一不可，且都只认**插件根直属**的 `node_modules`：
+
+| 阶段             | 规则                                   | 非根直属的后果                    |
+| ---------------- | -------------------------------------- | --------------------------------- |
+| electron-builder | 源根直属 `node_modules` 硬编码丢弃     | 放 `glm/node_modules` 打不进包    |
+| seed 白名单      | 只放行 `depth === 0` 的 `node_modules` | 放 `dist/node_modules` 等一律被丢 |
+
+因此 `packages/node-repl-host/node_modules` 是**唯一**同时满足两条约束的落点。
+改动这条链时，验收必须从 **seed 后的 cache** 出发，不能停在 stage 产物。
+
 ### 为什么不能放在 `glm/node_modules`
 
 electron-builder 对**源根直属**的 node_modules 有硬编码丢弃

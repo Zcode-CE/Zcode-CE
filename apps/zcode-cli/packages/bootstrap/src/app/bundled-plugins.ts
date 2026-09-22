@@ -47,6 +47,23 @@ const includedTopLevelPaths = new Set([
   "dist",
   "docs",
   "hooks",
+  // Computer Use 驱动（@trycua/cua-driver）是 uniffi 生成的 Rust 原生库：.node/.so 由
+  // createRequire 在运行时解析，esbuild 无法内联，所以 node-repl-host 的 bundle 里保留
+  // `await import(DRIVER_PACKAGE)`（变量 specifier）。打包链按设计把它 stage 到
+  // <plugin>/node_modules（packages/desktop/scripts/cua-driver-package-assets.mjs:52），
+  // 但不白名单 node_modules 时这里会**整棵静默丢弃** ⇒ 正式包里驱动永远解析不到，
+  // 且因为驱动是懒加载（packages/zcode-cua/cua-driver-runtime.js:144），症状要等到首次
+  // CUA 调用才出现：「Computer Use driver is unavailable … Cannot find package
+  // '@trycua/cua-driver'」——点名包名的文案正是让模型自行 npm install 猜包名的诱因。
+  //
+  // 为什么必须是**插件根直属**的 node_modules：shouldSkipDirectory 只放行 depth === 0，
+  // 任何更深层（实测 dist/node_modules、scripts/node_modules、vendor/…/node_modules）
+  // 一律丢弃，白名单救不了。详见 .reverse/29-cua-seed/CUA-SEED-PAYLOAD.md。
+  //
+  // 注意：不要把它写进 node-repl-host 的 requiredSeedPaths —— 那会让「载荷缺失」升级成
+  // 「整个插件被拒收」，连 node_repl 宿主一起消失（同 office 的结论，见
+  // .reverse/28-office-provenance/OFFICE-SEED-VENDOR.md §3.1）。
+  "node_modules",
   "output-styles",
   "package.json",
   // Browser skill 会从官方插件根目录动态导入 scripts/browser-client.mjs。

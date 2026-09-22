@@ -62,7 +62,13 @@ export async function generateThirdPartyNotices(root = repositoryRoot) {
   // 可删除缓存。本次补上 Python 编译缓存：`__pycache__/*.pyc` 由 `python3 -c "import ..."`
   // 或 py_compile 生成，office 插件带 .py 校验器，跑一次就会产生
   // （实测：documents-plugin/scripts/__pycache__/check_office.cpython-314.pyc）。
-  const SKIPPED_INPUT_DIRECTORIES = new Set(["__pycache__", ".turbo", "coverage", ".venv", "node_modules"]);
+  const SKIPPED_INPUT_DIRECTORIES = new Set([
+    "__pycache__",
+    ".turbo",
+    "coverage",
+    ".venv",
+    "node_modules",
+  ]);
   const SKIPPED_INPUT_SUFFIXES = [".pyc", ".pyo"];
   async function copiedFiles(file, files) {
     const name = file.split("/").pop() ?? file;

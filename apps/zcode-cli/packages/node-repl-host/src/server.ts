@@ -38,6 +38,10 @@ import {
 } from "./tool-contract.js";
 
 const MAX_SYNC_TIMEOUT_MS = 120_000;
+// 驱动包名必须与 packages/zcode-cua/cua-driver-runtime.js 的 DRIVER_PACKAGE 一致；
+// 那边是 esbuild 无法内联的变量 specifier，所以两处都只能是字面量，靠这条注释与
+// regression 测试（packages/services/test/platformVariantAndCuaDriverStaging.test.ts）钉住。
+const CUA_DRIVER_PACKAGE_SPECIFIER = "@trycua/cua-driver";
 const UNTRUSTED_SESSION_KEY = "__unscoped__";
 const WORKER_KIND = "zcode-node-repl-call";
 export const NODE_REPL_MCP_PROCESS_TITLE = "zcode-node-repl-mcp";
@@ -392,6 +396,22 @@ export function captureComputerUseRuntimeFromEnvironment(
   // 取值口径与 plugin-host-command.ts 一致（严格等于 "1"）：宿主只在确实要提供
   // Computer Use 时才注入该值，写成 "0" 或空串都视为不提供。
   if (env.ZCODE_CUA_NODE_REPL_HOST !== "1") return undefined;
+  // 护栏：驱动**解析不到**时不要报告「CUA 可用」。
+  //
+  // 为什么必须在这里探测：`createComputerUseRuntime` 总是返回一个对象，而驱动是懒加载
+  // （packages/zcode-cua/cua-driver-runtime.js:144 的首次 callDriverOnce 才 ensureDriver）。
+  // 于是「驱动载荷缺失」不会让 cuaRuntime 变 undefined —— 两道防「模型自行装包」的护栏
+  // 因此**同时失效**：
+  //   1. `js` 工具描述不再追加 JS_TOOL_DESCRIPTION_COMPUTER_USE_DISABLED_SUFFIX；
+  //   2. CUA_UNAVAILABLE_IN_SESSION_MESSAGE（broker 缺失路径）不会触发。
+  // 模型最终只看到首次调用抛出的「driver is unavailable … Cannot find package
+  // '@trycua/cua-driver'」—— 点名包名且说「不可用」，实测正是诱导它自行 npm install
+  // 猜包名的文案（cua-bridge.ts:10-15 记录过这个失效模式）。见
+  // .reverse/29-cua-seed/CUA-SEED-PAYLOAD.md。
+  //
+  // 探测只做**解析**，不 import 驱动：不拉起原生库、不产生副作用，CI 与无图形会话
+  // 也安全。解析失败即按「本会话 CUA 不可用」降级，让上面两道护栏照常生效。
+  if (!isCuaDriverResolvable()) return undefined;
   // 实现选择：默认走 MIT 许可的 @trycua/cua-driver。
   //
   // 这里**不再**按 ZCODE_CUA_PERMISSION_BROKER_SOCKET 决定实现。那个 socket 是官方
@@ -407,6 +427,27 @@ export function captureComputerUseRuntimeFromEnvironment(
       ? { refreshMarkerPath: env.ZCODE_CUA_PERMISSION_BROKER_REFRESH_MARKER.trim() }
       : {}),
   });
+}
+
+/**
+ * 驱动包是否能被**本模块**解析到。
+ *
+ * 与驱动自身的加载口径保持一致（都是 Node 的包解析，从本 bundle 所在目录向上找
+ * node_modules），所以「这里解析成功」与「懒加载时 import 成功」是同一个判据。
+ * 只解析、不加载：避免探测本身拉起原生库（那正是 captureComputerUseRuntimeFromEnvironment
+ * 刻意避免的事 —— 普通 MCP 客户端与 CI 不该拉起驱动）。
+ *
+ * 用 import.meta.resolve 而不是 createRequire().resolve：驱动是 ESM-only
+ * （`"type": "module"`，exports 里只有 import 条件），createRequire 会以 CJS 条件解析，
+ * 实测抛 ERR_PACKAGE_PATH_NOT_EXPORTED —— 那会把「载荷在」误判成「不可用」。
+ */
+function isCuaDriverResolvable(): boolean {
+  try {
+    import.meta.resolve(CUA_DRIVER_PACKAGE_SPECIFIER);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function isWorkerCallData(value: unknown): value is WorkerCallData {
