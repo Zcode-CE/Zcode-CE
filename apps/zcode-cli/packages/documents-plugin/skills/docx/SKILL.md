@@ -87,6 +87,10 @@ If the user explicitly asks for a visual check, convert to PDF with LibreOffice 
 soffice --headless --convert-to pdf report.docx
 ```
 
-Do not require the user to install a renderer. When rendering is unavailable, preserve the usable document and report the inspection limit rather than blocking delivery. LibreOffice pagination can differ from Microsoft Word.
+Rendering is an **optional enhancement, not a core dependency**: creating and structurally checking this document needs nothing beyond the bundled payload. When `soffice` is absent, do not silently skip the check — say plainly that visual layout was not inspected.
+
+If the user wants rendering and `soffice` is missing, **tell them it needs LibreOffice and offer the install** (roughly several hundred MB); the choice is theirs. Do not install it unprompted, and do not block delivery on it. On Linux you usually **cannot install it for them** (no TTY, `sudo` needs a password) — give the command for the user to run. Using software they already have (Word, WPS, Pages) to produce a PDF is a legitimate path; do not steer them away from it.
+
+LibreOffice pagination can differ from Microsoft Word.
 
 This build has no file-presentation tool. Provide the final DOCX path in your reply and keep the file in place so the user can open it directly. Do not create temporary QA reports unless the user asks for them.
