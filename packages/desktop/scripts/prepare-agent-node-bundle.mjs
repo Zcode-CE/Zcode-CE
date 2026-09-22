@@ -431,28 +431,38 @@ function stageBundledSkills() {
 }
 
 /**
- * 办公插件的 Node 运行时载荷（docx / pptxgenjs / exceljs）。
+ * 办公插件的 Node 运行时载荷（docx / pptxgenjs / exceljs）—— esbuild 自包含 bundle。
  *
- * 为什么必须在 stageBundle() 之后：glm 目录会被清空重建。
- * 载荷落点：glm/packages/<plugin>/vendor/office-node/node_modules —— 与 CUA 驱动、koffi 同属
- * 「插件目录内的 node_modules」，这样既绕开 electron-builder 对源根直属 node_modules 的丢弃，
- * 又正好在 skills 里 require 的相对路径上。裁剪口径见 office-node-payload-assets.mjs 的模块注释。
+ * 为什么必须在 stageBundle() **之后**：glm 目录会被清空重建。
+ * 为什么必须在 stageOfficialPlugins() **之后**：那一步会 cpSync 插件的 `scripts` 目录，
+ * 顺序反了会把刚写进去的 bundle 覆盖掉（落点就在 `<plugin>/scripts/office-node/`）。
+ *
+ * 落点选 `scripts/office-node/` 而不是 node_modules：seed 阶段
+ * `bundled-plugins.ts:642` 的 `shouldSkipDirectory` 只在「插件根直属 + 顶层白名单含 node_modules」
+ * 时保留 node_modules，**任何嵌套层一律丢弃**；bundle 没有 node_modules 目录，从根上不受该规则
+ * 与 electron-builder `util/filter.js` 同款特判的影响。打包口径与 unzipper 排除的完整理由见
+ * office-node-payload-assets.mjs 的模块注释。
  */
-function stageOfficeNodePayloads() {
-  const staged = stageOfficeNodePayloadsIntoGlm({
+async function stageOfficeNodePayloads() {
+  const staged = await stageOfficeNodePayloadsIntoGlm({
     lookupRoots: [repoRoot, desktopRoot],
     glmDir,
   });
   const bytes = staged.reduce((sum, item) => sum + item.bytes, 0);
   for (const item of staged) {
+    // 落盘存在性校验：这一步是「stage 出的文件在磁盘上」的构建期护栏。它与运行期的
+    // requiredSeedPaths 校验是**两层**（后者才覆盖「seed 后还在不在」），两层都要有。
+    if (!existsSync(item.target)) {
+      throw new Error(`[prepare:agent-bundle] missing staged office node bundle: ${item.target}`);
+    }
     console.log(
-      `[prepare:agent-bundle] staged office node payload ${item.plugin}: ` +
-        `${item.library}@${item.version} (${item.files} files, ${item.packages} packages, ` +
+      `[prepare:agent-bundle] staged office node bundle ${item.plugin}: ` +
+        `${item.library}@${item.version} (${item.packages.length} packages inlined, ` +
         `${(item.bytes / 1024 / 1024).toFixed(2)} MiB)`,
     );
   }
   console.log(
-    `[prepare:agent-bundle] staged office node payloads total: ${(bytes / 1024 / 1024).toFixed(2)} MiB`,
+    `[prepare:agent-bundle] staged office node bundles total: ${(bytes / 1024 / 1024).toFixed(2)} MiB`,
   );
 }
 
@@ -499,4 +509,6 @@ stageCuaDriver();
 stageKoffiRuntime();
 stageOfficialPlugins();
 stageBundledSkills();
-stageOfficeNodePayloads();
+// 必须排在 stageOfficialPlugins() 之后：后者 cpSync 插件的 scripts/ 目录，
+// 会把落点在同一目录下的 bundle 覆盖掉（bundle 落点见该函数注释）。
+await stageOfficeNodePayloads();

@@ -196,15 +196,25 @@ const remoteBundledSkillsRequiredPaths = [
 const remoteBundledSkillsTopLevelPaths = ["README.md", "skills"];
 
 // 办公插件的 Node 运行时载荷：远端 shared-host 只有 zcode.cjs + 插件目录，没有仓库的 node_modules，
-// 所以必须与桌面一样把裁剪后的载荷 stage 进组件目录（判据见 office-node-payload-assets.mjs）。
-function stageRemoteOfficeNodePayloads(glmDir) {
-  const staged = stageOfficeNodePayloadsIntoGlm({
+// 所以必须与桌面一样把 esbuild 自包含 bundle stage 进组件目录
+// （落点与 unzipper 排除判据见 office-node-payload-assets.mjs 的模块注释）。
+//
+// 必须排在 stageRemoteOfficialPlugins() **之后**：后者 cpSync 插件的 scripts/ 目录，
+// 而 bundle 就落在 `<plugin>/scripts/office-node/`，顺序反了会被覆盖掉。
+async function stageRemoteOfficeNodePayloads(glmDir) {
+  const staged = await stageOfficeNodePayloadsIntoGlm({
     lookupRoots: [rootDir, join(rootDir, "packages", "desktop")],
     glmDir,
   });
   const bytes = staged.reduce((sum, item) => sum + item.bytes, 0);
+  for (const item of staged) {
+    // 与桌面链同款的存在性护栏；两层校验（构建期 + seed 后）的理由见该处注释。
+    if (!existsSync(item.target)) {
+      throw new Error(`[prepare-prebuilds] missing staged office node bundle: ${item.target}`);
+    }
+  }
   console.log(
-    `  [ok] mock-cdn glm office node payloads: ${staged.length} 个插件，${(bytes / 1024 / 1024).toFixed(2)} MiB`,
+    `  [ok] mock-cdn glm office node bundles: ${staged.length} 个插件，${(bytes / 1024 / 1024).toFixed(2)} MiB`,
   );
 }
 
@@ -619,7 +629,7 @@ function stageRemoteOfficialPlugins(glmDir) {
 // 远端部署时已经有一份独立 node（跑 zcode-server.cjs），agent 复用它执行 zcode.cjs 即可，
 // 不必再为每个平台准备一份内嵌 node 的 SEA 二进制。zcode.cjs 跨平台同一份，逐平台只是放进各自的
 // glm/<platform> 组件目录，保持现有 manifest 组件结构不变。
-function stageRemoteAgentBundles() {
+async function stageRemoteAgentBundles() {
   console.log("==> Building zcode-cli bundle for remote agents");
   // 复用桌面同款构建脚本（turbo build:desktop-agent --filter=@zcode/cli），命中缓存时几乎瞬时。
   runCommand(process.execPath, [join(rootDir, "scripts/build-desktop-agent-cli.mjs")], {
@@ -643,7 +653,9 @@ function stageRemoteAgentBundles() {
     copyFileSync(cliBundlePath, join(glmDir, "zcode.cjs"));
     stageRemoteOfficialPlugins(glmDir);
     stageRemoteBundledSkills(glmDir);
-    stageRemoteOfficeNodePayloads(glmDir);
+    // 必须排在 stageRemoteOfficialPlugins() 之后：bundle 落在插件的 scripts/ 下，
+    // 先 stage 会被那次 cpSync 覆盖掉（见该函数注释）。
+    await stageRemoteOfficeNodePayloads(glmDir);
     console.log(`  [ok] mock-cdn glm/${platformKey}/zcode.cjs`);
   }
 }
@@ -1143,7 +1155,7 @@ async function main() {
   buildServerBundle();
   copyServerBundle();
   copyNodePtyPrebuilds();
-  stageRemoteAgentBundles();
+  await stageRemoteAgentBundles();
   await prepareRemoteNativeSearchTools();
   // 修复：server、pty、agent 均可独立下载，需在组件哈希计算前补齐各自的声明。
   await stageThirdPartyNotices(join(releaseDir, "server"), rootDir);
