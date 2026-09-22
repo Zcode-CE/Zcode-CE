@@ -4,5 +4,8 @@
   "version": "0.1.7",
   "private": true,
   "license": "MIT",
-  "description": "PPTX presentation production skills for ZCode-CE, based on DeepSeek Harness skill-office (MIT)."
+  "description": "PPTX presentation production skills for ZCode-CE, based on DeepSeek Harness skill-office (MIT).",
+  "dependencies": {
+    "pptxgenjs": "4.0.1"
+  }
 }

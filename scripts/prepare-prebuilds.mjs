@@ -31,6 +31,7 @@ import {
   packSourceAsDeterministicTarGzip as packComponentSourceAsArchive,
 } from "./deterministic-tar-archive.mjs";
 import { runCommand } from "./spawn-command.mjs";
+import { stageOfficeNodePayloads as stageOfficeNodePayloadsIntoGlm } from "../packages/desktop/scripts/office-node-payload-assets.mjs";
 import { resolveIntranetDepsBaseUrl } from "./intranetDefaults.mjs";
 
 export { computeComponentSourceSha256, packComponentSourceAsArchive };
@@ -193,6 +194,19 @@ const remoteBundledSkillsRequiredPaths = [
   "skills/dynamic-workflows/examples.md",
 ];
 const remoteBundledSkillsTopLevelPaths = ["README.md", "skills"];
+
+// 办公插件的 Node 运行时载荷：远端 shared-host 只有 zcode.cjs + 插件目录，没有仓库的 node_modules，
+// 所以必须与桌面一样把裁剪后的载荷 stage 进组件目录（判据见 office-node-payload-assets.mjs）。
+function stageRemoteOfficeNodePayloads(glmDir) {
+  const staged = stageOfficeNodePayloadsIntoGlm({
+    lookupRoots: [rootDir, join(rootDir, "packages", "desktop")],
+    glmDir,
+  });
+  const bytes = staged.reduce((sum, item) => sum + item.bytes, 0);
+  console.log(
+    `  [ok] mock-cdn glm office node payloads: ${staged.length} 个插件，${(bytes / 1024 / 1024).toFixed(2)} MiB`,
+  );
+}
 
 function stageRemoteBundledSkills(glmDir) {
   const sourceRoot = join(rootDir, "apps/zcode-cli/packages/bundled-skills");
@@ -629,6 +643,7 @@ function stageRemoteAgentBundles() {
     copyFileSync(cliBundlePath, join(glmDir, "zcode.cjs"));
     stageRemoteOfficialPlugins(glmDir);
     stageRemoteBundledSkills(glmDir);
+    stageRemoteOfficeNodePayloads(glmDir);
     console.log(`  [ok] mock-cdn glm/${platformKey}/zcode.cjs`);
   }
 }

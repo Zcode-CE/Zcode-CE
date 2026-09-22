@@ -17,6 +17,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { runCommand } from "../../../scripts/spawn-command.mjs";
 import { stageCuaDriverIntoBundledAgents } from "./cua-driver-package-assets.mjs";
+import { stageOfficeNodePayloads as stageOfficeNodePayloadsIntoGlm } from "./office-node-payload-assets.mjs";
 import { stageKoffiIntoBundledAgents } from "./koffi-package-assets.mjs";
 import { stageAgentBundle } from "./stage-agent-bundle.mjs";
 
@@ -429,6 +430,32 @@ function stageBundledSkills() {
   console.log("[prepare:agent-bundle] staged bundled skills (packages/bundled-skills)");
 }
 
+/**
+ * 办公插件的 Node 运行时载荷（docx / pptxgenjs / exceljs）。
+ *
+ * 为什么必须在 stageBundle() 之后：glm 目录会被清空重建。
+ * 载荷落点：glm/packages/<plugin>/vendor/office-node/node_modules —— 与 CUA 驱动、koffi 同属
+ * 「插件目录内的 node_modules」，这样既绕开 electron-builder 对源根直属 node_modules 的丢弃，
+ * 又正好在 skills 里 require 的相对路径上。裁剪口径见 office-node-payload-assets.mjs 的模块注释。
+ */
+function stageOfficeNodePayloads() {
+  const staged = stageOfficeNodePayloadsIntoGlm({
+    lookupRoots: [repoRoot, desktopRoot],
+    glmDir,
+  });
+  const bytes = staged.reduce((sum, item) => sum + item.bytes, 0);
+  for (const item of staged) {
+    console.log(
+      `[prepare:agent-bundle] staged office node payload ${item.plugin}: ` +
+        `${item.library}@${item.version} (${item.files} files, ${item.packages} packages, ` +
+        `${(item.bytes / 1024 / 1024).toFixed(2)} MiB)`,
+    );
+  }
+  console.log(
+    `[prepare:agent-bundle] staged office node payloads total: ${(bytes / 1024 / 1024).toFixed(2)} MiB`,
+  );
+}
+
 function stageOfficialPlugins() {
   for (const plugin of officialPluginPackages) {
     const sourceRoot = resolve(repoRoot, plugin.relativePath);
@@ -472,3 +499,4 @@ stageCuaDriver();
 stageKoffiRuntime();
 stageOfficialPlugins();
 stageBundledSkills();
+stageOfficeNodePayloads();

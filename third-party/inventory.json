@@ -241,7 +241,8 @@
     "apps/zcode-cli/packages/documents-plugin/agents/visual-judge.md": "fc6b9fc1b45a949998f62c767a205d25c3725268f84bcea9824bf782f68099cf",
     "apps/zcode-cli/packages/documents-plugin/LICENSE.dsh": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
     "apps/zcode-cli/packages/documents-plugin/package.json": "3bec6be22c0e679081c2a7893845a51af8f18442fd0a23fd10946a08c7f05e33",
-    "apps/zcode-cli/packages/documents-plugin/scripts/check_office.py": "fefaecd846e8e329e027d8f0b3e9103987912ef86aef3b15fe7f2f8c011d6cff",
+    "apps/zcode-cli/packages/documents-plugin/scripts/__pycache__/check_office.cpython-314.pyc": "935685254d16f668f1a0d2ac2b9224c1242668d0dc55715d8a411cf0fc0e2519",
+    "apps/zcode-cli/packages/documents-plugin/scripts/check_office.py": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7",
     "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md": "80f7769e85562e177469d11de918ae2b275b94b1962ead4fe56f5a229d34dc2f",
     "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "40c382bfc8aec5fc4887a8def0876fba3c297c91d45900e78403728d1fd704ee",
     "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "f8dab813c3b9f236b593d4d04f1b78e511e15d586cb7dcdd74147e7d1c22ec5c",
@@ -261,7 +262,7 @@
     "apps/zcode-cli/packages/presentations-plugin/agents/visual-judge.md": "fc6b9fc1b45a949998f62c767a205d25c3725268f84bcea9824bf782f68099cf",
     "apps/zcode-cli/packages/presentations-plugin/LICENSE.dsh": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
     "apps/zcode-cli/packages/presentations-plugin/package.json": "cc5f3482f7a25c0503328ae181ecfc1bbcd9724601b7b69e776de60808bd3687",
-    "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.py": "fefaecd846e8e329e027d8f0b3e9103987912ef86aef3b15fe7f2f8c011d6cff",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.py": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7",
     "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md": "606aa6a90252910dc417986bd183d149a86a507202fb4f9724f5f279c9c7b1d7",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/.zcode-plugin/plugin.json": "74580ca50246dd14e747321f25925755c1f091969166f01470de30dd0f3fdb8d",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/commands/restore-legacy-sessions.md": "50fefcf09f13e4e8c8fa424adf5cda4385a9da6e020f337f3517447ff4fc9aff",
@@ -276,7 +277,7 @@
     "apps/zcode-cli/packages/spreadsheets-plugin/agents/visual-judge.md": "fc6b9fc1b45a949998f62c767a205d25c3725268f84bcea9824bf782f68099cf",
     "apps/zcode-cli/packages/spreadsheets-plugin/LICENSE.dsh": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
     "apps/zcode-cli/packages/spreadsheets-plugin/package.json": "3ff0149313e28a8534bfe1c96dd7063862701dab51c9a4e36ee2dcc99dbeab56",
-    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.py": "fefaecd846e8e329e027d8f0b3e9103987912ef86aef3b15fe7f2f8c011d6cff",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.py": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7",
     "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md": "51c6b9b2239049fab6b83426f17f51aaf8aba0bc4c07802b1ad3aca618cbac14",
     "apps/zcode-cli/packages/superpowers-plugin/LICENSE": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
     "apps/zcode-cli/packages/swift-bridge/package.json": "958674fcd44c789564ee672b0e6c687f1f900f4286174280700ddfb442d23906",
@@ -2722,7 +2723,7 @@
     "scripts/license-texts/Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
     "scripts/remote-native-search-tools-config.mjs": "472322a66f84c7452f96aa9e16e9c4e0600f7c2588a03dc6bc869229161b1cb2",
-    "third-party/copied-components.json": "4e68b7b829e22d5a89ed5d7a0e0e745b285c788913adc00c8302fb03fde6ebdd",
+    "third-party/copied-components.json": "505757224eac3d5d1270a5f4c782ee717081a4ea6519d285c92021b1d4873d5a",
     "third-party/embedded-components.json": "9586ccca15897f56d4ca1d703dffe9e02880fedd766c1dff93f7ac1f52ea891a",
     "third-party/native-search/licenses/00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce.txt": "00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce",
     "third-party/native-search/licenses/01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f.txt": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
@@ -29038,13 +29039,21 @@
       "file": "third-party/upstream/ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be.txt",
       "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
       "importRevision": null,
-      "provenance": "Copied from a local checkout of deepseek-harness; the original copy revision is not recorded in this workspace. The pinned license snapshot is the upstream MIT LICENSE.",
+      "provenance": "Copied from a local checkout of deepseek-harness; the original copy revision is not recorded in this workspace. The pinned license snapshot is the upstream MIT LICENSE. Files that are no longer byte-identical to upstream are listed in locallyModifiedFiles: the three skills/*/SKILL.md files are modified copies (the upstream load_workspace_dependencies / render_document / present tool references were replaced with system-Python and file-path equivalents) and the three scripts/check_office.py copies have diverged additively (bounded decompression; upstream baseline 13,217 bytes, sha256 d94afa67593a284751e0f2dc000877e836f885d39954a882033cf22a13278f66 at deepseek-harness 0.1.7-alpha.2). Per-file provenance, divergence records and the upstream follow-up procedure live in docs/development/office-plugins.md.",
       "roots": [
         "apps/zcode-cli/packages/documents-plugin",
         "apps/zcode-cli/packages/presentations-plugin",
         "apps/zcode-cli/packages/spreadsheets-plugin"
       ],
-      "scope": "Office document authoring skills (docx/pptx/xlsx SKILL.md), the shared OOXML structural checker (scripts/check_office.py), and the MIT license text. Adapted for ZCode-CE: the upstream `load_workspace_dependencies` / `render_document` / `present` tool references were replaced with system-Python and file-path equivalents, and the skill directory was renamed from `assets/` to `skills/` to match this repository's plugin layout. The `agents/visual-judge.md` file is an independent ZCode-CE implementation, not copied from upstream.",
+      "scope": "Office document authoring skills (docx/pptx/xlsx SKILL.md), the shared OOXML structural checker (scripts/check_office.py), and the MIT license text. Adapted for ZCode-CE: the upstream `load_workspace_dependencies` / `render_document` / `present` tool references were replaced with system-Python and file-path equivalents, and the skill directory was renamed from `assets/` to `skills/` to match this repository's plugin layout. The `agents/visual-judge.md` file is an independent ZCode-CE implementation, not copied from upstream, as are each plugin's `package.json`, `.zcode-plugin/plugin.json` and `documents-plugin/test/checkOffice.test.mjs`.",
+      "locallyModifiedFiles": [
+        "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md",
+        "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md",
+        "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md",
+        "apps/zcode-cli/packages/documents-plugin/scripts/check_office.py",
+        "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.py",
+        "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.py"
+      ],
       "license": "MIT",
       "files": [
         {
@@ -29064,8 +29073,12 @@
           "sha256": "3bec6be22c0e679081c2a7893845a51af8f18442fd0a23fd10946a08c7f05e33"
         },
         {
+          "file": "apps/zcode-cli/packages/documents-plugin/scripts/__pycache__/check_office.cpython-314.pyc",
+          "sha256": "44f64284c9a8c51014ff64b01f647ce9687af0e9b5f61d330fa7c481e7264db4"
+        },
+        {
           "file": "apps/zcode-cli/packages/documents-plugin/scripts/check_office.py",
-          "sha256": "fefaecd846e8e329e027d8f0b3e9103987912ef86aef3b15fe7f2f8c011d6cff"
+          "sha256": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7"
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md",
@@ -29093,7 +29106,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.py",
-          "sha256": "fefaecd846e8e329e027d8f0b3e9103987912ef86aef3b15fe7f2f8c011d6cff"
+          "sha256": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7"
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md",
@@ -29117,7 +29130,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.py",
-          "sha256": "fefaecd846e8e329e027d8f0b3e9103987912ef86aef3b15fe7f2f8c011d6cff"
+          "sha256": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7"
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md",

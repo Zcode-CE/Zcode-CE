@@ -1,4 +1,19 @@
 #!/usr/bin/env python3
+# --- 来源与归属（改本文件前先读 docs/development/office-plugins.md） ---
+# Upstream:  @deepseek-ai/dsh-skill-office (MIT)
+#            packages/skill/skill-office/assets/scripts/check_office.py
+# Baseline:  13,217 bytes, sha256 d94afa67593a284751e0f2dc000877e836f885d39954a882033cf22a13278f66
+#            (deepseek-harness 0.1.7-alpha.2；0.1.6 起该文件未变)
+# Modified:  ZCode-CE —— 已与上游分叉；三份同名副本（documents/presentations/spreadsheets）
+#            必须逐字节相同，改一处就要同步三处
+# Local changes（追加式：只新增常量/类/函数，未改上游函数签名与语义，故上游更新可手工合并）:
+#   1) 成员白名单 XML_MEMBER_SUFFIXES + is_xml_member()：只把 .xml / .rels 当作结构成员
+#   2) 资源预算 MAX_MEMBER_BYTES(64MiB) / MAX_TOTAL_BYTES(256MiB) /
+#      MAX_MEMBER_ELEMENTS(2000000) / MAX_TOTAL_ELEMENTS(4000000) + class PackageBudget
+#      —— 修复无界解压（实测 2.09MB 的 ZIP 可解出 2GiB、子进程峰值 RSS 4116MiB）
+#   3) PARSE_CHUNK_BYTES(1MiB) 分块解析；失败也给出结构化错误而不是空 stdout
+# 回归测试: apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs
+# ---------------------------------------------------------------------------
 """Read-only OOXML checks and structural summaries; no rendering or formula evaluation.
 
 Run with INPUT.docx, INPUT.pptx, or INPUT.xlsx. Optional --contains assertions

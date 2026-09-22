@@ -20,13 +20,13 @@ ZCode-CE is built on [zai-org/ZCode](https://github.com/zai-org/ZCode) (Apache-2
 
 Five differences from the official distribution:
 
-| Area                       | Description                                                                                                                                                                                                                         |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **No telemetry**           | Telemetry and monitoring components from the official distribution are removed. With a self-hosted API, no background reporting to official services occurs                                                                         |
-| **Entitlements preserved** | Official service entitlements (plan quotas, limited-time bonuses) are fully retained. The client ships every capability needed to claim and bill them                                                                               |
-| **Community feedback**     | Feedback goes to this project's GitHub Issues by default, not the official ticket system. The channel is configurable or can be disabled                                                                                            |
-| **Open document skills**   | Office document capabilities (Word / PowerPoint / Excel) come from MIT-licensed open implementations, not official closed-source plugins                                                                                            |
-| **Desktop automation**     | Computer Use comes from an MIT-licensed open implementation ([trycua/cua](https://github.com/trycua/cua)), not the official unlicensed closed-source helper. **Windows is fully supported; Linux is experimental** (off by default) |
+| Area                       | Description                                                                                                                                                                                                                                              |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **No telemetry**           | Telemetry and monitoring components from the official distribution are removed. With a self-hosted API, no background reporting to official services occurs                                                                                              |
+| **Entitlements preserved** | Official service entitlements (plan quotas, limited-time bonuses) are fully retained. The client ships every capability needed to claim and bill them                                                                                                    |
+| **Community feedback**     | Feedback goes to this project's GitHub Issues by default, not the official ticket system. The channel is configurable or can be disabled                                                                                                                 |
+| **Open document skills**   | Office document capabilities (Word / PowerPoint / Excel) come from MIT-licensed open implementations, not official closed-source plugins. **Some capabilities currently require a system-installed Python 3**; a later release will ship its own runtime |
+| **Desktop automation**     | Computer Use comes from an MIT-licensed open implementation ([trycua/cua](https://github.com/trycua/cua)), not the official unlicensed closed-source helper. **Windows is fully supported; Linux is experimental** (off by default)                      |
 
 ### What this is not
 
@@ -38,9 +38,9 @@ Five differences from the official distribution:
 
 The official distribution ships the following capabilities without their source. This build does not provide them yet; they are planned for later releases:
 
-| Capability         | Status                                                                                                                                    |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **PDF generation** | Planned. The official implementation has both LaTeX and HTML pipelines; this project will reimplement it on an open typesetting toolchain |
+| Capability         | Status                                                                                                                                                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PDF generation** | Planned. The official implementation has both LaTeX and HTML pipelines, and its Office plugins are licensed for non-commercial use only; this project will reuse the mature approach from [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) |
 
 For every capability this build does not provide, and why, see [Differences from the official distribution](docs/development/official-diff.md).
 
