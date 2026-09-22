@@ -242,7 +242,7 @@
     "apps/zcode-cli/packages/documents-plugin/LICENSE.dsh": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
     "apps/zcode-cli/packages/documents-plugin/package.json": "f63333fd5b86cb8ce51d290a8f3bcde17088d3c96e8b64f7d97a83fa1b86bc4d",
     "apps/zcode-cli/packages/documents-plugin/scripts/check_office.mjs": "a12311cbb12d56a42369d9effc3ccdea1160497908fa91a79a5df986bb7d79f1",
-    "apps/zcode-cli/packages/documents-plugin/scripts/check_office.py": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7",
+    "apps/zcode-cli/packages/documents-plugin/scripts/check_office.py": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-cli.mjs": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-main.mjs": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-parts.mjs": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd",
@@ -253,7 +253,7 @@
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
     "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md": "f2c7a254fe539780426e5236a24353506d55c2ce4dd5f56a679c186a1a714cba",
-    "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "ca80a7ddb6480576e17adcaf167e87b734166eb04c42f765b7fcf63e5487604d",
+    "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "17e08ef3509c5b91e5cc39c5245276b042e0d944b91a122f60932f37eae470ad",
     "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "f8dab813c3b9f236b593d4d04f1b78e511e15d586cb7dcdd74147e7d1c22ec5c",
     "apps/zcode-cli/packages/dynamic-workflow/package.json": "aac5891463ddeb419ff6f73fc95b7c407964b06f8aeff66b6a9ba4d999164f99",
     "apps/zcode-cli/packages/i18n/package.json": "025e4620d80f39cac3df06249866fcaed531615b6b8a4c4a727c4557066f7b1b",
@@ -272,7 +272,7 @@
     "apps/zcode-cli/packages/presentations-plugin/LICENSE.dsh": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
     "apps/zcode-cli/packages/presentations-plugin/package.json": "30c1c737972f7c5fe297eb827c25ac7a6b789602959f99347c256ad14347fea9",
     "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.mjs": "a12311cbb12d56a42369d9effc3ccdea1160497908fa91a79a5df986bb7d79f1",
-    "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.py": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.py": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-cli.mjs": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-main.mjs": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-parts.mjs": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd",
@@ -297,7 +297,7 @@
     "apps/zcode-cli/packages/spreadsheets-plugin/LICENSE.dsh": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
     "apps/zcode-cli/packages/spreadsheets-plugin/package.json": "0663c3933e4682acccd2f6e1883dba7bd969f3de2c806a09398f41cad7675dfe",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.mjs": "a12311cbb12d56a42369d9effc3ccdea1160497908fa91a79a5df986bb7d79f1",
-    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.py": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.py": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-cli.mjs": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-main.mjs": "b04767f052229634f59300a28fe53bda44292b5adf20d1d72bd94b42b7a5fb08",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-parts.mjs": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd",
@@ -29972,7 +29972,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/scripts/check_office.py",
-          "sha256": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7"
+          "sha256": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358"
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-cli.mjs",
@@ -30016,7 +30016,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs",
-          "sha256": "ca80a7ddb6480576e17adcaf167e87b734166eb04c42f765b7fcf63e5487604d"
+          "sha256": "17e08ef3509c5b91e5cc39c5245276b042e0d944b91a122f60932f37eae470ad"
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/.zcode-plugin/plugin.json",
@@ -30040,7 +30040,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.py",
-          "sha256": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7"
+          "sha256": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358"
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-cli.mjs",
@@ -30104,7 +30104,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.py",
-          "sha256": "058f14904fadc22e2f166413fb05a44cfb317fe0c38bd026f64eba50290f02f7"
+          "sha256": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358"
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-cli.mjs",
