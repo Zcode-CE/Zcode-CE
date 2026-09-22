@@ -18,15 +18,16 @@ ZCode-CE is the **open-source community edition** of the ZCode AI coding workben
 
 ZCode-CE is built on [zai-org/ZCode](https://github.com/zai-org/ZCode) (Apache-2.0), for users who want **full control over their own development environment**. **Community contributions are welcome** — whether it's feature development, issue reports, or documentation improvements.
 
-Five differences from the official distribution:
+Six differences from the official distribution:
 
 | Area                       | Description                                                                                                                                                                                                                                                                                                                               |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **No telemetry**           | Telemetry and monitoring components from the official distribution are removed. With a self-hosted API, no background reporting to official services occurs                                                                                                                                                                               |
 | **Entitlements preserved** | Official service entitlements (plan quotas, limited-time bonuses) are fully retained. The client ships every capability needed to claim and bill them                                                                                                                                                                                     |
-| **Community feedback**     | Feedback goes to this project's GitHub Issues by default, not the official ticket system. The channel is configurable or can be disabled                                                                                                                                                                                                  |
+| **Community feedback**     | Feedback **goes to this project's GitHub Issues by default** (switchable to the official ticket channel, or disabled)                                                                                                                                                                                                                     |
 | **Open document skills**   | Office document capabilities (Word / PowerPoint / Excel) come from MIT-licensed open implementations, not official closed-source plugins. **Document creation and structural checks ship their own Node payload with zero external dependencies**; only rendering (PDF / visual checks) is an optional enhancement that needs LibreOffice |
 | **Desktop automation**     | Computer Use comes from an MIT-licensed open implementation ([trycua/cua](https://github.com/trycua/cua)), not the official unlicensed closed-source helper. **Windows is fully supported; Linux is experimental** (off by default)                                                                                                       |
+| **Tool permissions**       | Dangerous commands **never produce broad persistent grants** (remembering `sudo apt install foo` grants that one command, not "any `sudo apt install`"); the approval dialog **shows the real scope** (any / prefix / exact); a "Tools & permissions" settings page manages the dangerous-command list and the persistent-grant policy    |
 
 ### What this is not
 
@@ -45,9 +46,10 @@ These limitations are **long-standing and version-independent**. Release notes o
 
 The official distribution ships the following capabilities without their source. This build does not provide them yet; they are planned for later releases:
 
-| Capability         | Status                                                                                                                                                                                                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **PDF generation** | Planned. The official implementation has both LaTeX and HTML pipelines, and its Office plugins are licensed for non-commercial use only; this project will reuse the mature approach from [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) |
+| Capability             | Status                                                                                                                                                                                                                                                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PDF generation**     | Not yet supported. This build can convert Office documents to PDF through LibreOffice (an optional enhancement that requires it locally); **producing typeset PDFs from scratch (LaTeX / math) is not available**. The official implementation has both LaTeX and HTML pipelines, but its Office plugins are licensed for non-commercial use only |
+| **Fine-grained tools** | Planned. Plugins and MCP servers can currently only be enabled or disabled **as a whole** — there is no way to control an individual command or tool inside them. Per-resource toggles are planned, unified under the "Tools & permissions" framework                                                                                             |
 
 For every capability this build does not provide, and why, see [Differences from the official distribution](docs/development/official-diff.md).
 
