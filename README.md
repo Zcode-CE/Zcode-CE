@@ -32,7 +32,14 @@ ZCode-CE 基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0�
 
 - **不是官方发行版**。ZCode-CE 由社区维护，不代表 Z.ai 或智谱的官方立场。
 - **不提供账号服务**。模型访问、套餐与计费仍由官方服务提供，本项目不代理、不转售。
-- **Computer Use 的平台支持有差异**。Windows 为正式支持；**Linux 为实验性**（默认关闭，需在设置中开启）。官方发行版不支持 Linux 桌面自动化，本版通过开源实现提供，但受上游验证范围限制：已在 X11 / Sway / KDE Wayland 验证，**Wayland 下截图不可用**（元素操作不受影响），GNOME 未完整验证。详见[桌面自动化文档](docs/development/computer-use.md)。
+
+### 已知限制
+
+以下限制**长期存在**，与具体版本无关；发版说明只记录「因本次变更而新出现」的限制，避免每版重复同样的内容。
+
+- **桌面自动化（Computer Use）**：Windows 为正式支持；**Linux 为实验性**（默认关闭，需在设置中开启）。官方发行版不支持 Linux 桌面自动化，本版通过开源实现提供，但受上游验证范围限制 —— 已在 X11 / Sway / KDE Wayland 验证，**Wayland 下截图不可用**（元素操作不受影响），GNOME 未完整验证。详见[桌面自动化文档](docs/development/computer-use.md)。
+- **Windows 构建未签名**：首次运行需在 SmartScreen 提示中选择「仍要运行」，原因与进展见下方[安装](#安装)一节。
+- **Windows / macOS 未在真机做完整功能回归**：CI 会为两个平台打包，但本项目的日常验证以 Linux 为主。
 
 ### 后续计划
 

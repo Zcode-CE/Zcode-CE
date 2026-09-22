@@ -32,7 +32,14 @@ Five differences from the official distribution:
 
 - **Not an official distribution.** ZCode-CE is community-maintained and does not represent Z.ai or Zhipu.
 - **No account services.** Model access, plans, and billing remain with the official service. This project does not proxy or resell them.
-- **Platform support for Computer Use differs.** Windows is fully supported; **Linux is experimental** (off by default, enable it in settings). The official distribution does not support Linux desktop automation at all; this build provides it through an open implementation, within the limits of upstream validation: verified on X11 / Sway / KDE Wayland, **screenshots are unavailable on Wayland** (element actions are unaffected), GNOME is not fully verified. See the [desktop automation docs](docs/development/computer-use.md).
+
+### Known limitations
+
+These limitations are **long-standing and version-independent**. Release notes only record limitations that are _new in that release_, so the same text does not repeat every version.
+
+- **Desktop automation (Computer Use)**: Windows is fully supported; **Linux is experimental** (off by default, enable it in settings). The official distribution does not support Linux desktop automation at all; this build provides it through an open implementation, within the limits of upstream validation — verified on X11 / Sway / KDE Wayland, **screenshots are unavailable on Wayland** (element actions are unaffected), GNOME is not fully verified. See the [desktop automation docs](docs/development/computer-use.md).
+- **Windows builds are unsigned**: the first launch requires choosing "Run anyway" in the SmartScreen prompt; see [Install](#install) below for the reason and progress.
+- **Windows / macOS have not had a full functional regression on real hardware**: CI packages both platforms, but day-to-day validation for this project is Linux-first.
 
 ### Roadmap
 
