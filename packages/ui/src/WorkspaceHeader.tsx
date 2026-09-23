@@ -188,6 +188,9 @@ export function WorkspaceHeader({
             isMacFullscreen={isMacFullscreen}
             isWindowsDesktop={isWindowsDesktop}
             simplifyForNarrowRemote={simplifyForNarrowRemote}
+            // 窄屏下头部不显示终端按钮，由同一行的 ⋯ 菜单提供带文字标签的等价入口。
+            isTerminalOpen={isTerminalOpen}
+            onToggleTerminal={onToggleTerminal}
             selectedEditor={selectedEditor}
             onReloadSession={onReloadSession}
             reloadSessionDisabled={reloadSessionDisabled}

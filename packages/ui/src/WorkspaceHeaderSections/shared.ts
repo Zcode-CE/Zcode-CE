@@ -51,6 +51,12 @@ export interface WorkspaceHeaderTitleSectionProps {
   isMacFullscreen?: boolean;
   isWindowsDesktop?: boolean;
   simplifyForNarrowRemote?: boolean;
+  /**
+   * 窄屏（手机）下头部不再显示终端按钮（见 WorkspaceHeaderActionSection），改由 ⋯ 菜单
+   * 提供一个带文字标签的入口 —— 手机上必须点得到终端，不能把核心工作流藏成死路。
+   */
+  isTerminalOpen?: boolean;
+  onToggleTerminal?: () => void;
   selectedEditor: EditorInfo | null;
   compact?: boolean;
 }

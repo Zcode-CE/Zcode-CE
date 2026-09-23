@@ -69,6 +69,23 @@ test("触屏上顶部浮层按钮命中区补到 44px，且不改变非触屏路
   assert.match(source, /\[@media\(pointer:coarse\)\]:size-11/);
 });
 
+test("窄屏终端入口：头部按钮收进 ⋯ 菜单，且 draft 视图保留按钮（否则草稿页点不到终端）", () => {
+  const sections = readSource("src/WorkspaceHeaderSections.tsx");
+  assert.match(sections, /data-testid="workspace-more-terminal-toggle"/);
+  assert.match(sections, /\{simplifyForNarrowRemote && onToggleTerminal \? \(/);
+  // 文案复用既有 i18n，不新增 key
+  assert.match(sections, /intl\.formatMessage\(\{ id: "terminal\.toggle" \}\)/);
+
+  const actionSection = readSource("src/WorkspaceHeaderSections/WorkspaceHeaderActionSection.tsx");
+  // draft 下没有 ⋯ 菜单，所以只在 task 视图收起终端按钮
+  assert.match(actionSection, /simplifyForNarrowRemote && variant === "task" \? null : \(/);
+  assert.match(actionSection, /<WorkspaceTerminalToggleButton/);
+
+  const header = readSource("src/WorkspaceHeader.tsx");
+  assert.match(header, /onToggleTerminal=\{onToggleTerminal\}/);
+  assert.match(header, /isTerminalOpen=\{isTerminalOpen\}/);
+});
+
 test("设置行默认档在窄屏堆叠（否则标签列被压到 46px、中文断成两行）", () => {
   const source = readSource("src/settings/SettingsPageParts.tsx");
   assert.match(source, /"grid-cols-1 sm:grid-cols-\[minmax\(0,1fr\)_192px\]"/);

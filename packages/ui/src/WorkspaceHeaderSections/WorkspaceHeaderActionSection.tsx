@@ -54,18 +54,24 @@ export function WorkspaceHeaderActionSection({
           useWindowsCaptionSpacing={useWindowsCaptionSpacing}
         />
       ) : null}
-      {!simplifyForNarrowRemote ? (
-        <>
-          {!hideHelpMenu ? <WorkspaceHelpMenuButton isDesktop={Boolean(isDesktop)} /> : null}
-          {/* 远程控制移动端头部空间过窄，终端入口在这里会和核心操作争抢宽度。*/}
-          <WorkspaceTerminalToggleButton
-            isTerminalOpen={isTerminalOpen}
-            onToggleTerminal={onToggleTerminal}
-            disabledReason={readOnlyReason}
-            useWindowsCaptionSpacing={useWindowsCaptionSpacing}
-          />
-        </>
+      {/* 窄屏（手机）：帮助与终端都不再占头部宽度 —— 帮助有命令面板里的替代入口（产品文档/问题上报/
+          用户社群），终端则在同一行的 ⋯ 菜单里给一个带文字标签的入口（见 WorkspaceHeaderSections）。
+          这样既不把核心流程藏成死路，也不把标题压到只剩两个字（实测保留按钮会把标题压回 58px）。 */}
+      {/* 窄屏（手机）下帮助入口收起（它有命令面板里的替代：产品文档/问题上报/用户社群）。 */}
+      {!hideHelpMenu && !simplifyForNarrowRemote ? (
+        <WorkspaceHelpMenuButton isDesktop={Boolean(isDesktop)} />
       ) : null}
+      {/* 窄屏下 task 视图把终端收进同一行的 ⋯ 菜单（那里有带文字标签的等价入口）；
+          draft 视图没有 ⋯ 菜单（标题区在 draft 下只是一段占位），所以这里必须保留按钮，
+          否则窄屏的草稿页就再也点不到终端了。 */}
+      {simplifyForNarrowRemote && variant === "task" ? null : (
+        <WorkspaceTerminalToggleButton
+          isTerminalOpen={isTerminalOpen}
+          onToggleTerminal={onToggleTerminal}
+          disabledReason={readOnlyReason}
+          useWindowsCaptionSpacing={useWindowsCaptionSpacing}
+        />
+      )}
       {/* 远程控制移动端只保留图标，避免 diff 数字把按钮撑宽导致标题拥挤。 */}
       {!isSidePaneOpen ? (
         <WorkspaceSidePaneToggleButton
