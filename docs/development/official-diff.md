@@ -418,18 +418,84 @@ Superpowers，本仓库用户没有这个入口。
 登记见 `third-party/copied-components.json` 的 `ZCode computer-use plugin shell (Z.ai)` 条目（字段名 `locallyModifiedFiles`）。
 **为什么不是 `modifiedFiles`**：声明解析器要求 `modifiedFiles` 里的每个文件**正文内**含字面量 `Modified by ZCode:`（`scripts/generate-third-party-notices.mjs:78-84`），而这 3 个文件是 MIT 材料、没有也不应加这种标记；改用自定义字段 `locallyModifiedFiles` 既保留机器可读的改动清单（进 `third-party/inventory.json`），又不动文件正文。MIT 本身不要求文件内变更声明，改动的书面说明就在本节的表格里。
 
+### 远程工作区（SSH / Docker / WSL）：代码完整，但打包版取不到远程运行时
+
+**这条链路的实现在本仓库是完整的**：UI 入口（`packages/ui/src/ChatEmptyState.tsx:450`、
+`WorkspaceSidebar.tsx:1303`、`Root.tsx:829` 挂载 SSH 对话框）、SSH 建连与鉴权
+（`packages/server/src/remote/sshAuth.ts`、`ssh-backend.ts`；纯 JS 的 `ssh2`，不依赖系统 ssh 二进制）、
+远端环境探测、部署编排（`deploy.ts`）、远端 server 启动与握手（`connect.ts:391`、`handshake.ts`）
+到远端会话集合（`packages/desktop/src/host/index.ts:1675`）都在。实测（真 sshd + 仓库代码）：
+`uname` 探测得到 `{linux, x64}`，exec / SFTP 上传 / 读文件全部可用；把远程运行时喂给部署链后，
+远端 server 能启动并完成握手（远端日志 `[zcode-server:stdio] stdio mode ready`）。
+
+**缺口只有一个：远程运行时资源没有供给点。** 部署前必须先取到当前版本的资源清单（manifest），
+它的 SHA 是「要不要重新部署」的判据。这个清单只有两个来源：
+
+1. 安装包内的本地资源目录 —— 开发态是 `packages/desktop/mock-cdn/releases/<版本>/`
+   （被 `.gitignore:14` 忽略）；**打包态没有**：`packages/desktop/electron-builder.config.js`
+   的 `extraResources`（:604-）不含任何远程资源条目，已构建产物的 `resources/` 下也搜不到；
+2. CDN —— `packages/desktop/src/main/remoteCdn.ts:4` 的默认基址是官方 CDN
+   `https://cdn-zcode.z.ai`，路径由根 `package.json` 的版本号拼成
+   `<base>/zcode/electron/releases/<版本>/manifest-<平台架构>.json`。
+
+**官方 CDN 上只有官方版本号，没有 CE 版本号。** 实测（`manifest-linux-x64.json`）：
+
+```text
+200  https://cdn-zcode.z.ai/zcode/electron/releases/3.14.0/manifest-linux-x64.json
+200  https://cdn-zcode.z.ai/zcode/electron/releases/3.14.3/manifest-linux-x64.json
+404  https://cdn-zcode.z.ai/zcode/electron/releases/3.14.1-ce.1/manifest-linux-x64.json
+404  https://cdn-zcode.z.ai/zcode/electron/releases/3.14.3-ce.1/manifest-linux-x64.json
+404  https://cdn-zcode.z.ai/zcode/electron/releases/3.14.3-ce.2/manifest-linux-x64.json
+```
+
+所以**打包版连接远程工作区必然失败**，失败点在取 manifest 这一步，**早于任何远端写操作**，报错为
+`[remote-assets] manifest not found for linux-x64: manifest-linux-x64.json`
+（`packages/server/src/remote/remoteAssetLiveIdentity.ts:246-252`）。
+
+这**不是某个版本引入的回归**：CE 从第一个发行版本号 `3.14.1-ce.1` 起就带 `-ce` 后缀，而官方
+CDN 只发布不带后缀的官方版本。唯一例外是开源快照的初始版本号 `3.14.0`（未加后缀），它对应的
+目录在 CDN 上确实存在 —— 但那是**官方制品**，本仓库代码与其是否可直接配套**未验证**。
+
+**开发态可用**。下面两条路径的实测状态不同，请分开看：
+
+- **已实测**：把客户端指向自建静态发布根。实验用 `python3 -m http.server` 提供
+  `<root>/<版本>/manifest-<平台架构>.json` + `<root>/components/...` 后，**全链路跑通**
+  （拉 manifest → 按组件下载 + sha256 校验 → 上传远端 → 启动远端 server → 握手）。所需目录布局见
+  `.reverse/36-ssh/SSH-FEASIBILITY.md` §5.1。
+
+  ```bash
+  ZCODE_REMOTE_ASSET_CDN_BASE_URL=<你的发布根> pnpm dev:desktop
+  ```
+
+- **未实测（仅按源码确认命令与布局）**：`pnpm prepare:remote-assets` 会把产物写到
+  `<仓库>/packages/desktop/mock-cdn/releases/<根 package.json 的版本号>/`，开发态会自动优先使用该目录
+  （`scripts/prepare-prebuilds.mjs:42-49`；`scripts/prepare-prebuilds.sh` 只是它的 shell 包装）。
+  按源码，它需要**联网**下载 4 个平台的 Node 运行时（`:410-439`，源 `https://cdn.npmmirror.com/binaries/node`，
+  可用 `ZCODE_NODE_DIST_MIRROR` 覆盖）并**构建** server remote bundle 与 agent bundle；
+  **本文未实测运行该命令，耗时未知**。
+
+**Docker / WSL 与 SSH 共用同一套部署与资源代码**（`deploy.ts` / `remoteAssetCache.ts`），因此同样
+受这条缺口影响；但**未对 Docker / WSL 实测**，此处不作结论。修复路径（自建资源发布点 / 资源随包
+分发 / 对齐官方多区域 CDN）与验收命令见 `.reverse/36-ssh/SSH-FEASIBILITY.md` §5。
+
+**另一处差异**：官方主进程还带一条 SSH 专用资源服务器常量
+（`QE="http://studio.zcode-ai.com:12345/ssh-remote-assets"`，官方在 `env==="test"` 时直接使用
+`${QE}/${版本}`）。本仓库全仓检索 `ssh-remote-assets|studio.zcode-ai|codegeex.cn|cdn.zcode-ai`
+命中为 **0** —— 官方那两条资源供给路径（双区域 CDN 与 SSH 资源服务器）都没有被移植。
+
 ## 可补齐性评估
 
 按「可行性 × 价值」排序。
 
 ### 可做，价值高
 
-| 项                 | 做法                                                           | 障碍                   |
-| ------------------ | -------------------------------------------------------------- | ---------------------- |
-| 修正插件声明一致性 | 从 `official-plugin-definitions.ts` 移除未分发插件，或补齐分发 | 无，纯本地改动         |
-| Superpowers 插件   | 上游 `obra/superpowers` 为 MIT，可自行打包为 ZCode 插件        | 无许可障碍，需实现适配 |
-| 默认个人市场       | 恢复 `claude-plugins-official` 引用，给社区插件一个安装入口    | 需确认该市场内容的许可 |
-| 加深 Office 三件套 | 补充场景文档、参考手册、环境检查脚本                           | 工作量大，需逐项实现   |
+| 项                 | 做法                                                             | 障碍                                                                         |
+| ------------------ | ---------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 修正插件声明一致性 | 从 `official-plugin-definitions.ts` 移除未分发插件，或补齐分发   | 无，纯本地改动                                                               |
+| Superpowers 插件   | 上游 `obra/superpowers` 为 MIT，可自行打包为 ZCode 插件          | 无许可障碍，需实现适配                                                       |
+| 默认个人市场       | 恢复 `claude-plugins-official` 引用，给社区插件一个安装入口      | 需确认该市场内容的许可                                                       |
+| 加深 Office 三件套 | 补充场景文档、参考手册、环境检查脚本                             | 工作量大，需逐项实现                                                         |
+| 远程工作区资源供给 | 自建资源发布点（或把远程资源随包分发），让客户端取到当前版本清单 | 无许可障碍（资源是本仓构建产物 + Node 官方二进制），需一处托管与一个发布任务 |
 
 ### 可做，价值中等
 
