@@ -57,4 +57,26 @@ jobs:
       - name: Architecture check
         run: pnpm run architecture:check -- --changed
 
+      # 为什么必须有这一步：上面五步都**不解析打包器的模块解析**。
+      # tsc（NodeNext）与 `tsx --test` 按各包 package.json 的 exports 解析，agent bundle 的
+      # esbuild 别名表（apps/zcode-cli/packages/cli/scripts/build.mjs 的 resolveBuildAliases）
+      # 是**手写白名单 + 前缀改写**，只有真跑打包才会走到它。实测过一次完整漂移：
+      # 新增 shared 子路径 @zcode/shared/mcpDisabledTools 漏登记别名 ⇒ 上面五步全绿，
+      # 而 prepare:remote-assets / 桌面 agent 打包 / SEA 三条链同时断（报
+      # `Cannot read directory ".../shared/src/index.ts": not a directory`）。
+      # 这一步把该漂移提前到 PR。
+      #
+      # 先删 dist 再构建是刻意的：不删 dist 会直接打到上一次留下的产物，别名错误因此**看不见**
+      # （本地实测过这种假通过）。代价是一次全量重编译（约 35s）。
+      # 覆盖：7 个 workspace 包的 tsc 产物、esbuild 把 agent bundle 打成 cli/dist/zcode.cjs、
+      # 两个独立 MCP runtime（node-repl-host / browser-use-plugin）的产物校验，
+      # 以及 dev 运行链真正读的那批 stage（与 prepare:remote-assets 前段同一条脚本）。
+      # **它不是发布构建**：更重的平台化 seed / 安装包构建在 release.yml（见 docs/operations/ci.md）。
+      - name: Build check (agent bundle)
+        run: |
+          shopt -s nullglob
+          rm -rf apps/zcode-cli/packages/*/dist packages/desktop/bundled-agents
+          node scripts/build-desktop-agent-cli.mjs
+          test -s apps/zcode-cli/packages/cli/dist/zcode.cjs
+
       # 刻意不跑 pnpm licenses:check：它依赖平台包集合，CI 环境与本地平台差异会误报。

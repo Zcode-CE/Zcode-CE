@@ -20,12 +20,78 @@
 | 格式检查 | `pnpm fmt:check`                           |
 | 测试     | `pnpm test`                                |
 | 架构检查 | `pnpm run architecture:check -- --changed` |
+| 构建检查 | 见下方「构建检查」                         |
 
 用 `fetch-depth: 0` 做完整克隆，因为 `architecture:check --changed` 需要与基线比较变更集，
 浅克隆会让它算错改动范围。
 
 **刻意不跑 `pnpm licenses:check`**：它比对的平台包集合与 runner 平台相关，
 在 CI 环境会因平台差异产生与改动无关的失败。
+
+### 构建检查（Build check (agent bundle)）
+
+```bash
+shopt -s nullglob
+rm -rf apps/zcode-cli/packages/*/dist packages/desktop/bundled-agents
+node scripts/build-desktop-agent-cli.mjs
+test -s apps/zcode-cli/packages/cli/dist/zcode.cjs
+```
+
+**为什么存在**：上面五步**都不解析打包器的模块解析**。`pnpm typecheck`（tsc/NodeNext）与
+`pnpm test`（`tsx --test`）按各包 `package.json` 的 `exports` 解析模块，而 agent bundle 走的是
+**手写白名单 + 前缀改写**的 esbuild 别名表（`apps/zcode-cli/packages/cli/scripts/build.mjs`
+的 `resolveBuildAliases`）。两条链路互不相干，于是「源码级全绿、构建级红」可以一路漂到打包才暴露。
+
+**实测过一次完整漂移**：新增 shared 子路径 `@zcode/shared/mcpDisabledTools` 时漏登记别名，
+上面五步全部通过，而 `prepare:remote-assets`、桌面 agent 打包、SEA 打包**三条链同时断**，
+报错是 esbuild 把子路径拼到总入口后面：
+
+```
+✘ [ERROR] Cannot read directory ".../packages/shared/src/index.ts": not a directory
+✘ [ERROR] Could not resolve ".../packages/shared/src/index.ts/mcpDisabledTools"
+```
+
+**能抓住哪类失败**：
+
+| 类别                  | 例子                                                                                                                                                                                                            |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 打包期模块解析        | 新增/改名的 `@zcode/shared/<subpath>`、`@zcode/*` 子路径或 workspace 包入口漏登记 esbuild 别名                                                                                                                  |
+| 打包产物生成          | 入口图里出现打包器解不开的东西。**真实候选**：`@zcode/node-repl-host` 的 `exports` 各条都没有 `import` 条件、直接指向 `./src/*.ts`（实测命令见下），一旦有打包入口图把它当普通依赖解析就会挂，而 `tsc` 完全正常 |
+| 独立 runtime 产物校验 | `node-repl-host/dist/mcp/server.js`、`browser-use-plugin/scripts/browser-client.mjs` 缺失时报错                                                                                                                 |
+| 构建期断言            | 构建脚本内部对 workspace 包产物/清单的校验（例如 shared 必须钉一个精确的 zod v4 版本）                                                                                                                          |
+
+**先删 dist 是刻意的**：不删 `dist` 时构建可能直接打到上一次留下的产物，别名错误因此**看不见**（实测过这种假通过）。
+
+上面那条 `node-repl-host` 的候选可以用一段只读脚本复核（它只解析 `package.json` 的 `exports` 形状）：
+
+```bash
+node -e "for (const p of ['node-repl-host','core','adapters']) {
+  const e = require('./apps/zcode-cli/packages/'+p+'/package.json').exports ?? {};
+  for (const [k, v] of Object.entries(e))
+    if (typeof v === 'object' && v && !('import' in v)) console.log(p + k + ' -> ' + JSON.stringify(v));
+}"
+```
+
+**实测代价**（本仓库 Linux 开发机、Node 24；CI 为 ubuntu-latest，量级相同）：
+
+| 项目                         | 实测                                                                         |
+| ---------------------------- | ---------------------------------------------------------------------------- |
+| 这步新增的墙钟时间           | **约 32–35s**（`pnpm typecheck` 之后、干净 dist 上跑：32s / 31s / 35s 三次） |
+| 其中 library 的 tsc          | 约 27s（7 个 workspace 包全量重编译，它是 bundle 的前置条件，删不掉）        |
+| 其中两个独立 runtime 构建    | 约 4s                                                                        |
+| 其中 esbuild 打 agent bundle | < 1s                                                                         |
+| 联网/大资产                  | **无**（全部来自 workspace 与 `node_modules`；不下载 Node 运行时）           |
+
+**为什么不用 `pnpm prepare:remote-assets`**：它会下载 Node 运行时并写约 500MB 的 `mock-cdn`，
+还要为每个平台产一份 seed，不适合每次 PR。这里选的是它的**前段**（同一份
+`scripts/build-desktop-agent-cli.mjs`），只覆盖当前平台的 agent bundle。
+
+**与 `release.yml` 的关系（重要）**：这步**不是**发布构建，也不是它的替代。
+它只证明「模块能被正确解析并打出 agent bundle」；发布构建还会做平台化 seed、远程资产装配、
+安装包生成与产物审计（见下一节）。**CI 绿不等于可以发版**。
+
+**本地无法完整验证的部分**：GitHub Actions 只能在 GitHub runner 上执行，本地无法运行工作流本身；
+这步的命令级行为已在本地按原样跑过（含负对照，见下），但 job 整体仍需在真实 PR 上确认一次。
 
 ## `release.yml` — 发布打包
 

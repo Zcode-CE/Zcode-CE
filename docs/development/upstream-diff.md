@@ -97,7 +97,7 @@ ZCode-CE 基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0�
   不再依赖官方 manifest 服务
 - **国内加速**：新增 `AppSettings.githubMirrorPrefix`（默认空 = 关闭）
 - **强更门**：社区版不执行远端强制升级检查
-- **CI**：`.github/workflows/ci.yml`（日常校验）与 `release.yml`（发布打包）
+- **CI**：`.github/workflows/ci.yml`（日常校验 **+ 一步最小构建**：`node scripts/build-desktop-agent-cli.mjs`，用于抓构建期模块解析/打包产物生成失败 —— 这类问题在 typecheck/test 里完全不可见）与 `release.yml`（发布打包，另含 tag-only 的 `remote-assets` job）
 
 详见 [发布流程](../operations/release.md) 与 [持续集成](../operations/ci.md)。
 
