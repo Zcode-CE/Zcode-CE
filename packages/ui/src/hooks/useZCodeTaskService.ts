@@ -294,10 +294,18 @@ export function useZCodeTaskService(
   workspaceIdentity?: string | null,
 ): IZCodeTaskService {
   // ZCode task 服务按 workspace 身份解析，保证所有 task RPC 都落到对应的 host。
-  const services = workspacePath
-    ? useWorkspaceServices(workspacePath, preferredRemoteSessionId, workspaceIdentity)
-    : useServices();
-  const rawService = services.zcodeTaskService;
+  //
+  // 修复（与 useZCodeSessionService 同因同源）：hook 调用**必须无条件**。原来用三元在
+  // useWorkspaceServices 与 useServices 之间切换，workspacePath 由「无」变「有」时 hook 槽位
+  // 错位，React 的 areHookInputsEqual 会读 `undefined.length` 抛 TypeError（实测在
+  // OnboardingDialog 加载期崩溃）。两侧都调用后按原口径选择，返回值逐字不变。
+  const workspaceServices = useWorkspaceServices(
+    workspacePath,
+    preferredRemoteSessionId,
+    workspaceIdentity,
+  );
+  const contextServices = useServices();
+  const rawService = (workspacePath ? workspaceServices : contextServices).zcodeTaskService;
   if (!rawService || typeof rawService !== "object") {
     return rawService;
   }
