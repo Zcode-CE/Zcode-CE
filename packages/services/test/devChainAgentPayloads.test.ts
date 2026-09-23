@@ -29,6 +29,23 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", ".
 const DEV_AGENT_ENTRY_RELATIVE = "apps/zcode-cli/packages/cli/dist/zcode.cjs";
 
 /**
+ * 把 `@zcode/*` 解析到**源码**的模块解析钩子，供下面的 seed 子进程 `--import` 装载。
+ *
+ * 为什么必须有它（CI run 35797390059 的根因）：CI 的 Test 步骤之前只有
+ * `pnpm typecheck` = `tsc -b packages/...`，而那个工程列表**不含 apps/zcode-cli**
+ * ⇒ `apps/zcode-cli` 下的 dist 在 CI 上**从不存在**（实测：在无产物的树上跑完
+ * typecheck，只新增 9 个根 packages 下的 dist，apps/zcode-cli 下一个都没有）。
+ * 而 bootstrap 的传递依赖
+ * `@zcode/adapters` 的 exports 指向 `./dist/index.js` ⇒ 本用例在 fresh clone 下
+ * 必然 `ERR_MODULE_NOT_FOUND`。
+ *
+ * **本地为什么绿**：本机跑过构建，该 dist 已在磁盘上 —— 典型的「本地验证依赖了本地状态」。
+ * 钩子让整条依赖链从源码解析，于是本用例不再需要任何构建前提。详见该文件头注释。
+ */
+const ZCODE_SOURCE_RESOLVER_URL = new URL("./support/zcodeSourceResolver.mjs", import.meta.url)
+  .href;
+
+/**
  * 在子进程里跑**真实 seed**，argv[1] 指向 staged 资产根 —— 逐字复刻 dev 的发现路径。
  *
  * 为什么用子进程而不是改本进程的 argv/cwd：`listEntrypointCandidateBaseDirs()` 读的是
@@ -74,7 +91,18 @@ function seedFromAssetRoot({ assetRoot, storageRoot, workspace }) {
   );
   const stdout = execFileSync(
     process.execPath,
-    ["--import", "tsx", probePath, assetRoot, storageRoot, workspace],
+    [
+      "--import",
+      "tsx",
+      // 子进程同样要装：bootstrap 的传递依赖 @zcode/* 在 CI 上没有 dist（见上方常量注释）。
+      // 排在 tsx 之后：本钩子只做 specifier→源码路径，转译仍由 tsx 承担。
+      "--import",
+      ZCODE_SOURCE_RESOLVER_URL,
+      probePath,
+      assetRoot,
+      storageRoot,
+      workspace,
+    ],
     { cwd: repoRoot, encoding: "utf8" },
   );
   return JSON.parse(stdout.trim().split("\n").pop());
@@ -145,28 +173,50 @@ test("dev-staged payloads survive the real seed and reach the runtime cache", as
       );
     }
 
-    // ── ③ 源树 devDeps 不得被搬进 cache
+    // ── ③ 源树 devDeps 不得被 stage 进载荷树
     // dev 链的 node-repl-host 源目录带着 84 MiB 构建期 devDeps（@esbuild/esbuild/typescript）。
     // 它们对运行期零用途；把它们 seed 进用户 cache 是纯浪费（AUDIT-2 §2.3 实测 83.3 MiB）。
     // 落 cli/dist 时 node_modules 由 stageCuaDriverIntoBundledAgents **新建**，所以天然不含它们。
-    const host = cache["node-repl-host@0.6.0"];
-    assert.ok(host, "seed 后 cache 缺少 node-repl-host@0.6.0");
+    //
+    // 判据落在 **staged 树**而不是只看 cache：staged 树是该不变量的**所有者** —— devDeps 是否
+    // 被搬进来完全由 staging 决定，cache 只是它的下游（staged 里没有，cache 里就不可能有）。
+    // 放这里还有一个必要理由：CI 不构建 node-repl-host（见 ④ 的前置说明），它的 cache 条目
+    // 根本不存在，只断言 cache 会让这条用例在 CI 上永远失败。
     const devDependencyNames = ["@esbuild", "esbuild", "typescript", "undici-types"];
-    const carriedDevDeps = host.nodeModulesEntries.filter((name) =>
+    const stagedHostModules = join(assetRoot, "packages", "node-repl-host", "node_modules");
+    const stagedDevDeps = readdirSync(stagedHostModules).filter((name) =>
       devDependencyNames.includes(name),
     );
     assert.deepEqual(
-      carriedDevDeps,
+      stagedDevDeps,
       [],
-      `源树 devDeps 被搬进了用户 cache：${carriedDevDeps.join(", ")}`,
+      `源树 devDeps 被 stage 进了载荷树：${stagedDevDeps.join(", ")}`,
     );
 
     // ── ④ CUA 驱动在 seed 后仍可加载（真正的最终消费点）
+    //
+    // **前置**：node-repl-host 的运行期 bundle（esbuild 打出的 dist/mcp/server.js）是真正的
+    // 构建产物，且是它的 requiredSeedPaths 之一 —— 缺了它，seed 会（正确地）拒绝生成该插件的
+    // cache。CI 的 Test 步骤不构建它（pnpm typecheck 的工程列表不含 apps/zcode-cli，实测在
+    // 无产物的树上跑完 typecheck，apps/zcode-cli 下一个 dist 都没有），所以这里显式跳过并
+    // 说明，而不是把一个**构建前提**伪装成产品断言。本地/打包链跑过构建时下面照常执行。
     const hostBundle = join(repoRoot, "apps/zcode-cli/packages/node-repl-host/dist/mcp/server.js");
     if (!existsSync(hostBundle)) {
-      t.diagnostic("node-repl-host bundle 未构建，跳过驱动加载断言");
+      t.diagnostic(
+        "node-repl-host bundle 未构建（CI 的 typecheck 不产出 apps/zcode-cli 下的 dist），" +
+          "跳过 seed 后的 CUA 驱动加载断言",
+      );
       return;
     }
+
+    const host = cache["node-repl-host@0.6.0"];
+    assert.ok(host, "seed 后 cache 缺少 node-repl-host@0.6.0");
+    // ③ 的主判据在 staged 树；cache 侧再核一次，防「staging 干净但 seed 又把源树 devDeps 拖进来」。
+    assert.deepEqual(
+      host.nodeModulesEntries.filter((name) => devDependencyNames.includes(name)),
+      [],
+      "源树 devDeps 被搬进了用户 cache",
+    );
     if (!host.hasTrycua) {
       assert.fail("seed 后 cache 缺少 node_modules/@trycua —— dev 下 CUA 会报 Cannot find package");
     }
