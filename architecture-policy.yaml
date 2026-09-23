@@ -21,7 +21,13 @@ modules:
     roots: [packages/services/src/session]
     managed: false
     requires: [shared]
-    publicEntrypoints: [packages/services/src/session/contract.ts]
+    # 校准（事实错误）：此处原声明 `packages/services/src/session/contract.ts`，但**该文件从未存在**
+    # —— 读者会以为有一条可路由的契约面，实际找不到（有人据此尝试接线时踩到）。
+    # 另外注意这条清单的作用域：`resolveImport` 只解析**相对** specifier
+    # （scripts/architecture/policy.mjs:152-153），因此它只约束「相对路径跨模块导入」；
+    # 包级出口（`@zcode/services` 的子路径）走 packages/services/package.json 的 exports，
+    # 不经过这条清单。此处改为声明真实存在的入口文件。
+    publicEntrypoints: [workspaceRegistryRepo.ts]
     owner: conversation
   - id: storage
     roots: [packages/services/src/storage]

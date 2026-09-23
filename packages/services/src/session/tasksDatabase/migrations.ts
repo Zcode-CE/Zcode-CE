@@ -8,6 +8,7 @@ import {
 } from "#src/session/tasksDatabase/schema-v1.js";
 import { importLegacyAutomationSelections } from "#src/session/tasksDatabase/provider-selection-v2.js";
 import { OFFICIAL_GLM_SELECTION_MIGRATION_SQL } from "#src/session/tasksDatabase/official-glm-selection-v3.js";
+import { WORKSPACE_REGISTRY_MIGRATION_SQL } from "#src/session/tasksDatabase/workspace-registry-v1.js";
 
 // 冻结历史列声明，不能以实时 Repo/schema 代替，否则新版构建会改变已应用 checksum。
 const columns = [
@@ -64,7 +65,30 @@ const definitions = [
     id: "0003_official_glm_selection",
     checksumInput: [OFFICIAL_GLM_SELECTION_MIGRATION_SQL],
   },
+  {
+    // 0004：工作区注册表（可见工作区的唯一真相源）。只增不改：不 ALTER 既有表。
+    id: "0004_workspace_registry",
+    checksumInput: [WORKSPACE_REGISTRY_MIGRATION_SQL],
+  },
 ] as const;
+
+/**
+ * 迁移 id → 执行动作（显式分派）。
+ *
+ * 依据（修缺陷，不是改语义）：迁移循环此前用的是 if 0001 / else if 0002 / **else 执行 0003 的 SQL**
+ * 兜底分支（原 migrations.ts:122-126）—— 任何新增 id 都会被静默执行成官方 GLM 迁移，是一条静默
+ * 数据污染路径。现在未知 id 显式抛错（fail-closed），既有 0001-0004 的行为逐字不变。
+ * 新增迁移必须在这里登记分支，否则 packages/services/test/workspaceRegistryRepo.test.ts
+ * 的「未知 id 必须抛错」断言会失败。
+ */
+export function resolveTaskDatabaseMigrationAction(id: string): (db: DatabaseSync) => void {
+  if (id === "0001_adopt_task_schema") return adoptSchema;
+  if (id === "0002_provider_selection") return importLegacyAutomationSelections;
+  if (id === "0003_official_glm_selection")
+    return (db) => db.exec(OFFICIAL_GLM_SELECTION_MIGRATION_SQL);
+  if (id === "0004_workspace_registry") return (db) => db.exec(WORKSPACE_REGISTRY_MIGRATION_SQL);
+  throw new Error("Unknown task database migration id: " + id);
+}
 
 export function runTasksDatabaseMigrations(
   db: DatabaseSync,
@@ -111,9 +135,7 @@ export function runTasksDatabaseMigrations(
       }
       if (migrationFacts.kind === "none") migrationFacts.kind = "upgrade";
       options.onProgress?.("migrating", { ...migrationFacts });
-      if (migration.id === "0001_adopt_task_schema") adoptSchema(db);
-      else if (migration.id === "0002_provider_selection") importLegacyAutomationSelections(db);
-      else db.exec(OFFICIAL_GLM_SELECTION_MIGRATION_SQL);
+      resolveTaskDatabaseMigrationAction(migration.id)(db);
       migrationFacts.executedCount++;
       db.prepare("INSERT INTO tasks_schema_migration VALUES(?,?,?)").run(
         migration.id,

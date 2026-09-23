@@ -10,7 +10,8 @@
     ".": "./src/index.ts",
     "./cua-permission-broker": "./src/cua-permission-broker/index.ts",
     "./process/processTreeTerminator": "./src/process/processTreeTerminator.ts",
-    "./node": "./src/node.ts"
+    "./node": "./src/node.ts",
+    "./workspace-registry": "./src/session/workspaceRegistryRepo.ts"
   },
   "scripts": {
     "lint": "oxlint",
