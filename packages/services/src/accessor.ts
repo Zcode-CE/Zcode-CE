@@ -38,6 +38,7 @@ import type { IPromptAttachmentTransferService } from "./prompt-attachment-trans
 import type { IWindowControllerService } from "./window-controller/windowController.js";
 import type { IOnboardingRecordService } from "./onboarding/onboardingRecord.js";
 import type { IConversationShareService } from "./conversation-share/conversationShare.js";
+import type { IWorkspaceRegistryService } from "./session/workspaceRegistry.js";
 
 /** UI 层消费的统一服务接口 */
 export interface IServiceAccessor {
@@ -72,6 +73,12 @@ export interface IServiceAccessor {
   readonly clientScenesService: IClientScenesService;
   /** 闲时任务管理（独立服务面）。 */
   readonly offPeakTaskService: IOffPeakTaskService;
+  /**
+   * 工作区注册表（M1.3）：侧栏枚举的唯一真相源。
+   * 旧 server wire / 测试 double 可不提供——缺省时客户端必须回落到「本客户端显式列出」，
+   * 而不是把空列表当成事实（见 docs/development/workspace-registry.md §3.2）。
+   */
+  readonly workspaceRegistryService?: IWorkspaceRegistryService;
   readonly skillsService: ISkillsService;
   readonly skillSyncService: ISkillSyncService;
   readonly mcpSyncService: IMcpSyncService;

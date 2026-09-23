@@ -14,6 +14,7 @@ import {
   resolveWorkspaceKey,
   CRON_DEFAULT_GROUP_ID,
   OFF_PEAK_DEFAULT_GROUP_ID,
+  type WorkspaceRegistryEntry,
   type ZCodeProvider,
   type ZCodeTaskMeta,
 } from "@zcode/shared";
@@ -38,6 +39,11 @@ import type {
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { getTasksIndexDatabasePath } from "#src/paths.js";
 import { runTasksDatabaseMigrations } from "#src/session/tasksDatabase/migrations.js";
+import {
+  createWorkspaceRegistryRepo,
+  enumerateTaskIndexWorkspaceEntries,
+  mergeWorkspaceRegistryEntries,
+} from "#src/session/workspaceRegistryRepo.js";
 
 const require = createRequire(import.meta.url);
 const { DatabaseSync } = require("node:sqlite") as typeof import("node:sqlite");
@@ -1724,6 +1730,32 @@ export class TaskIndexRepo {
         archived: typeof params.archived === "boolean" ? (params.archived ? 1 : 0) : null,
       }) as unknown as TaskIndexRow[];
     return rows.map(rowToMeta);
+  }
+
+  /**
+   * 工作区注册表条目（M1.3）：持久层 ∪ 任务索引实时枚举，去重合并后按最近活动降序。
+   *
+   * 为什么放在本 repo 内：注册表与任务索引同库同连接。宿主（`createLocalServices`）已经在
+   * 关闭链里登记了本 repo 的句柄，另开一个 sqlite 句柄会多一份 WAL 写者与关闭职责。
+   *
+   * **只读语义（架构不变式）**：这里不启动任何 workspace 的 Agent runtime，也不碰
+   * sessions-index 订阅；它只读两份 sqlite 事实。`upsertMany` 只把「枚举出来的行」写回
+   * 注册表（一次性幂等回填，服务端是唯一写者），不改任务行。
+   */
+  async listWorkspaceRegistryEntries(): Promise<WorkspaceRegistryEntry[]> {
+    await this.ensureReady();
+    // 两个 DatabaseSync 类型来自同一 node:sqlite 声明（createRequire vs type import），
+    // 这里显式收窄，避免为了对齐而改动任一模块的导入方式。
+    const database = this.getDatabase() as unknown as Parameters<
+      typeof enumerateTaskIndexWorkspaceEntries
+    >[0];
+    const repo = createWorkspaceRegistryRepo({ database });
+    const live = enumerateTaskIndexWorkspaceEntries(database);
+    // 幂等回填：既有的 first_seen_at / 来源并集由 repo 的 upsert 语义保留。
+    if (live.length > 0) {
+      repo.upsertMany(live);
+    }
+    return mergeWorkspaceRegistryEntries([...repo.list(), ...live]);
   }
 
   /**

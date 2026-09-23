@@ -40,6 +40,24 @@ export function resolveWorkspaceRegistryKey(params: {
   return params.workspaceIdentity?.trim() || params.workspacePath.trim();
 }
 
+/**
+ * 注册表列表结果（M1.3）——RPC 与 /api/server-info 的共同载荷。
+ *
+ * `defaultView` 由服务端用同一份纯规则算出，客户端不得自行改变口径：否则 web 与桌面会看到
+ * 不同的「默认视图」，那正是本任务要消灭的多客户端不一致。
+ */
+export const workspaceRegistryListResultSchema = z.object({
+  /** 注册表全集（按最近活动降序）。 */
+  entries: z.array(workspaceRegistryEntrySchema),
+  /** 默认视图 = 最近活跃窗口 ∪ 置顶（服务端计算，客户端只渲染）。 */
+  defaultView: z.array(workspaceRegistryEntrySchema),
+  /** 本次使用的活跃窗口天数（便于客户端展示与排查口径差异）。 */
+  windowDays: z.number().int().positive(),
+  generatedAt: z.number().int().nonnegative(),
+});
+
+export type WorkspaceRegistryListResult = z.infer<typeof workspaceRegistryListResultSchema>;
+
 /** 默认视图窗口（产品决定：30 天）。 */
 export const WORKSPACE_REGISTRY_DEFAULT_VIEW_WINDOW_DAYS = 30;
 

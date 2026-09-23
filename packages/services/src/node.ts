@@ -439,6 +439,10 @@ import { ensureAppCaCert } from "./runtime-tools/appCaCert.js";
 import { buildHelperOpenArgs, isCuaLocalDevelopmentRuntime } from "@zcode/zcode-cua/broker/server";
 import { createServiceLogger, type ServiceLogger } from "#src/logger/serviceLogger.js";
 import { IOffPeakTaskService } from "./session/offPeakTask.js";
+import {
+  createWorkspaceRegistryService,
+  IWorkspaceRegistryService,
+} from "./session/workspaceRegistry.js";
 import { OffPeakTaskService } from "./session/offPeakTaskService.js";
 import { OffPeakTaskRepo } from "./session/offPeakTaskRepo.js";
 import { createOffPeakServerClient } from "./session/offPeakServerClient.js";
@@ -2504,6 +2508,15 @@ export function createLocalServices(options: {
       }),
     )
     .register(IClientScenesService, createClientScenesService({ apiClient }))
+    .register(
+      IWorkspaceRegistryService,
+      // 工作区注册表（M1.3）：宿主只提供「怎么拿条目」，服务本身是纯计算。
+      // 复用下面已经建好的共享 taskIndexRepo —— 既有的关闭链（sqliteReposToClose）
+      // 已登记该句柄，这里不新开 sqlite 连接，也不新增第二个写者。
+      createWorkspaceRegistryService({
+        listEntries: () => taskIndexRepo.listWorkspaceRegistryEntries(),
+      }),
+    )
     .register(
       IOffPeakTaskService,
       (() => {

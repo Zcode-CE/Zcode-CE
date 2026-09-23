@@ -119,6 +119,14 @@ import { WorkspaceTimelineTasksSection } from "@/WorkspaceTimelineTasksSection.j
 import { WorkspaceGroupedTasksSection } from "@/WorkspaceGroupedTasksSection.js";
 import { StickyGroupHeaderSlot } from "@/workspace-grouped-tasks/sticky-group-header-slot.js";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
+import { WorkspaceSidebarItem } from "@/WorkspaceSidebarItem.js";
+import { useWorkspaceRegistry } from "@/hooks/useWorkspaceRegistry.js";
+import {
+  buildRegistryRowRenderTab,
+  buildWorkspaceSidebarRows,
+  countHiddenRegistryRows,
+} from "@/hooks/workspaceSidebarRows.js";
+import { useWorkspaceRuntimeStates } from "@/hooks/useWorkspaceRuntimeStates.js";
 import {
   SortableWorkspaceSidebarItem,
   restrictVerticalDragWithinContainer,
@@ -378,6 +386,43 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
     () => projectWorkspaceTabs.map((tab) => tab.workspacePath),
     [projectWorkspaceTabs],
   );
+  // ── 工作区枚举来源（M1.4）：服务端注册表默认视图 ∪ 本客户端显式列出的 tab ──
+  // 以前侧栏只看 tab store（= 设置里的 lastWorkspaceSession，实测 22 条），而数据侧有 52 个
+  // workspace，于是「会话看起来丢了」。现在枚举来自服务端注册表；设置只保留排序/展开等显示偏好。
+  const registry = useWorkspaceRegistry();
+  const [showAllRegistryRows, setShowAllRegistryRows] = useState(false);
+  const registryEntriesForRows = showAllRegistryRows ? registry.entries : registry.defaultView;
+  const workspaceRows = useMemo(
+    () =>
+      buildWorkspaceSidebarRows({
+        tabs: projectWorkspaceTabs,
+        registryEntries: registryEntriesForRows,
+        showAll: showAllRegistryRows,
+      }),
+    [projectWorkspaceTabs, registryEntriesForRows, showAllRegistryRows],
+  );
+  // 注册表派生行：不是本客户端的 tab，只借用同一套行渲染，绝不写回 tab store / 设置。
+  const registryDerivedRows = useMemo(
+    () => workspaceRows.filter((row) => row.source === "registry"),
+    [workspaceRows],
+  );
+  const hiddenRegistryRowCount = useMemo(
+    () => countHiddenRegistryRows({ tabs: projectWorkspaceTabs, entries: registry.entries }),
+    [projectWorkspaceTabs, registry.entries],
+  );
+  const runtimeStateInputs = useMemo(
+    () =>
+      workspaceRows.map((row) => ({
+        workspaceKey: row.workspaceKey,
+        workspacePath: row.workspacePath,
+        ...(row.workspaceIdentity ? { workspaceIdentity: row.workspaceIdentity } : {}),
+        isRemote: Boolean(
+          row.tab?.remoteSessionId || row.tab?.remoteTarget || row.workspaceIdentity,
+        ),
+      })),
+    [workspaceRows],
+  );
+  const runtimeStates = useWorkspaceRuntimeStates(runtimeStateInputs);
   const areAllWorkspaceGroupsExpanded = useMemo(
     () =>
       workspacePaths.length > 0 && workspacePaths.every((path) => expandedWorkspacePaths.has(path)),
@@ -1487,7 +1532,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                                 </DropdownMenu>
                               }
                             >
-                              {projectWorkspaceTabs.length === 0 ? (
+                              {projectWorkspaceTabs.length === 0 &&
+                              registryDerivedRows.length === 0 &&
+                              hiddenRegistryRowCount === 0 ? (
                                 <div className="px-3 py-2 text-ui-base text-foreground-subtle">
                                   {intl.formatMessage({
                                     id: "workspaceSidebar.noProjects",
@@ -1556,9 +1603,119 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                                             }
                                             onReconnectRemoteWorkspace={onReconnectRemoteWorkspace}
                                             onOpenFileTree={handleOpenWorkspaceFileTree}
+                                            runtimeState={
+                                              runtimeStates.get(workspaceKey) ?? "unknown"
+                                            }
+                                            persistedSessionCount={
+                                              workspaceRows.find(
+                                                (row) => row.workspaceKey === workspaceKey,
+                                              )?.persistedSessionCount ?? null
+                                            }
+                                            lastActivityAt={
+                                              workspaceRows.find(
+                                                (row) => row.workspaceKey === workspaceKey,
+                                              )?.lastActivityAt ?? null
+                                            }
                                           />
                                         );
                                       })}
+                                      {/*
+                                       * 注册表补列行（M1.4）：数据侧存在、但本客户端设置里没有的 workspace。
+                                       * 不可拖拽（无 dnd-kit 绑定）、不可移除（不是 tab）；点开才启动 runtime，
+                                       * 未启动时按 §3.2 如实显示持久层的会话数与最近活动，而不是「暂无任务」。
+                                       */}
+                                      {registryDerivedRows.map((row) => {
+                                        const renderTab = buildRegistryRowRenderTab(row);
+                                        if (!renderTab) return null;
+                                        return (
+                                          <WorkspaceSidebarItem
+                                            key={row.workspaceKey}
+                                            tab={renderTab}
+                                            isActiveWorkspace={false}
+                                            isExpanded={expandedWorkspacePaths.has(
+                                              row.workspacePath,
+                                            )}
+                                            activateTab={activateTab}
+                                            closeTab={closeTab}
+                                            toggleWorkspaceExpanded={toggleWorkspaceExpanded}
+                                            onSelectTask={onSelectTask}
+                                            onStartDraftInWorkspace={onStartDraftInWorkspace}
+                                            taskItems={EMPTY_WORKSPACE_TASK_ITEMS}
+                                            taskListLoading={false}
+                                            taskListHasMore={false}
+                                            onShowMoreTasks={() =>
+                                              handleShowMoreWorkspaceTasks(row.workspaceKey)
+                                            }
+                                            isRegistryDerived
+                                            runtimeState={
+                                              runtimeStates.get(row.workspaceKey) ?? "unknown"
+                                            }
+                                            persistedSessionCount={row.persistedSessionCount}
+                                            lastActivityAt={row.lastActivityAt}
+                                            reconnectingRemoteWorkspaceKeys={
+                                              reconnectingRemoteWorkspaceKeys
+                                            }
+                                            remoteWorkspaceErrorByWorkspaceKey={
+                                              remoteWorkspaceErrorByWorkspaceKey
+                                            }
+                                            reconnectingRemoteWorkspaceLogsByWorkspaceKey={
+                                              reconnectingRemoteWorkspaceLogsByWorkspaceKey
+                                            }
+                                            onReconnectRemoteWorkspace={onReconnectRemoteWorkspace}
+                                            onOpenFileTree={handleOpenWorkspaceFileTree}
+                                          />
+                                        );
+                                      })}
+                                      {registry.status === "unavailable" ? (
+                                        <li
+                                          data-testid="workspace-registry-unavailable"
+                                          className="px-3 py-2 text-ui-base text-foreground-subtle"
+                                        >
+                                          {intl.formatMessage(
+                                            { id: "workspaceSidebar.registry.loadFailed" },
+                                            {
+                                              reason:
+                                                registry.errorMessage ??
+                                                intl.formatMessage({
+                                                  id: "workspaceRuntime.failed.reasonUnavailable",
+                                                }),
+                                            },
+                                          )}
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="mt-1 w-full justify-center"
+                                            onClick={registry.reload}
+                                          >
+                                            {intl.formatMessage({
+                                              id: "workspaceSidebar.registry.retry",
+                                            })}
+                                          </Button>
+                                        </li>
+                                      ) : hiddenRegistryRowCount > 0 || showAllRegistryRows ? (
+                                        <li>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            data-testid="workspace-registry-show-all"
+                                            className="w-full justify-center text-foreground-subtle hover:text-foreground"
+                                            onClick={() =>
+                                              setShowAllRegistryRows((current) => !current)
+                                            }
+                                          >
+                                            {showAllRegistryRows
+                                              ? intl.formatMessage({
+                                                  id: "workspaceSidebar.registry.hideAll",
+                                                })
+                                              : intl.formatMessage(
+                                                  { id: "workspaceSidebar.registry.showAll" },
+                                                  { count: String(hiddenRegistryRowCount) },
+                                                )}
+                                          </Button>
+                                        </li>
+                                      ) : null}
                                     </ul>
                                   </SortableContext>
                                   {typeof document === "undefined"

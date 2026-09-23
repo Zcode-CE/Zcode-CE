@@ -24,6 +24,7 @@ import {
   ISystemService,
   ITerminalService,
   IProviderProvisioningTargetService,
+  IWorkspaceRegistryService,
 } from "@zcode/services";
 import {
   formatLogPrefix,
@@ -154,10 +155,7 @@ function resolveServerId(options: HttpServerOptions): string {
   );
 }
 
-function resolveServerWorkspaces(options: HttpServerOptions): ServerRemoteWorkspaceInfo[] {
-  if (options.workspaces) {
-    return options.workspaces;
-  }
+function fallbackServerWorkspaces(): ServerRemoteWorkspaceInfo[] {
   const workspacePath = readTrimmedEnv("ZCODE_SERVER_WORKSPACE") || process.cwd();
   return [
     {
@@ -167,7 +165,54 @@ function resolveServerWorkspaces(options: HttpServerOptions): ServerRemoteWorksp
   ];
 }
 
-function createServerInfo(options: HttpServerOptions): ServerRemoteInfo {
+/**
+ * server-info 的 workspaces（M1.3）——**由服务端注册表驱动**。
+ *
+ * 为什么改：client 启动时用 `workspaces[0]` 作为初始 workspace。此前它只会是
+ * `ZCODE_SERVER_WORKSPACE`/cwd —— 手机打开服务后落在一个跟用户无关的目录，而真实数据侧有
+ * 50+ 个 workspace（见 docs/development/workspace-registry.md §1）。现在取注册表默认视图的
+ * 首项（最近活跃），与侧栏口径一致。
+ *
+ * 三条硬约束：
+ * ① **只读**：这里不得启动任何 Agent runtime（§3.1 架构不变式）；
+ * ② **不改变显式声明**：`options.workspaces` 仍优先（server-core 与测试的显式契约）；
+ * ③ **失败不炸**：注册表读失败（库缺失/被锁）时回落到 cwd 并告警 —— server-info 同时承担
+ *    web 启动期的鉴权探测，让它 500 会把「授权问题」和「注册表问题」混成一件事。
+ */
+async function resolveServerWorkspaces(
+  options: HttpServerOptions,
+  services: ServiceCollection,
+): Promise<ServerRemoteWorkspaceInfo[]> {
+  if (options.workspaces) {
+    return options.workspaces;
+  }
+  const registry = services.getOptional(IWorkspaceRegistryService);
+  if (!registry) {
+    return fallbackServerWorkspaces();
+  }
+  try {
+    const { defaultView } = await registry.listWorkspaceRegistry();
+    if (defaultView.length === 0) {
+      return fallbackServerWorkspaces();
+    }
+    return defaultView.map((entry) => ({
+      path: entry.workspacePath,
+      label: basename(entry.workspacePath) || entry.workspacePath,
+      ...(entry.workspaceIdentity ? { workspaceIdentity: entry.workspaceIdentity } : {}),
+    }));
+  } catch (error) {
+    warn(
+      "读取工作区注册表失败，server-info 回落到 ZCODE_SERVER_WORKSPACE/cwd：" +
+        (error instanceof Error ? error.message : String(error)),
+    );
+    return fallbackServerWorkspaces();
+  }
+}
+
+async function createServerInfo(
+  options: HttpServerOptions,
+  services: ServiceCollection,
+): Promise<ServerRemoteInfo> {
   return {
     serverId: resolveServerId(options),
     ...(options.name?.trim() || readTrimmedEnv("ZCODE_SERVER_NAME")
@@ -176,7 +221,7 @@ function createServerInfo(options: HttpServerOptions): ServerRemoteInfo {
     version: ZCODE_VERSION,
     protocolVersion: SERVER_REMOTE_PROTOCOL_VERSION,
     authRequired: options.authRequired ?? Boolean(readTrimmedEnv("ZCODE_SERVER_TOKEN")),
-    workspaces: resolveServerWorkspaces(options),
+    workspaces: await resolveServerWorkspaces(options, services),
     capabilities: {
       desktopContinuous: true,
       websocketRpc: true,
@@ -489,7 +534,7 @@ export function createHttpServer(
     });
   }
 
-  app.get("/api/server-info", (c) => c.json(createServerInfo(options)));
+  app.get("/api/server-info", async (c) => c.json(await createServerInfo(options, services)));
   app.post("/api/rpc-host-capability", (c) => c.json(hostCapabilities.issue()));
 
   // 普通 `/ws` 永远是 terminal-client；浏览器/任意客户端设置旧 mode header

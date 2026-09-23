@@ -248,6 +248,9 @@ export { isValidCronExpr } from "./session/automationCronValidation.js";
 // 闲时任务管理服务（与 automation 服务面独立）；接口/描述符 browser-safe。
 export { IOffPeakTaskService } from "./session/offPeakTask.js";
 export type { OffPeakUpdateTaskParams } from "./session/offPeakTask.js";
+// 工作区注册表（M1.3）：可见工作区集合的唯一真相源，只读面。
+export { IWorkspaceRegistryService } from "./session/workspaceRegistry.js";
+export type { WorkspaceRegistryListParams } from "./session/workspaceRegistry.js";
 
 // Skills service — ISkillsService is both a type (interface) and value (descriptor)
 export { ISkillsService } from "./skills/skills.js";

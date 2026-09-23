@@ -1347,6 +1347,24 @@ const enUS: Record<string, string> = {
     "Project removed, but {count} Windows reserved-name file(s) were detected and may affect later folder deletion or renaming: {path}",
   "workspaceSidebar.reconnect": "Reconnect",
   "workspaceSidebar.connecting": "Connecting",
+  "workspaceRuntime.badge.notStarted": "Not started",
+  "workspaceRuntime.badge.starting": "Starting",
+  "workspaceRuntime.badge.failed": "Start failed",
+  "workspaceRuntime.starting.title": "Starting workspace…",
+  "workspaceRuntime.failed.title": "Failed to start “{workspace}”",
+  "workspaceRuntime.failed.reasonUnavailable":
+    "No specific reason was reported. Retry once; check logs if it keeps failing.",
+  "workspaceRuntime.failed.retry": "Retry",
+  "workspaceRuntime.notStarted.title":
+    "Not started (opening starts it; other workspaces are unaffected)",
+  "workspaceRuntime.notStarted.persistedSessions":
+    "{count} sessions on record, last active {activity} ago",
+  "workspaceRuntime.notStarted.noSessions": "No sessions yet; open it to create a task",
+  "workspaceRuntime.notStarted.open": "Open and start",
+  "workspaceSidebar.registry.showAll": "Show all workspaces ({count} more)",
+  "workspaceSidebar.registry.hideAll": "Hide workspaces not opened here",
+  "workspaceSidebar.registry.loadFailed": "Failed to read the workspace list: {reason}",
+  "workspaceSidebar.registry.retry": "Reload",
   "workspaceSidebar.notConnected": "Not connected",
   "workspaceSidebar.empty": "No workspaces yet. Open a workspace to get started.",
   "workspaceSidebar.unavailableLocalDirectory":

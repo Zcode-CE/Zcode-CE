@@ -5,6 +5,7 @@ import { WorkspaceSidebarItem, type SortableBindings } from "./WorkspaceSidebarI
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 import type { RemoteConnectionLogEntry } from "@/hooks/useRemoteConnectionLogs.js";
 import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { WorkspaceRuntimeState } from "@/hooks/useWorkspaceRuntimeStates.js";
 
 export type { SortableBindings };
 
@@ -32,6 +33,9 @@ export const SortableWorkspaceSidebarItem = memo(function SortableWorkspaceSideb
   reconnectingRemoteWorkspaceLogsByWorkspaceKey,
   onReconnectRemoteWorkspace,
   onOpenFileTree,
+  runtimeState,
+  persistedSessionCount,
+  lastActivityAt,
 }: {
   tab: WorkspaceTabState;
   isActiveWorkspace: boolean;
@@ -62,6 +66,10 @@ export const SortableWorkspaceSidebarItem = memo(function SortableWorkspaceSideb
     workspaceIdentity?: string;
     workspaceRemoteSessionId?: string;
   }) => void;
+  /** §3.2 诚实未启动态：runtime 状态与持久层会话数（注册表事实）。 */
+  runtimeState?: WorkspaceRuntimeState;
+  persistedSessionCount?: number | null;
+  lastActivityAt?: number | null;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tab.id,
@@ -129,6 +137,9 @@ export const SortableWorkspaceSidebarItem = memo(function SortableWorkspaceSideb
       itemStyle={style}
       sortableBindings={sortableBindings}
       isDragging={isDragging}
+      runtimeState={runtimeState}
+      persistedSessionCount={persistedSessionCount}
+      lastActivityAt={lastActivityAt}
     />
   );
 });

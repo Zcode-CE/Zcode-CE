@@ -135,6 +135,8 @@ export const ServiceChannels = {
   OffPeakTask: "off-peak-task",
   /** Onboarding 完成记录服务（本地持久化，后续上传服务器） */
   OnboardingRecord: "onboarding-record",
+  /** 工作区注册表（M1.3）：可见工作区集合的唯一真相源，只读面 */
+  WorkspaceRegistry: "workspace-registry",
 } as const;
 
 export type ServiceChannelName = (typeof ServiceChannels)[keyof typeof ServiceChannels];

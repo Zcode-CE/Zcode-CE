@@ -25,6 +25,7 @@ import {
   IClientConfigService,
   IClientScenesService,
   IOffPeakTaskService,
+  IWorkspaceRegistryService,
   ISkillsService,
   ISkillSyncService,
   IMcpSyncService,
@@ -77,6 +78,7 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly clientConfigService: IClientConfigService;
   readonly clientScenesService: IClientScenesService;
   readonly offPeakTaskService: IOffPeakTaskService;
+  readonly workspaceRegistryService: IWorkspaceRegistryService;
   readonly skillsService: ISkillsService;
   readonly skillSyncService: ISkillSyncService;
   readonly mcpSyncService: IMcpSyncService;
@@ -174,6 +176,12 @@ export class RemoteServiceAccess implements IServiceAccessor {
     );
     this.offPeakTaskService = ProxyChannel.toService<IOffPeakTaskService>(
       channelClient.getChannel(IOffPeakTaskService.channelName),
+    );
+    // 工作区注册表（M1.3）：侧栏枚举来源。旧 host 未注册该 channel 时调用会失败，
+    // 由消费方（useWorkspaceRegistry）按「不可用」处理并回落到本客户端显式列出，
+    // 不得把失败当成「没有任何工作区」。
+    this.workspaceRegistryService = ProxyChannel.toService<IWorkspaceRegistryService>(
+      channelClient.getChannel(IWorkspaceRegistryService.channelName),
     );
     this.skillsService = ProxyChannel.toService<ISkillsService>(
       channelClient.getChannel(ISkillsService.channelName),

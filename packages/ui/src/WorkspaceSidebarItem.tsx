@@ -52,6 +52,8 @@ import {
   formatRemoteWorkspaceDisplayLabel,
 } from "@/lib/remoteWorkspaceHistory.js";
 import { TaskList } from "@/TaskList.js";
+import { WorkspaceRuntimeBadge } from "@/WorkspaceRuntimeNotice.js";
+import type { WorkspaceRuntimeState } from "@/hooks/useWorkspaceRuntimeStates.js";
 import { selectWorkspaceZCodeState, useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 import type { RemoteConnectionLogEntry } from "@/hooks/useRemoteConnectionLogs.js";
@@ -151,6 +153,10 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
   itemStyle,
   sortableBindings,
   isDragging = false,
+  runtimeState,
+  persistedSessionCount,
+  lastActivityAt,
+  isRegistryDerived = false,
 }: {
   tab: WorkspaceTabState;
   isActiveWorkspace: boolean;
@@ -185,6 +191,16 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
   itemStyle?: CSSProperties;
   sortableBindings?: SortableBindings;
   isDragging?: boolean;
+  /** §3.2：runtime 状态（"unknown" 或缺席时不显示任何「未启动」标识）。 */
+  runtimeState?: WorkspaceRuntimeState;
+  /** 持久层会话数（注册表事实）。 */
+  persistedSessionCount?: number | null;
+  lastActivityAt?: number | null;
+  /**
+   * 本行由服务端注册表派生（本客户端设置里没有它）。不是真 tab：
+   * 关闭按钮等「对 tab 操作」的入口必须隐藏，点开走 onOpenRegistryWorkspace。
+   */
+  isRegistryDerived?: boolean;
 }) {
   const { intl } = useZCodeIntl();
   const workspaceZCodeState = useZCodeSessionStore((state) =>
@@ -769,6 +785,11 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
           {taskListLiveWorkflowCount > 1 ? taskListLiveWorkflowCount : null}
         </span>
       ) : null}
+      {/*
+       * §3.2：runtime 未启动/启动中/失败必须与远端「未连接」分开表达 ——
+       * 前者是本地 runtime 还没起来（点开即可），后者是远端链路断了（要先重连）。
+       */}
+      <WorkspaceRuntimeBadge state={runtimeState ?? "unknown"} />
       {readOnlyReason ? (
         <ControlHintTooltip title={readOnlyReason} side="right" align="center">
           <span
@@ -930,26 +951,34 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                             onOpenMcpSync={() => setRemoteMcpSyncOpen(true)}
                             onOpenPluginSync={() => setRemotePluginSyncOpen(true)}
                           />
-                          <DropdownMenuItem
-                            data-testid={testId(TID_WORKSPACE_CLOSE, tab.workspacePath)}
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                            }}
-                            onSelect={(event) => {
-                              event.preventDefault();
-                              void handleRemoveWorkspace();
-                            }}
-                          >
-                            <XIcon className="h-3.5 w-3.5" />
-                            {intl.formatMessage({
-                              id: "workspaceSidebar.remove",
-                            })}
-                          </DropdownMenuItem>
+                          {/*
+                           * 注册表派生的行不是本客户端的 tab：这里没有可关闭的 tab，
+                           * 「移除」会打到 `closeTab`（对不存在的 id 是空操作），
+                           * 对用户表现为「点了没反应」。因此只对真 tab 提供该入口。
+                           */}
+                          {isRegistryDerived ? null : (
+                            <DropdownMenuItem
+                              data-testid={testId(TID_WORKSPACE_CLOSE, tab.workspacePath)}
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                              }}
+                              onSelect={(event) => {
+                                event.preventDefault();
+                                void handleRemoveWorkspace();
+                              }}
+                            >
+                              <XIcon className="h-3.5 w-3.5" />
+                              {intl.formatMessage({
+                                id: "workspaceSidebar.remove",
+                              })}
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : null}
-                    {shouldMountWorkspaceRowActions && showFileTreeAction ? (
+                    {/* 文件树依赖该 workspace 的 host 连接；未打开（注册表派生）的行先不提供，避免“点了没反应”。 */}
+                    {shouldMountWorkspaceRowActions && showFileTreeAction && !isRegistryDerived ? (
                       <span className="shrink-0">
                         {/* Project 文件树入口以前单独覆盖 hover:bg-surface-hover，
                             与 Pinned / Grouped 的 bg-hover 不一致；三种入口统一复用同一 action。 */}
@@ -1133,6 +1162,11 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
             onArchiveTask={handleArchiveTask}
             onSetTaskUnread={handleSetTaskUnread}
             readOnlyReason={readOnlyReason}
+            runtimeState={runtimeState}
+            persistedSessionCount={persistedSessionCount}
+            lastActivityAt={lastActivityAt}
+            onStartRuntime={() => onStartDraftInWorkspace(tab.workspacePath, tab.workspaceIdentity)}
+            onRetryRuntime={() => onStartDraftInWorkspace(tab.workspacePath, tab.workspaceIdentity)}
           />
         </CollapsibleContent>
       </Collapsible>
