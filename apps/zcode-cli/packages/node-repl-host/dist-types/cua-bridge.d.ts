@@ -2,6 +2,7 @@ import type { NodeReplRequestMeta, NodeReplSession } from "@zcode/core";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 export declare const NODE_REPL_CUA_BRIDGE_SYMBOL: unique symbol;
 export declare const CUA_UNAVAILABLE_IN_SUBAGENT_MESSAGE = "Computer Use is not available in subagent";
+export declare const CUA_UNAVAILABLE_IN_SESSION_MESSAGE: string;
 export interface ActiveCuaNodeReplCall {
     generation: number;
     requestMeta: NodeReplRequestMeta;
