@@ -184,10 +184,17 @@ const CopyRowAction = memo(function CopyRowAction({
       operation: () => writeTextToClipboard(text),
       completed: { resultSource: "platform_result" },
       failureStage: "clipboard_write",
-    }).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1200);
-    });
+    }).then(
+      () => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1200);
+      },
+      (error: unknown) => {
+        // 写入失败（无剪贴板 API 且 execCommand 回退也失败）：与改动前一致静默不打勾，
+        // 只记日志，避免 unhandled rejection。
+        logger.warn("[v4-copy] clipboard write failed", error);
+      },
+    );
   }, [text]);
   return (
     <MessageAction
