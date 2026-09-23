@@ -20,6 +20,7 @@ import {
   FileSearch,
   LifeBuoy,
   ShieldAlert,
+  CloudDownload,
 } from "lucide-react";
 import { isSettingsSectionEnabled, type SettingsSectionId } from "@/lib/settingsNavigation.js";
 import type { Theme } from "@/useTheme.js";
@@ -161,6 +162,16 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     titleId: "settings.workspaceFileSearch.title",
     groupId: "basics",
   },
+  // 远程资产发布根（自定义 CDN 基址）：远程工作区取资产的位置，属基础设置里的"连通性"配置。
+  // **只在桌面端出现** —— 这条链只有 desktop main 消费（desktopRuntimeEnv → remoteCdn 的
+  // overrideBaseUrl 槽位），Web / CLI 走另一条资产解析链、不读 AppSettings。Web 上显示一个
+  // 点了没用的开关就是 UI 说谎，因此在 createSettingsPageConfig 里按 isDesktop 过滤。
+  {
+    id: "remoteAssets",
+    icon: CloudDownload,
+    titleId: "settings.remoteAssets.title",
+    groupId: "basics",
+  },
   {
     id: "usage",
     icon: BarChart3,
@@ -197,6 +208,9 @@ export function createSettingsPageConfig({
   const showComputerUse = isDesktop || isMacDesktop || isWindowsDesktop;
   const settingsSections = BASE_SETTINGS_SECTIONS.filter((section) => {
     if (section.id === "computerUse" && !showComputerUse) return false;
+    // 远程资产发布根只有桌面端能生效（消费链在 desktop main），Web 侧不显示该分区 ——
+    // 与「不显示一个点了没用的开关」是同一条判据。不要改成"显示但禁用"：禁用态同样让人以为是能力缺口。
+    if (section.id === "remoteAssets" && !isDesktop) return false;
     return isSettingsSectionEnabled(section.id);
   });
   const settingsSectionGroups = BASE_SETTINGS_SECTION_GROUPS.map((group) => ({

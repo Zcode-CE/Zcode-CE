@@ -31,10 +31,9 @@ import {
   ZCODE_CUA_BUNDLED_HELPER_APP_PATH_ENV,
   ZCODE_WINDOWS_APP_INSTALL_DIR_ENV,
 } from "@zcode/services/node";
-import {
-  resolveRemoteCdnBaseUrls as resolveOrderedRemoteCdnBaseUrls,
-  type ResolveRemoteCdnOptions,
-} from "./remoteCdn.js";
+import { normalizeRemoteAssetCdnBaseUrl } from "@zcode/shared";
+import type { ResolveRemoteCdnOptions } from "./remoteCdn.js";
+import { resolveRemoteCdnBaseUrlsWithOverrides } from "./remoteCdnOverrides.js";
 import { getElectronAppPath, isElectronAppPackaged } from "./desktopElectronApp.js";
 
 const isLocalDevelopmentRuntime = !isElectronAppPackaged();
@@ -235,17 +234,49 @@ function shouldUseRemoteCdnInDevelopment(localEnv: LocalRuntimeEnv = {}): boolea
   return isTruthyEnvFlag(resolveEnvValue("ZCODE_DEV_REMOTE_ASSET_USE_CDN", localEnv));
 }
 
+/**
+ * 远程资产基址的**唯一组合点**（desktop 侧）。
+ *
+ * 优先级（与 docs/development/remote-workspace.md §3.1 一致）：
+ *   1. 运行期 env `ZCODE_REMOTE_ASSET_CDN_BASE_URL`（运维/调试，最高）
+ *   2. 用户设置 `AppSettings.remoteAssetCdnBaseUrl`（设置页，唯一所有者）
+ *   3. 构建期 `ZCODE_CDN_BASE_URL` / `__ZCODE_CDN_BASE_URL__`（由 remoteCdn.ts 处理）
+ *   4. 官方默认
+ *
+ * 两个自定义值都走**同一个** `overrideBaseUrl` 槽位：`remoteCdn.ts` 对它的语义是
+ * 「按字面值当发布根」，env 与设置因此不可能出现两套拼接规则。env 非空即短路，
+ * 保证"运维排障时能临时覆盖用户设置"这条既有契约不变。
+ */
 function resolveRemoteCdnBaseUrls(
   options: ResolveRemoteCdnOptions = {},
   localEnv: LocalRuntimeEnv = {},
 ): string[] {
-  const raw = resolveEnvValue("ZCODE_REMOTE_ASSET_CDN_BASE_URL", localEnv);
-  return resolveOrderedRemoteCdnBaseUrls({
-    ...options,
-    env: ZCODE_ENV,
-    overrideBaseUrl: raw,
-    version: ZCODE_VERSION,
-  });
+  // 优先级组合收在 remoteCdnOverrides.ts（纯函数、可被 node:test 真跑）——本模块会拉进 electron，
+  // 在这层写逻辑等于让最易错的排序没有可执行测试。
+  return resolveRemoteCdnBaseUrlsWithOverrides(
+    { ...options, version: ZCODE_VERSION },
+    {
+      envBaseUrl: resolveEnvValue("ZCODE_REMOTE_ASSET_CDN_BASE_URL", localEnv),
+      settingsBaseUrl: remoteAssetCdnBaseUrlSetting,
+    },
+    ZCODE_ENV,
+  );
+}
+
+/**
+ * 用户设置里的自定义 CDN 基址（`AppSettings.remoteAssetCdnBaseUrl`）在本进程内的缓存。
+ *
+ * 为什么用缓存而不是每次去读 setting.json：`resolveRemoteAssetDirs` 是**同步**接口
+ * （`desktopRemoteSessions.ts:78` 的契约），而设置读取是异步的。
+ * 读取点只有两个：main 启动时的 bootstrap（`index.ts` 与其它 AppSettings 字段同一处）
+ * 与设置变更事件（`syncImmediateAppSettings`）—— 两者都调 `setRemoteAssetCdnBaseUrlSetting`。
+ */
+let remoteAssetCdnBaseUrlSetting: string | undefined;
+
+/** 由 main 在启动读取与设置更新时写入；传空串/undefined 表示"用户选择用默认"。 */
+export function setRemoteAssetCdnBaseUrlSetting(value: string | undefined): void {
+  const normalized = normalizeRemoteAssetCdnBaseUrl(value);
+  remoteAssetCdnBaseUrlSetting = normalized.kind === "valid" ? normalized.value : undefined;
 }
 
 function resolveEnvValue(envName: string, localEnv: LocalRuntimeEnv = {}): string | undefined {

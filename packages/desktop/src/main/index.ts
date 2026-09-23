@@ -140,6 +140,7 @@ import {
   resolveBundledGlmBinaryPath,
   resolveRemoteAssetDirs,
   resolveZCodeEndpointEnvBaseOrigin,
+  setRemoteAssetCdnBaseUrlSetting,
   runtimeApplicationName,
   runtimeHomePath,
   runtimeSessionDataPath,
@@ -839,6 +840,12 @@ function syncCloseToTrayOnWindows(value: unknown) {
 
 function syncImmediateAppSettings(patch: AppSettingsSyncPatch) {
   syncCloseToTrayOnWindows(patch.closeToTrayOnWindows);
+
+  if (patch.remoteAssetCdnBaseUrl !== undefined) {
+    // 设置页改自定义远程资产 CDN 基址：只刷新进程内缓存，**新建**的远程连接才会用到新值。
+    // 已建立的远程会话沿用旧基址（下载地址在连接时已确定），设置项文案已如实标注这一点。
+    setRemoteAssetCdnBaseUrlSetting(patch.remoteAssetCdnBaseUrl);
+  }
 
   if (typeof patch.keepAwakeWhileRunning === "boolean") {
     keepAwakeWhileRunning = patch.keepAwakeWhileRunning;
@@ -1752,6 +1759,9 @@ app.whenReady().then(async () => {
       loadedBootstrapLocale = true;
       currentApplicationLocale = bootstrapSettings.locale;
     }
+    // 自定义远程资产 CDN 基址（设置页）：与其它 AppSettings 字段同一处读取。
+    // 它有独立的进程内缓存，因为消费点 `resolveRemoteAssetDirs` 是同步接口。
+    setRemoteAssetCdnBaseUrlSetting(bootstrapSettings.remoteAssetCdnBaseUrl);
     closeToTrayOnWindows = bootstrapSettings.closeToTrayOnWindows ?? true;
     keepAwakeWhileRunning = bootstrapSettings.keepAwakeWhileRunning ?? false;
     currentDesktopZoomLevel = clampDesktopZoomLevel(bootstrapSettings.desktopZoomLevel ?? 0);

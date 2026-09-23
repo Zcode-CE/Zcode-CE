@@ -478,6 +478,18 @@ ZCODE_REMOTE_ASSET_CDN_BASE_URL=<发布根> pnpm dev:desktop      # 指向它
 **发布根要指向"包含 `<版本>/` 与 `components/` 的那一层"**，不要带版本号；`components/` 必须放在发布根，
 放进版本目录会让每次连接先对第一条候选 URL 白打一轮 404（实测）。
 
+**社区 CDN 已投运**：本项目自建的对象存储 + 自定义域名（`https://cdn.eidolonmachine.xyz`）已托管各版本资产，
+客户端**不经过任何中继**、资产请求也不带任何设备/账号标识（实测：一次连接共 8 个请求，请求头只有 HTTP 客户端默认项）。
+**发布安装包默认指向该社区 CDN**：发布流水线在构建期注入 `ZCODE_CDN_BASE_URL`（仓库 variable = 发布根），
+因此**我们发布的安装包开箱可用**；仓库变量未设置时退回官方默认（CE 版本在官方 CDN 取不到资源）。
+源码里的常量默认值仍是官方 CDN，自建者不设变量时行为不变。
+
+**旋钮语义（2026-09-23 修正）**：`ZCODE_CDN_BASE_URL`（构建期 define）与 `ZCODE_REMOTE_ASSET_CDN_BASE_URL`（运行期，
+含设置页的「自定义 CDN 托管地址」）的值都是**发布根**，**按字面值**使用；只有官方默认值保留它自己的
+`/zcode/electron/releases/<版本>` 前缀。修正前构建期旋钮会被当父目录并追加前缀，与"发布根"契约矛盾
+（自建发布点会 404）—— 契约测试 `packages/desktop/test/remoteCdnBaseUrl.test.ts` 已把两个分支钉住。
+用法与排障见[远程工作区](remote-workspace.md)。
+
 **Docker / WSL 与 SSH 共用同一套部署与资源代码**（`deploy.ts` / `remoteAssetCache.ts`），因此同样
 受这条缺口影响；但**未对 Docker / WSL 实测**，此处不作结论。修复路径（自建资源发布点 / 资源随包
 分发 / 对齐官方多区域 CDN）与验收命令见 `.reverse/36-ssh/SSH-FEASIBILITY.md` §5。

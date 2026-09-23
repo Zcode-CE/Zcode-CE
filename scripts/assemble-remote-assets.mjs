@@ -47,7 +47,9 @@ const version = readJson(join(repoRoot, "package.json")).version;
 
 const args = parseArgs(process.argv.slice(2));
 const outRoot = resolve(args.out ?? join(repoRoot, ".tmp/remote-assets-publish"));
-const outDir = join(outRoot, version);
+// --version 必须同时决定输出目录：否则装配旧版本会把 manifest 写进「当前 package.json 版本」的目录，
+// 多版本发布时互相覆盖，旧版本客户端在发布根下取不到自己的 manifest（2026-09-23 实测踩中）。
+const outDir = join(outRoot, args.version ?? version);
 const useHardLink = args.hardLink === true;
 
 function parseArgs(argv) {

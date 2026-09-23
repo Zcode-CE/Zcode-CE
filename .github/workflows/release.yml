@@ -149,6 +149,16 @@ jobs:
           # 本地构建不受影响（本地仍走国内源更快）。
           ELECTRON_MIRROR: "https://github.com/electron/electron/releases/download/"
           ELECTRON_BUILDER_BINARIES_MIRROR: "https://github.com/electron-userland/electron-builder-binaries/releases/download/"
+          # 远程运行时资产的**构建期默认基址**（packages/desktop/tsup.config.ts 的 __ZCODE_CDN_BASE_URL__ define）。
+          # 语义：值就是**发布根**（含 <版本>/ 与 components/ 的那一层），remoteCdn.ts 按字面值使用；
+          # 源码里的常量默认值不动（仍是官方 CDN），所以自建者不设变量时行为不变。
+          #
+          # 仓库变量 `ZCODE_CDN_BASE_URL` 设为社区 CDN 发布根（如 https://cdn.eidolonmachine.xyz）后，
+          # **本仓库发布的安装包默认指向社区 CDN、开箱可用**；未设置时退回官方默认（CE 版本在上面取不到资源，
+          # 表现为连接失败，需要用户自己指向发布根）。
+          # 2026-09-23 修正：此前构建期旋钮会被当父目录并追加 /zcode/electron/releases/<版本>，与"发布根"契约矛盾；
+          # 已按契约修正代码并加契约测试（packages/desktop/test/remoteCdnBaseUrl.test.ts）。
+          ZCODE_CDN_BASE_URL: ${{ vars.ZCODE_CDN_BASE_URL }}
         run: pnpm bundle:desktop --os ${{ matrix.platform }} --arch ${{ matrix.arch }}
       # .blockmap 必须一起留存，否则 electron-updater 的差分下载会退化为全量包。
       - name: Upload installers
@@ -251,3 +261,70 @@ jobs:
           path: .tmp/remote-assets-publish/**
           if-no-files-found: error
           retention-days: 30
+  # 远程运行时资产 → 对象桶（**手动触发**，与发版解耦）。
+  #
+  # 为什么手动为主：桶写操作依赖 Cloudflare 凭据，把它绑进 tag 发版等于让"发版"依赖外部账户状态；
+  # 用户明确要求"上传失败不阻塞发版"，所以本 job 只在 workflow_dispatch 时运行 ——
+  # tag 发布会完全跳过它，不存在把 Release 卡住的路径。
+  # 更快的方式（不跑构建矩阵）：本地 `pnpm prepare:remote-assets` → 装配 → 直接跑上传脚本（用本机 wrangler OAuth）。
+  #
+  # 凭据只从 secrets 取，**不落仓库、不打印**；wrangler 用 API token 认证（CLOUDFLARE_API_TOKEN +
+  # CLOUDFLARE_ACCOUNT_ID），不需要 S3 兼容密钥，也不为此新增仓库依赖（wrangler 在 CI 里临时全局安装）。
+  upload-remote-assets:
+    name: upload remote assets to bucket
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ZCODE_R2_BUCKET: ${{ secrets.ZCODE_R2_BUCKET }}
+      # 发布根（公开域名，走仓库变量而不是 secret）。
+      ZCODE_PUBLIC_BASE_URL: ${{ vars.ZCODE_CDN_BASE_URL }}
+      # wrangler 的匿名使用统计在 CI 里没有意义，关掉。
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      # 先自检输入，避免 wrangler 报出难懂的鉴权错误。只打印缺失项的**名称**，不打印任何值。
+      - name: Check upload inputs
+        run: |
+          missing=""
+          [ -n "$CLOUDFLARE_API_TOKEN" ] || missing="$missing CLOUDFLARE_API_TOKEN(secret)"
+          [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID(secret)"
+          [ -n "$ZCODE_R2_BUCKET" ] || missing="$missing ZCODE_R2_BUCKET(secret)"
+          [ -n "$ZCODE_PUBLIC_BASE_URL" ] || missing="$missing ZCODE_CDN_BASE_URL(variable)"
+          if [ -n "$missing" ]; then
+            echo "::error::缺少输入:$missing（设置方法与 token 权限范围见 docs/operations/remote-assets-cdn.md 的「CI 自动发布」）"
+            exit 1
+          fi
+          echo "输入齐备（值不打印）：2 个 Cloudflare secret + 1 个桶名 secret + 1 个发布根变量"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare remote assets
+        env:
+          ZCODE_NODE_DIST_MIRROR: https://nodejs.org/dist
+        run: pnpm prepare:remote-assets
+
+      - name: Assemble publishable layout
+        run: node scripts/assemble-remote-assets.mjs
+
+      # 运行时安装，不进仓库依赖树（任务明确不为此新增依赖）。
+      - name: Install wrangler
+        run: npm install --global wrangler@4
+
+      # 脚本内部：内容寻址对象已存在即跳过；每个对象上传后逐个 HEAD 自检（对发布根）。
+      - name: Upload to bucket
+        run: node scripts/upload-remote-assets-r2.mjs --root .tmp/remote-assets-publish --public-base-url "$ZCODE_PUBLIC_BASE_URL"

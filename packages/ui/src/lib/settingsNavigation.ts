@@ -21,7 +21,10 @@ export type SettingsSectionId =
   | "automations"
   | "shortcuts"
   | "feedback"
-  | "toolPolicy";
+  | "toolPolicy"
+  // 远程资产发布根（自定义 CDN 基址）。**只在桌面端出现**：这条链只有 desktop main 消费
+  // （见 docs/development/remote-workspace.md §3.1），Web 侧显示一个点了没用的开关就是 UI 说谎。
+  | "remoteAssets";
 
 type SettingsUsageTabTarget = "app" | "codingPlan";
 type SettingsPluginTabTarget = "plugins" | "mcps" | "skills" | "commands";
@@ -87,7 +90,8 @@ function isSettingsSectionId(value: string): value is SettingsSectionId {
     value === "automations" ||
     value === "shortcuts" ||
     value === "feedback" ||
-    value === "toolPolicy"
+    value === "toolPolicy" ||
+    value === "remoteAssets"
   );
 }
 

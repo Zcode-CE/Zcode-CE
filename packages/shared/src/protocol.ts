@@ -381,4 +381,18 @@ export interface AppSettings {
    * 同一条路径），已运行的会话不重新读取——设置页据此如实标注。
    */
   dangerousCommandPolicy?: DangerousCommandPolicy;
+  /**
+   * 自定义远程资产 CDN 基址（**发布根**，不要带版本号）。
+   *
+   * 语义：留空/缺省 = 用默认（构建期基址 → 官方 CDN）；值按**字面值**当发布根使用，
+   * 不再追加任何路径段。优先级见
+   * `docs/development/remote-workspace.md` §3.1：运行期 env > 本设置 > 构建期基址 > 官方默认。
+   *
+   * **生效范围只有桌面端**：只有 desktop main 读它（`desktopRuntimeEnv.ts` → `remoteCdn.ts`
+   * 的 `overrideBaseUrl` 槽位）；Web / CLI 侧走的是另一条资产解析链，不读 AppSettings。
+   * 设置项在 Web 侧隐藏，正是为了不显示一个点了没用的开关。
+   *
+   * 生效时机：改动后**新建的远程连接**用新基址，已建立的会话沿用旧基址。
+   */
+  remoteAssetCdnBaseUrl?: string;
 }

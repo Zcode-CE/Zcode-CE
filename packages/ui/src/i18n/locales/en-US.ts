@@ -6561,6 +6561,17 @@ const enUS: Record<string, string> = {
   "cuaPermission.ready.sessionValidationHint":
     "ZCode will verify the Computer Use tools against the exact session when your first session starts.",
   "settings.computerUse.title": "Computer Use",
+  "settings.remoteAssets.title": "Remote assets",
+  "settings.remoteAssets.cdnBaseUrl": "Custom remote asset CDN URL",
+  "settings.remoteAssets.cdnBaseUrlDescription":
+    "Where remote workspaces download their runtime assets from. Use an http/https URL that points at the **publish root — do not include a version** (for example https://your-host/assets). Leave empty to use the default. This only affects remote connections started from the desktop app, and only connections created after the change. The runtime environment variable ZCODE_REMOTE_ASSET_CDN_BASE_URL takes precedence over this setting.",
+  "settings.remoteAssets.savedHint": "Saved. New remote connections will use this URL.",
+  "settings.remoteAssets.error.protocol": "The URL must start with http:// or https://.",
+  "settings.remoteAssets.error.invalid": "That is not a valid URL.",
+  "settings.remoteAssets.error.tooLong": "The URL is too long — check for pasted extra content.",
+  "settings.remoteAssets.error.queryOrFragment":
+    "The URL must not contain a ? query or # fragment — enter only the publish root, e.g. https://your-host/assets.",
+  "settings.remoteAssets.error.saveFailed": "Could not save. Please try again.",
   "settings.computerUse.toggleLabel": "Enable Computer Use",
   "settings.computerUse.toggleDescription":
     "Turning this on enables Computer Use — its MCP server and skills.",

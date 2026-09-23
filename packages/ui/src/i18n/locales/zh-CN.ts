@@ -6251,6 +6251,19 @@ const zhCN: Record<string, string> = {
   "cuaPermission.ready.sessionValidationHint":
     "首个会话启动时，ZCode 会针对该会话精确验证电脑控制工具。",
   "settings.computerUse.title": "电脑控制",
+  // 「远程资产发布根」：让用户自己选从哪个发布点取远程工作区资产（默认仍是官方 CDN）。
+  // 文案里两句话是硬要求，不能省：① 必须指向发布根、不要带版本号；② 留空 = 用默认。
+  "settings.remoteAssets.title": "远程资产",
+  "settings.remoteAssets.cdnBaseUrl": "自定义远程资产 CDN 地址",
+  "settings.remoteAssets.cdnBaseUrlDescription":
+    "远程工作区从哪个发布根下载运行时资产。必须是 http/https 地址，**指向发布根即可，不要带版本号**（例如 https://your-host/assets）。留空 = 用默认地址。仅影响桌面端发起的远程连接，且只对修改后新建的连接生效；运行期环境变量 ZCODE_REMOTE_ASSET_CDN_BASE_URL 的优先级高于此处。",
+  "settings.remoteAssets.savedHint": "已保存。新建的远程连接会使用该地址。",
+  "settings.remoteAssets.error.protocol": "地址必须以 http:// 或 https:// 开头。",
+  "settings.remoteAssets.error.invalid": "地址不是有效的 URL。",
+  "settings.remoteAssets.error.tooLong": "地址过长，请检查是否误贴了其它内容。",
+  "settings.remoteAssets.error.queryOrFragment":
+    "地址不能带 ? 查询串或 # 片段 —— 请只填发布根，例如 https://your-host/assets。",
+  "settings.remoteAssets.error.saveFailed": "保存失败，请重试。",
   "settings.computerUse.toggleLabel": "启用电脑控制",
   "settings.computerUse.toggleDescription": "开启后将启用电脑控制及其 MCP 与技能。",
   "settings.computerUse.composerEntry.label": "在输入框显示电脑操作按钮",

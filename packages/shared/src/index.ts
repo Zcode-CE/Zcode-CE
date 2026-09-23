@@ -123,6 +123,7 @@ export * from "./e2e-test-bridge.js";
 export * from "./remoteAppConfig.js";
 export * from "./helpAppConfig.js";
 export * from "./remoteAssetInstallMode.js";
+export * from "./remoteAssetCdn.js";
 export * from "./onboardingRecord.js";
 export * from "./remoteResourcePackages.js";
 export * from "./plan-identity.js";

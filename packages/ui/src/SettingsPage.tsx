@@ -76,6 +76,7 @@ import { ComputerUseSection } from "@/settings/ComputerUseSection.js";
 import { ShortcutSettingsSection } from "@/settings/ShortcutSettingsSection.js";
 import { MigrationSection } from "@/settings/MigrationSection.js";
 import { FeedbackDiagnosticsSection } from "@/settings/FeedbackDiagnosticsSection.js";
+import { RemoteAssetsSetting } from "@/settings/RemoteAssetsSetting.js";
 import { ToolPolicySection } from "@/settings/ToolPolicySection.js";
 import { SETTINGS_FRAME_CONTENT_CLASSNAME } from "@/settings/SettingsPageParts.js";
 import { GithubMirrorSetting } from "@/settings/GithubMirrorSetting.js";
@@ -1992,6 +1993,12 @@ export function SettingsPage({
                           // 「反馈与诊断」只依赖本机能力（GitHub 预填链接 / 本地日志归档），
                           // 因此不接 workspace 参数，也不跟随远端 workspace 切换。
                           <FeedbackDiagnosticsSection isDesktop={Boolean(isDesktop)} />
+                        ) : activeSection === "remoteAssets" ? (
+                          // 「远程资产发布根」只作用在桌面端：消费链是 desktop main 的
+                          // desktopRuntimeEnv → remoteCdn 的 overrideBaseUrl 槽位（见
+                          // docs/development/remote-workspace.md §3.1）。Web 侧该分区在
+                          // createSettingsPageConfig 里就被过滤掉，这里不会到达。
+                          <RemoteAssetsSetting />
                         ) : null}
                       </div>
                     </div>

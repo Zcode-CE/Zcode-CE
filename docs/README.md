@@ -26,12 +26,13 @@
 
 ### `operations/` — 运维与发布
 
-| 文档                                                     | 内容                                 |
-| -------------------------------------------------------- | ------------------------------------ |
-| [发布流程](operations/release.md)                        | 版本号、构建产物、更新渠道、平台支持 |
-| [持续集成](operations/ci.md)                             | CI 校验项、发布矩阵、打包命令与踩坑  |
-| [数据与配置](operations/data-layout.md)                  | 数据目录布局、迁移说明、备份建议     |
-| [Code signing policy](operations/code-signing-policy.md) | 代码签名政策、团队角色、隐私政策     |
+| 文档                                                     | 内容                                  |
+| -------------------------------------------------------- | ------------------------------------- |
+| [发布流程](operations/release.md)                        | 版本号、构建产物、更新渠道、平台支持  |
+| [持续集成](operations/ci.md)                             | CI 校验项、发布矩阵、打包命令与踩坑   |
+| [数据与配置](operations/data-layout.md)                  | 数据目录布局、迁移说明、备份建议      |
+| [远程资产 CDN](operations/remote-assets-cdn.md)          | R2 发布点运维：认证、发布、排障、红线 |
+| [Code signing policy](operations/code-signing-policy.md) | 代码签名政策、团队角色、隐私政策      |
 
 ## 文档边界
 

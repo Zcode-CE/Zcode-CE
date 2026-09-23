@@ -11,6 +11,7 @@ import {
 } from "./browser-use/command-metadata.js";
 import { providerFamilyConnectionSelectionSettingsSchema } from "./provider-family-connection-selection.js";
 import { resolveGithubMirrorPrefix } from "./githubMirror.js";
+import { normalizeRemoteAssetCdnBaseUrl } from "./remoteAssetCdn.js";
 import {
   MAX_CUSTOM_DANGEROUS_ENTRIES,
   MAX_DANGEROUS_PATTERN_LENGTH,
@@ -107,6 +108,30 @@ const githubMirrorPrefixSchema = z
     (value) => value === "" || resolveGithubMirrorPrefix(value).prefix !== undefined,
     "GitHub mirror prefix must be an https URL without credentials, query or fragment",
   );
+
+/**
+ * 自定义远程资产 CDN 基址（发布根）。
+ *
+ * 为什么在这里也校验一次：设置页的拒绝保存只是第一道闸，`setting.json` 可被手工编辑、
+ * 也可能被旧版本/同步链路写回。schema 是唯一拦得住「绕开 UI 写入一个取不到资源的基址」的位置 ——
+ * 而且**必须报错而不是静默丢弃**：静默丢弃会让用户以为设置生效，实际走默认 CDN。
+ *
+ * `.transform` 做归一化（去首尾空白与尾部斜杠、保留子路径）：读盘路径与 UI 保存路径共用同一份实现，
+ * 于是手工改进去的 `https://host/assets/` 也会在读到时就归一，不会出现「设置页显示带斜杠、请求用不带」。
+ */
+const remoteAssetCdnBaseUrlSchema = z.string().transform((value, ctx) => {
+  const normalized = normalizeRemoteAssetCdnBaseUrl(value);
+  if (normalized.kind === "invalid") {
+    // 错误码是稳定的机器可读原因（不解析文本做判断）；设置页把它映射成可操作文案。
+    ctx.addIssue({
+      code: "custom",
+      message: `Remote asset CDN base URL is invalid (${normalized.code})`,
+    });
+    return z.NEVER;
+  }
+  // `empty`（含只有空白）：按"未设置"落盘 —— 这就是 UI 上"留空 = 用默认"的语义。
+  return normalized.kind === "valid" ? normalized.value : "";
+});
 
 export const postUpdateReleaseNotesPayloadSchema = z.object({
   version: nonEmptyStringSchema,
@@ -519,6 +544,9 @@ const appSettingsObjectSchema = z.object({
   // allowPersistentAuthorization=false + 默认项全开解释，所以这里**不设 default**，
   // 免得给每个老配置都写进一份看起来像"用户选过"的显式值。
   dangerousCommandPolicy: dangerousCommandPolicySchema.optional(),
+  // 缺省 = 用默认 CDN，与 githubMirrorPrefix 同样**不设 default**：不给每个老配置写进一份
+  // 看起来像"用户选过"的显式值。空串等价未设置，由消费侧回落。
+  remoteAssetCdnBaseUrl: remoteAssetCdnBaseUrlSchema.optional(),
   onboardingOccupation: appSettingsOccupationSchema.nullish(),
   proactiveSuggestionsEnabled: z.boolean().optional(),
   memoryEnabled: z.boolean().default(false),
@@ -589,6 +617,8 @@ export const appSettingsPatchSchema = z.object({
   providerFamilyDomainMigrated: z.boolean().optional(),
   nativeSearchEnhancementsEnabled: z.boolean().optional(),
   dangerousCommandPolicy: dangerousCommandPolicySchema.optional(),
+  // 设置页保存走 patch 校验；允许空串（= 清除自定义、回落默认）。
+  remoteAssetCdnBaseUrl: remoteAssetCdnBaseUrlSchema.optional(),
   onboardingOccupation: z
     .enum([
       "office",

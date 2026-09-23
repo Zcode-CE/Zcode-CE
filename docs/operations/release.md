@@ -137,6 +137,20 @@ electron-builder 会为每个平台生成更新清单与差分块，**必须一�
 `releaseType` 显式设为 `release`。需要临时改成 draft 或预发布时用 `EP_DRAFT` /
 `EP_PRE_RELEASE` 环境变量覆盖。
 
+### 远程运行时资产（先发资产，再发版）
+
+远程工作区（SSH / WSL / Docker）的运行时资产**不随安装包分发**，需要在发版前先发布到托管点。
+完整流程与验收命令见 [remote-workspace.md](../development/remote-workspace.md)，这里只定顺序与边界：
+
+1. **顺序**：`pnpm prepare:remote-assets` → `node scripts/assemble-remote-assets.mjs --out <本地发布根>` →
+   上传到托管点 → 验收（4 个平台的 `manifest-*.json` 与 `components/**` 都能取到）→ **再打 tag 发版**。
+   反过来的后果：用户装上安装包后第一次连远程工作区会因为取不到资源清单而失败（表现为"连接失败"）。
+2. **上传失败不阻塞发版**：资产上传是**独立步骤，不是发布门禁**。资产可以事后补传（客户端每次连接都会重新取清单），
+   而卡住发版会让已经准备好的安装包白等一轮。判据是"安装包本身能不能用"，不是"托管点此刻是否最新"。
+3. 教程位置：运维手册见 [remote-assets-cdn.md](./remote-assets-cdn.md)；构建期/运行期两个基址旋钮的语义差异
+   （构建期旋钮会追加 `/zcode/electron/releases/<版本>`，运行期旋钮按字面值使用）见
+   [remote-workspace.md §5.3](../development/remote-workspace.md)。
+
 ### 更新源覆盖（镜像 / 自建 feed）
 
 打包态可以通过 `ZCODE_UPDATE_FEED_URL` 环境变量或 `--zcode-update-feed-url` 启动参数把
