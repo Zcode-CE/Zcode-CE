@@ -1425,10 +1425,12 @@ function ConversationTurnGroupImpl({
               onFeedbackChange={onFeedbackChange}
               hookInvocations={unit.hookInvocations}
               turnId={unit.turnId}
-              className="opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100"
+              copyScope="turn"
+              // 触屏（hover:none）没有悬停，轮尾操作栏（含整轮复制）必须常显，否则手机上完全找不到。
+              className="opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100"
             />
           ) : hasHookActions ? (
-            <MessageActions className="opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100">
+            <MessageActions className="opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
               <ConversationHookDetailsAction rows={unit.hookInvocations} turnId={unit.turnId} />
             </MessageActions>
           ) : null}
