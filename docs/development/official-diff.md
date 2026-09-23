@@ -418,6 +418,27 @@ Superpowers，本仓库用户没有这个入口。
 登记见 `third-party/copied-components.json` 的 `ZCode computer-use plugin shell (Z.ai)` 条目（字段名 `locallyModifiedFiles`）。
 **为什么不是 `modifiedFiles`**：声明解析器要求 `modifiedFiles` 里的每个文件**正文内**含字面量 `Modified by ZCode:`（`scripts/generate-third-party-notices.mjs:78-84`），而这 3 个文件是 MIT 材料、没有也不应加这种标记；改用自定义字段 `locallyModifiedFiles` 既保留机器可读的改动清单（进 `third-party/inventory.json`），又不动文件正文。MIT 本身不要求文件内变更声明，改动的书面说明就在本节的表格里。
 
+### 无头服务器 + 浏览器面板（本仓库自研，官方没有这条线）
+
+官方在开源之前已整块移除手机远控：配对、二维码、云 relay、移动壳在官方产物里都存在，
+但**本仓库 0 命中**（全仓检索云 relay / 移动壳相关常量），桌面端也没有任何入站服务。
+本仓库走的是**自托管**路线，并已形成一条独立的可用路径：
+
+| 项         | 内容                                                                                                                                                                                                |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 形态       | **服务端 + 浏览器面板**：跑在（可以没有桌面环境的）一台机器上，同一局域网/私网内的浏览器操作同一个工作台，**手机窄屏可用性仍在修复中**（见 README 已知限制）                                        |
+| 开发态启动 | `pnpm dev:web`（同时起后端与前端开发服务器）                                                                                                                                                        |
+| 独立发行包 | `pnpm build:zcode`（`scripts/build-zcode.mjs`）：组装 server 入口 + `agent/zcode.cjs` + `web/` 静态根；运行时 `zcode --web`（可选 `--host` / `--port` / `--workspace` / `--token` 或 `--no-token`） |
+| 安全默认值 | 默认只监听**回环 `127.0.0.1`**；**非回环监听必须带令牌**，否则拒绝启动（`packages/server/src/http.ts`、`packages/zcode-server-cli/src/server-core/http.ts` 同一判定口径）                           |
+| 中继与遥测 | **不经任何中继**（浏览器直连你起的服务）、**不采集遥测**                                                                                                                                            |
+| 解包级验证 | `scripts/zcode-distribution-smoke.mjs`：解包后在隔离环境跑 `--web`，验 `/` 壳、`/api/server-info`、WebSocket、优雅退出                                                                              |
+
+**分发状态（如实记录）**：`pnpm build:zcode` 能构建这个发行包，但**发布流水线里没有任何 job 构建/挂载它**
+（`grep -rn 'build:zcode|zcode-distribution' .github/workflows/` → **0 命中**）⇒ 目前属于"代码有、用户拿不到"。
+
+**未验证**：手机与桌面**同时**连同一会话的并发语义没有测（见[网页远控](web-remote-control.md) §8）；
+Docker / WSL 作为承载环境未实测。
+
 ### 远程工作区（SSH / Docker / WSL）：代码完整，但打包版取不到远程运行时
 
 **这条链路的实现在本仓库是完整的**：UI 入口（`packages/ui/src/ChatEmptyState.tsx:450`、

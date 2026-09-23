@@ -6,16 +6,19 @@
 
 ### `development/` — 开发
 
-| 文档                                               | 内容                                           |
-| -------------------------------------------------- | ---------------------------------------------- |
-| [架构与模块边界](development/architecture.md)      | 仓库结构、包职责、依赖方向、跨包导入规则       |
-| [与上游的差异](development/upstream-diff.md)       | 相对官方 ZCode 改了什么、为什么改、如何同步    |
-| [与官方发行版的差异](development/official-diff.md) | 官方有哪些能力、我们补了什么、哪些做不了及原因 |
-| [Computer Use](development/computer-use.md)        | 开源桌面自动化实现的平台、能力面与安全语义     |
-| [办公插件](development/office-plugins.md)          | 办公三件套的来源标注规范、逐文件归属、上游跟进 |
-| [模型列表](development/model-list.md)              | 内置模型隐藏与从供应商拉取模型列表             |
-| [本地开发](development/local-setup.md)             | 环境准备、构建、调试、测试入口                 |
-| [遥测与隐私](development/telemetry.md)             | 本版移除遥测的范围、保留的能力边界、验证方法   |
+| 文档                                                                     | 内容                                                     |
+| ------------------------------------------------------------------------ | -------------------------------------------------------- |
+| [架构与模块边界](development/architecture.md)                            | 仓库结构、包职责、依赖方向、跨包导入规则                 |
+| [与上游的差异](development/upstream-diff.md)                             | 相对官方 ZCode 改了什么、为什么改、如何同步              |
+| [与官方发行版的差异](development/official-diff.md)                       | 官方有哪些能力、我们补了什么、哪些做不了及原因           |
+| [Computer Use](development/computer-use.md)                              | 开源桌面自动化实现的平台、能力面与安全语义               |
+| [办公插件](development/office-plugins.md)                                | 办公三件套的来源标注规范、逐文件归属、上游跟进           |
+| [模型列表](development/model-list.md)                                    | 内置模型隐藏与从供应商拉取模型列表                       |
+| [本地开发](development/local-setup.md)                                   | 环境准备、构建、调试、测试入口                           |
+| [网页远控（无头服务器 + 浏览器面板）](development/web-remote-control.md) | 自托管网页远控：启动方式、安全默认值、手机使用、未测边界 |
+| [远程工作区（SSH / Docker / WSL）](development/remote-workspace.md)      | 远程工作区的默认行为、自建发布点、验收与排障             |
+| [工具与权限：按资源/工具精细启停](development/tool-policy.md)            | 危险命令判定、MCP 单工具启停、持久授权策略               |
+| [遥测与隐私](development/telemetry.md)                                   | 本版移除遥测的范围、保留的能力边界、验证方法             |
 
 ### `community/` — 社区
 
