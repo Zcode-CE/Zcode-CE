@@ -81,6 +81,7 @@ import { ToolCallBlock } from "@/ToolCallBlocks.js";
 import { resolveWorkflowRunOpenToolCallId } from "@/v4/workflowRunCardJoin.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { runUserAction, runUserActionAsync } from "@/lib/userActionTelemetry.js";
+import { writeTextToClipboard } from "@/lib/clipboardText.js";
 import { logger } from "@/logger.js";
 import type { AssistantPreviewCard } from "@/lib/assistantPreviewCards.js";
 import {
@@ -166,18 +167,21 @@ const CopyRowAction = memo(function CopyRowAction({
   rowId,
   label,
   tooltip = label,
+  dataTestId,
 }: {
   text: string;
   rowId: number;
   label: string;
   tooltip?: string;
+  dataTestId?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = useCallback(() => {
-    if (!text || !navigator.clipboard) return;
+    if (!text) return;
+    // http 远控（手机经 IP 访问）没有 navigator.clipboard；helper 在手势栈内同步回退 execCommand。
     void runUserActionAsync({
       input: { featureId: "conversation.history.feedback", action: "copy", trigger: "button" },
-      operation: () => navigator.clipboard.writeText(text),
+      operation: () => writeTextToClipboard(text),
       completed: { resultSource: "platform_result" },
       failureStage: "clipboard_write",
     }).then(() => {
@@ -190,7 +194,7 @@ const CopyRowAction = memo(function CopyRowAction({
       aria-label={label}
       label={label}
       tooltip={tooltip}
-      data-testid={`v4-copy-${rowId}`}
+      data-testid={dataTestId ?? `v4-copy-${rowId}`}
       disabled={text.length === 0}
       onClick={handleCopy}
     >
@@ -1310,11 +1314,14 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
   turnId,
   onFork,
   onFeedbackChange,
+  copyScope = "row",
   className,
 }: {
   rowId: number;
   entityId?: string;
   text: string;
+  /** "turn"：text 是整轮 assistant 正文合并（轮尾工具栏），文案明确为"复制完整回复"。 */
+  copyScope?: "row" | "turn";
   createdAt: number;
   feedback?: AssistantMessageFeedback | null;
   hookInvocations?: readonly HookInvocationRow[];
@@ -1326,7 +1333,9 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
 }) {
   const { intl, locale } = useZCodeIntl();
   const [localFeedback, setLocalFeedback] = useState<AssistantMessageFeedback | null>(feedback);
-  const copyLabel = intl.formatMessage({ id: "chat.message.copy" });
+  const copyLabel = intl.formatMessage({
+    id: copyScope === "turn" ? "chat.message.copyFullResponse" : "chat.message.copy",
+  });
   const likeLabel = intl.formatMessage({
     id: localFeedback === "like" ? "chat.message.liked" : "chat.message.like",
   });
@@ -1386,6 +1395,7 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
         rowId={rowId}
         label={copyLabel}
         tooltip={resolveTooltip(copyLabel)}
+        dataTestId={copyScope === "turn" ? `v4-copy-turn-${rowId}` : undefined}
       />
       {entityId && onFeedbackChange ? (
         <>
