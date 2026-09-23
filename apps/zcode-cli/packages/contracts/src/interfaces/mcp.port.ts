@@ -13,8 +13,36 @@ export interface McpServerRuntimeSource {
   kind: "builtin" | "plugin";
 }
 
+/**
+ * 单个 MCP server 最多可关闭的工具数 —— **从唯一所有者重新导出**。
+ *
+ * 定义住在 `@zcode/shared/mcpDisabledTools`（叶子模块，不依赖任何本仓模块）：wire schema、
+ * Agent DTO 投影与这里的 CLI 配置 schema 必须共用同一个上限与同一份归一化实现，
+ * 各写一份同值常量只会各自漂移。依赖方向是单向的 `contracts → shared`，所以由本文件重新导出。
+ *
+ * 保留本模块原有的导出名（`MCP_SERVER_MAX_DISABLED_TOOLS` / `NormalizedMcpDisabledTools`），
+ * 避免既有调用点（adapters / bootstrap / core）改 import 路径。
+ */
+export {
+  normalizeMcpDisabledTools,
+  MCP_SERVER_MAX_DISABLED_TOOLS,
+} from "@zcode/shared/mcpDisabledTools";
+export type { NormalizedMcpDisabledTools } from "@zcode/shared/mcpDisabledTools";
+
+/**
+ * server 配置对象内按工具名关闭该 server 的部分工具（工具精细化管理）。
+ *
+ * 语义与 `enabled` 正交且更细：`enabled: false` 关整包，`disabledTools` 关其中几个工具。
+ * 与 `enabled` **同对象、同文件、同写入者**（`~/.zcode/cli/config.json` 的 `mcp.servers`），
+ * 不另设全局工具 deny 清单——两处可写会让「UI 显示的状态」与「真正生效的状态」漂移。
+ *
+ * 条目是 **server 自己 `tools/list` 返回的原始工具名**（`McpToolDescriptor.toolName`），
+ * 不是模型可见名（`mcp__<server>__<tool>`）：原始名在 server 内唯一，模型可见名会随 server 名变化。
+ * 作用域是**单个 server**，不同 server 的同名工具互不影响。
+ */
 export interface McpServerConfigBase {
   enabled?: boolean;
+  disabledTools?: string[];
   isolation?: McpServerIsolation;
   protocolVersion?: McpProtocolVersion;
   /** 仅限宿主生成，公共配置 schema 会拒绝该字段。 */

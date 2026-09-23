@@ -2249,6 +2249,10 @@ const zhCN: Record<string, string> = {
   "settings.mcp.form.type.sse": "SSE（Server-Sent Events）",
   "settings.mcp.form.command": "命令",
   "settings.mcp.form.args": "参数（空格分隔）",
+  // 工具级启停：工具名必须手输（关闭某工具时常常连不上该 server，无法枚举工具清单）。
+  "settings.mcp.form.disabledTools": "关闭的部分工具（可选）",
+  "settings.mcp.form.disabledToolsHint":
+    "每行一个工具名（MCP 服务器里的原始名称，如 get_issue），关闭后模型看不到它，直接调用也会失败。留空 = 全部启用。",
   "settings.mcp.form.add": "添加",
   "settings.mcpServers.import.open": "从外部 Agent 导入 MCP 服务器",
   "settings.mcpServers.import.title": "导入外部 Agent MCP 服务器",

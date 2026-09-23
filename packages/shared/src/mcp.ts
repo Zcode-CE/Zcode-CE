@@ -3,6 +3,7 @@
  * Based on the original Tauri implementation
  */
 
+import { normalizeMcpDisabledTools } from "./mcpDisabledTools.js";
 import type { SettingsDirectoryLocation } from "./settings-source.js";
 import type { McpServerFailureKind } from "./zcode-protocol/index.js";
 
@@ -171,6 +172,8 @@ export type ZCodeAgentMcpServer =
       env: Array<{ name: string; value: string }>;
       isolation?: "session" | "workspace";
       protocolVersion?: "legacy" | "auto" | "2026-07-28";
+      /** 该 server 内按工具名关闭的工具（见 docs/development/tool-policy.md）。 */
+      disabledTools?: string[];
       timeoutMs?: number;
     }
   | {
@@ -179,6 +182,8 @@ export type ZCodeAgentMcpServer =
       url: string;
       isolation?: "session" | "workspace";
       protocolVersion?: "legacy" | "auto" | "2026-07-28";
+      /** 该 server 内按工具名关闭的工具（见 docs/development/tool-policy.md）。 */
+      disabledTools?: string[];
       headers: Array<{ name: string; value: string }>;
       oauth?: McpOAuthConfig;
       timeoutMs?: number;
@@ -305,6 +310,7 @@ export function convertToZCodeAgentMcpServer(
       ...(isMcpProtocolVersion(config.protocolVersion)
         ? { protocolVersion: config.protocolVersion }
         : {}),
+      ...disabledToolsPatch(config),
     };
   } else if (config.url && inferredType) {
     const normalizedType: "http" | "sse" = inferredType === "sse" ? "sse" : "http";
@@ -326,9 +332,25 @@ export function convertToZCodeAgentMcpServer(
       ...(isMcpProtocolVersion(config.protocolVersion)
         ? { protocolVersion: config.protocolVersion }
         : {}),
+      ...disabledToolsPatch(config),
     };
   }
   return null;
+}
+
+/**
+ * server 配置对象 → Agent DTO 的 `disabledTools` 投影（工具级启停）。
+ *
+ * **必须显式透传**：本函数是字段白名单，漏一处用户配的工具启停就不会下发到 agent
+ * （UI 显示「关掉了」而模型照旧能调）。
+ *
+ * 归一化**不再自带一份实现**：直接调 `../mcpDisabledTools.js` 的唯一一份
+ * `normalizeMcpDisabledTools`（wire schema、CLI 配置 schema、插件 MCP 归一化、协议还原
+ * 都取同一份）。这里只把诊断计数丢弃 —— DTO 层没有告警出口，非法输入按「该字段不生效」处理。
+ */
+function disabledToolsPatch(config: McpServerConfig): { disabledTools?: string[] } {
+  const { disabledTools } = normalizeMcpDisabledTools(config.disabledTools);
+  return disabledTools.length > 0 ? { disabledTools } : {};
 }
 
 function isValidMcpTimeoutMs(value: unknown): value is number {

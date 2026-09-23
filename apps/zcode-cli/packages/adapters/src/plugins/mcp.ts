@@ -9,7 +9,7 @@ import type {
   PluginManifest,
   PluginOptionValues,
 } from "@zcode/contracts";
-import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE } from "@zcode/contracts";
+import { normalizeMcpDisabledTools, ZCODE_OFFICIAL_PLUGIN_MARKETPLACE } from "@zcode/contracts";
 import { ZCODE_PLUGIN_ID_ENV_KEY } from "@zcode/shared";
 import type { LoadedPlugin } from "./types.js";
 import { isNotFoundError, isPluginOptionValue, isRecord, resolveInside } from "./helpers.js";
@@ -173,6 +173,22 @@ function getUserConfigDefaults(manifest: PluginManifest): PluginOptionValues {
   return defaults;
 }
 
+/**
+ * 插件 MCP server 的工具级启停（`disabledTools`）。
+ *
+ * 与 `enabled` 一样，插件来源的值必须**显式透传**：本函数是字段白名单投影，
+ * 默认丢掉未知键。漏掉这一处，用户在 plugin server 上写的 `disabledTools` 会在解析阶段静默消失
+ * （与契约声明的能力不符），而 `enabled` 已经有同样的处理。
+ *
+ * 归一化只调契约里的唯一一份 `normalizeMcpDisabledTools`；非法输入按「该字段不生效」处理，
+ * 配合 `.mcp.json` 的既有失败语义（不抛错、不拖垮 server）。
+ */
+function resolveDisabledTools(server: Record<string, unknown>): string[] | undefined {
+  if (server.disabledTools === undefined) return undefined;
+  const normalized = normalizeMcpDisabledTools(server.disabledTools);
+  return normalized.disabledTools.length > 0 ? normalized.disabledTools : undefined;
+}
+
 function resolveMcpServerConfig(
   server: unknown,
   context: VariableContext,
@@ -186,6 +202,7 @@ function resolveMcpServerConfig(
   const source: McpServerRuntimeSource = {
     kind: context.loaded.marketplace === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE ? "builtin" : "plugin",
   };
+  const disabledTools = resolveDisabledTools(server);
 
   // zcode_official 允许 http 与 stdio，sse 出现即禁用该 MCP，不静默忽略——静默会让配置作者以为鉴权已生效。
   //
@@ -236,6 +253,7 @@ function resolveMcpServerConfig(
           ? resolveTemplate(server.cwd, context, { allowSensitive: false })
           : undefined,
       enabled: typeof server.enabled === "boolean" ? server.enabled : undefined,
+      ...(disabledTools ? { disabledTools } : {}),
       env,
       source,
       timeoutMs: typeof server.timeoutMs === "number" ? server.timeoutMs : undefined,
@@ -274,6 +292,7 @@ function resolveMcpServerConfig(
       type: "http",
       url: resolveTemplate(url, context, { allowSensitive: false }),
       enabled: typeof server.enabled === "boolean" ? server.enabled : undefined,
+      ...(disabledTools ? { disabledTools } : {}),
       headers,
       auth: officialAuth,
       source,
@@ -287,6 +306,7 @@ function resolveMcpServerConfig(
     type,
     url: resolveTemplate(url, context, { allowSensitive: false }),
     enabled: typeof server.enabled === "boolean" ? server.enabled : undefined,
+    ...(disabledTools ? { disabledTools } : {}),
     headers,
     oauth,
     source,
@@ -433,7 +453,6 @@ function resolveTemplate(
       return envValue;
     }
     if (options.allowSensitive && ENVIRONMENT_VARIABLE_NAME_PATTERN.test(name)) {
-
       // token。只在敏感 sink 解析，避免 secret 被展开到 args、URL 或其它可见字段。
       const envValue = context.env[name];
       if (envValue === undefined)

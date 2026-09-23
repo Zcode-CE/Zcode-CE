@@ -24,7 +24,6 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
  * 自动发现容易在 CI 上跑出与环境相关的假失败。
  */
 const TEST_PACKAGES = [
-  "packages/services",
   // 危险命令清单的判据测试：**必须在这里登记**，否则 task-73 的 11 条断言
   // （提权 wrapper 参与判定、关闭可逆、放宽只认精确规则）不进 CI。
   "packages/shared",
@@ -33,7 +32,16 @@ const TEST_PACKAGES = [
   "apps/zcode-cli/packages/core",
   // TUI 的批准范围可视化：与 GUI 同构，是 task-72 P1 兜底缺口的第二个实例。
   "apps/zcode-cli/packages/tui",
+  // MCP 工具级启停的配置解析（mcp.servers[].disabledTools）：mcpServerSchema 是 .strict() 的，
+  // 少声明该键会让用户「关一个工具」变成「整个 MCP server 被跳过」。这几条断言必须进 CI。
+  "apps/zcode-cli/packages/adapters",
+  // 「设置页保存不丢 disabledTools」的往返链：mcp-sync 写盘 + UI 表单/DTO 白名单投影。
+  // 这两处漏键都是**静默**的（用户以为关了、模型照样能调），只能靠测试钉住。
+  "packages/services",
   "packages/ui",
+  // 桌面端唯一的那条链路：protocol mcpServers → runtime config（逐字段白名单重建）。
+  // 漏字段的后果是「设置页显示已关闭，agent 侧工具面一个没少」，同样只能靠测试钉住。
+  "apps/zcode-cli/packages/bootstrap",
   // office 三插件的校验器测试：**必须在这里登记**，否则 4 条有牙齿的断言
   // （峰值内存受预算约束、命名空间密集 O(N²)、三份逐字节一致、staging 护栏）不进 CI。
   // 审计实测：未登记前 `pnpm test` 只跑 20 个文件，完全覆盖不到这些断言。

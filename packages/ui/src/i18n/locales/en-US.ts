@@ -2407,6 +2407,9 @@ const enUS: Record<string, string> = {
   "settings.mcp.form.type.sse": "SSE (Server-Sent Events)",
   "settings.mcp.form.command": "Command",
   "settings.mcp.form.args": "Arguments (space separated)",
+  "settings.mcp.form.disabledTools": "Disabled tools (optional)",
+  "settings.mcp.form.disabledToolsHint":
+    "One tool name per line, spelled as the MCP server reports it (e.g. get_issue). A disabled tool is hidden from the model, and calling it directly fails. Leave empty to enable everything.",
   "settings.mcp.form.add": "Add",
   "settings.mcpServers.import.open": "Import MCP servers from external agents",
   "settings.mcpServers.import.title": "Import external agent MCP servers",

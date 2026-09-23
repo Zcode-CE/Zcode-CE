@@ -320,3 +320,5 @@ export {
 } from "../subagent/index.js";
 export type { AgentProfile, ExploreSubagentRuntimeRequest } from "../subagent/index.js";
 export { registerMcpTools } from "../mcp/index.js";
+export type { RegisterMcpToolsResult } from "../mcp/index.js";
+export { buildDisabledMcpToolsByServer, isMcpToolDisabled } from "../mcp/tool-disabled.js";

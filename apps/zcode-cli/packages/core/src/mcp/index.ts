@@ -25,6 +25,7 @@ import {
   normalizeMcpToolResultForModel,
 } from "./image-normalization.js";
 import { toMcpToolName, toModelVisibleMcpNamePart } from "./name.js";
+import { isMcpToolDisabled } from "./tool-disabled.js";
 
 export { toMcpToolName } from "./name.js";
 
@@ -50,6 +51,16 @@ export interface RegisterMcpToolsOptions {
   allowedTools?: readonly string[];
   disallowedTools?: readonly string[];
   /**
+   * 工具级启停：server 名 → 该 server 被关闭的原始工具名集合。
+   *
+   * 语义与 `allowedTools`/`disallowedTools` **不同**，不能混为一谈：
+   * 那两个是「本轮/本会话发给模型的工具面收窄」，被挡下的工具**仍在注册表里**，
+   * 模型直呼时照样执行（见 `core/src/runtime/methods/turn-loop.ts` 的每轮过滤）。
+   * `disabledToolsByServer` 挡在**注册面**：命中的工具根本不进 `ToolRegistry`，
+   * 于是既不在 provider 工具表里，直呼也只会拿到 `ToolNotFound`。
+   */
+  disabledToolsByServer?: ReadonlyMap<string, ReadonlySet<string>>;
+  /**
    * 由 runtime 使用不可伪造的 product authority 凭据验明的官方 CUA server。
    * 名称本身不构成信任；省略时 fail-closed，所有 MCP 都按普通工具处理，
    * 不投影官方 CUA 规范名，也不挂载 provider 拼写别名。
@@ -57,17 +68,34 @@ export interface RegisterMcpToolsOptions {
   officialCuaServerNames?: ReadonlySet<string>;
 }
 
+export interface RegisterMcpToolsResult {
+  /** 实际进入注册表的工具名。 */
+  registered: string[];
+  /** 被工具级启停挡下的**原始**工具名（未进注册表的那批），供调用方记录与展示。 */
+  disabledToolNames: string[];
+}
+
 export function registerMcpTools(
   registry: ToolRegistry,
   mcpPort: McpPort,
   descriptors: readonly McpToolDescriptor[],
   options: RegisterMcpToolsOptions = {},
-): string[] {
+): RegisterMcpToolsResult {
   const allowed = options.allowedTools ? new Set(options.allowedTools) : undefined;
   const disallowed = createToolRuleNameSet(options.disallowedTools);
+  const disabledByServer = options.disabledToolsByServer;
   const registered: string[] = [];
+  const disabled: string[] = [];
 
   for (const descriptor of descriptors) {
+    // 工具级启停判定必须**先于** allow 判定：三者都是收窄，取并集才安全。
+    // 若把 `allowed` 放前面，一个既在 session allowlist、又被用户工具级关闭的工具会被放进来 ——
+    // 那正是「用户关了它却还能用」。`disabledTools` 是唯一持久化、面向资源所有者的开关，
+    // 与 transient 的 session 名单冲突时以前者为准。
+    if (isMcpToolDisabled(descriptor, disabledByServer)) {
+      disabled.push(descriptor.toolName);
+      continue;
+    }
     const officialCuaAuthorityVerified =
       options.officialCuaServerNames?.has(descriptor.serverName) === true;
     const descriptorName = toMcpToolName(descriptor);
@@ -80,7 +108,10 @@ export function registerMcpTools(
     registered.push(name);
   }
 
-  return registered;
+  // 关闭是**用户可见的能力变化**，与「注册成功但静默少几个工具」必须区分开：不把明细回传，
+  // 用户只能通过「模型说没这个工具」反推自己的配置有没有生效。
+  // 这里不自己打日志——core 的日志出口是注入的 logger，由调用方（runtime）统一记录。
+  return { registered, disabledToolNames: disabled };
 }
 
 function toRegisteredMcpToolName(
@@ -148,7 +179,6 @@ function createMcpToolEntry(
         };
 
   return {
-
     // 因精确查找直接返回 Tool not found。只在不可伪造的官方 authority 门成立且内部
     // serverName 仍是官方 namespaced 名时挂单向别名；provider 继续只看规范名称。
     aliases: officialCuaProviderSpellingAliases(name, descriptor, officialCuaAuthorityVerified),

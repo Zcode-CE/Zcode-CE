@@ -1,5 +1,8 @@
 import { chmod, readFile, rm } from "node:fs/promises";
-import { readThirdPartyNotices, stageThirdPartyNotices } from "../../../../../scripts/third-party-notices.mjs";
+import {
+  readThirdPartyNotices,
+  stageThirdPartyNotices,
+} from "../../../../../scripts/third-party-notices.mjs";
 import { basename, dirname, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
@@ -191,6 +194,14 @@ export const resolveBuildAliases = ({
   "@zcode/shared/workspace-hook-trust-store-file": resolve(
     rootDirectory,
     "../../packages/shared/src/workspace-hook-trust-store-file.ts",
+  ),
+  // disabledTools 的唯一归一化与上限下沉成 shared 叶子模块后的新 subpath；contracts 会重新导出它，
+  // 所以整条 agent bundle（contracts → adapters）都会 import 这个路径。漏声明会被通用
+  // "@zcode/shared" 前缀改写成 `src/index.ts/mcpDisabledTools`，Desktop agent/SEA/remote-assets
+  // 打包直接失败（报错形如 `Cannot read directory "packages/shared/src/index.ts"`）。
+  "@zcode/shared/mcpDisabledTools": resolve(
+    rootDirectory,
+    "../../packages/shared/src/mcpDisabledTools.ts",
   ),
   "@zcode/shared/zcodeEndpoint": resolve(
     rootDirectory,

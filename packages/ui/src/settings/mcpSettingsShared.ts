@@ -19,6 +19,14 @@ export interface FormState {
   timeoutMs: string;
   oauth?: string;
   protocolVersion: string;
+  /**
+   * 该 server 内按工具名关闭的工具，**表单里用换行分隔的多行文本**表示
+   * （工具名可含 `/`、`.`，用逗号分隔会把合法名字切断）。
+   *
+   * 必须进 FormState：表单保存走的是 `formToConfig` 的字段白名单，
+   * 不在 FormState 里的键会在用户点「保存」时被静默丢掉（工具启停随即失效）。
+   */
+  disabledTools: string;
 }
 
 export const EMPTY_FORM: FormState = {
@@ -34,7 +42,28 @@ export const EMPTY_FORM: FormState = {
   timeoutMs: "",
   oauth: "",
   protocolVersion: "",
+  disabledTools: "",
 };
+
+/** `disabledTools` 文本 ⇄ 数组：逐行，忽略空行，去重，保序。 */
+export function parseDisabledToolsText(value: string): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const line of value.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0 || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    result.push(trimmed);
+  }
+  return result;
+}
+
+export function formatDisabledToolsText(value: unknown): string {
+  if (!Array.isArray(value)) return "";
+  return parseDisabledToolsText(value.filter((item) => typeof item === "string").join("\n")).join(
+    "\n",
+  );
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -67,11 +96,15 @@ export function serverToForm(server: ZCodeMcpServer): FormState {
     // 非法枚举值归一为未设置（等价 auto），与 shared DTO 的 isMcpProtocolVersion
     // 静默丢弃行为对齐；否则 config 里的手滑值会让协议版本下拉显示空白。
     protocolVersion: isMcpProtocolVersion(cfg.protocolVersion) ? cfg.protocolVersion : "",
+    disabledTools: formatDisabledToolsText(cfg.disabledTools),
   };
 }
 
 export function formToConfig(form: FormState): McpServerConfig {
   const timeoutMs = parseTimeoutMs(form.timeoutMs);
+  // 工具级启停：空文本 = 未配置（不落多余字段），否则写回数组。
+  const disabledTools = parseDisabledToolsText(form.disabledTools);
+  const disabledToolsPatch = disabledTools.length > 0 ? { disabledTools } : {};
   if (form.type === "stdio") {
     let env: Record<string, string> | undefined;
     if (form.env.trim()) {
@@ -91,6 +124,7 @@ export function formToConfig(form: FormState): McpServerConfig {
       ...(form.protocolVersion
         ? { protocolVersion: form.protocolVersion as McpServerConfig["protocolVersion"] }
         : {}),
+      ...disabledToolsPatch,
     };
   }
 
@@ -121,6 +155,7 @@ export function formToConfig(form: FormState): McpServerConfig {
     ...(form.protocolVersion
       ? { protocolVersion: form.protocolVersion as McpServerConfig["protocolVersion"] }
       : {}),
+    ...disabledToolsPatch,
   };
 }
 
@@ -207,6 +242,8 @@ export function jsonDraftToForm(jsonText: string, fallback: FormState): FormStat
     protocolVersion: isMcpProtocolVersion(normalizedConfig.protocolVersion)
       ? normalizedConfig.protocolVersion
       : "",
+    // 同上：JSON 模式粘贴的 disabledTools 必须带回表单，否则保存会静默清掉它。
+    disabledTools: formatDisabledToolsText(normalizedConfig.disabledTools),
   };
 }
 

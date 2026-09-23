@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { McpDisabledToolsField } from "@/settings/McpDisabledToolsField.js";
 import { PluginScopeMenu } from "@/settings/PluginScopeMenu.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 import { SettingsFormTextarea } from "@/settings/SettingsFormTextarea.js";
@@ -369,6 +370,12 @@ export function McpServerForm({
               />
             </div>
           )}
+
+          {/* 工具级启停：折叠区 + 手输工具名，理由见组件文件头注释。 */}
+          <McpDisabledToolsField
+            value={form.disabledTools}
+            onChange={(value) => update({ disabledTools: value })}
+          />
 
           <div>
             <button

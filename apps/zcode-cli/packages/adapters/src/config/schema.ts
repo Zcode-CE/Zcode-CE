@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- zcode-cli 配置 schema 需要集中维护文件解析和 provider 继承，拆散会让配置语义更难对齐。 */
 import { z } from "zod";
+import { MCP_SERVER_MAX_DISABLED_TOOLS, normalizeMcpDisabledTools } from "@zcode/contracts";
 import type { RuntimeConfigPatch } from "@zcode/contracts";
 
 const stringRecordSchema = z.record(z.string(), z.string());
@@ -47,6 +48,9 @@ const mcpServerBaseSchema = {
   // 设置页和 MCP adapter 已支持协议选择；配置入口漏掉该字段会因 strict 校验丢弃整个 server。
   protocolVersion: z.enum(["auto", "legacy", "2026-07-28"]).optional(),
   enabled: z.boolean().optional(),
+  // 工具级启停：漏掉这一个键，用户配的 disabledTools 会被 strict 校验判为未知键而**丢弃整个 server**
+  // （不是丢掉这一个字段）。工具名归一化在 normalizeMcpDisabledTools 里做，schema 只兜结构。
+  disabledTools: z.array(z.string().min(1)).max(MCP_SERVER_MAX_DISABLED_TOOLS).optional(),
   timeoutMs: positiveNumberSchema.optional(),
 };
 
@@ -107,6 +111,63 @@ const mcpServerSchema = z.preprocess(
   normalizeMcpServerConfigInput,
   z.discriminatedUnion("type", [mcpStdioServerSchema, mcpHttpServerSchema, mcpSseServerSchema]),
 );
+
+/** server 名只在诊断里出现，取不到时给一个可读占位，不丢诊断本身。 */
+function serverLabelForDiagnostic(name: string): string {
+  return name.trim().length > 0 ? name : "<unnamed server>";
+}
+
+/**
+ * 就地归一化 server 的 `disabledTools`（工具级启停）。
+ *
+ * 为什么必须在**校验前**做、并且把整个键删掉而不是留一个非法值：
+ * `mcpServerSchema` 是 `.strict()` 的 —— 留一个非法值会让**整条 server** 被丢进诊断并跳过，
+ * 即「用户想关一个工具，结果整个 MCP 不可用」。这里改成「该字段不生效 + 精确告警，server 保住」。
+ * 归一化本身只调 `normalizeMcpDisabledTools`（契约里的唯一一份），本函数只负责告警与删除。
+ */
+function normalizeServerDisabledTools(
+  server: Record<string, unknown>,
+  name: string,
+  diagnostics: ConfigDiagnostic[],
+): void {
+  if (!("disabledTools" in server)) return;
+
+  const normalized = normalizeMcpDisabledTools(server.disabledTools);
+  const warn = (message: string) => {
+    diagnostics.push({
+      code: "config_mcp_server_invalid",
+      message,
+      path: `mcp.servers.${name}.disabledTools`,
+      severity: "warning",
+    });
+  };
+
+  if (normalized.invalidShape) {
+    delete server.disabledTools;
+    warn(
+      `MCP server "${serverLabelForDiagnostic(name)}": disabledTools must be an array of tool names; ignoring it (the server itself is kept).`,
+    );
+    return;
+  }
+  if (normalized.droppedEntryCount > 0) {
+    warn(
+      `MCP server "${serverLabelForDiagnostic(name)}": dropped ${normalized.droppedEntryCount} non-string disabledTools entr(y|ies).`,
+    );
+  }
+  if (normalized.blankCount > 0) {
+    warn(
+      `MCP server "${serverLabelForDiagnostic(name)}": dropped ${normalized.blankCount} blank disabledTools entr(y|ies).`,
+    );
+  }
+  if (normalized.truncatedCount > 0) {
+    warn(
+      `MCP server "${serverLabelForDiagnostic(name)}": disabledTools exceeds the ${MCP_SERVER_MAX_DISABLED_TOOLS}-entry limit; ignored the last ${normalized.truncatedCount} entr(y|ies).`,
+    );
+  }
+
+  if (normalized.disabledTools.length === 0) delete server.disabledTools;
+  else server.disabledTools = normalized.disabledTools;
+}
 
 const mcpSchema = z.object({
   servers: z.record(z.string(), mcpServerSchema).optional(),
@@ -485,6 +546,12 @@ function normalizeConfigFileInput(value: unknown, diagnostics: ConfigDiagnostic[
 
   const parsedServers: Record<string, unknown> = {};
   for (const [name, server] of Object.entries(servers)) {
+    if (isPlainRecord(server)) {
+      // 先归一化 disabledTools，避免一个写错的工具启停字段把整条 server 判成非法。
+      // 就地在 `server` 上归一化：`servers` 本身已经是从文件解析出来的新对象，
+      // 这里改它不会污染调用方传入的配置。
+      normalizeServerDisabledTools(server, name, diagnostics);
+    }
     const parsed = mcpServerSchema.safeParse(server);
     if (parsed.success) {
       parsedServers[name] = parsed.data;

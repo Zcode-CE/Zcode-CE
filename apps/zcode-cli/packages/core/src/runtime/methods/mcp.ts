@@ -4,7 +4,11 @@ import {
   ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY,
   ZCODE_PLUGIN_ID_ENV_KEY,
 } from "@zcode/shared";
-import { registerMcpTools, traceContextToLogContext } from "../deps.js";
+import {
+  buildDisabledMcpToolsByServer,
+  registerMcpTools,
+  traceContextToLogContext,
+} from "../deps.js";
 import type { McpConnectionSnapshot, McpServerConfig, TraceContext } from "../deps.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 
@@ -135,14 +139,22 @@ export async function initializeMcp(
 
   try {
     const snapshot = await startup;
-    const registered = registerMcpTools(this.registry, mcpPort, snapshot.tools, {
-      allowedTools: this.config.toolAllowlist,
-      disallowedTools: this.config.toolDisallowlist,
-      officialCuaServerNames: computeOfficialCuaServerNames(
-        this.config.mcp?.servers ?? {},
-        new Set(this.config.mcp?.trustedOfficialCuaServerNames ?? []),
-      ),
-    });
+    const { registered, disabledToolNames } = registerMcpTools(
+      this.registry,
+      mcpPort,
+      snapshot.tools,
+      {
+        allowedTools: this.config.toolAllowlist,
+        disallowedTools: this.config.toolDisallowlist,
+        // 工具级启停的判定清单来自 session 冻结的 server 配置（与 enabled 同对象）。
+        // 归一到「server → 关闭的工具名」只做一次，判定与注册同源，避免两处漂移。
+        disabledToolsByServer: buildDisabledMcpToolsByServer(this.config.mcp?.servers),
+        officialCuaServerNames: computeOfficialCuaServerNames(
+          this.config.mcp?.servers ?? {},
+          new Set(this.config.mcp?.trustedOfficialCuaServerNames ?? []),
+        ),
+      },
+    );
     if (registered.length > 0) {
       this.invalidateToolCache();
     }
@@ -151,9 +163,21 @@ export async function initializeMcp(
       event: "mcp.tools.registered",
       module: "core.runtime",
       registeredToolCount: registered.length,
+      // 用户从配置关掉的工具数：与「注册成功」分开记，否则「关了但没生效」在日志里不可见。
+      // 只记数量不记名字：名字属于用户配置内容，清单形态见 mcp.tools.disabled 那条 debug。
+      disabledToolCount: disabledToolNames.length,
       serverCount,
       status: "completed",
     });
+    if (disabledToolNames.length > 0) {
+      this.logger?.debug("MCP tools disabled by configuration", {
+        ...traceContextToLogContext(traceContext),
+        disabledToolNames,
+        event: "mcp.tools.disabled",
+        module: "core.runtime",
+        status: "completed",
+      });
+    }
   } catch (error) {
     this.mcpToolsRegistered = true;
     this.logger?.warn("MCP initialization failed", {

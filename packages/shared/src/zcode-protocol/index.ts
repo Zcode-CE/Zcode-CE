@@ -3,6 +3,9 @@ import {
   databaseStartupErrorDetailsSchema,
   databaseMigrationFactsSchema,
 } from "../database-startup.js";
+// disabledTools 的上限唯一所有者是 `../mcpDisabledTools.js`（叶子模块，不依赖任何本仓模块）。
+// 这里只**消费**它，不再自带一份常量：两份同值常量会各自漂移，而 wire 边界与配置边界必须同一个数。
+import { MCP_SERVER_MAX_DISABLED_TOOLS } from "../mcpDisabledTools.js";
 /* oxlint-disable eslint(max-lines) -- ZCode Protocol schema 需要单文件导出，方便 app 与 agent 共享同一份协议契约。 */
 // ── 旧协议删除边界──────────────────────
 // 剩余 ~257 个导出：旧 ZCode Protocol 方法契约、请求/响应/事件 schema、
@@ -637,6 +640,10 @@ export const zcodeProtocolMcpServerSchema = z.union([
       env: z.array(zcodeProtocolMcpEntrySchema),
       isolation: z.enum(["session", "workspace"]).optional(),
       protocolVersion: z.enum(["legacy", "auto", "2026-07-28"]).optional(),
+      // 工具级启停（disabledTools）必须走 wire：它是 server 配置对象的一部分，UI 读到的
+      // server.config 要原样下发给 agent。这个 schema 是 .strict() 的——漏声明该键，
+      // host 传下来的启用列表会在协议校验阶段被判成非法，整个 session/create 失败。
+      disabledTools: z.array(nonEmptyString).max(MCP_SERVER_MAX_DISABLED_TOOLS).optional(),
       timeoutMs: z.number().int().positive().optional(),
     })
     .strict(),
@@ -649,6 +656,7 @@ export const zcodeProtocolMcpServerSchema = z.union([
       oauth: zcodeProtocolMcpOAuthSchema.optional(),
       isolation: z.enum(["session", "workspace"]).optional(),
       protocolVersion: z.enum(["legacy", "auto", "2026-07-28"]).optional(),
+      disabledTools: z.array(nonEmptyString).max(MCP_SERVER_MAX_DISABLED_TOOLS).optional(),
       timeoutMs: z.number().int().positive().optional(),
     })
     .strict(),
