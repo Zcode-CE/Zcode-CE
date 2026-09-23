@@ -17,6 +17,10 @@ function usage() {
   return `Usage:
   zcode --web [--host <host>] [--port <port>] [--workspace <path>] [--open|--no-open] [--token <token>|--no-token]
   zcode --version
+
+Notes:
+  --no-token 只允许与回环 host 组合（--no-token is only allowed with a loopback --host）：
+  非回环绑定必须带令牌，否则服务端会拒绝启动。
 `;
 }
 
@@ -95,6 +99,10 @@ function parseArgs(argv) {
     throw new Error(`Unknown option "${arg}".\n${usage()}`);
   }
 
+  // 组合级校验放在解析阶段：非回环 + 无 token 会被服务端 fail-closed 拒绝，
+  // 这里提前给出一致的解释与两条可行路线。
+  assertHostTokenCombination(options);
+
   return options;
 }
 
@@ -104,6 +112,52 @@ function isLocalHost(host) {
 
 function shouldProtectHost(host) {
   return !isLocalHost(host);
+}
+
+/**
+ * 是否启用并注入后端令牌。
+ *
+ * - `--token=<非空值>` ⇒ 启用；
+ * - `--no-token`（或等价的 `--token=` 空值）⇒ 不启用；
+ * - 未指定 ⇒ 非回环默认启用（与历史行为一致），回环默认不启用（本地开发）。
+ *
+ * 判定与启动前校验共用本函数，避免「校验说可以、实际注入的却是空 token」这类两套口径。
+ */
+function resolveTokenEnabled(options) {
+  if (options.tokenEnabled === false) {
+    return false;
+  }
+  if (options.tokenEnabled === true) {
+    return Boolean(options.token?.trim());
+  }
+  return shouldProtectHost(options.host);
+}
+
+/**
+ * 「非回环 + 无 token」必须在**解析参数阶段**就被拒绝。
+ *
+ * 服务端（packages/server 的 assertListenSecurity）对这一组合是 fail-closed 硬拒绝；
+ * 如果放到这里才报错，用户会先看到「ZCode Web is running」的假象，再拿到二段错误。
+ * 口径与服务端一致（不新增环境变量、不改服务端的硬拒绝）。
+ */
+function assertHostTokenCombination(options) {
+  if (isLocalHost(options.host) || resolveTokenEnabled(options)) {
+    return;
+  }
+  throw new Error(
+    [
+      `Refusing to start: --no-token cannot be combined with a non-loopback --host (${options.host}).`,
+      `拒绝启动：绑定非回环地址 "${options.host}" 但未提供 token。`,
+      "",
+      "原因：不启用 token 时，服务端的 /api/*、/ws、/ws/host 对能访问该地址的人全部开放",
+      "（其中 POST /api/rpc-host-capability 会未授权签发 trusted-host ticket），",
+      "因此服务端本身也会拒绝启动 —— 这里提前报错，避免先起后拒。",
+      "",
+      "两种做法：",
+      "  1. 只在本机用：不设 --host（默认 127.0.0.1），--no-token 仍然可用；",
+      "  2. 要对外暴露：去掉 --no-token（非回环会自动生成令牌），或用 --token <token> 指定一个。",
+    ].join("\n"),
+  );
 }
 
 function createToken() {
@@ -170,8 +224,9 @@ async function assertRuntimeFiles() {
 async function serve(options) {
   await assertRuntimeFiles();
   const port = options.port && options.port > 0 ? options.port : await pickPort(options.host);
-  const protect = options.tokenEnabled ?? shouldProtectHost(options.host);
-  const token = protect ? (options.token ?? createToken()) : "";
+  const protect = resolveTokenEnabled(options);
+  // 显式给了空 token（--token=）时按「抽到一个可用令牌」处理，避免 protect=true 却注入空值。
+  const token = protect ? options.token?.trim() || createToken() : "";
   const open = options.open ?? isLocalHost(options.host);
   const localUrl = formatUrl(options.host, port, token);
 

@@ -51,6 +51,11 @@ const TEST_PACKAGES = [
   // （页数不符、未嵌入、缺 /ToUnicode、无子集前缀、文本层缺字、bfrange 多码元目标不得错位、
   // 截断与非 PDF 必须结构化失败、参数 rc=2）不进 CI。用 .mjs，见下面的后缀列表。
   "apps/zcode-cli/packages/pdf-plugin",
+  // HTTP 入口的监听安全默认值：**必须在这里登记**，否则 5 条安全断言
+  // （非回环+无 token 拒绝启动、默认绑回环、非回环+token 放行、token 401/200、
+  // cookie 的 Secure 随 https 变化）不进 CI —— 这条链路曾被实测为「绑所有网卡且无鉴权，
+  // 未授权即可领 trusted-host ticket」，回归代价是不可见的暴露面。
+  "packages/server",
 ];
 
 /** 允许的测试文件后缀：packages 下用 TS（走 tsx），apps 下的脚本测试用 .mjs。 */

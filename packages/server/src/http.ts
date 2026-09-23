@@ -221,13 +221,36 @@ function parseCookieHeader(header: string | undefined): Map<string, string> {
   return cookies;
 }
 
+/**
+ * 请求是否走 https —— 决定 token cookie 是否带 `Secure`。
+ *
+ * 两种来源：① Node 侧直接就是 https（本仓库目前没有 TLS 服务端，留作未来接入）；
+ * ② 反代终止 TLS（TLS 反代场景的常规做法，见 docs/development/local-setup.md）。
+ * `x-forwarded-proto` 可被伪造，但伪造它只会让 cookie 多一个 `Secure`
+ * （http 下浏览器不会回发该 cookie），不会造成提权；反之若不看它，
+ * https 反代下种出的 cookie 会缺少 `Secure`，明文 http 上照发。
+ */
+function isSecureRequest(c: Context): boolean {
+  if (new URL(c.req.url).protocol === "https:") {
+    return true;
+  }
+  const forwardedProto = c.req.header("x-forwarded-proto");
+  return forwardedProto?.split(",")[0]?.trim().toLowerCase() === "https";
+}
+
+/** HttpOnly + SameSite=Lax 保持不变；`Secure` 只在 https（含反代）请求上下发。 */
+function buildLiteTokenCookie(token: string, secure: boolean): string {
+  const attributes = ["Path=/", "HttpOnly", "SameSite=Lax"];
+  if (secure) {
+    attributes.push("Secure");
+  }
+  return `${zcodeLiteTokenCookieName}=${encodeURIComponent(token)}; ${attributes.join("; ")}`;
+}
+
 function hasValidLiteToken(c: Context, token: string): boolean {
   const url = new URL(c.req.url);
   if (url.searchParams.get("token") === token) {
-    c.header(
-      "Set-Cookie",
-      `${zcodeLiteTokenCookieName}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax`,
-    );
+    c.header("Set-Cookie", buildLiteTokenCookie(token, isSecureRequest(c)));
     return true;
   }
   return parseCookieHeader(c.req.header("cookie")).get(zcodeLiteTokenCookieName) === token;
@@ -292,6 +315,60 @@ function staticContentType(filePath: string): string {
   return staticMimeTypes[extname(filePath).toLowerCase()] ?? "application/octet-stream";
 }
 
+/**
+ * 默认监听地址：**回环**。
+ *
+ * 历史缺陷（安全，已修）：不传 host 时 `serve()` 把 undefined 交给
+ * `server.listen(port, undefined)`，Node 会绑定所有网卡（`*`）；同时
+ * `ZCODE_SERVER_AUTH_TOKEN` 未设置时中间件根本不挂载，于是 /api/*、/ws、
+ * /ws/host 对同网段任何人可达 —— `/ws/host` 只校验一次性 ticket，而该 ticket
+ * 由同样无鉴权的 `POST /api/rpc-host-capability` 签发（30 秒 TTL），
+ * 拿到即得 `desktop-continuous`（trusted host）角色；`/api/server-info`
+ * 还会泄露主机名、版本与工作区绝对路径。原日志把这档默认打印成 `localhost`，
+ * 进一步误导用户。修复前后实测对照见
+ * `.reverse/40-remote-control/SECURITY-SERVER-DEFAULTS.md`。
+ */
+export const DEFAULT_HTTP_LISTEN_HOST = "127.0.0.1";
+
+function normalizeListenHost(host: string): string {
+  const trimmed = host.trim().toLowerCase();
+  return trimmed.startsWith("[") && trimmed.endsWith("]") ? trimmed.slice(1, -1) : trimmed;
+}
+
+/** 与 packages/zcode-server-cli/src/server-core/http.ts 的 isLoopbackHost 保持同一判定口径。 */
+export function isLoopbackHost(host: string): boolean {
+  const normalized = normalizeListenHost(host);
+  return normalized === "127.0.0.1" || normalized === "::1" || normalized === "localhost";
+}
+
+/**
+ * 监听地址的 fail-closed 前置检查：**非回环 + 无 token ⇒ 拒绝启动**。
+ *
+ * 不做「只警告然后继续跑」：无鉴权的非回环绑定等于把 Agent 级 RPC 与
+ * trusted-host ticket 发放接口交给整个网段，静默降级在这里是不可接受的。
+ * 立场与 server-core 一致（那边对非回环直接抛错）。
+ */
+export function assertListenSecurity(options: { host: string; authToken?: string }): void {
+  if (isLoopbackHost(options.host) || options.authToken?.trim()) {
+    return;
+  }
+  throw new Error(
+    [
+      `拒绝启动：绑定非回环地址 "${options.host}" 但未设置 ZCODE_SERVER_AUTH_TOKEN。`,
+      "",
+      "原因：不设 token 时 /api/*、/ws、/ws/host 对能访问该地址的人全部开放 ——",
+      "  - GET /api/server-info 泄露主机名、版本、工作区绝对路径；",
+      "  - POST /api/rpc-host-capability 未授权即可签发 trusted-host ticket；",
+      "  - 带该 ticket 的 /ws/host 连接会拿到 desktop-continuous（trusted host）角色。",
+      "",
+      "三种做法：",
+      "  1. 只在本机用（默认）：不设 HOST/ZCODE_SERVER_HOST，监听 127.0.0.1；",
+      "  2. 对外且要令牌：ZCODE_SERVER_AUTH_TOKEN=$(openssl rand -hex 32)；",
+      "  3. 对外且要 TLS：反代终止 TLS 并把 /api 与 /ws 一起转发给回环监听（见 docs/development/local-setup.md）。",
+    ].join("\n"),
+  );
+}
+
 export function createHttpServer(
   services: ServiceCollection,
   port = 3030,
@@ -301,7 +378,10 @@ export function createHttpServer(
   const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
   const hostCapabilities = createHostCapabilityStore();
 
+  // 唯一所有者：默认值与 fail-closed 判定都在这里，入口只负责从环境读取「是否显式指定」。
+  const host = options.host?.trim() || DEFAULT_HTTP_LISTEN_HOST;
   const authToken = options.authToken?.trim();
+  assertListenSecurity({ host, authToken });
   if (authToken) {
     app.use("*", async (c, next) => {
       const pathname = new URL(c.req.url).pathname;
@@ -413,11 +493,18 @@ export function createHttpServer(
     });
   }
 
-  const server = serve({ fetch: app.fetch, hostname: options.host, port }, () => {
+  const server = serve({ fetch: app.fetch, hostname: host, port }, () => {
     const address = server.address();
     const listenPort = typeof address === "object" && address ? address.port : port;
-    const listenHost = options.host?.trim() || "localhost";
-    log(`http://${listenHost}:${listenPort}`);
+    // 打印真实 bind 地址：此前用 options.host 兜底成 "localhost"，
+    // 与「未指定 = 绑所有网卡」的实际行为不符（误导用户以为只在本机可达）。
+    const urlHost = host.includes(":") ? `[${normalizeListenHost(host)}]` : host;
+    log(`http://${urlHost}:${listenPort}`);
+    log(
+      isLoopbackHost(host)
+        ? `bind=${host} scope=loopback-only token-auth=${authToken ? "enabled" : "disabled"}`
+        : `bind=${host} scope=non-loopback token-auth=enabled (非回环绑定的 fail-closed 前置检查已通过)`,
+    );
   });
 
   injectWebSocket(server);
