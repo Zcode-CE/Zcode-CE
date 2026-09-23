@@ -117,6 +117,9 @@
 - 已接受的 busy/running 输入由 CLI/runtime `CommandInbox` 串行 admission；Renderer 只保留未提交草稿与 pending optimistic overlay，Host owner/lease 负责路由。
 - 保留 owner/lease、跨 Host 路由和 stale run 防护，不能仅根据单一路径删除边界判断。
 
+> **上游形态提示（本仓库未实现）**：本节「手机远控连接桌面已有 Host attachment」与「外部 relay」两条描述的是**上游闭源产品**的形态。官方在开源之前已把手机远控整块移除：配对、二维码、云 relay、移动壳在官方产物里都存在（官方 asar 中 relay 出现 57 次、连接是 `new URL(relayWsUrl)` 带 `?mid=`、二维码就绪由 relay 侧判定），但在本仓库**全仓 0 命中**；桌面端也没有任何入站服务（`packages/desktop/src` 内唯一的 `node:http` 是绑 127.0.0.1 的媒体预览代理）。当前代码里只有**浏览器客户端**（`packages/web`）连**服务端进程**（`packages/server`）这一条自托管路径，见 README 的入口表。
+> 因此这两条**不是对本仓库现状的描述**，而是「如果要做，按这个边界做」的约束；判断某条链路是否存在时以源码与实测为准，不要按这两句推定。
+
 ## Workspace Identity
 
 - `workspaceIdentity` 用于身份隔离，`workspacePath` 用于文件操作、命令 cwd、Git 和路径展示。
