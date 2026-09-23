@@ -4337,7 +4337,7 @@ const enUS: Record<string, string> = {
   "chat.message.copy": "Copy",
   "chat.message.copy.copied": "Copied",
   "chat.message.copy.requiresFull": "Load full message before copying",
-  "chat.message.copyFullResponse": "Copy full response",
+  "chat.message.copy.fullResponse": "Copy full response",
   "chat.message.like": "Like",
   "chat.message.liked": "Liked",
   "chat.message.dislike": "Dislike",

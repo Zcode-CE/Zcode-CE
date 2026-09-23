@@ -4055,7 +4055,7 @@ const zhCN: Record<string, string> = {
   "chat.message.copy": "复制",
   "chat.message.copy.copied": "已复制",
   "chat.message.copy.requiresFull": "加载完整消息后复制",
-  "chat.message.copyFullResponse": "复制完整回复",
+  "chat.message.copy.fullResponse": "复制完整回复",
   "chat.message.like": "赞",
   "chat.message.liked": "已赞",
   "chat.message.dislike": "踩",
