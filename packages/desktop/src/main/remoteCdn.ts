@@ -13,7 +13,16 @@ export interface ResolveRemoteCdnOptions {
 }
 
 function normalizeBaseUrl(value: string): string {
-  const url = new URL(value);
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    // 配置写错时的典型形态：只写了域名（`cdn.example.com`）漏了协议 —— `new URL` 只会抛裸的
+    // `Invalid URL`，维护者据此查不出是哪一项配置的问题。这里换成可行动的报错。
+    throw new Error(
+      `远程资产 CDN 基址无法解析：${value} —— must use http or https，并要带上协议（例如 https://cdn.example.com）`,
+    );
+  }
   if (!["http:", "https:"].includes(url.protocol))
     throw new Error("CDN URL must use http or https");
   return value.replace(/\/+$/, "");

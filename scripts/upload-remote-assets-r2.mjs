@@ -137,6 +137,13 @@ async function main() {
       "缺少对象桶名：用 --bucket <bucket> 或环境变量 ZCODE_R2_BUCKET 指定（具体值见 docs/operations/remote-assets-cdn.md §12 指向的本地私密笔记；不要写进仓库）",
     );
   }
+  // 发布根格式**在上传前**校验：只写域名（漏协议）时，`fetch()` 会逐个失败，结果是「上传其实成功、
+  // 自检全红、job 退出 1」这种最难排查的假失败（2026-09-23 维护者真的这么配过一次）。
+  if (publicBaseUrl && !/^https?:\/\//iu.test(publicBaseUrl)) {
+    throw new Error(
+      `发布根必须带协议：收到 ${JSON.stringify(publicBaseUrl)}（应为 https://<域名>）—— 只写域名会让上传后的 HEAD 自检全部失败`,
+    );
+  }
   const files = walkFiles(root);
   if (files.length === 0) {
     throw new Error(`发布根是空目录：${root}（先跑 node scripts/assemble-remote-assets.mjs）`);

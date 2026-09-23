@@ -220,8 +220,11 @@ curl -sS -o /dev/null -w "%{http_code}\n" "https://<域名>/no-such-file.json"
    **对象读写到目标桶**（`Object Read & Write`，作用域限定该桶；不要给账户级全权）。
 2. **设三个仓库 secret**（Settings → Secrets and variables → Actions → **Secrets**）：
    `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`、`ZCODE_R2_BUCKET`。
-3. **设一个仓库 variable**（同页 **Variables**）：`ZCODE_CDN_BASE_URL` = 发布根（如 `https://cdn.eidolonmachine.xyz`）。
+3. **设一个仓库 variable**（同页 **Variables**）：`ZCODE_CDN_BASE_URL` = 发布根，**必须带协议**（如 `https://cdn.example.com`）。
    它同时被两条链路消费：**安装包的构建期默认基址**与**上传脚本的 HEAD 自检目标**。
+   ⚠️ **只写域名（`cdn.example.com`）不算对**：构建期基址解析会**直接抛错**（`Invalid URL`），上传 job 的
+   「上传后逐个 HEAD 自检」也会因 URL 非法而**全部失败** —— 结果是**上传其实成功了、却看起来失败**，
+   这是最难排查的一类假信号。（上传脚本现在会在**上传前**就校验格式并明确报错，不再走到那一步。）
 
 **为什么账号/桶名走 secret、发布根走 variable**：域名是公开信息（客户端要访问它）；
 账户 ID 与桶名是**部署方私有标识**，写进仓库等于随公开仓库分发。本仓库任何文件都不出现它们。
