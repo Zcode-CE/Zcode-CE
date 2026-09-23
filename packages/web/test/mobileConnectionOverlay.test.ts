@@ -42,6 +42,23 @@ test("未授权时不得渲染应用内容（this is the guard that must not reg
   assert.match(source, /phase=\{unauthorized \? "unauthorized" : connection\.phase\}/);
 });
 
+test("授权探测按 attempt 重试（不能一个相位只探一次），且探测有超时上限", () => {
+  const root = readSource("src/WebAppRoot.tsx");
+  assert.match(root, /createAuthorizationProbeController\(\{/);
+  assert.match(
+    root,
+    /authorizationProbe\.notifyConnectionState\(connection\.phase, connection\.attempt\)/,
+  );
+  // effect 依赖必须含 connection.attempt：否则「探测落在服务重启窗口」之后不会再探，
+  // 页面会永远停在「正在重连」，而服务其实已经在用 401 拒绝它。
+  assert.match(root, /\}, \[authorizationProbe, connection\.attempt, connection\.phase\]\);/);
+  assert.match(root, /AbortSignal\.timeout\(AUTHORIZATION_PROBE_TIMEOUT_MS\)/);
+
+  const controller = readSource("src/authorizationProbeController.ts");
+  assert.match(controller, /if \(lastProbedAttempt !== null && attempt <= lastProbedAttempt\) \{/);
+  assert.match(controller, /reset\(\) \{/);
+});
+
 test("viewports 声明 interactive-widget=resizes-content（软键盘收缩布局视口）", () => {
   const html = readSource("index.html");
   assert.match(html, /interactive-widget=resizes-content/);
