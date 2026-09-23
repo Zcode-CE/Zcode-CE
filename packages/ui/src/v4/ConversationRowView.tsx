@@ -1334,7 +1334,7 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
   const { intl, locale } = useZCodeIntl();
   const [localFeedback, setLocalFeedback] = useState<AssistantMessageFeedback | null>(feedback);
   const copyLabel = intl.formatMessage({
-    id: copyScope === "turn" ? "chat.message.copyFullResponse" : "chat.message.copy",
+    id: copyScope === "turn" ? "chat.message.copy.fullResponse" : "chat.message.copy",
   });
   const likeLabel = intl.formatMessage({
     id: localFeedback === "like" ? "chat.message.liked" : "chat.message.like",
