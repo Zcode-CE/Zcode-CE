@@ -160,11 +160,11 @@ export function DesktopTopOverlay({
             </DesktopTopOverlayActionButton>
           )}
 
-          {/* Web/远控（浏览器、手机）没有桌面标题栏按钮，侧栏无法收起；这里补一个同样的切换入口。 */}
+          {/* Web/远控（浏览器、手机）没有桌面标题栏按钮，侧栏无法收起；这里补一个同样的切换入口。
+              不传 shortcut：手机上无法按快捷键，tooltip 不应宣传它。 */}
           {!isDesktop && (
             <DesktopTopOverlayActionButton
               title={toggleSidebarTitle}
-              shortcut={toggleSidebarShortcutLabel}
               ariaLabel={toggleSidebarTitle}
               testId="web-top-toggle-sidebar"
               onClick={onToggleSidebar}
