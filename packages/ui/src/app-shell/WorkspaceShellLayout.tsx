@@ -117,6 +117,38 @@ const EMPTY_REMOTE_WORKSPACE_SESSIONS: NonNullable<
   WorkspaceShellLayoutProps["remoteWorkspaceSessions"]
 > = [];
 const CONVERSATION_AUTO_COLLAPSE_SIDEBAR_WIDTH_PX = 360;
+// 窄屏（手机 Web）首次进入判定用的外壳宽度阈值。
+// 侧栏是 flex-none 且 max-w-[50%]，主内容区有 min-w-[320px] 下限：在 390/360 宽的视口里两者放不下，
+// 实测外壳 scrollWidth 519（390 视口）→ 主内容区右侧 129px 被 overflow-hidden 裁掉且无法滚动到，
+// 会话正文与 composer 的发送键都在被裁的那一侧。桌面窗口不会低于这个阈值，所以这里不影响桌面。
+const NARROW_SHELL_AUTO_COLLAPSE_WIDTH_PX = 768;
+// 窄视口（手机宽度）判定：头部控件在 390 宽下会互相挤压并重叠，需要简化「头部」这一层。
+// 用视口媒体查询而不是外壳宽度：手机横屏（844 宽）头部本身有空间，不该被简化。
+const NARROW_VIEWPORT_MEDIA_QUERY = "(max-width: 767px)";
+
+/**
+ * 是否处于窄视口。返回原始视口判定，调用方决定要不要叠加 isDesktop 条件。
+ */
+function useIsNarrowViewport() {
+  const [isNarrow, setIsNarrow] = useState(() =>
+    typeof window === "undefined" ? false : window.matchMedia(NARROW_VIEWPORT_MEDIA_QUERY).matches,
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQueryList = window.matchMedia(NARROW_VIEWPORT_MEDIA_QUERY);
+    const handleChange = () => setIsNarrow(mediaQueryList.matches);
+    handleChange();
+    mediaQueryList.addEventListener("change", handleChange);
+    return () => mediaQueryList.removeEventListener("change", handleChange);
+  }, []);
+
+  return isNarrow;
+}
+
 const CONVERSATION_AUTO_COLLAPSE_RESIZE_IDLE_MS = 300;
 // 性能修复：ResizablePanelGroup 收到深相等的新 panelIds 数组，
 // 会跟随 chat streaming render 重算布局上下文；固定数组语义上不会随消息变化。
@@ -386,6 +418,8 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   });
   const conversationAutoCollapseResizeTimerRef = useRef<number | null>(null);
   const workspaceSidebarResizeSessionRef = useRef<WorkspaceSidebarResizeSession | null>(null);
+  const isNarrowViewport = useIsNarrowViewport();
+  const narrowAutoCollapseDecidedRef = useRef(false);
   const [workspaceSidebarPanelWidthPx, setWorkspaceSidebarPanelWidthPx] = useState(
     () => readStoredWorkspaceSidebarWidthPx() ?? WORKSPACE_SIDEBAR_DEFAULT_WIDTH_PX,
   );
@@ -544,6 +578,42 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   useEffect(() => {
     workspaceSidebarPanelWidthPxRef.current = workspaceSidebarPanelWidthPx;
   }, [workspaceSidebarPanelWidthPx]);
+
+  // 窄屏首次进入该工作区时收起左侧栏。
+  // 原因：侧栏 flex-none + max-w-[50%] 与主内容区 min-w-[320px] 在 <768px 的外壳里放不下，
+  // 溢出部分被外壳的 overflow-hidden 裁掉且无横向滚动（390 实测裁 129px），会话正文与
+  // composer 右侧按钮都落在被裁区域。
+  //
+  // 只在「本次挂载的首次判定」做一次，之后完全交给用户的开关。为什么用组件内 ref 而不是
+  // 按 workspaceKey 记账：workspaceKey 在挂载后可能从占位值变成真实工作区键，用「键集合」
+  // 记账会出现「第一次点侧栏开关被立刻收回」——开关看起来点了没反应（实测复现过）。
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (narrowAutoCollapseDecidedRef.current) {
+      return;
+    }
+    narrowAutoCollapseDecidedRef.current = true;
+
+    if (!isSidebarVisible) {
+      return;
+    }
+
+    const shellWidthPx =
+      workspaceShellRef.current?.getBoundingClientRect().width ?? window.innerWidth;
+    if (shellWidthPx >= NARROW_SHELL_AUTO_COLLAPSE_WIDTH_PX) {
+      return;
+    }
+
+    logger.info("[WorkspaceShellLayout] 窄屏外壳过窄，首次进入自动收起左侧栏", {
+      shellWidthPx: Math.round(shellWidthPx),
+      thresholdPx: NARROW_SHELL_AUTO_COLLAPSE_WIDTH_PX,
+      workspaceKey,
+    });
+    handleToggleSidebar();
+  }, [handleToggleSidebar, isSidebarVisible, workspaceKey]);
 
   const applyWorkspaceSidebarWidthDuringDrag = useCallback(
     (nextWidthPx: number) => {
@@ -1645,7 +1715,9 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
           data-panel=""
           id="content"
           className={cn(
-            "flex min-w-[320px] flex-1 flex-col",
+            // 窄屏下不加最小宽度下限：宁可让内部（表格/代码块等）各自横向滚动，
+            // 也不要让整个主内容区被外壳裁掉（窄屏外壳的溢出是拿不回来的）。
+            "flex min-w-0 flex-1 flex-col",
             hasDesktopPanelInset ? "p-1 pl-0 pt-0" : "p-0",
           )}
         >
@@ -1735,6 +1807,10 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                           isWindowsDesktop={isWindowsDesktop}
                           windowsWindowControlsRightPaddingPx={windowsWindowControlsRightPaddingPx}
                           isDesktop={isDesktop}
+                          // 窄屏（手机浏览器/远控）的头部简化：复活既有的 simplifyForNarrowRemote
+                          // —— 上游为窄屏远控写的这条开关在本仓库此前恒为 false（调用方随移动壳被删除），
+                          // 390 宽实测头部控件相互重叠、标题被压到 48px「拆包…」。桌面应用窗口不简化。
+                          simplifyForNarrowRemote={!isDesktop && isNarrowViewport}
                           isSidebarVisible={isSidebarVisible}
                           isTerminalOpen={isTerminalOpen}
                           isSidePaneOpen={isSidePaneOpen}
@@ -1966,6 +2042,9 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
             windowsWindowControlsRightPaddingPx={windowsWindowControlsRightPaddingPx}
             isWindowsDesktop={isWindowsDesktop}
             isDesktop={isDesktop}
+            // 窄屏头部空间不足：后退/前进与核心操作争抢宽度（DesktopTopOverlay 已有该开关与注释），
+            // 手机上任务间导航由侧栏任务列表承担。
+            hideTaskNavigationButtons={isNarrowViewport}
             isSidebarVisible={isSidebarVisible}
             updateReadyVersion={updateReadyVersion}
             updateState={updateState}

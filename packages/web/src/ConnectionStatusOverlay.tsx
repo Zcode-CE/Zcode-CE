@@ -65,6 +65,12 @@ export function ConnectionStatusOverlay({
           " in progress. This page resumes automatically once the connection is back.";
 
   return (
+    // 覆盖层承担两点职责（缺一就会变成「看起来可用、点了没反应」）：
+    // 1) 状态条本身：断线/失败/未授权三种真实状态，文案不混说；
+    // 2) 阻断指针：整层铺满视口（半透明底 + 不透明状态条），让被覆盖的应用确实不可交互。
+    //    旧实现只有 56px 的顶部条：应用头部按钮（y=14..42）被它盖住点不到，而其余区域
+    //    照旧可点却是死交互 —— 手机用户会以为是自己点错（task-22 审计 §2.5 实测）。
+    // 未授权态「不渲染应用内容」由 WebAppRoot 的 session && !unauthorized 保证，与本层无关。
     <div
       data-testid="web-connection-overlay"
       data-connection-phase={phase}
@@ -72,56 +78,63 @@ export function ConnectionStatusOverlay({
       aria-live="polite"
       style={{
         position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
+        inset: 0,
         zIndex: 2147483000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "0.75rem",
-        padding: "0.6rem 1rem",
-        background: unauthorized
-          ? "rgb(120 53 15 / 0.95)"
-          : failed
-            ? "rgb(127 29 29 / 0.95)"
-            : "rgb(23 23 23 / 0.92)",
-        color: "#fafafa",
-        fontSize: "13px",
-        lineHeight: 1.4,
-        boxShadow: "0 1px 0 rgb(255 255 255 / 0.08)",
+        background: "rgb(0 0 0 / 0.35)",
       }}
     >
-      <span
-        aria-hidden="true"
+      <div
         style={{
-          width: "0.5rem",
-          height: "0.5rem",
-          borderRadius: "9999px",
-          background: unauthorized ? "#fcd34d" : failed ? "#fca5a5" : "#fbbf24",
+          display: "flex",
+          // 窄屏（390）下标题与详情必须能换行：并排时标题被挤成两行、详情只剩一条缝。
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "center",
+          columnGap: "0.75rem",
+          rowGap: "0.35rem",
+          padding: "0.6rem 1rem",
+          background: unauthorized
+            ? "rgb(120 53 15 / 0.95)"
+            : failed
+              ? "rgb(127 29 29 / 0.95)"
+              : "rgb(23 23 23 / 0.92)",
+          color: "#fafafa",
+          fontSize: "13px",
+          lineHeight: 1.4,
+          boxShadow: "0 1px 0 rgb(255 255 255 / 0.08)",
         }}
-      />
-      <span style={{ fontWeight: 500 }}>{title}</span>
-      <span style={{ opacity: 0.85 }}>{detail}</span>
-      {unauthorized || failed ? (
-        <button
-          type="button"
-          data-testid="web-connection-retry"
-          onClick={onRetry}
+      >
+        <span
+          aria-hidden="true"
           style={{
-            marginLeft: "0.25rem",
-            border: "1px solid rgb(255 255 255 / 0.35)",
-            borderRadius: "0.375rem",
-            background: "transparent",
-            color: "inherit",
-            fontSize: "12px",
-            padding: "0.2rem 0.6rem",
-            cursor: "pointer",
+            width: "0.5rem",
+            height: "0.5rem",
+            borderRadius: "9999px",
+            background: unauthorized ? "#fcd34d" : failed ? "#fca5a5" : "#fbbf24",
           }}
-        >
-          {isChinese ? "重试" : "Retry"}
-        </button>
-      ) : null}
+        />
+        <span style={{ fontWeight: 500 }}>{title}</span>
+        <span style={{ opacity: 0.85 }}>{detail}</span>
+        {unauthorized || failed ? (
+          <button
+            type="button"
+            data-testid="web-connection-retry"
+            onClick={onRetry}
+            style={{
+              marginLeft: "0.25rem",
+              border: "1px solid rgb(255 255 255 / 0.35)",
+              borderRadius: "0.375rem",
+              background: "transparent",
+              color: "inherit",
+              fontSize: "12px",
+              padding: "0.2rem 0.6rem",
+              cursor: "pointer",
+            }}
+          >
+            {isChinese ? "重试" : "Retry"}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

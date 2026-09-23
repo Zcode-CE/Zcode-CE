@@ -133,7 +133,7 @@ export function SettingsRow({
                 "items-center",
                 controlLayout === "wide"
                   ? "grid-cols-1 sm:grid-cols-[minmax(0,1fr)_280px]"
-                  : "grid-cols-[minmax(0,1fr)_192px]",
+                  : "grid-cols-1 sm:grid-cols-[minmax(0,1fr)_192px]",
               ),
         )}
       >

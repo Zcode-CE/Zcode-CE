@@ -2,7 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- interactive-widget=resizes-content：软键盘弹出时收缩布局视口（Chrome/Android）。
+         默认的 resizes-visual 只收缩视觉视口，而外壳高度来自 h-dvh（跟随布局视口），
+         结果底部 composer 被键盘盖住（手机上无法边看边输入）。 -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"
+    />
     <meta name="theme-color" content="#161616" />
     <meta name="color-scheme" content="dark" />
     <!-- Chrome dev 下可能不发 favicon 网络请求；内嵌小尺寸 App 图标，避免标签页回退到默认图标。-->
