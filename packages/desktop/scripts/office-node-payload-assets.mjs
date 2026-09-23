@@ -221,15 +221,29 @@ function resolveCjsEntry(packageRoot) {
   const rootExport = manifest.exports?.["."] ?? manifest.exports;
   const candidates = [];
   if (rootExport && typeof rootExport === "object" && !Array.isArray(rootExport)) {
-    const requireBranch = rootExport.require;
-    if (typeof requireBranch === "string") candidates.push(requireBranch);
-    else if (requireBranch && typeof requireBranch.default === "string") {
-      candidates.push(requireBranch.default);
+    // 条件导出的两种形状都要认：`{ require: "./x.cjs" }` 与 `{ node: { require: "./x.cjs" } }`。
+    // **顺序必须是 node.require 在前**：Node 对 CJS 的条件顺序是 ["node", "require", "default"]，
+    // 而 fontkit@2.0.4 同时有两者且指向不同产物 ——
+    //   exports = { node: { require: "./dist/main.cjs" }, require: "./dist/browser.cjs", … }
+    // 先取顶层 `require` 会打进**浏览器构建**：它没有 openSync/open（实测只有 5 个导出），
+    // 于是字体发现永远找不到面、插件"装上了但一份 PDF 也产不出来"（task-9 实测抓到的缺陷）。
+    const branches = [rootExport.node?.require, rootExport.require];
+    for (const branch of branches) {
+      if (typeof branch === "string") candidates.push(branch);
+      else if (branch && typeof branch.default === "string") candidates.push(branch.default);
     }
     if (typeof rootExport.default === "string") candidates.push(rootExport.default);
+    if (typeof rootExport.node?.import === "string") candidates.push(rootExport.node.import);
   }
   if (typeof rootExport === "string") candidates.push(rootExport);
   if (typeof manifest.main === "string") candidates.push(manifest.main);
+  for (const candidate of candidates) {
+    const entry = resolve(packageRoot, candidate.replace(/^\.\//, ""));
+    // 浏览器/中性产物不是 Node 侧该走的代码路径（fontkit 的 browser.cjs 缺 openSync）。
+    // 只在还有别的候选时才跳过它，避免把"包里只有一份产物"的情况也判死。
+    if (/browser/i.test(entry)) continue;
+    if (existsSync(entry)) return entry;
+  }
   for (const candidate of candidates) {
     const entry = resolve(packageRoot, candidate.replace(/^\.\//, ""));
     if (existsSync(entry)) return entry;
@@ -269,7 +283,14 @@ function owningPackageName(inputPath) {
  *   ② metafile 的输入里不得出现 FORBIDDEN_BUNDLED_PACKAGES；
  *   ③ 该库**必需内联**的包必须真的在产物里（见 REQUIRED_BUNDLED_PACKAGES）。
  */
-function assertSelfContained({ code, library, metafile }) {
+function assertSelfContained({
+  code,
+  library,
+  metafile,
+  label = "office-node-payload",
+  forbiddenPackages = FORBIDDEN_BUNDLED_PACKAGES,
+  requiredPackages = REQUIRED_BUNDLED_PACKAGES[library] ?? [],
+}) {
   const builtins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
   const staticRequires = [...code.matchAll(/require\(\s*["']([^"']+)["']\s*\)/g)].map(
     (match) => match[1],
@@ -277,7 +298,7 @@ function assertSelfContained({ code, library, metafile }) {
   const external = [...new Set(staticRequires)].filter((specifier) => !builtins.has(specifier));
   if (external.length > 0) {
     throw new Error(
-      `[office-node-payload] ${library} 产物不自包含：出现非内置 require ${external.join(", ")}`,
+      `[${label}] ${library} 产物不自包含：出现非内置 require ${external.join(", ")}`,
     );
   }
   // 动态 require（require(变量)）esbuild 无法静态内联，运行时必然抛错或 MODULE_NOT_FOUND。
@@ -286,7 +307,7 @@ function assertSelfContained({ code, library, metafile }) {
   );
   if (dynamicRequires.length > 0) {
     throw new Error(
-      `[office-node-payload] ${library} 产物含动态 require（${dynamicRequires.slice(0, 3).join("; ")}）：` +
+      `[${label}] ${library} 产物含动态 require（${dynamicRequires.slice(0, 3).join("; ")}）：` +
         "esbuild 无法静态内联这类调用，运行时可能 MODULE_NOT_FOUND",
     );
   }
@@ -297,18 +318,14 @@ function assertSelfContained({ code, library, metafile }) {
         .filter((name) => name !== undefined),
     ),
   ].sort();
-  const forbidden = packages.filter((name) => FORBIDDEN_BUNDLED_PACKAGES.includes(name));
+  const forbidden = packages.filter((name) => forbiddenPackages.includes(name));
   if (forbidden.length > 0) {
-    throw new Error(
-      `[office-node-payload] ${library} 产物混入了禁止分发的包：${forbidden.join(", ")}`,
-    );
+    throw new Error(`[${label}] ${library} 产物混入了禁止分发的包：${forbidden.join(", ")}`);
   }
-  const missing = (REQUIRED_BUNDLED_PACKAGES[library] ?? []).filter(
-    (name) => !packages.includes(name),
-  );
+  const missing = requiredPackages.filter((name) => !packages.includes(name));
   if (missing.length > 0) {
     throw new Error(
-      `[office-node-payload] ${library} 产物缺少必需内联的包：${missing.join(", ")}；` +
+      `[${label}] ${library} 产物缺少必需内联的包：${missing.join(", ")}；` +
         "若这些包被 stub 或 external 掉，相关能力会在分发物里静默降级（见模块头「前提已变更」段）",
     );
   }
@@ -323,7 +340,14 @@ function assertSelfContained({ code, library, metafile }) {
  */
 const bundleCache = new Map();
 
-async function buildLibraryBundle({ library, lookupRoots }) {
+async function buildLibraryBundle({
+  library,
+  lookupRoots,
+  label = "office-node-payload",
+  esbuildPlugins = [createS3StubPlugin()],
+  forbiddenPackages = FORBIDDEN_BUNDLED_PACKAGES,
+  requiredPackages = REQUIRED_BUNDLED_PACKAGES[library] ?? [],
+}) {
   const packageRoot = resolveInstalledPackage(library, lookupRoots);
   const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
   const cacheKey = `${manifest.name}@${manifest.version}|${packageRoot}`;
@@ -344,14 +368,21 @@ async function buildLibraryBundle({ library, lookupRoots }) {
     logLevel: "warning",
     metafile: true,
     platform: "node",
-    plugins: [createS3StubPlugin()],
+    plugins: esbuildPlugins,
     target: BUNDLE_TARGET,
     write: false,
   });
   const output = result.outputFiles?.[0];
-  if (!output) throw new Error(`[office-node-payload] ${library} esbuild 未产出文件`);
+  if (!output) throw new Error(`[${label}] ${library} esbuild 未产出文件`);
   const code = output.text;
-  const packages = assertSelfContained({ code, library, metafile: result.metafile });
+  const packages = assertSelfContained({
+    code,
+    library,
+    label,
+    forbiddenPackages,
+    metafile: result.metafile,
+    requiredPackages,
+  });
   const built = {
     bytes: Buffer.byteLength(code),
     code,
@@ -410,3 +441,20 @@ export async function stageOfficeNodePayloads({ lookupRoots, glmDir }) {
 
 /** 载荷在插件目录内的相对落点（技能与校验脚本按它 require）。 */
 export const OFFICE_NODE_PAYLOAD_RELATIVE_DIR = OFFICE_NODE_PAYLOAD_DIR;
+
+/**
+ * 供其它插件载荷模块复用的打包件（**纯导出，行为不变**）。
+ *
+ * 为什么复用而不是复制一份：这套机器里每一条都是踩出来的 —— CJS 入口解析（`main` 是 UMD 的坑）、
+ * 自包含三条断言（非内置 require / 动态 require / 必需内联包）、进程内打包缓存（远端要按 4 平台
+ * 各 stage 一次，纯 JS 库产物相同）。复制一份就等于把这些坑重挖一遍，并且两份实现会各自漂移。
+ * pdf 载荷（`pdf-node-payload-assets.mjs`）即按此复用。
+ */
+export {
+  BUNDLE_TARGET,
+  assertSelfContained,
+  buildLibraryBundle,
+  resolveCjsEntry,
+  resolveInstalledPackage,
+  toPosix,
+};

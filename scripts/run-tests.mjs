@@ -47,6 +47,10 @@ const TEST_PACKAGES = [
   // 审计实测：未登记前 `pnpm test` 只跑 20 个文件，完全覆盖不到这些断言。
   // 注意它们用 .mjs（校验器本身是 Node 脚本），见下面的后缀列表。
   "apps/zcode-cli/packages/documents-plugin",
+  // pdf 插件的校验器/生成器契约测试：**必须在这里登记**，否则 11 条有牙齿的断言
+  // （页数不符、未嵌入、缺 /ToUnicode、无子集前缀、文本层缺字、bfrange 多码元目标不得错位、
+  // 截断与非 PDF 必须结构化失败、参数 rc=2）不进 CI。用 .mjs，见下面的后缀列表。
+  "apps/zcode-cli/packages/pdf-plugin",
 ];
 
 /** 允许的测试文件后缀：packages 下用 TS（走 tsx），apps 下的脚本测试用 .mjs。 */

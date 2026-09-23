@@ -99,6 +99,32 @@ const OFFICIAL_ZCODE_GUIDE_REQUIRED_SEED_PATHS = [
 // bundled-plugins.ts:316-324），只钉 manifest 则会把「有壳没内容」的残缺插件静默发出去。
 const OFFICIAL_SKILL_CREATOR_REQUIRED_SEED_PATHS = ["skills/skill-creator/SKILL.md"] as const;
 
+/**
+ * "文档类"四插件里只有 pdf 自带 Node 运行时载荷，所以它额外钉住载荷与三个入口。
+ *
+ * 这是**运行期闸门**：载荷缺失时 seed 拒绝写缓存并告警（bundled-plugins.ts 的
+ * ZCODE_PLUGIN_SEED_INCOMPLETE），而不是让用户看到一个"已启用、但第一次调用就
+ * MODULE_NOT_FOUND"的插件 —— 该失效形态已在 task-6 实测（.reverse/38-pdf/COMMIT-SHAPE.md：
+ * 只有目录与 manifest 时，plugins list 就会输出 pdf@zcode-plugins-official [enabled]）。
+ *
+ * 载荷由打包链 stage 到 <plugin>/scripts/pdf-node/（packages/desktop/scripts/pdf-node-payload-assets.mjs），
+ * pdf-build.mjs 是生成器、check_pdf.mjs 与 pdf-fonts.mjs 是技能正文直接调用的另外两个入口。
+ * **不钉 lib/*.mjs 等内部实现文件**：入口缺文件会以可读错误暴露，而多钉一层会让"重命名内部文件"
+ * 变成"插件静默不出现"的新失效形态。
+ */
+const OFFICIAL_PDF_EXTRA_REQUIRED_SEED_PATHS = [
+  "scripts/pdf-node/fontkit.cjs",
+  "scripts/pdf-node/pdfkit.cjs",
+  "scripts/pdf-build.mjs",
+  "scripts/check_pdf.mjs",
+  "scripts/pdf-fonts.mjs",
+] as const;
+
+/** name → 该插件在通用 requiredSeedPaths 之外还必须存在的资产。 */
+const DOCUMENT_PLUGIN_EXTRA_REQUIRED_SEED_PATHS: Record<string, readonly string[]> = {
+  pdf: OFFICIAL_PDF_EXTRA_REQUIRED_SEED_PATHS,
+};
+
 const OFFICIAL_RESTORE_LEGACY_SESSIONS_REQUIRED_SEED_PATHS = [
   "commands/restore-legacy-sessions.md",
   "skills/restore-legacy-sessions/SKILL.md",
@@ -206,7 +232,11 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
         description_i18n: { "zh-CN": `创建、编辑与审阅${chineseName}（${skill.toUpperCase()}）。` },
       },
       name,
-      requiredSeedPaths: ["agents/visual-judge.md", `skills/${skill}/SKILL.md`],
+      requiredSeedPaths: [
+        "agents/visual-judge.md",
+        `skills/${skill}/SKILL.md`,
+        ...(DOCUMENT_PLUGIN_EXTRA_REQUIRED_SEED_PATHS[name] ?? []),
+      ],
       rootCandidates: [
         `packages/${name}-plugin`,
         `../${name}-plugin`,

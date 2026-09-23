@@ -79,6 +79,9 @@ function seedFromAssetRoot({ assetRoot, storageRoot, workspace }) {
       `      officeNodeFiles: existsSync(join(root, "scripts", "office-node"))`,
       `        ? readdirSync(join(root, "scripts", "office-node")).sort()`,
       `        : [],`,
+      `      pdfNodeFiles: existsSync(join(root, "scripts", "pdf-node"))`,
+      `        ? readdirSync(join(root, "scripts", "pdf-node")).sort()`,
+      `        : [],`,
       `      hasTrycua: existsSync(join(root, "node_modules", "@trycua")),`,
       `      nodeModulesEntries: existsSync(join(root, "node_modules"))`,
       `        ? readdirSync(join(root, "node_modules")).sort()`,
@@ -121,6 +124,7 @@ test("dev staging puts the office bundles and the driver at the agent entry's di
   assert.deepEqual(listDevPayloadPluginDirNames(), [
     "documents-plugin",
     "node-repl-host",
+    "pdf-plugin",
     "presentations-plugin",
     "spreadsheets-plugin",
   ]);
@@ -170,6 +174,17 @@ test("dev-staged payloads survive the real seed and reach the runtime cache", as
       assert.ok(
         entry.officeNodeFiles.includes(file),
         `seed 后 cache 缺少 ${plugin}/scripts/office-node/${file}（stage 出文件 ≠ 运行时还在）`,
+      );
+    }
+
+    // pdf 载荷同理：pdfkit/fontkit 的 esbuild bundle 必须活到 seed 之后（缺了它，插件会以
+    // "已启用但第一次调用就 MODULE_NOT_FOUND" 的形式暴露 —— task-6 实测过这个形态）。
+    for (const file of ["pdfkit.cjs", "fontkit.cjs"]) {
+      const entry = cache["pdf@0.1.7"];
+      assert.ok(entry, "seed 后 cache 缺少 pdf@0.1.7");
+      assert.ok(
+        entry.pdfNodeFiles.includes(file),
+        `seed 后 cache 缺少 pdf/scripts/pdf-node/${file}`,
       );
     }
 

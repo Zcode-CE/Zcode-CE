@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@zcode/pdf-plugin",
+  "version": "0.1.7",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "PDF authoring skill for ZCode-CE. The runtime payload is a self-contained esbuild bundle staged from pdfkit and fontkit (both MIT) into scripts/pdf-node/. See docs/development/pdf-plugins.md.",
+  "scripts": {
+    "test": "node --test test/checkPdf.test.mjs"
+  },
+  "dependencies": {
+    "fontkit": "2.0.4",
+    "pdfkit": "0.17.1"
+  }
+}

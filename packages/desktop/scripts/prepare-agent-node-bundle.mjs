@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import { runCommand } from "../../../scripts/spawn-command.mjs";
 import { stageCuaDriverIntoBundledAgents } from "./cua-driver-package-assets.mjs";
 import { stageOfficeNodePayloads as stageOfficeNodePayloadsIntoGlm } from "./office-node-payload-assets.mjs";
+import { stagePdfNodePayloads as stagePdfNodePayloadsIntoGlm } from "./pdf-node-payload-assets.mjs";
 import { stageKoffiIntoBundledAgents } from "./koffi-package-assets.mjs";
 import { stageAgentBundle } from "./stage-agent-bundle.mjs";
 
@@ -153,6 +154,16 @@ const contentPluginPackages = [
     ],
   },
 ];
+// pdf 插件：内容（技能/生成器/校验器/字体助手）+ 单独的 Node 载荷（pdfkit/fontkit bundle）。
+// 载荷由 stagePdfNodePayloads() 在 stageOfficialPlugins() **之后**落盘，所以这里只钉源码树里
+// 已存在的资产；载荷路径钉在 bootstrap/official-plugin-definitions.ts 的 requiredSeedPaths 上
+// —— 那一条是运行期闸门（缺载荷就不注册，见 .reverse/38-pdf/COMMIT-SHAPE.md）。
+const pdfPluginPackages = [
+  {
+    name: "pdf",
+    requiredSeedPaths: ["agents/visual-judge.md", "scripts/pdf-build.mjs", "skills/pdf/SKILL.md"],
+  },
+];
 const officialPluginPackages = [
   {
     // browser-use 只携带自己的 client script 与 skill/docs；node_repl MCP runtime 归
@@ -209,6 +220,14 @@ const officialPluginPackages = [
   })),
 
   ...contentPluginPackages.map(({ name, requiredSeedPaths }) => ({
+    packageName: `@zcode/${name}-plugin`,
+    relativePath: `apps/zcode-cli/packages/${name}-plugin`,
+    requiresRuntime: false,
+    requiredSeedPaths,
+    stagedPath: `packages/${name}-plugin`,
+  })),
+
+  ...pdfPluginPackages.map(({ name, requiredSeedPaths }) => ({
     packageName: `@zcode/${name}-plugin`,
     relativePath: `apps/zcode-cli/packages/${name}-plugin`,
     requiresRuntime: false,
@@ -466,6 +485,36 @@ async function stageOfficeNodePayloads() {
   );
 }
 
+/**
+ * pdf 插件的 Node 运行时载荷（pdfkit / fontkit）—— esbuild 自包含 bundle。
+ *
+ * 为什么必须在 stageOfficialPlugins() **之后**：那一步会 cpSync 插件的 `scripts` 目录，
+ * 顺序反了会把刚写进去的 bundle 覆盖掉（落点就在 `<plugin>/scripts/pdf-node/`）。
+ * 打包口径与"为什么不放 node_modules"见 pdf-node-payload-assets.mjs 的模块注释。
+ */
+async function stagePdfNodePayloads() {
+  const staged = await stagePdfNodePayloadsIntoGlm({
+    lookupRoots: [repoRoot, desktopRoot],
+    glmDir,
+  });
+  const bytes = staged.reduce((sum, item) => sum + item.bytes, 0);
+  for (const item of staged) {
+    // 落盘存在性校验：构建期护栏。与运行期的 requiredSeedPaths 校验是两层
+    // （后者才覆盖「seed 后还在不在」），两层都要有。
+    if (!existsSync(item.target)) {
+      throw new Error(`[prepare:agent-bundle] missing staged pdf node bundle: ${item.target}`);
+    }
+    console.log(
+      `[prepare:agent-bundle] staged pdf node bundle ${item.plugin}: ` +
+        `${item.library}@${item.version} (${item.packages.length} packages inlined, ` +
+        `${(item.bytes / 1024 / 1024).toFixed(2)} MiB)`,
+    );
+  }
+  console.log(
+    `[prepare:agent-bundle] staged pdf node bundles total: ${(bytes / 1024 / 1024).toFixed(2)} MiB`,
+  );
+}
+
 function stageOfficialPlugins() {
   for (const plugin of officialPluginPackages) {
     const sourceRoot = resolve(repoRoot, plugin.relativePath);
@@ -512,3 +561,5 @@ stageBundledSkills();
 // 必须排在 stageOfficialPlugins() 之后：后者 cpSync 插件的 scripts/ 目录，
 // 会把落点在同一目录下的 bundle 覆盖掉（bundle 落点见该函数注释）。
 await stageOfficeNodePayloads();
+// 同样是"必须在 stageOfficialPlugins() 之后"的载荷，落点 <plugin>/scripts/pdf-node/。
+await stagePdfNodePayloads();

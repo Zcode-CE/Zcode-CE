@@ -60,6 +60,7 @@ import {
   stageCuaDriverIntoBundledAgents,
 } from "./cua-driver-package-assets.mjs";
 import { OFFICE_NODE_BUNDLES, stageOfficeNodePayloads } from "./office-node-payload-assets.mjs";
+import { PDF_NODE_BUNDLES, stagePdfNodePayloads } from "./pdf-node-payload-assets.mjs";
 import { getTargetPlatform } from "./target-platform.mjs";
 
 /** dev 的 agent 入口相对仓库根的路径。与 stage-agent-bundle.mjs 的源产物同源。 */
@@ -96,7 +97,11 @@ export function resolveDevAgentAssetRoot({ repoRoot }) {
 /** dev 需要 stage 的插件目录名（从载荷模块派生，不手写第二份清单）。 */
 export function listDevPayloadPluginDirNames() {
   return [
-    ...new Set([...OFFICE_NODE_BUNDLES.map((bundle) => bundle.plugin), CUA_DRIVER_PLUGIN_DIR_NAME]),
+    ...new Set([
+      ...OFFICE_NODE_BUNDLES.map((bundle) => bundle.plugin),
+      ...PDF_NODE_BUNDLES.map((bundle) => bundle.plugin),
+      CUA_DRIVER_PLUGIN_DIR_NAME,
+    ]),
   ].sort();
 }
 
@@ -157,6 +162,21 @@ export async function stageDevAgentPayloads({ repoRoot, assetRoot, log = console
     }
     log(
       `[dev-agent-payloads] staged office node bundle ${item.plugin}: ` +
+        `${item.library}@${item.version} (${(item.bytes / 1024 / 1024).toFixed(2)} MiB)`,
+    );
+  }
+
+  const pdfStaged = await stagePdfNodePayloads({
+    // 查找根与打包链同口径：根 node_modules 是 pnpm hoisted 布局下的主落点。
+    lookupRoots: [repoRoot, resolve(repoRoot, "packages", "desktop")],
+    glmDir: resolvedAssetRoot,
+  });
+  for (const item of pdfStaged) {
+    if (!existsSync(item.target)) {
+      throw new Error(`[dev-agent-payloads] pdf bundle 未落盘：${item.target}`);
+    }
+    log(
+      `[dev-agent-payloads] staged pdf node bundle ${item.plugin}: ` +
         `${item.library}@${item.version} (${(item.bytes / 1024 / 1024).toFixed(2)} MiB)`,
     );
   }

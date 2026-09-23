@@ -689,5 +689,60 @@
     "package": "https@1.0.0",
     "license": "ISC",
     "acceptedMissingNotice": "占位包：tarball 仅含 package.json（main 指向不存在的 index.js），无代码、无 README、无 LICENSE。pptxgenjs 声明依赖它但运行时不 require（实测 grep 无命中）。包内许可字段为 ISC，无可登记的完整许可文本，故按「接受缺失上游文本」登记。"
+  },
+  {
+    "package": "fontkit@2.0.4",
+    "repo": "foliojs/fontkit",
+    "refs": ["v2.0.4", "2.0.4", "fontkit@2.0.4"],
+    "file": "third-party/upstream/47a5b3dace9cce679dff68809f563a5e254152807e19d2b415e9a90d30407153.txt",
+    "sha256": "47a5b3dace9cce679dff68809f563a5e254152807e19d2b415e9a90d30407153",
+    "source": "https://registry.npmjs.org/fontkit/2.0.4",
+    "evidenceKind": "publisher-license-identifier-and-standard-terms",
+    "license": "MIT",
+    "reviewEvidence": {
+      "checkedOn": "2026-09-23",
+      "result": "The versioned npm archive contains no standalone complete LICENSE (fontkit declares files: [src, dist], and the upstream repository root has no LICENSE file - only a README section License: MIT). Existing publisher declaration and original README license section remain preserved. Upstream authorization/copyright material is still required to close this review.",
+      "npmArchiveSha256": "f686a9515af33fce16ab4bffe50570728197e53165068548c6f75a1793797a08",
+      "sourceTreeUrl": "https://api.github.com/repos/foliojs/fontkit/git/trees/master?recursive=1",
+      "upstreamLicenseFiles": []
+    }
+  },
+  {
+    "package": "brotli@1.3.3",
+    "file": "third-party/upstream/cfc3c11a0e3e83ced162857d81a6df9fc5e9ad61ec5883217d556c631c244793.txt",
+    "sha256": "cfc3c11a0e3e83ced162857d81a6df9fc5e9ad61ec5883217d556c631c244793",
+    "source": "https://registry.npmjs.org/brotli/1.3.3",
+    "evidenceKind": "publisher-license-identifier-and-standard-terms",
+    "license": "MIT",
+    "reviewEvidence": {
+      "checkedOn": "2026-09-23",
+      "result": "The versioned npm archive contains no standalone complete LICENSE and the upstream repository (devongovett/brotli.js) publishes none either. The publisher declares MIT in package.json; that declaration is preserved and the standard license text is recorded instead of claiming an upstream license file. Upstream authorization material is still required to close this review.",
+      "npmArchiveSha256": "3c7c260f6263df95fee49a9119e9fd21227d628b6c9d99080a75edfd9e2bdb24"
+    }
+  },
+  {
+    "package": "dfa@1.2.0",
+    "file": "third-party/upstream/1cff602ca185285d9d18ad1f9ac9b8a7c973b9d5c5ec845e29e10bd5b6c8a355.txt",
+    "sha256": "1cff602ca185285d9d18ad1f9ac9b8a7c973b9d5c5ec845e29e10bd5b6c8a355",
+    "source": "https://registry.npmjs.org/dfa/1.2.0",
+    "evidenceKind": "publisher-license-identifier-and-standard-terms",
+    "license": "MIT",
+    "reviewEvidence": {
+      "checkedOn": "2026-09-23",
+      "result": "The versioned npm archive contains no standalone complete LICENSE and the upstream repository (devongewitt/dfa) publishes none either. The publisher declares MIT in package.json; that declaration is preserved and the standard license text is recorded instead of claiming an upstream license file. Upstream authorization material is still required to close this review.",
+      "npmArchiveSha256": "d781eb3a307ab6aa2d97028f695b17dbeadf6fd27788c333b1fb96d18d2a23ad"
+    }
+  },
+  {
+    "package": "png-js@1.1.0",
+    "repo": "devongovett/png.js",
+    "license": "MIT",
+    "source": "https://registry.npmjs.org/png-js/1.1.0",
+    "evidenceKind": "packaged-license-file",
+    "reviewEvidence": {
+      "checkedOn": "2026-09-23",
+      "result": "The versioned npm archive ships a complete LICENSE (MIT License, Copyright (c) 2017 Devon Govett) and package.json omits the license field; the packaged text is used verbatim for the notice, and the publisher declaration is recorded here so the entry is not reported as undeclared.",
+      "npmArchiveSha256": "8fc286c879eb4ac49ab405054956e3afbdfe696e48f360f2c4d6adb2cf053faf"
+    }
   }
 ]

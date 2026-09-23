@@ -36,6 +36,10 @@ const installed = new Map();
 const MANUAL_LICENSE = {
   "exif-parser": "MIT", // 包内 LICENSE.md
   khroma: "MIT", // 包内 license 文件
+  // png-js@1.1.0 的 package.json **没有 license 字段**（npm registry 也没有），但包内 LICENSE 是
+  // MIT 全文（Copyright (c) 2017 Devon Govett）—— 由 pdfkit 的 PNG 解码路径引入，随 pdf-plugin
+  // 的依赖树进仓库。登记依据：node_modules/png-js/LICENSE 首行 "MIT License"。
+  "png-js": "MIT", // 包内 LICENSE 文件；package.json 无 license 字段
   semaphore: "MIT", // 包内 README License 段
   "css-value": "MIT", // 包内 Readme License 段
   "@fig/autocomplete-helpers": "MIT", // 包内 LICENSE

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "64407a0ed702b9e27dbb5c5167e88fdcebd81f5c6dc2d28082b7885078877617",
+  "noticesSha256": "af3dadf868380b8497b7d4e5b4fff79d027e3928d3c2742e90dabd73f2a8917a",
   "inputs": {
     ".agents/skills/agent-browser/references/authentication.md": "e2c3b0f4a1dc1368dee821f03c000d818a48421d09f3872525dddffe73f2112b",
     ".agents/skills/agent-browser/references/commands.md": "17522fc56d742663f47231ff06c4811abc87e12c7f78e11f94d253ddd540a909",
@@ -259,7 +259,7 @@
     "apps/zcode-cli/packages/dynamic-workflow/package.json": "aac5891463ddeb419ff6f73fc95b7c407964b06f8aeff66b6a9ba4d999164f99",
     "apps/zcode-cli/packages/i18n/package.json": "025e4620d80f39cac3df06249866fcaed531615b6b8a4c4a727c4557066f7b1b",
     "apps/zcode-cli/packages/node-repl-host/package.json": "1f593b58799ead7927275a71bcda496ad4861c491ae639b721830594171fa96b",
-    "apps/zcode-cli/packages/pdf-plugin/package.json": "12f8d39de90f28262e622249bf76cfaa8eae24ca11989f119ccd40577b3ac787",
+    "apps/zcode-cli/packages/pdf-plugin/package.json": "851504a767ac018e1173f8d635076798428d14c47ddfc355c88e6bf7bd960d46",
     "apps/zcode-cli/packages/plugin-creator-plugin/.zcode-plugin/plugin.json": "d42e59ed999c0614d7a968d00cfd01d51d2d6df267b196ad8723efb313ddfb4d",
     "apps/zcode-cli/packages/plugin-creator-plugin/skills/plugin-creator/references/installing-and-updating.md": "3e9fc24e1b28ea4aa1355f92d61aab27537545e1e9f8da4382b63ecb9b2d2688",
     "apps/zcode-cli/packages/plugin-creator-plugin/skills/plugin-creator/references/plugin-json-spec.md": "9ffea825cc42ee199a593dcf55863ab26f7113dbef11828ef2cd169079654f66",
@@ -2749,7 +2749,7 @@
     "packages/zcode-server-cli/package.json": "6e294c4409cb90863d85b2e3d60f92766b156ccee577ebfeaffcb85e94194004",
     "patches/@ai-sdk__anthropic@3.0.81.patch": "d3a7c381eba7f5157f765a0528003af17cf84544911dfb7412c7800168e01c18",
     "patches/@ai-sdk__openai-compatible@2.0.60.patch": "9632fe9d821b3dc20939ae509cc35b968d90d018bbd1d812390718898182a38b",
-    "pnpm-lock.yaml": "b36f3e8e8389e631d4637d74e608559d70f1d4f357bd1d073f0d540e3beb64c1",
+    "pnpm-lock.yaml": "90b3221bfd49f6cc07fc330d44106626f7651a57893289a434c23f5d437aae74",
     "pnpm-workspace.yaml": "f18a18233e82cda1dc40be61bf2ad1bc99de25de63ad0be64bc652761a638372",
     "scripts/license-texts/Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
@@ -2871,7 +2871,7 @@
     "third-party/native-search/licenses/f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af.txt": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
     "third-party/native-search/licenses/f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505.txt": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505",
     "third-party/native-search/sources.json": "5a7b2d7abf5bd5f310712710cbbd0ca70dc9491e723cbf070b5c696fe155a962",
-    "third-party/npm-overrides.json": "114a62fef7e60d5529238e913fb76b8080aea7256aebb456c320d2f761334645",
+    "third-party/npm-overrides.json": "86c41e6902a0b52e259f9aa60daa6ae68a476c379dde7698d6b41caff25d6e9c",
     "third-party/runtime/node-22.16.0-LICENSE.txt": "1ae62e2015784ba438db7b04ebd33f3c4ff3efdb824c111c4ececd99945fd52d",
     "third-party/runtime/node-24.14.0-LICENSE.txt": "4573185d56580da2b890ba34a85a409257640f1c5632eade4300137266194d18",
     "third-party/runtime/sources.json": "b27bc8d81aeb71108e523602364ffbb6a1b19c2d5d47733fd43094b769006741",
@@ -2886,6 +2886,7 @@
     "third-party/upstream/17510cf7a58b4879b887ec05a45d72cf1b73544dd9ec7e72f20110ed104229ee.txt": "17510cf7a58b4879b887ec05a45d72cf1b73544dd9ec7e72f20110ed104229ee",
     "third-party/upstream/1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d.txt": "1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d",
     "third-party/upstream/1b8910ad1a22011c632f7ff544708be6cf08818ef80e8d4b45b6808ee8b05c17.txt": "1b8910ad1a22011c632f7ff544708be6cf08818ef80e8d4b45b6808ee8b05c17",
+    "third-party/upstream/1cff602ca185285d9d18ad1f9ac9b8a7c973b9d5c5ec845e29e10bd5b6c8a355.txt": "1cff602ca185285d9d18ad1f9ac9b8a7c973b9d5c5ec845e29e10bd5b6c8a355",
     "third-party/upstream/23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3.txt": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
     "third-party/upstream/268872b9816f90fd8e85db5a28d33f8150ebb8dd016653fb39ef1f94f2686bc5.txt": "268872b9816f90fd8e85db5a28d33f8150ebb8dd016653fb39ef1f94f2686bc5",
     "third-party/upstream/2711a8b5a5cdfef0e639f96c1aca12ae23d7d64a02d0507f1bdf14d2b27bbc3a.txt": "2711a8b5a5cdfef0e639f96c1aca12ae23d7d64a02d0507f1bdf14d2b27bbc3a",
@@ -2899,6 +2900,7 @@
     "third-party/upstream/3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94.txt": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94",
     "third-party/upstream/417fa227d75b1e22a15d8389ca8b5e8b7b86241c3b1b17288d20523016ef6fa6.txt": "417fa227d75b1e22a15d8389ca8b5e8b7b86241c3b1b17288d20523016ef6fa6",
     "third-party/upstream/43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1.txt": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1",
+    "third-party/upstream/47a5b3dace9cce679dff68809f563a5e254152807e19d2b415e9a90d30407153.txt": "47a5b3dace9cce679dff68809f563a5e254152807e19d2b415e9a90d30407153",
     "third-party/upstream/4a1d35b6325ede5ff9fc338fe7e6fdcaa9fe770767a0114242b817dcba28253f.txt": "4a1d35b6325ede5ff9fc338fe7e6fdcaa9fe770767a0114242b817dcba28253f",
     "third-party/upstream/508d4676d4083e874df706f302d9d42e5e7f9aed3f5a7ea614dc6d2b2252a22f.txt": "508d4676d4083e874df706f302d9d42e5e7f9aed3f5a7ea614dc6d2b2252a22f",
     "third-party/upstream/5129f8779dca579cfcb235570688a2f15822b270575e04f27ef906aabbcc0355.txt": "5129f8779dca579cfcb235570688a2f15822b270575e04f27ef906aabbcc0355",
@@ -2941,6 +2943,7 @@
     "third-party/upstream/cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c.txt": "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c",
     "third-party/upstream/cdab3014d4f69b49dde2b85e81792208c72de613aa6aed7f7a9b5c6609b89670.txt": "cdab3014d4f69b49dde2b85e81792208c72de613aa6aed7f7a9b5c6609b89670",
     "third-party/upstream/cf81859d85e99ff2fad83d51d9dfd85ca5189b23c4442aacf1890c54665d92f4.txt": "cf81859d85e99ff2fad83d51d9dfd85ca5189b23c4442aacf1890c54665d92f4",
+    "third-party/upstream/cfc3c11a0e3e83ced162857d81a6df9fc5e9ad61ec5883217d556c631c244793.txt": "cfc3c11a0e3e83ced162857d81a6df9fc5e9ad61ec5883217d556c631c244793",
     "third-party/upstream/cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "third-party/upstream/d1cc4c0ada218e8a336dc8c3d8bb7d5b1c8dedfa31f5b25c9ea1759d21b8b62d.txt": "d1cc4c0ada218e8a336dc8c3d8bb7d5b1c8dedfa31f5b25c9ea1759d21b8b62d",
     "third-party/upstream/d65ff929f8a373ea16b21d45d5489557d51389ba6583a5c9959d5487c02ce965.txt": "d65ff929f8a373ea16b21d45d5489557d51389ba6583a5c9959d5487c02ce965",
@@ -6436,6 +6439,18 @@
       ]
     },
     {
+      "name": "@swc/helpers",
+      "version": "0.5.23",
+      "license": "Apache-2.0",
+      "repository": "git+https://github.com/swc-project/swc.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "d96eba1f1881334d50ffc144276dfa98e147a415e7c591ecdfcb81680361dc91"
+        }
+      ]
+    },
+    {
       "name": "@tanstack/react-virtual",
       "version": "3.13.23",
       "license": "MIT",
@@ -7945,6 +7960,22 @@
     },
     {
       "name": "base64-js",
+      "version": "0.0.8",
+      "license": "MIT",
+      "repository": "git://github.com/beatgammit/base64-js.git",
+      "notices": [
+        {
+          "member": "LICENSE.MIT",
+          "sha256": "136239d1783a151cdbf6fd7935dd945082b9d0ee2cbb8497cc0ae49e8a743a47"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "d6ead4a120036ff90fd2665ec1befd9687c25d2074e932f8f59eecddca113de8"
+        }
+      ]
+    },
+    {
+      "name": "base64-js",
       "version": "1.5.1",
       "license": "MIT",
       "repository": "git://github.com/beatgammit/base64-js.git",
@@ -8144,6 +8175,38 @@
         {
           "member": "README.md (license section)",
           "sha256": "a5555dc3e925c3c12eb3daa35c12fa696b089014b1261e9262ac428cf0bea33d"
+        }
+      ]
+    },
+    {
+      "name": "brotli",
+      "version": "1.3.3",
+      "license": "MIT",
+      "repository": "https://github.com/devongovett/brotli.js.git",
+      "notices": [
+        {
+          "member": "readme.md (license section)",
+          "sha256": "daf005969aac8cb4283b3777361f0244f4cce898b9a983a60b7f0d9e96f559bf"
+        },
+        {
+          "member": "https://registry.npmjs.org/brotli/1.3.3",
+          "sha256": "cfc3c11a0e3e83ced162857d81a6df9fc5e9ad61ec5883217d556c631c244793"
+        }
+      ]
+    },
+    {
+      "name": "browserify-zlib",
+      "version": "0.2.0",
+      "license": "MIT",
+      "repository": "git+https://github.com/devongovett/browserify-zlib.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "ddd770379e07bf0574dfaa4485be80a23b3248b36d09f33ec79276c09b829daf"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "daf005969aac8cb4283b3777361f0244f4cce898b9a983a60b7f0d9e96f559bf"
         }
       ]
     },
@@ -8580,6 +8643,22 @@
         {
           "member": "LICENSE.txt",
           "sha256": "2dc0465729366c3a7890dfa9e972a1ba7048a26c02116fb8b419a6a1ac110149"
+        }
+      ]
+    },
+    {
+      "name": "clone",
+      "version": "2.1.2",
+      "license": "MIT",
+      "repository": "git://github.com/pvorb/node-clone.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "3fb0857ef0133928cf72c88dfc464e931486e88778961eedec25585e2321507f"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "3d98dedcafc7fc533a3d4bfa09b0b0a11159523bbae0953fad44c3c7dd097db9"
         }
       ]
     },
@@ -9040,6 +9119,18 @@
         {
           "member": "README.md (license section)",
           "sha256": "ae23bc497387d4df92901cf403625e16c228dc6ef366a5f74d9ba0117a3bfce0"
+        }
+      ]
+    },
+    {
+      "name": "crypto-js",
+      "version": "4.2.0",
+      "license": "MIT",
+      "repository": "http://github.com/brix/crypto-js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "f729d14b7e1bf8adca0dcc38b93b929d14d53fcd5db56c3d1c9b2daa7aa69396"
         }
       ]
     },
@@ -9836,6 +9927,22 @@
         {
           "member": "readme.md (license section)",
           "sha256": "dd4053e49e206d0070116e07dc6d9d13ba98919dd46be963fbb9f6dd7b9c9213"
+        }
+      ]
+    },
+    {
+      "name": "dfa",
+      "version": "1.2.0",
+      "license": "MIT",
+      "repository": "git+ssh://git@github.com/devongovett/dfa.git",
+      "notices": [
+        {
+          "member": "README.md (license section)",
+          "sha256": "daf005969aac8cb4283b3777361f0244f4cce898b9a983a60b7f0d9e96f559bf"
+        },
+        {
+          "member": "https://registry.npmjs.org/dfa/1.2.0",
+          "sha256": "1cff602ca185285d9d18ad1f9ac9b8a7c973b9d5c5ec845e29e10bd5b6c8a355"
         }
       ]
     },
@@ -10852,6 +10959,22 @@
         {
           "member": "README.md (license section)",
           "sha256": "abd3792ba3b4f3da7f4ed431de50254c3e748bba1596bc7f36937b97767e02d2"
+        }
+      ]
+    },
+    {
+      "name": "fontkit",
+      "version": "2.0.4",
+      "license": "MIT",
+      "repository": "git://github.com/foliojs/fontkit.git",
+      "notices": [
+        {
+          "member": "README.md (license section)",
+          "sha256": "daf005969aac8cb4283b3777361f0244f4cce898b9a983a60b7f0d9e96f559bf"
+        },
+        {
+          "member": "https://registry.npmjs.org/fontkit/2.0.4",
+          "sha256": "47a5b3dace9cce679dff68809f563a5e254152807e19d2b415e9a90d30407153"
         }
       ]
     },
@@ -12339,6 +12462,18 @@
       ]
     },
     {
+      "name": "jpeg-exif",
+      "version": "1.1.4",
+      "license": "MIT",
+      "repository": "https://github.com/zhso/jpeg-exif.git",
+      "notices": [
+        {
+          "member": "LICENSE.txt",
+          "sha256": "a8202d59ed0629ee6e58df1f883519d5ede193cd64419a00003e31f29c62e26d"
+        }
+      ]
+    },
+    {
       "name": "jpeg-js",
       "version": "0.4.4",
       "license": "BSD-3-Clause",
@@ -12739,6 +12874,22 @@
         {
           "member": "license.md",
           "sha256": "5c81b0caa98593408b03125efa25efe622341ed87ae55561968828cd887d64a4"
+        }
+      ]
+    },
+    {
+      "name": "linebreak",
+      "version": "1.1.0",
+      "license": "MIT",
+      "repository": "https://github.com/devongovett/linebreaker.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "cf22b8198f0886a8d4626121579114f23141070e1fceab02ab3c1c361e163440"
+        },
+        {
+          "member": "readme.md (license section)",
+          "sha256": "daf005969aac8cb4283b3777361f0244f4cce898b9a983a60b7f0d9e96f559bf"
         }
       ]
     },
@@ -14860,6 +15011,22 @@
     },
     {
       "name": "pako",
+      "version": "0.2.9",
+      "license": "MIT",
+      "repository": "nodeca/pako",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "3bc404ffa7888053253eedcc5a667619aa08dc1be0bea400e5ff28c51602180f"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "e45629d9b3a56012e2bfc7ac24eec4361a9208659973c33777184718e1291df5"
+        }
+      ]
+    },
+    {
+      "name": "pako",
       "version": "1.0.11",
       "license": "(MIT AND Zlib)",
       "repository": "nodeca/pako",
@@ -15211,6 +15378,22 @@
       ]
     },
     {
+      "name": "pdfkit",
+      "version": "0.17.1",
+      "license": "MIT",
+      "repository": "https://github.com/foliojs/pdfkit.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "427d01cbe37b367b97f2ea655935d94f4ed03ed11343c3c00e78c8366df810cc"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "1914214939de6408667a6c114ca8b0ec45fa8c8e77d26ef506d9cfd35dc526e6"
+        }
+      ]
+    },
+    {
       "name": "pend",
       "version": "1.2.0",
       "license": "MIT",
@@ -15331,6 +15514,18 @@
         {
           "member": "NOTICE",
           "sha256": "6d602191187b35b9b01d2cffa01c8469c2c8d9de8a96f1bf868e0f264f51c81d"
+        }
+      ]
+    },
+    {
+      "name": "png-js",
+      "version": "1.1.0",
+      "license": "MIT",
+      "repository": "https://github.com/devongovett/png.js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "bdb26a2ec815931ed6a38f3416362566204ee85ecdef96702b636402da4c75c3"
         }
       ]
     },
@@ -16323,6 +16518,22 @@
         {
           "member": "license",
           "sha256": "5c932d88256b4ab958f64a856fa48e8bd1f55bc1d96b8149c65689e0c61789d3"
+        }
+      ]
+    },
+    {
+      "name": "restructure",
+      "version": "3.0.2",
+      "license": "MIT",
+      "repository": "git://github.com/devongovett/restructure.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c0df7f551401f8f80197ff31bf69b8cd23727d127423403282514d242a3ab132"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "daf005969aac8cb4283b3777361f0244f4cce898b9a983a60b7f0d9e96f559bf"
         }
       ]
     },
@@ -17339,6 +17550,22 @@
       ]
     },
     {
+      "name": "tiny-inflate",
+      "version": "1.0.3",
+      "license": "MIT",
+      "repository": "git://github.com/devongovett/tiny-inflate.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c0df7f551401f8f80197ff31bf69b8cd23727d127423403282514d242a3ab132"
+        },
+        {
+          "member": "readme.md (license section)",
+          "sha256": "daf005969aac8cb4283b3777361f0244f4cce898b9a983a60b7f0d9e96f559bf"
+        }
+      ]
+    },
+    {
       "name": "tiny-invariant",
       "version": "1.3.3",
       "license": "MIT",
@@ -17807,6 +18034,38 @@
         {
           "member": "LICENSE",
           "sha256": "a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "daf005969aac8cb4283b3777361f0244f4cce898b9a983a60b7f0d9e96f559bf"
+        }
+      ]
+    },
+    {
+      "name": "unicode-properties",
+      "version": "1.4.1",
+      "license": "MIT",
+      "repository": "git://github.com/devongovett/unicode-properties.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "43439dbd4f43837aadab215cdbe5a422cc6323a50c4ea84d8d6bbc3671666a1d"
+        },
+        {
+          "member": "readme.md (license section)",
+          "sha256": "daf005969aac8cb4283b3777361f0244f4cce898b9a983a60b7f0d9e96f559bf"
+        }
+      ]
+    },
+    {
+      "name": "unicode-trie",
+      "version": "2.0.0",
+      "license": "MIT",
+      "repository": "git://github.com/devongovett/unicode-trie.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "43439dbd4f43837aadab215cdbe5a422cc6323a50c4ea84d8d6bbc3671666a1d"
         },
         {
           "member": "README.md (license section)",
@@ -30941,6 +31200,65 @@
       "package": "https@1.0.0",
       "license": "ISC",
       "acceptedMissingNotice": "占位包：tarball 仅含 package.json（main 指向不存在的 index.js），无代码、无 README、无 LICENSE。pptxgenjs 声明依赖它但运行时不 require（实测 grep 无命中）。包内许可字段为 ISC，无可登记的完整许可文本，故按「接受缺失上游文本」登记。"
+    },
+    {
+      "package": "fontkit@2.0.4",
+      "repo": "foliojs/fontkit",
+      "refs": [
+        "v2.0.4",
+        "2.0.4",
+        "fontkit@2.0.4"
+      ],
+      "file": "third-party/upstream/47a5b3dace9cce679dff68809f563a5e254152807e19d2b415e9a90d30407153.txt",
+      "sha256": "47a5b3dace9cce679dff68809f563a5e254152807e19d2b415e9a90d30407153",
+      "source": "https://registry.npmjs.org/fontkit/2.0.4",
+      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "license": "MIT",
+      "reviewEvidence": {
+        "checkedOn": "2026-09-23",
+        "result": "The versioned npm archive contains no standalone complete LICENSE (fontkit declares files: [src, dist], and the upstream repository root has no LICENSE file - only a README section License: MIT). Existing publisher declaration and original README license section remain preserved. Upstream authorization/copyright material is still required to close this review.",
+        "npmArchiveSha256": "f686a9515af33fce16ab4bffe50570728197e53165068548c6f75a1793797a08",
+        "sourceTreeUrl": "https://api.github.com/repos/foliojs/fontkit/git/trees/master?recursive=1",
+        "upstreamLicenseFiles": []
+      }
+    },
+    {
+      "package": "brotli@1.3.3",
+      "file": "third-party/upstream/cfc3c11a0e3e83ced162857d81a6df9fc5e9ad61ec5883217d556c631c244793.txt",
+      "sha256": "cfc3c11a0e3e83ced162857d81a6df9fc5e9ad61ec5883217d556c631c244793",
+      "source": "https://registry.npmjs.org/brotli/1.3.3",
+      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "license": "MIT",
+      "reviewEvidence": {
+        "checkedOn": "2026-09-23",
+        "result": "The versioned npm archive contains no standalone complete LICENSE and the upstream repository (devongovett/brotli.js) publishes none either. The publisher declares MIT in package.json; that declaration is preserved and the standard license text is recorded instead of claiming an upstream license file. Upstream authorization material is still required to close this review.",
+        "npmArchiveSha256": "3c7c260f6263df95fee49a9119e9fd21227d628b6c9d99080a75edfd9e2bdb24"
+      }
+    },
+    {
+      "package": "dfa@1.2.0",
+      "file": "third-party/upstream/1cff602ca185285d9d18ad1f9ac9b8a7c973b9d5c5ec845e29e10bd5b6c8a355.txt",
+      "sha256": "1cff602ca185285d9d18ad1f9ac9b8a7c973b9d5c5ec845e29e10bd5b6c8a355",
+      "source": "https://registry.npmjs.org/dfa/1.2.0",
+      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "license": "MIT",
+      "reviewEvidence": {
+        "checkedOn": "2026-09-23",
+        "result": "The versioned npm archive contains no standalone complete LICENSE and the upstream repository (devongewitt/dfa) publishes none either. The publisher declares MIT in package.json; that declaration is preserved and the standard license text is recorded instead of claiming an upstream license file. Upstream authorization material is still required to close this review.",
+        "npmArchiveSha256": "d781eb3a307ab6aa2d97028f695b17dbeadf6fd27788c333b1fb96d18d2a23ad"
+      }
+    },
+    {
+      "package": "png-js@1.1.0",
+      "repo": "devongovett/png.js",
+      "license": "MIT",
+      "source": "https://registry.npmjs.org/png-js/1.1.0",
+      "evidenceKind": "packaged-license-file",
+      "reviewEvidence": {
+        "checkedOn": "2026-09-23",
+        "result": "The versioned npm archive ships a complete LICENSE (MIT License, Copyright (c) 2017 Devon Govett) and package.json omits the license field; the packaged text is used verbatim for the notice, and the publisher declaration is recorded here so the entry is not reported as undeclared.",
+        "npmArchiveSha256": "8fc286c879eb4ac49ab405054956e3afbdfe696e48f360f2c4d6adb2cf053faf"
+      }
     }
   ],
   "embedded": [
@@ -31319,6 +31637,22 @@
     },
     {
       "id": "https@1.0.0",
+      "reason": "Original version-specific publisher copyright/license material remains incomplete."
+    },
+    {
+      "id": "fontkit@2.0.4",
+      "reason": "Original version-specific publisher copyright/license material remains incomplete."
+    },
+    {
+      "id": "brotli@1.3.3",
+      "reason": "Original version-specific publisher copyright/license material remains incomplete."
+    },
+    {
+      "id": "dfa@1.2.0",
+      "reason": "Original version-specific publisher copyright/license material remains incomplete."
+    },
+    {
+      "id": "png-js@1.1.0",
       "reason": "Original version-specific publisher copyright/license material remains incomplete."
     },
     {

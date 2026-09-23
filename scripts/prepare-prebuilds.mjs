@@ -32,6 +32,7 @@ import {
 } from "./deterministic-tar-archive.mjs";
 import { runCommand } from "./spawn-command.mjs";
 import { stageOfficeNodePayloads as stageOfficeNodePayloadsIntoGlm } from "../packages/desktop/scripts/office-node-payload-assets.mjs";
+import { stagePdfNodePayloads as stagePdfNodePayloadsIntoGlm } from "../packages/desktop/scripts/pdf-node-payload-assets.mjs";
 import { resolveIntranetDepsBaseUrl } from "./intranetDefaults.mjs";
 
 export { computeComponentSourceSha256, packComponentSourceAsArchive };
@@ -142,6 +143,33 @@ const remoteContentPluginPackages = [
     ],
   },
 ];
+// pdf 插件：内容（技能/生成器/校验器）+ 单独的 Node 载荷（pdfkit/fontkit 自包含 bundle）。
+// 载荷由 stageRemotePdfNodePayloads() 在 stageRemoteOfficialPlugins() **之后**落盘，
+// 所以这里的 requiredSeedPaths 只钉源码树里就存在的资产；载荷路径钉在
+// remotePdfPluginRequiredPaths（下面那份完整性清单）里，用于拒绝复用缺载荷的旧 release。
+const remotePdfPluginPackages = [
+  {
+    name: "pdf",
+    requiredSeedPaths: ["agents/visual-judge.md", "scripts/pdf-build.mjs", "skills/pdf/SKILL.md"],
+  },
+];
+const remotePdfPluginRequiredPaths = [
+  "packages/pdf-plugin/.zcode-plugin/plugin.json",
+  "packages/pdf-plugin/agents/visual-judge.md",
+  "packages/pdf-plugin/scripts/pdf-build.mjs",
+  "packages/pdf-plugin/scripts/check_pdf.mjs",
+  "packages/pdf-plugin/scripts/pdf-fonts.mjs",
+  "packages/pdf-plugin/skills/pdf/SKILL.md",
+];
+// pdf 的 Node 载荷路径：**不在源码树里**（由 esbuild 现场产出），因此不能参与
+// stageRemoteOfficialPlugins() 的源码侧校验 —— 那一步早于 stageRemotePdfNodePayloads()，
+// 必然报 missing staged remote official plugin seed asset（task-9 真跑抓到的顺序矛盾）。
+// 它们只参与"旧 release 是否可复用"的完整性判据：那时文件已在 release 目录里，
+// 缺载荷的旧 release 会被正确判为不可复用，而不是继续产出"插件在、能力不在"的远端资源。
+const remotePdfNodePayloadPaths = [
+  "packages/pdf-plugin/scripts/pdf-node/pdfkit.cjs",
+  "packages/pdf-plugin/scripts/pdf-node/fontkit.cjs",
+];
 const remoteOfficialPluginPackages = [
   // 44b25ed46c「remove bundled plugins except browser use and cua」删掉了其余
   // 内置插件源码，但漏改这份清单，bootstrap:with-remote 在 staging 第一个 manifest 就抛
@@ -183,6 +211,14 @@ const remoteOfficialPluginPackages = [
     requiredSeedPaths,
     stagedPath: `packages/${name}-plugin`,
   })),
+
+  ...remotePdfPluginPackages.map(({ name, requiredSeedPaths }) => ({
+    packageName: `@zcode/${name}-plugin`,
+    relativePath: `apps/zcode-cli/packages/${name}-plugin`,
+    requiresRuntime: false,
+    requiredSeedPaths,
+    stagedPath: `packages/${name}-plugin`,
+  })),
 ];
 // 内置技能包（bundled-skills）：不是插件（无 `.zcode-plugin/plugin.json`），但远端 glm 组件
 // 必须带上它 —— 官方 3.14.3 起 dynamic-workflows 住在这里，缺了远端 shared-host 就没有该技能。
@@ -215,6 +251,27 @@ async function stageRemoteOfficeNodePayloads(glmDir) {
   }
   console.log(
     `  [ok] mock-cdn glm office node bundles: ${staged.length} 个插件，${(bytes / 1024 / 1024).toFixed(2)} MiB`,
+  );
+}
+
+// pdf 载荷：与 office 同因（远端 shared-host 没有仓库的 node_modules），落点
+// `<plugin>/scripts/pdf-node/`，同样必须排在 stageRemoteOfficialPlugins() **之后**。
+async function stageRemotePdfNodePayloads(glmDir) {
+  const staged = await stagePdfNodePayloadsIntoGlm({
+    lookupRoots: [rootDir, join(rootDir, "packages", "desktop")],
+    glmDir,
+  });
+  const bytes = staged.reduce((sum, item) => sum + item.bytes, 0);
+  for (const item of staged) {
+    // 与桌面链同款存在性护栏；两层校验（构建期 + seed 后）的理由见 office 那处注释。
+    // 这里是**载荷路径的唯一校验点**：源码侧清单（stageRemoteOfficialPlugins）不能校验它们，
+    // 因为此刻文件才刚被写出来（见 remotePdfNodePayloadPaths 的注释）。
+    if (!existsSync(item.target)) {
+      throw new Error(`[prepare-prebuilds] missing staged pdf node bundle: ${item.target}`);
+    }
+  }
+  console.log(
+    `  [ok] mock-cdn glm pdf node bundles: ${staged.length} 份，${(bytes / 1024 / 1024).toFixed(2)} MiB`,
   );
 }
 
@@ -281,6 +338,10 @@ const remoteOfficialPluginRequiredPaths = [
     `packages/${name}-plugin/.zcode-plugin/plugin.json`,
     ...requiredSeedPaths.map((relativePath) => `packages/${name}-plugin/${relativePath}`),
   ]),
+  // pdf：除了内容资产，**必须**把 scripts/pdf-node/*.cjs 也钉住 —— 只有 manifest 与正文的旧
+  // release 会被判为"可复用"，继续产出"插件在、能力不在"的远端资源（V-2 同型失效）。
+  ...remotePdfPluginRequiredPaths,
+  ...remotePdfNodePayloadPaths,
   // 内置技能包（不是插件，所以没有 plugin.json 那条）：这两行同时是 glm 组件的文件清单
   // 与「上一个 release 的组件是否可复用」的判据。
   "packages/bundled-skills/README.md",
@@ -614,6 +675,11 @@ function stageRemoteOfficialPlugins(glmDir) {
     }
     for (const relativePath of remoteOfficialPluginRequiredPaths) {
       if (!relativePath.startsWith(`${plugin.stagedPath}/`)) continue;
+      // pdf 的 Node 载荷（scripts/pdf-node/*.cjs）由 stageRemotePdfNodePayloads() 在本函数**之后**
+      // 现场产出，源码树里不存在 —— 在这里校验必然报 missing。它在本步骤之后的载荷 staging 里
+      // 自校验，并且仍留在 remoteOfficialPluginRequiredPaths 里参与"旧 release 可复用"判据
+      //（那条判据跑在已含载荷的 release 目录上，见 remotePdfNodePayloadPaths 的注释）。
+      if (remotePdfNodePayloadPaths.includes(relativePath)) continue;
       const stagedAssetPath = join(glmDir, ...relativePath.split("/"));
       if (!existsSync(stagedAssetPath)) {
         throw new Error(
@@ -656,6 +722,8 @@ async function stageRemoteAgentBundles() {
     // 必须排在 stageRemoteOfficialPlugins() 之后：bundle 落在插件的 scripts/ 下，
     // 先 stage 会被那次 cpSync 覆盖掉（见该函数注释）。
     await stageRemoteOfficeNodePayloads(glmDir);
+    // 与 office 载荷同一位置约束：都必须在 stageRemoteOfficialPlugins() 之后。
+    await stageRemotePdfNodePayloads(glmDir);
     console.log(`  [ok] mock-cdn glm/${platformKey}/zcode.cjs`);
   }
 }
