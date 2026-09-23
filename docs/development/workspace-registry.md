@@ -165,3 +165,6 @@
     - 反向验证：① 给枚举加 `archived = 0` → 归档-only 断言变红；② 去掉 `0004` 显式分派 → 3 条变红；③ 未知 id 退回兜底执行 `0003` → 1 条变红；三次均从备份恢复且逐字节一致。
     - 未完成：M1.3（RPC + `server-info` 惰性接线）、M1.4（web 与桌面列表来源切换 + §3.2 诚实未启动态）、E2E 两条路径（未启动→点开→加载→载入；启动失败→原因+重试）。
     - 下一步：先 task-27（暴露检查：启动期与运行期告警，只动 `packages/server/src`），再做第 2 单元；第 2 单元里 M1.3/M1.4/§3.2 必须同批交付（只切列表来源而不给未启动态，会比现状更糟），E2E 可溢出到下一轮但必须在报告里显式声明未做。
+
+11. **task-27 已完成（暴露检查）**：启动期 + 运行期各一次 `warn`，只告警不拒绝、未新增环境变量、未改既有拒绝规则。证据 = `packages/server/test/httpExposureWarning.test.ts`（7 条）+ 反向验证（删启动期/运行期告警各让 1 条变红）；门禁 = typecheck 0 error / lint 0 error（71 基线 warning）/ fmt:check exit 0 / architecture OK / `packages/server` 21/21 pass；文档 = `docs/development/local-setup.md` 的「暴露面告警」小节 + `.reverse/40-remote-control/SECURITY-SERVER-DEFAULTS.md` §9。
+12. **交接状态（截至本轮结束）**：已完成 M1.1 + M1.2（含迁移分派 fail-closed 硬化的测试）与 task-27；**未完成 M1.3 / M1.4 / §3.2 与两条 E2E**（本会话预算已尽，按 Lead 的预算纪律在此停，不留半成品）。下一次开工的入口顺序：M1.3（RPC + `server-info` 惰性接线，服务端侧，从 `@zcode/services/workspace-registry` 导入）→ M1.4（`packages/ui/src/hooks/**` 列表来源切换，web 与桌面同批）→ §3.2 诚实未启动态（持久层会话计数/最近活动 + 「未启动」标识，点开才启动 runtime）→ E2E 两条路径（未启动→点开→加载→载入；启动失败→原因+重试）。**M1.3/M1.4/§3.2 必须同批**；E2E 可溢出但必须显式声明未做。

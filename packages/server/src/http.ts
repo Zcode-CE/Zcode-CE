@@ -80,6 +80,10 @@ function wrapWebSocket(ws: WebSocket): ISocket {
 const log = (...args: unknown[]) =>
   console.log(formatLogPrefix("zcode-server:http", process.pid), ...args);
 
+/** 暴露面告警专用：走 console.warn（与普通 log 区分），测试通过替换 console.warn 捕获。 */
+const warn = (...args: unknown[]) =>
+  console.warn(formatLogPrefix("zcode-server:http", process.pid), ...args);
+
 function setupChannelServer(
   ws: WebSocket,
   services: ServiceCollection,
@@ -247,6 +251,70 @@ function buildLiteTokenCookie(token: string, secure: boolean): string {
   return `${zcodeLiteTokenCookieName}=${encodeURIComponent(token)}; ${attributes.join("; ")}`;
 }
 
+/** 回环判定（含 ::ffff:127.x 映射形态）；未知/空地址按 false 处理，不据此告警。 */
+export function isNonLoopbackAddress(address: string | undefined): boolean {
+  const value = address?.trim().toLowerCase();
+  if (!value) return false;
+  if (value === "localhost" || value === "::1" || value === "[::1]") return false;
+  if (value.startsWith("127.")) return false;
+  if (value.startsWith("::ffff:127.")) return false;
+  return true;
+}
+
+/**
+ * 启动期暴露面告警（绑定非回环时必须打印，且内容要可操作）。
+ *
+ * 为什么必须：非回环绑定下 agent 级服务只剩 token 一道屏障，而明文 http 的 token cookie 不带
+ * Secure（见 buildLiteTokenCookie），同网段可嗅探。这里只告警、不拒绝：用户手机验收走的就是
+ * http://<私网IP>:<port>/?token=... 这条合法用法，拒绝会打断它。
+ */
+export function buildNonLoopbackListenWarning(params: {
+  host: string;
+  port: number;
+  tokenAuth: boolean;
+}): string | null {
+  if (!isNonLoopbackAddress(params.host)) return null;
+  return [
+    "暴露面提醒：服务端绑定在非回环地址，任何能访问该网段的人都可以尝试连接。",
+    "  · 这是 agent 级服务（可执行命令、读写工作区），token 是唯一屏障。",
+    "  · 明文 http 下 token cookie 不带 Secure，可被同网段嗅探；token 也可能留在浏览器历史与代理日志里。",
+    "  · 建议放到 TLS 终结的反向代理或隧道之后，并透传 X-Forwarded-Proto: https（cookie 才会带 Secure）。",
+    "  · 能只绑私网网卡就别绑 0.0.0.0；明文 http 的合法用法限于可信局域网，不要暴露到公网。",
+    "  · 当前：bind=" +
+      params.host +
+      ":" +
+      params.port +
+      " token-auth=" +
+      (params.tokenAuth ? "enabled" : "disabled"),
+  ].join("\n");
+}
+
+/**
+ * 运行期「首次收到非回环对端 + 非 TLS 请求」的告警（同一服务实例只提示一次）。
+ *
+ * 只描述真实后果（本次会话下发的 token cookie 不带 Secure）；同样只告警、不拒绝。
+ */
+export function buildPlainHttpPeerWarning(params: {
+  remoteAddress?: string;
+  secure: boolean;
+}): string | null {
+  if (params.secure) return null;
+  if (!isNonLoopbackAddress(params.remoteAddress)) return null;
+  return [
+    "暴露面提醒：本会话首次出现来自非回环对端（" + params.remoteAddress + "）的明文 http 请求。",
+    "  · 本次会话下发的 token cookie 将不带 Secure，同网段可嗅探；请确认你处在可信局域网。",
+    "  · 需要跨网络访问时，请走 TLS 终结的反向代理或隧道，并透传 X-Forwarded-Proto: https。",
+  ].join("\n");
+}
+
+/** 对端地址：优先 X-Forwarded-For 首跳（可伪造，但伪造只会多打一次告警），否则取 socket 地址。 */
+function resolvePeerAddress(c: Context): string | undefined {
+  const forwarded = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
+  if (forwarded) return forwarded;
+  const env = c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined;
+  return env?.incoming?.socket?.remoteAddress ?? undefined;
+}
+
 function hasValidLiteToken(c: Context, token: string): boolean {
   const url = new URL(c.req.url);
   if (url.searchParams.get("token") === token) {
@@ -394,6 +462,21 @@ export function createHttpServer(
   const host = options.host?.trim() || DEFAULT_HTTP_LISTEN_HOST;
   const authToken = options.authToken?.trim();
   assertListenSecurity({ host, authToken });
+  // 运行期暴露面告警：只在首次遇到「非回环对端 + 非 TLS」时提示一次（不拒绝请求）。
+  let plainHttpPeerWarned = false;
+  app.use("*", async (c, next) => {
+    if (!plainHttpPeerWarned) {
+      const warning = buildPlainHttpPeerWarning({
+        remoteAddress: resolvePeerAddress(c),
+        secure: isSecureRequest(c),
+      });
+      if (warning) {
+        plainHttpPeerWarned = true;
+        warn(warning);
+      }
+    }
+    await next();
+  });
   if (authToken) {
     app.use("*", async (c, next) => {
       const pathname = new URL(c.req.url).pathname;
@@ -515,8 +598,15 @@ export function createHttpServer(
     log(
       isLoopbackHost(host)
         ? `bind=${host} scope=loopback-only token-auth=${authToken ? "enabled" : "disabled"}`
-        : `bind=${host} scope=non-loopback token-auth=enabled (非回环绑定的 fail-closed 前置检查已通过)`,
+        : `bind=${host} scope=non-loopback token-auth=enabled (非回环绑定的 fail-closed 前置检查已通过)
+`,
     );
+    const exposureWarning = buildNonLoopbackListenWarning({
+      host,
+      port: listenPort,
+      tokenAuth: Boolean(authToken),
+    });
+    if (exposureWarning) warn(exposureWarning);
   });
 
   injectWebSocket(server);
