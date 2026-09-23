@@ -195,3 +195,59 @@ jobs:
             --repo "${{ github.repository }}" \
             --notes-file release-notes.md \
             --title "ZCode-CE ${{ github.ref_name }}"
+
+  # 远程运行时资产（SSH / WSL / Docker 远程工作区的部署载荷）。
+  #
+  # 为什么单独一个 job：这份资产**不随安装包分发**（见 docs/development/remote-workspace.md），
+  # 需要独立产出与托管；把它挂在 build job 里会让打包矩阵多背一段与本平台无关的构建。
+  #
+  # 为什么 needs 只写 verify 不写 build：资产链与安装包链互不依赖，并行跑能让
+  # 「资产能不能产出」更早暴露（build 要 20 分钟，这条约 5 分钟）。
+  # 本 job 上传的是 workflow artifact（可直接拿去静态托管），**不向任何外部主机发布**，
+  # 因此不需要额外 secrets、也不会在 PR 上运行（本 workflow 只由 tag / 手动触发）。
+  remote-assets:
+    name: prepare remote runtime assets
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare remote assets
+        env:
+          # 脚本默认走 cdn.npmmirror.com（国内开发最优）。GitHub 托管 runner 在境外，
+          # 显式改用 Node 官方发行源更稳；需要时可用 ZCODE_NODE_DIST_MIRROR 覆盖回镜像。
+          ZCODE_NODE_DIST_MIRROR: https://nodejs.org/dist
+        run: pnpm prepare:remote-assets
+
+      # 装配成「客户端真正会请求」的布局（<root>/<版本>/manifest-*.json + <root>/components/...），
+      # 并自检：manifest.appVersion 一致、每个 artifactPath 可取、每个制品 sha256 与 manifest 相同。
+      - name: Assemble publishable layout
+        run: node scripts/assemble-remote-assets.mjs
+
+      # 端到端自检：本地起静态服务当"CDN"，用真实 connectRemote 走一遍
+      # 拉 manifest → 下载组件 + sha256 → 上传"远端" → 起 zcode-server → 握手。
+      - name: End-to-end verify assembled assets
+        run: pnpm exec tsx scripts/verify-remote-assets.mjs
+
+      - name: Upload publishable assets
+        uses: actions/upload-artifact@v6
+        with:
+          name: remote-assets
+          # 只上传装配后的发布根（manifest + components），mock-cdn 的中间产物不上传。
+          path: .tmp/remote-assets-publish/**
+          if-no-files-found: error
+          retention-days: 30

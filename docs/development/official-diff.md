@@ -456,23 +456,27 @@ Superpowers，本仓库用户没有这个入口。
 CDN 只发布不带后缀的官方版本。唯一例外是开源快照的初始版本号 `3.14.0`（未加后缀），它对应的
 目录在 CDN 上确实存在 —— 但那是**官方制品**，本仓库代码与其是否可直接配套**未验证**。
 
-**开发态可用**。下面两条路径的实测状态不同，请分开看：
+**自托管三步走（已实测）**：生成 → 装配 → 托管并指向。完整文档见[远程工作区](remote-workspace.md)。
 
-- **已实测**：把客户端指向自建静态发布根。实验用 `python3 -m http.server` 提供
-  `<root>/<版本>/manifest-<平台架构>.json` + `<root>/components/...` 后，**全链路跑通**
-  （拉 manifest → 按组件下载 + sha256 校验 → 上传远端 → 启动远端 server → 握手）。所需目录布局见
-  `.reverse/36-ssh/SSH-FEASIBILITY.md` §5.1。
+```bash
+pnpm prepare:remote-assets                                   # 生成（4 平台；只有 Node 运行时需要一次外网）
+node scripts/assemble-remote-assets.mjs --out <发布根>        # 装配 + 自检（appVersion / artifactPath / sha256）
+pnpm exec tsx scripts/verify-remote-assets.mjs --root <发布根> # 端到端自检，期望 RESULT: PASS
+ZCODE_REMOTE_ASSET_CDN_BASE_URL=<发布根> pnpm dev:desktop      # 指向它
+```
 
-  ```bash
-  ZCODE_REMOTE_ASSET_CDN_BASE_URL=<你的发布根> pnpm dev:desktop
-  ```
+三点实测记录（2026-09-23，本机 Linux x64）：
 
-- **未实测（仅按源码确认命令与布局）**：`pnpm prepare:remote-assets` 会把产物写到
-  `<仓库>/packages/desktop/mock-cdn/releases/<根 package.json 的版本号>/`，开发态会自动优先使用该目录
-  （`scripts/prepare-prebuilds.mjs:42-49`；`scripts/prepare-prebuilds.sh` 只是它的 shell 包装）。
-  按源码，它需要**联网**下载 4 个平台的 Node 运行时（`:410-439`，源 `https://cdn.npmmirror.com/binaries/node`，
-  可用 `ZCODE_NODE_DIST_MIRROR` 覆盖）并**构建** server remote bundle 与 agent bundle；
-  **本文未实测运行该命令，耗时未知**。
+1. `pnpm prepare:remote-assets` 产出 `<仓库>/packages/desktop/mock-cdn/releases/<版本>/`（四平台
+   Node 运行时 + server bundle + agents + 搜索工具）；只有 Node 运行时需要一次外网
+   （默认 `https://cdn.npmmirror.com/binaries/node`，可用 `ZCODE_NODE_DIST_MIRROR` 覆盖），本机重复运行会复用已有文件；
+2. 装配脚本把 `releases/<版本>/manifest-*.json` 与 `components/**` 拍平到**同一个发布根**
+   （`<root>/<版本>/` + `<root>/components/`），并校验 24 个制品的 sha256 与清单一致；
+3. 端到端：本地静态服务当 CDN + 真实 `connectRemote` → **8 个请求全部 200**（1 个清单 + 7 个组件）→
+   `deploy complete` → `handshake done` → 远端 `stdio mode ready`。
+
+**发布根要指向"包含 `<版本>/` 与 `components/` 的那一层"**，不要带版本号；`components/` 必须放在发布根，
+放进版本目录会让每次连接先对第一条候选 URL 白打一轮 404（实测）。
 
 **Docker / WSL 与 SSH 共用同一套部署与资源代码**（`deploy.ts` / `remoteAssetCache.ts`），因此同样
 受这条缺口影响；但**未对 Docker / WSL 实测**，此处不作结论。修复路径（自建资源发布点 / 资源随包
