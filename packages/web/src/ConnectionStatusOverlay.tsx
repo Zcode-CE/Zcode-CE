@@ -1,21 +1,32 @@
 import { useEffect, useState } from "react";
+import { buildUnauthorizedMessage } from "./authProbe.js";
 
 /**
  * 运行期连接状态覆盖层（仅网页端使用）。
  *
- * 为什么需要它：在 task-16 之前，运行期断线（手机锁屏、切后台、Wi-Fi 切换、服务重启）
- * 没有任何提示 —— 页面看着正常但完全不动，只能手动刷新。这里把「正在重连/无法连接」
- * 明确画出来，并在放弃自动重试后给一个可点的重试入口。
+ * 三种真实状态，绝不混说：
+ * - reconnecting：连接断了正在退避重连（网络层问题）；
+ * - failed：自动重连预算用尽，给手动重试；
+ * - unauthorized：服务在运行、但拒绝我们（401/403）—— 这是**授权问题**，不再显示
+ *   「正在重连（第 N 次）」，而是给出「怎么拿到带 token 的链接」的可照做文案，且不自动重试
+ *   （401 不会自愈）。文案与启动期未授权屏共用 authProbe.buildUnauthorizedMessage。
  *
- * 文案按 `navigator.language` 二选一，沿用 web 入口既有的做法（`WebBootstrapErrorScreen`），
- * 以避免为此改动 packages/ui 的 i18n 资源（那是 PR #1 那条线的范围）。
+ * 文案按 navigator.language 二选一，沿用 web 入口既有做法（WebBootstrapErrorScreen），
+ * 以避免为此改动 packages/ui 的 i18n 资源。
  */
+export type ConnectionOverlayPhase =
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "failed"
+  | "unauthorized";
+
 export function ConnectionStatusOverlay({
   phase,
   attempt,
   onRetry,
 }: {
-  phase: "connecting" | "connected" | "reconnecting" | "failed";
+  phase: ConnectionOverlayPhase;
   attempt: number;
   onRetry: () => void;
 }) {
@@ -28,23 +39,30 @@ export function ConnectionStatusOverlay({
     return null;
   }
 
+  const unauthorized = phase === "unauthorized";
   const failed = phase === "failed";
-  const title = failed
+  const title = unauthorized
     ? isChinese
-      ? "无法连接服务器"
-      : "Cannot reach the server"
-    : isChinese
-      ? "连接已中断，正在重连"
-      : "Connection lost, reconnecting";
-  const detail = failed
-    ? isChinese
-      ? "自动重连已停止。请确认服务仍在运行，然后重试。"
-      : "Automatic reconnection stopped. Check that the server is still running, then retry."
-    : isChinese
-      ? "正在尝试第 " + (attempt + 1) + " 次。恢复后本页会自动继续，无需刷新。"
-      : "Attempt " +
-        (attempt + 1) +
-        " in progress. This page resumes automatically once the connection is back.";
+      ? "未授权：这台服务器需要访问令牌"
+      : "Unauthorized: this server requires an access token"
+    : failed
+      ? isChinese
+        ? "无法连接服务器"
+        : "Cannot reach the server"
+      : isChinese
+        ? "连接已中断，正在重连"
+        : "Connection lost, reconnecting";
+  const detail = unauthorized
+    ? buildUnauthorizedMessage(isChinese, globalThis.location?.origin ?? "")
+    : failed
+      ? isChinese
+        ? "自动重连已停止。请确认服务仍在运行，然后重试。"
+        : "Automatic reconnection stopped. Check that the server is still running, then retry."
+      : isChinese
+        ? "正在尝试第 " + (attempt + 1) + " 次。恢复后本页会自动继续，无需刷新。"
+        : "Attempt " +
+          (attempt + 1) +
+          " in progress. This page resumes automatically once the connection is back.";
 
   return (
     <div
@@ -63,7 +81,11 @@ export function ConnectionStatusOverlay({
         justifyContent: "center",
         gap: "0.75rem",
         padding: "0.6rem 1rem",
-        background: failed ? "rgb(127 29 29 / 0.95)" : "rgb(23 23 23 / 0.92)",
+        background: unauthorized
+          ? "rgb(120 53 15 / 0.95)"
+          : failed
+            ? "rgb(127 29 29 / 0.95)"
+            : "rgb(23 23 23 / 0.92)",
         color: "#fafafa",
         fontSize: "13px",
         lineHeight: 1.4,
@@ -76,12 +98,12 @@ export function ConnectionStatusOverlay({
           width: "0.5rem",
           height: "0.5rem",
           borderRadius: "9999px",
-          background: failed ? "#fca5a5" : "#fbbf24",
+          background: unauthorized ? "#fcd34d" : failed ? "#fca5a5" : "#fbbf24",
         }}
       />
       <span style={{ fontWeight: 500 }}>{title}</span>
       <span style={{ opacity: 0.85 }}>{detail}</span>
-      {failed ? (
+      {unauthorized || failed ? (
         <button
           type="button"
           data-testid="web-connection-retry"

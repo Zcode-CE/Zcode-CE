@@ -256,8 +256,20 @@ function hasValidLiteToken(c: Context, token: string): boolean {
   return parseCookieHeader(c.req.header("cookie")).get(zcodeLiteTokenCookieName) === token;
 }
 
+/**
+ * 需要令牌的路径前缀。
+ *
+ * 注意 /api 与 /ws 的**精确路径**也必须算在内：此前只认 /api/ 前缀与 /ws 精确值，
+ * 于是 GET /api（无尾斜杠）落到静态 SPA fallback 返回了 index.html（200）—— 不泄漏业务数据，
+ * 但鉴权口径应当 fail-closed（/api 是 API 命名空间本身，不该被静态兜底接走）。
+ */
 function isTokenProtectedPath(pathname: string): boolean {
-  return pathname === "/ws" || pathname.startsWith("/ws/") || pathname.startsWith("/api/");
+  return (
+    pathname === "/ws" ||
+    pathname === "/api" ||
+    pathname.startsWith("/ws/") ||
+    pathname.startsWith("/api/")
+  );
 }
 
 function isStaticFallbackAllowed(pathname: string): boolean {

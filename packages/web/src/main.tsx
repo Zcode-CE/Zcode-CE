@@ -10,6 +10,7 @@ import "@zcode/ui/styles.css";
 import { SERVER_REMOTE_PROTOCOL_VERSION } from "@zcode/shared";
 import { evaluateServerCompatibility } from "./serverCompatibility.js";
 import { WebAppRoot } from "./WebAppRoot.js";
+import { buildUnauthorizedMessage, classifyServerInfoProbe } from "./authProbe.js";
 import { WebCallbackPage } from "./auth/WebCallbackPage.js";
 import { createWebAuthService } from "./auth/webAuthService.js";
 import { WEB_ZAI_OAUTH_CONFIG, resolveWebAuthDevReturnTo } from "./auth/webZaiOAuthConfig.js";
@@ -364,14 +365,26 @@ async function resolveWebBootstrap(): Promise<WebBootstrapResult> {
   }
 
   let serverInfo: Partial<ServerRemoteInfo> | undefined;
+  let probe: { status?: number; networkError?: boolean } = { networkError: true };
   try {
     const response = await fetch("/api/server-info", {
       cache: "no-store",
     });
-    serverInfo = response.ok ? ((await response.json()) as Partial<ServerRemoteInfo>) : undefined;
+    probe = { status: response.status };
+    if (response.ok) {
+      serverInfo = (await response.json()) as Partial<ServerRemoteInfo>;
+    }
   } catch {
-    // 服务暂时不可达：不在这里拦，交给连接监督器（覆盖层 + 退避重连）处理。
-    serverInfo = undefined;
+    // 网络层失败：交给连接监督器（覆盖层 + 退避重连）处理，这里不拦。
+    probe = { networkError: true };
+  }
+
+  // 401/403 是**授权问题**，不是网络问题：直接渲染未授权屏并停止（不进 WS、不重试），
+  // 否则用户会看到「正在重连」这种把授权说成网络问题的误导提示。见 authProbe.ts。
+  if (classifyServerInfoProbe(probe) === "unauthorized") {
+    throw new Error(
+      buildUnauthorizedMessage(/^zh\b/i.test(navigator.language), window.location.origin),
+    );
   }
 
   // 拿到 server-info 时**必须**校验契约版本：web 资产与服务器不同版本时不进入应用，
