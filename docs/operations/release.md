@@ -220,6 +220,47 @@ Release 必须包含**安装包 + 更新清单 + 差分块**，三者缺一会�
 > **CI 尚未在真实 runner 上验证过**。`.github/workflows/` 只能在 GitHub 的 runner 上执行，
 > 本地无法运行，因此工作流本身只做过 YAML 语法与命令级核对。首次打 tag 时需确认实际结果。
 
+### 7. 同步到 AUR
+
+**⚠️ 改本仓库的 `aur/` 目录不等于发布。** AUR 的包有**两个独立位置**：
+
+| 位置                                           | 作用                                                    |
+| ---------------------------------------------- | ------------------------------------------------------- |
+| 本仓库的 `aur/`                                | **存档副本**（它的 remote 是本项目的 GitHub，不是 AUR） |
+| `ssh://aur@aur.archlinux.org/zcode-ce-bin.git` | **AUR 上的正式包** —— 只有 push 到这里才算发布          |
+
+**只改 `aur/` 并提交本仓库，AUR 上的版本不会变。**（`release.md` 此前没有这一步，导致 3.14.3-ce.2 首次发布时漏推。）
+
+**顺序**（sha256 只能在产物出来后算，所以必然排在 tag 构建之后）：
+
+1. **算 sha256**：从 Release 下载 `*-linux-x64.pkg.tar.zst`，`sha256sum` 取哈希；
+2. **改 `aur/PKGBUILD`**：`pkgver`（点号形式，pacman 不允许连字符）、`_upstream_ver`、`_upstream_tag`、`sha256sums`；
+3. **重新生成 `.SRCINFO`**：`cd aur && makepkg --printsrcinfo > .SRCINFO`（**必须与 PKGBUILD 同步**，AUR 用它建索引）；
+4. **提交本仓库**的 `aur/`（这是存档，与第 5 步是两件事）；
+5. **推送到 AUR**：
+
+   ```bash
+   cd /tmp && rm -rf aur-pub && mkdir aur-pub && cd aur-pub
+   git clone ssh://aur@aur.archlinux.org/zcode-ce-bin.git .
+   cp <repo>/aur/PKGBUILD <repo>/aur/.SRCINFO .
+   git add PKGBUILD .SRCINFO
+   git commit -m "fix: 更新到 <version>"
+   git push origin master
+   ```
+
+6. **验证**（**注意 AUR 的 RPC 索引有 1~2 分钟延迟**，推送后立刻查会看到旧版本）：
+
+   ```bash
+   curl -sS 'https://aur.archlinux.org/rpc/v5/info?arg[]=zcode-ce-bin' | \
+     python3 -c "import json,sys; print(json.load(sys.stdin)['results'][0]['Version'])"
+   ```
+
+   应以 `<pkgver>-1` 的形式返回新版本。git 仓库（`git log origin/master`）是**权威**，
+   RPC 只是索引，两者短暂不一致属正常。
+
+**前置**：需要 `aur@aur.archlinux.org` 的 SSH 公钥已登记（`ssh -T aur@aur.archlinux.org`
+应返回 `Welcome to AUR, <user>!`）。
+
 ### 重跑已发布超过 2 小时的 tag
 
 `electron-publish` 对已存在的 Release 有一条时间保护：发布时间超过 2 小时就**只打 warn 并跳过上传**，
