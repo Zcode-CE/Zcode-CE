@@ -2,7 +2,7 @@
 name: pptx
 metadata:
   upstream: "@deepseek-ai/dsh-skill-office (MIT)"
-  modified: "ZCode-CE: 工具链由系统 Python(python-pptx) 改为随包 Node 库(pptxgenjs 4.0.1)；修正校验器相对路径为 ../../scripts/；补充降级边界，见 docs/development/office-plugins.md"
+  modified: "ZCode-CE: 工具链由系统 Python(python-pptx) 改为随包 Node 库(pptxgenjs 4.0.1)；修正校验器相对路径为 ../../scripts/；补充降级边界；提权安装场景改为给出确切命令并声明所需权限（引导式授权，见 docs/development/office-plugins.md）"
 description: Create, read, edit, and check PowerPoint presentations (.pptx), including slide text, tables, images, and charts. Use when a PPTX file is an input or requested deliverable.
 ---
 
@@ -82,7 +82,15 @@ soffice --headless --convert-to pdf report.pptx
 
 Rendering is an **optional enhancement, not a core dependency**: creating and structurally checking this file needs nothing beyond the bundled payload. When `soffice` is absent, do not silently skip the check — say plainly that visual layout was not inspected.
 
-If the user wants rendering and `soffice` is missing, **tell them it needs LibreOffice and offer the install** (roughly several hundred MB); the choice is theirs. Do not install it unprompted, and do not block delivery on it. On Linux you usually **cannot install it for them** (no TTY, `sudo` needs a password) — give the command for the user to run. Using software they already have (Word, WPS, Pages) to produce a PDF is a legitimate path; do not steer them away from it.
+If the user wants rendering and `soffice` is missing, **tell them it needs LibreOffice and offer the install** (roughly several hundred MB); the choice is theirs. Do not install it unprompted, and do not block delivery on it. On Linux you usually **cannot install it for them** (no TTY, `sudo` needs a password) — give the command for the user to run.
+
+When you give that command, put it in a **bash code block** and state plainly what it needs, so the user can judge before running it. The interface offers a "send to terminal" action on shell code blocks that pastes the command into the integrated terminal **without running it** — the user reviews it there and presses Enter themselves. Say so when you offer the command. Name the privilege explicitly: an install needs administrator rights, so give the `sudo` form and say it will ask for the account password. Do **not** ask the user to paste their password into the chat, and do not offer to run it for them.
+
+```bash
+sudo apt-get install -y libreoffice
+```
+
+That is the Debian/Ubuntu form; adapt it to the user's platform and package manager rather than assuming `apt`. Using software they already have (Word, WPS, Pages) to produce a PDF is a legitimate path; do not steer them away from it.
 
 LibreOffice previews do not certify pixel-identical PowerPoint output, animation, or media playback.
 

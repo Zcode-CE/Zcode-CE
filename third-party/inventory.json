@@ -252,7 +252,7 @@
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-scan.mjs": "190d335c7862893e4abda9660b9a1b2c05b9989b8c08ae92abc10c3259a2a2e4",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
-    "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md": "fded1712def8814d2e65981412518dd6b0dc8e18969e6d77f4491a937272723e",
+    "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md": "b7d2cad2ece75b518d19fb4ec928810b538b9b642b6e414cddfd1298109bd9a7",
     "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "6197dfe9c2481378c3de489a8566b3840ae4941aa334ef83e6ace50b8bd7bded",
     "apps/zcode-cli/packages/documents-plugin/test/checkOfficePrefix.test.mjs": "de63355f4bfe5a897706bb044c16e419c289b38b2e8b5ef2b731f43900258b98",
     "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "f8dab813c3b9f236b593d4d04f1b78e511e15d586cb7dcdd74147e7d1c22ec5c",
@@ -283,7 +283,7 @@
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-scan.mjs": "190d335c7862893e4abda9660b9a1b2c05b9989b8c08ae92abc10c3259a2a2e4",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
-    "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md": "2ddea27121fce2defbc116b678f16c384065e2985011c08e58644bc2a4a644ef",
+    "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md": "24fd61338e60db041fafec1f3a8ea69de2a93e9ed4de4503f8ae8387c1a65e2f",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/.zcode-plugin/plugin.json": "74580ca50246dd14e747321f25925755c1f091969166f01470de30dd0f3fdb8d",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/commands/restore-legacy-sessions.md": "50fefcf09f13e4e8c8fa424adf5cda4385a9da6e020f337f3517447ff4fc9aff",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/README.md": "c0f365788e147d6e5a6b70a30260aac9a19f913e6800a27f8ff81ef7cb1ec0ae",
@@ -308,7 +308,7 @@
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-scan.mjs": "190d335c7862893e4abda9660b9a1b2c05b9989b8c08ae92abc10c3259a2a2e4",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
-    "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md": "055256bc83a5f7bc7ffc027c7aa4e4a1e3aa8d2dd4f897981564a10ed0916686",
+    "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md": "48dee22959dc151705e9c829c9b530b8a3cd4b2aec15015a6844e4daecea030d",
     "apps/zcode-cli/packages/superpowers-plugin/LICENSE": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
     "apps/zcode-cli/packages/swift-bridge/package.json": "958674fcd44c789564ee672b0e6c687f1f900f4286174280700ddfb442d23906",
     "apps/zcode-cli/packages/tui/package.json": "097d5896b0b37a455eafaf015f21113dfbea7b05bb3f92666f423f7753720eb1",
@@ -1510,7 +1510,7 @@
     "packages/ui/src/components/ai-elements/canvas.tsx": "7bc92905e97c182c9a2f52b421a4d70414c8700a66039af9a4466587f74d2687",
     "packages/ui/src/components/ai-elements/chat-loading.tsx": "b75d4398d778179f78209debde63547410d76e01cdaf3887f60b13ef9a35331f",
     "packages/ui/src/components/ai-elements/checkpoint.tsx": "72459f6fb8668e9245ec32542f92c7de809cc9b5a366bb44ab08f91ea4e1255b",
-    "packages/ui/src/components/ai-elements/code-block.tsx": "ae4f975537ebb9c8ef905b7b9de39bc37180f81511bffc027dc4da1929037f18",
+    "packages/ui/src/components/ai-elements/code-block.tsx": "6e136410ea1607ad4aab2d11e5edb61e943d97ca91f5179e8586a030f34581cf",
     "packages/ui/src/components/ai-elements/commit.tsx": "e9f5dcffac4ec7702b6d77b41cfc28fab54f0595375dd2c992dc972c0a9e74d2",
     "packages/ui/src/components/ai-elements/confirmation.tsx": "bb39ae89d5550f4ffcbb36e73dc8b75d1c9930f0fdba28cc8ff135d753b65a9b",
     "packages/ui/src/components/ai-elements/connection.tsx": "6e6cf65efcef612a3d14f5fda69e27009bc06046d1f7aa842a1a93b9142a7f81",
@@ -19520,7 +19520,7 @@
         },
         {
           "file": "packages/ui/src/components/ai-elements/code-block.tsx",
-          "sha256": "ae4f975537ebb9c8ef905b7b9de39bc37180f81511bffc027dc4da1929037f18"
+          "sha256": "6e136410ea1607ad4aab2d11e5edb61e943d97ca91f5179e8586a030f34581cf"
         },
         {
           "file": "packages/ui/src/components/ai-elements/commit.tsx",
@@ -30013,7 +30013,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md",
-          "sha256": "fded1712def8814d2e65981412518dd6b0dc8e18969e6d77f4491a937272723e"
+          "sha256": "b7d2cad2ece75b518d19fb4ec928810b538b9b642b6e414cddfd1298109bd9a7"
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs",
@@ -30085,7 +30085,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md",
-          "sha256": "2ddea27121fce2defbc116b678f16c384065e2985011c08e58644bc2a4a644ef"
+          "sha256": "24fd61338e60db041fafec1f3a8ea69de2a93e9ed4de4503f8ae8387c1a65e2f"
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/.zcode-plugin/plugin.json",
@@ -30149,7 +30149,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md",
-          "sha256": "055256bc83a5f7bc7ffc027c7aa4e4a1e3aa8d2dd4f897981564a10ed0916686"
+          "sha256": "48dee22959dc151705e9c829c9b530b8a3cd4b2aec15015a6844e4daecea030d"
         }
       ]
     },

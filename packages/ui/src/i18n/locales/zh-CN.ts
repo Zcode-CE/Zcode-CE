@@ -1031,6 +1031,14 @@ const zhCN: Record<string, string> = {
   "codeBlock.mermaid.ariaLabel": "Mermaid 图表",
   "codeBlock.wrapLines": "自动换行",
   "codeBlock.copyCode": "复制代码",
+  "codeBlock.sendToTerminal": "发送到终端（不会自动执行，需你在终端里按回车）",
+  "codeBlock.sendToTerminalElevated":
+    "发送到终端（需要管理员权限，不会自动执行，需你在终端里按回车）",
+  "codeBlock.sendToTerminalDelivered": "已发送到终端，请在终端里确认后按回车执行。",
+  "codeBlock.sendToTerminalNeedsBracketedPaste":
+    "这条多行命令无法安全地一次性粘贴到当前终端，请逐条发送或手动复制。",
+  "codeBlock.sendToTerminalUnavailable": "没有可用的集成终端，请先打开终端面板再发送。",
+  "codeBlock.sendToTerminalOpenFailed": "终端打开失败，请重试。",
   "codeBlock.mermaid.empty": "Mermaid 源码为空。",
   "codeBlock.mermaid.error": "Mermaid 图表渲染失败",
   "codeBlock.mermaid.openPreview": "放大查看",
