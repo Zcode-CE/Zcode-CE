@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -30,9 +30,24 @@ try {
   await exec("tar", ["-xzf", resolve(archive), "-C", directory]);
   await mkdir(workspace);
   await exec(process.execPath, [runner, "--help"], { cwd: workspace, env });
-  const version = (
+  // --version 的首行必须是**纯版本号**且等于分发包 package.json 的版本（第二行是身份标注，不参与比较）。
+  const { version: packagedVersion } = JSON.parse(
+    await readFile(join(root, "package.json"), "utf8"),
+  );
+  const versionOutput = (
     await exec(process.execPath, [runner, "--version"], { cwd: workspace, env })
   ).stdout.trim();
+  const [version, ...versionIdentityLines] = versionOutput.split("\n").map((line) => line.trim());
+  assert.equal(
+    version,
+    packagedVersion,
+    `--version 首行必须是分发包版本（期望 ${packagedVersion}，实际 ${version}）`,
+  );
+  assert.match(
+    versionIdentityLines.join("\n"),
+    /zcode-agent/u,
+    "--version 第二行应标注内置 agent 版本",
+  );
   const require = createRequire(join(root, "package.json"));
   const pty = require("node-pty");
   const runtimeCheck = join(root, "agent/check-tui.mjs");
