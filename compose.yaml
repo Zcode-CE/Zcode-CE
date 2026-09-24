@@ -1,0 +1,57 @@
+# ZCode 无头服务端（本地 Docker 形态，ce.3）。
+#
+# 快速开始：
+#   printf "ZCODE_SERVER_TOKEN=%s\n" "$(openssl rand -hex 16)" > .env
+#   : > tokens.txt                                                                    # 令牌文件（追加即可轮换）
+#   printf "%s\n" "$(grep -o '[0-9a-f]\{32\}' .env)" > tokens.txt
+#   docker compose up -d --build
+#   curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3030/                                  # 200
+#   curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3030/api/server-info                  # 401
+#   curl -s -o /dev/null -w "%{http_code}\n" "http://127.0.0.1:3030/api/server-info?token=$TOKEN"   # 200
+#
+# 只挂工作区：不要用 `- $HOME:/workspace` 这类整盘挂载（容器内没有沙箱，agent 能读写挂进来的任何路径，
+# 也能读到挂进来的 ~/.zcode 凭据）。理由见 docs/operations/headless-server-docker.md 的「安全边界」。
+services:
+  zcode:
+    build:
+      context: ./dist/zcode
+      dockerfile: ../../Dockerfile
+      args:
+        ZCODE_RELEASE: "3.14.3-ce.2"
+    image: zcode-headless:local
+    # 容器里绑回环（127.0.0.1）= 容器外的浏览器连不上 ⇒ 必须 0.0.0.0；
+    # 而我们的 fail-closed 规定「非回环必须带令牌」⇒ 这里用 .env 插值注入。
+    command:
+      - "--web"
+      - "--host"
+      - "0.0.0.0"
+      - "--no-open"
+      - "--workspace"
+      - "/workspace"
+      - "--token=${ZCODE_SERVER_TOKEN:?请在 .env 里设置 ZCODE_SERVER_TOKEN}"
+    ports:
+      # 默认只发布到宿主回环。要给局域网/其它机器用，改成 "3030:3030"（并确保已设令牌）。
+      - "127.0.0.1:3030:3030"
+    environment:
+      # 令牌文件里的令牌与 --token 取并集；改完文件用 `docker kill --signal=HUP zcode` 触达轮换。
+      ZCODE_SERVER_AUTH_TOKENS_FILE: /run/zcode-tokens
+    volumes:
+      - ./workspace:/workspace
+      # 容器内的「~/.zcode」：设置、provider 凭据、任务库都在这里持久化。
+      - zcode-data:/data
+      - ./tokens.txt:/run/zcode-tokens:ro
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "fetch('http://127.0.0.1:3030/api/server-info').then(r=>process.exit([200,401].includes(r.status)?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 25s
+      retries: 3
+
+volumes:
+  zcode-data:

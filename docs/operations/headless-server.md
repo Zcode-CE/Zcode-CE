@@ -159,10 +159,17 @@ node bin/zcode.mjs --web [--host <host>] [--port <port>] [--workspace <path>] \
 
 ### 7.2 Docker
 
+**本版状态（ce.3）**：仓库根**已提供本地 Docker 资产** —— `Dockerfile` + `compose.yaml`（**不推任何 registry**，由用户本地 `docker build`）。
+用法、卷/令牌/局域网访问/安全边界与九条实测证据见 [headless-server-docker.md](./headless-server-docker.md)；
+下面第 1、3~7 条是**将来真要发布镜像时**的清单（今天未执行）。
+
 1. **确定镜像名**：建议 `ghcr.io/<你的 org>/zcode-ce-server`（走 GitHub Container Registry 可复用 `GITHUB_TOKEN`，无需额外账号）。
-2. **镜像构建**：以 `dist/zcode/` 为上下文的多阶段 Dockerfile：基础镜像 `node:24-slim` —— 它是 Debian/glibc，开箱即用；若坚持用 `alpine` 基础镜像，必须先装 musl 版的 **Node ≥24**，并接受**终端功能不可用**（见 §10 的 `Alpine / musl` 一行），
-   `COPY . /opt/zcode`，`ENV ZCODE_DATA_BASE_DIR=/data`，`VOLUME /data`，`EXPOSE 3030`，
-   `ENTRYPOINT ["node","/opt/zcode/bin/zcode.mjs"]`，默认 `CMD ["--web","--host","0.0.0.0","--no-open","--token",""]`（令牌必须由运行方通过 env/参数注入，**不要**打进镜像）。
+2. **镜像构建**（**已落地**为仓库根的 `Dockerfile`）：以 `dist/zcode/` 为上下文、**单阶段**、基础镜像 `node:24-slim`（Debian/glibc）——
+   产物已是自包含分发包，因此**不需要**多阶段构建。`ADD releases/<版本>/zcode-<版本>.tar.gz /opt/`（ADD 自动解包），
+   `ENV ZCODE_DATA_BASE_DIR=/data`、`VOLUME /data`、`EXPOSE 3030`、`ENTRYPOINT ["node","/opt/zcode/bin/zcode.mjs"]`、
+   默认 `CMD ["--web","--host","0.0.0.0","--no-open","--workspace","/workspace"]`，非 root（uid 10001）运行并带 `HEALTHCHECK`。
+   **令牌必须由运行方注入**（`--token=<值>` 或令牌文件 `ZCODE_SERVER_AUTH_TOKENS_FILE`），**不要**打进镜像；
+   用 `alpine` 基础镜像必须先自装 musl 版 **Node ≥24**，且**终端功能不可用**（见 §10 的 `Alpine / musl` 一行）。
 3. **凭据**：ghcr 用内置 `GITHUB_TOKEN`（需 `packages: write` 权限）；若推别的 registry，加 `REGISTRY_USERNAME`/`REGISTRY_TOKEN` secrets。
 4. **CI job 形态**：job `publish-docker-headless`，条件同 npm；步骤：build → `docker tag` → `docker push` 两个 tag（`:<版本>` 与 `:latest`）。`continue-on-error: true`。
 5. **发布后验证**：`docker run --rm <镜像>:<版本> --help` 退出码 0；再 `docker run --rm -p 3030:3030 <镜像>:<版本> --web --host 0.0.0.0 --token <临时>` 后 `curl -sI localhost:3030/` → 200、`curl -sI localhost:3030/api/server-info` 无 token → 401。
@@ -217,11 +224,11 @@ smoke-exit=0
 
 ## 9. 已知限制与未验证项
 
-- **未对外发布**：本仓库的发布流水线目前只**构建 + 冒烟 + 挂 workflow artifact**，不发布到 npm/Docker（§7 是已批准但未执行的清单）。
+- **未对外发布**：发布流水线仍只**构建 + 冒烟 + 挂 workflow artifact**，不推 npm / 不推 Docker 镜像。**本地 Docker 资产已提供**（仓库根 `Dockerfile` + `compose.yaml`，由用户自行 `docker build`，见 [headless-server-docker.md](./headless-server-docker.md)）；§7 的 registry 发布步骤仍未执行。
 - **依赖载荷托管位置未定**：`--base-url` 指向的依赖由部署方决定；本仓库不提供默认值。
 - **本机与远端都有 libc 拦断，且都在失败之前**：**正式支持**的是 **glibc 发行版**（见 §10 的 `Linux-x64（glibc）` 一行）。远端工作区在**连接时**先判 libc 再部署资产；**本机**（CLI / 无头 server）在**创建终端之前**判定，命中 musl 时给出可操作错误并正常退出 —— 不再出现原生 fork 的段错误（实测对照见 §10）。
 - **musl 上的能力边界（实测）**：Alpine 系**可以运行服务与面板**（需满足 `engines` 的 Node 版本，见 §10），**终端功能不可用**并会明确提示；本版**不承诺** musl 上的完整能力。
-- **Docker / WSL 作为承载环境未实测**；只在 Linux 上验证。
+- **Docker 作为承载环境已实测**（Linux x64，`node:24-slim` 本地构建）：`GET /` 200、`/api/server-info` 无令牌 401 / 带令牌 200、`/ws` 401、**容器内 pty 可开**（uid 10001 下 `terminal-exit=0`）、卷持久化、`SIGTERM` 优雅退出（exit 0，约 1 s）、HUP 令牌重载（送给 `entry-http.js` 子进程时生效）、`compose config/build/up/down` 全通 —— 逐条命令与输出见 [headless-server-docker.md](./headless-server-docker.md) §10。**WSL 作为承载环境仍未实测**；只在 Linux 上验证。
 - **令牌无吊销/无速率限制**：公网暴露风险自担（§4）。
 - **手机 + 桌面同时连同一会话的并发语义未测**（见 [web-remote-control.md](../development/web-remote-control.md) §8）。
 
@@ -229,13 +236,14 @@ smoke-exit=0
 
 ## 10. 平台支持矩阵（**未实测的不要当已验证**）
 
-| 平台                    | 能构建                                                   | 能启动 `--web`            | 能连面板  | 终端功能                                             | 令牌轮换（`SIGHUP`）      |
-| ----------------------- | -------------------------------------------------------- | ------------------------- | --------- | ---------------------------------------------------- | ------------------------- |
-| **Linux-x64（glibc）**  | ✅ 已实测                                                | ✅ 已实测                 | ✅ 已实测 | ✅ 已实测                                            | ✅ 已实测                 |
-| **Alpine / musl**       | ❌ 本版不发布 musl 平台类                                | ✅ **已实测**（Node ≥24） | ✅ 已实测 | ❌ **不可用**（拦断 + 可操作错误，实测无段错误）     | ✅ 已实测                 |
-| Linux-arm64             | 推断                                                     | 推断                      | 推断      | 推断                                                 | 推断                      |
-| macOS-x64 / arm64       | **未知**（未在 mac 上构建过）                            | 推断（`node-pty` 懒加载） | 推断      | **需改**：包内没有 darwin 原生载荷                   | 推断可用（mac 有 SIGHUP） |
-| **Windows-x64 / arm64** | **未知**（`install.sh` 是 POSIX 脚本 ⇒ 只能走 npm 形态） | 推断                      | 推断      | **需改**：无 win32 原生载荷 + 服务端终端是 Unix 形态 | ❌ **不成立**（见下）     |
+| 平台                                          | 能构建                                                   | 能启动 `--web`            | 能连面板  | 终端功能                                             | 令牌轮换（`SIGHUP`）                                                        |
+| --------------------------------------------- | -------------------------------------------------------- | ------------------------- | --------- | ---------------------------------------------------- | --------------------------------------------------------------------------- |
+| **Linux-x64（glibc）**                        | ✅ 已实测                                                | ✅ 已实测                 | ✅ 已实测 | ✅ 已实测                                            | ✅ 已实测                                                                   |
+| **Alpine / musl**                             | ❌ 本版不发布 musl 平台类                                | ✅ **已实测**（Node ≥24） | ✅ 已实测 | ❌ **不可用**（拦断 + 可操作错误，实测无段错误）     | ✅ 已实测                                                                   |
+| **Docker（`node:24-slim` 内，本版本地构建）** | ✅ 已实测（`docker build -f Dockerfile dist/zcode`）     | ✅ 已实测                 | ✅ 已实测 | ✅ 已实测（容器内 pty 可开）                         | ✅ 已实测（送给 server 进程；`docker kill -s HUP` 到不了，见 docker 页 §6） |
+| Linux-arm64                                   | 推断                                                     | 推断                      | 推断      | 推断                                                 | 推断                                                                        |
+| macOS-x64 / arm64                             | **未知**（未在 mac 上构建过）                            | 推断（`node-pty` 懒加载） | 推断      | **需改**：包内没有 darwin 原生载荷                   | 推断可用（mac 有 SIGHUP）                                                   |
+| **Windows-x64 / arm64**                       | **未知**（`install.sh` 是 POSIX 脚本 ⇒ 只能走 npm 形态） | 推断                      | 推断      | **需改**：无 win32 原生载荷 + 服务端终端是 Unix 形态 | ❌ **不成立**（见下）                                                       |
 
 证据：`node-pty` 上游发 5 个平台的预编译，而**我们的包内只保留 Linux（glibc）**（构建按当前平台裁剪）；远程工作区组件清单也只有 `linux-x64/arm64` + `darwin-x64/arm64` —— 那属于**远程工作区运行时**，与本机 CLI 的原生依赖是两件事。
 
