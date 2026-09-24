@@ -205,7 +205,12 @@ async function stageZCodePackage({ packageRoot, version }) {
   // runner 的**旁路模块**必须一起进 bin/：runner.mjs 现在 import "./runner-*.mjs"，
   // 漏拷任何一个都会让分发包启动即 ERR_MODULE_NOT_FOUND（task-49 拆分引入的结构依赖）。
   // 这里逐个显式列出（而不是 glob）—— 名字写死才能在"新增模块忘了拷"时立刻在评审里看见。
-  for (const sidecar of ["runner-usage.mjs", "runner-config.mjs", "runner-web.mjs"]) {
+  for (const sidecar of [
+    "runner-usage.mjs",
+    "runner-config.mjs",
+    "runner-web.mjs",
+    "runner-exposure.mjs",
+  ]) {
     const target = resolve(packageRoot, "bin", sidecar);
     await cp(resolve(root, "scripts/zcode-distribution", sidecar), target);
     // 显式 0o644：`cp` 会用进程 umask（实测抽出来的包是 600），而包内其它文件是 644。

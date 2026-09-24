@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { access, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -25,6 +26,12 @@ import {
   shouldProtectHost,
 } from "./runner-web.mjs";
 import { configEnv, loadConfigFile } from "./runner-config.mjs";
+import {
+  buildLoopbackExposureRefusal,
+  hasExposureSignal,
+  hasUsableTokenFile,
+  resolveExposureSignals,
+} from "./runner-exposure.mjs";
 import { resolveAgentVersion, setUsageContext, usage } from "./runner-usage.mjs";
 // ── 身份头与 usage 文案：已拆到 runner-usage.mjs（整段原样搬，见该文件头注释）──────────────
 setUsageContext({ packageVersion: version, agentEntry });
@@ -104,10 +111,6 @@ function parseArgs(argv) {
     throw new Error(`Unknown option "${arg}".\n${usage()}`);
   }
 
-  // 组合级校验放在解析阶段：非回环 + 无 token 会被服务端 fail-closed 拒绝，
-  // 这里提前给出一致的解释与两条可行路线。
-  assertHostTokenCombination(options);
-
   return options;
 }
 
@@ -131,30 +134,57 @@ function resolveTokenEnabled(options) {
 }
 
 /**
- * 「非回环 + 无 token」必须在**解析参数阶段**就被拒绝。
+ * 组合级校验：**在起进程、打印任何横幅之前**把服务端一定会拒绝的组合拦下。
  *
- * 服务端（packages/server 的 assertListenSecurity）对这一组合是 fail-closed 硬拒绝；
+ * 服务端（packages/server 的 assertListenSecurity）对这些组合是 fail-closed 硬拒绝；
  * 如果放到这里才报错，用户会先看到「ZCode Web is running」的假象，再拿到二段错误。
  * 口径与服务端一致（不新增环境变量、不改服务端的硬拒绝）。
+ *
+ * ## 为什么**不能**留在 parseArgs 里（task-82 修的结构性缺陷）
+ *
+ * parseArgs 只看命令行 flag，而 host / token / 登记项都可能在**环境变量或配置文件**里，
+ * 且优先级链是 flag > env > 文件 > 默认（resolveOptions 才求得出生效值）。
+ * 于是此前 `--no-token` 经配置文件写成 `noToken: true`、host 写成 `0.0.0.0` 时，
+ * 校验完全看不到 ⇒ 照样先打印 running 横幅。实测（真跑分发包夹具）：
+ *   - `{host:"0.0.0.0", noToken:true}` 配置文件 ⇒ banner=2 行、拒绝在第 8 行（二段报错）；
+ *   - `{host:"127.0.0.1", noToken:true, trustedHosts:["panel.example"]}` ⇒ banner=2 行、拒绝在第 6 行。
+ * 现在改成在 `resolveOptions` 之后、`serve` 里**起进程之前**判定，两条路都被堵住。
+ *
+ * ## 两类信号
+ * 1. **非回环 + 无令牌**（既有语义，未改）；
+ * 2. **回环 + 登记了域名/可信代理 + 无令牌**（本轮新增，与服务端加固同一口径）。
+ *    `ZCODE_SERVER_TRUSTED_ORIGINS` **不在内**：服务端对它只告警、不拒绝。
+ *    判据读的是**解析后的生效项**（非法值不算信号），否则会拒绝服务端本来能起的配置。
  */
-function assertHostTokenCombination(options) {
-  if (isLocalHost(options.host) || resolveTokenEnabled(options)) {
+function assertHostTokenCombination(options, exposureSignals, tokenFileUsable) {
+  if (resolveTokenEnabled(options)) {
     return;
   }
-  throw new Error(
-    [
-      `Refusing to start: --no-token cannot be combined with a non-loopback --host (${options.host}).`,
-      `拒绝启动：绑定非回环地址 "${options.host}" 但未提供 token。`,
-      "",
-      "原因：不启用 token 时，服务端的 /api/*、/ws、/ws/host 对能访问该地址的人全部开放",
-      "（其中 POST /api/rpc-host-capability 会未授权签发 trusted-host ticket），",
-      "因此服务端本身也会拒绝启动 —— 这里提前报错，避免先起后拒。",
-      "",
-      "两种做法：",
-      "  1. 只在本机用：不设 --host（默认 127.0.0.1），--no-token 仍然可用；",
-      "  2. 要对外暴露：去掉 --no-token（非回环会自动生成令牌），或用 --token <token> 指定一个。",
-    ].join("\n"),
-  );
+  // 令牌文件里真的有可用令牌 ⇒ 服务端会放行（实测 401/200），这里**绝不能**拒绝。
+  // 注意只看 `--no-token` 决定的 tokenEnabled：显式 `--no-token` 时即便配了令牌文件，
+  // runner 也会把 ZCODE_SERVER_AUTH_TOKEN 清空并保留文件变量 ⇒ 以服务端行为为准（文件有效即可用）。
+  if (tokenFileUsable) {
+    return;
+  }
+  if (!isLocalHost(options.host)) {
+    throw new Error(
+      [
+        `Refusing to start: --no-token cannot be combined with a non-loopback --host (${options.host}).`,
+        `拒绝启动：绑定非回环地址 "${options.host}" 但未提供 token。`,
+        "",
+        "原因：不启用 token 时，服务端的 /api/*、/ws、/ws/host 对能访问该地址的人全部开放",
+        "（其中 POST /api/rpc-host-capability 会未授权签发 trusted-host ticket），",
+        "因此服务端本身也会拒绝启动 —— 这里提前报错，避免先起后拒。",
+        "",
+        "两种做法：",
+        "  1. 只在本机用：不设 --host（默认 127.0.0.1），--no-token 仍然可用；",
+        "  2. 要对外暴露：去掉 --no-token（非回环会自动生成令牌），或用 --token <token> 指定一个。",
+      ].join("\n"),
+    );
+  }
+  if (hasExposureSignal(exposureSignals)) {
+    throw new Error(buildLoopbackExposureRefusal({ host: options.host, signals: exposureSignals }));
+  }
 }
 
 /** --version 输出：第一行保持原来的纯版本号（不破坏既有解析），第二行标注两个身份。 */
@@ -207,6 +237,18 @@ function resolveOptions(options) {
 
 async function serve(rawOptions) {
   const options = resolveOptions(rawOptions);
+  // 组合级校验必须在**起进程、打印任何横幅之前**（task-82）：此前它留在 parseArgs 里，
+  // 只看得到命令行 flag，看不到环境变量与配置文件里的 host/noToken/登记项 ⇒ 会先打印
+  // 「ZCode Web is running」再被二段错误打断。判据读**解析后的生效项**（非法值不算信号）。
+  assertHostTokenCombination(
+    options,
+    resolveExposureSignals({ env: process.env, file: options.file }),
+    hasUsableTokenFile({
+      env: process.env,
+      file: options.file,
+      readFileSync: (path, encoding) => readFileSync(path, encoding),
+    }),
+  );
   await assertRuntimeFiles();
   const port =
     options.port && options.port > 0 ? options.port : await pickDefaultPort(options.host);
