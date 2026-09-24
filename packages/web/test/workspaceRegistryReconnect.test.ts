@@ -196,6 +196,13 @@ function startServer(params: { port: number; dataDir: string }): ChildProcess {
   return child;
 }
 
+/**
+ * 服务端就绪预算。这是**前置条件**而不是断言：共享机器上服务端要跑 provider 初始化（含真实网络
+ * 调用），负载高时 60s 会不够（实测出现过一次约 70s 的整体超时）。给到 120s，并把进程输出尾部
+ * 带进失败信息，使超时可诊断。
+ */
+const SERVER_READY_BUDGET_MS = 120_000;
+
 async function waitForServerReady(baseUrl: string, timeoutMs: number, port: number): Promise<void> {
   await waitFor(
     "服务端就绪：" +
@@ -316,20 +323,16 @@ async function readSidebarSnapshot(page: import("playwright-core").Page): Promis
 /**
  * 比较「集合与事实」，不比较显示顺序（顺序由客户端显示偏好决定，不属于判据 4 的集合口径）。
  *
- * `transientStarting`：重连/首次加载的过渡期里，活跃 workspace 的 sessions-index 订阅正在重建
- * （store status = connecting），行上会短暂出现「启动中」。这是**正确**的过渡态（§3.2 要求
- * 启动中显示加载态而不是「暂无任务」），不属于「未启动被错乱标记」，因此比较时忽略它；
- * 但 `not-started` 绝不能凭空出现或消失 —— 那才是判据 3 要防的错乱。
+ * **严格比较，没有「过渡态豁免」**（task-38 修根因）：旧版对 `starting` 做了一次性豁免，于是
+ * 「重连瞬间的快照」可能以豁免口径判为一致、却以严格口径判为不一致 —— 这既是假红的来源，
+ * 也让断言看起来比实际强。现在的做法是：**先把状态等到静止**（见 waitForSettledSnapshot），
+ * 再对静止后的快照做严格比较；过渡态由「等待」处理，不由「放宽断言」处理。
  */
-function collectVisibleSetMismatches(
-  left: SidebarSnapshot,
-  right: SidebarSnapshot,
-  options: { transientStarting: boolean },
-): string[] {
+function collectVisibleSetMismatches(left: SidebarSnapshot, right: SidebarSnapshot): string[] {
   const mismatches: string[] = [];
   const leftPaths = left.rows.map((row) => row.path).sort();
   const rightPaths = right.rows.map((row) => row.path).sort();
-  if (leftPaths.join("\n") !== rightPaths.join("\n")) {
+  if (leftPaths.join(String.fromCharCode(10)) !== rightPaths.join(String.fromCharCode(10))) {
     mismatches.push(
       "可见集合不一致：仅左侧 " +
         JSON.stringify(leftPaths.filter((path) => !rightPaths.includes(path))) +
@@ -351,13 +354,7 @@ function collectVisibleSetMismatches(
         `未启动态会话数不一致 ${row.path}：${previous.sessionCount} → ${row.sessionCount}`,
       );
     }
-    const badgeDiffers = row.badge !== previous.badge;
-    const isTransientPair =
-      options.transientStarting &&
-      (row.badge === "starting" || previous.badge === "starting") &&
-      row.badge !== "not-started" &&
-      previous.badge !== "not-started";
-    if (badgeDiffers && !isTransientPair) {
+    if (row.badge !== previous.badge) {
       mismatches.push(`徽标状态不一致 ${row.path}：${previous.badge} → ${row.badge}`);
     }
   }
@@ -369,13 +366,77 @@ function collectVisibleSetMismatches(
   return mismatches;
 }
 
-function assertSameVisibleSet(
-  left: SidebarSnapshot,
-  right: SidebarSnapshot,
-  label: string,
-  options: { transientStarting: boolean } = { transientStarting: false },
-): void {
-  const mismatches = collectVisibleSetMismatches(left, right, options);
+/** 两份快照是否「逐条相同」（用于判定状态是否静止）。 */
+function snapshotsAreIdentical(left: SidebarSnapshot, right: SidebarSnapshot): boolean {
+  return collectVisibleSetMismatches(left, right).length === 0;
+}
+
+/** 快照是否「有内容」：没有任何行 / 没有任何会话时不算已就绪，不能当成静止终态。 */
+function snapshotIsNonTrivial(snapshot: SidebarSnapshot): boolean {
+  return snapshot.rows.length > 0 && snapshot.totalTaskItems > 0;
+}
+
+/**
+ * 等到侧栏状态**静止**再取终态（task-38 的根因修复）。
+ *
+ * 判据：连续 `SAMPLES` 次采样（间隔 `INTERVAL_MS`）**逐条完全相同**，且（若给了 target）与目标
+ * 严格一致。阈值依据：
+ * - `INTERVAL_MS = 400`：大于 `useTabPersistence` 的 300ms 持久化 debounce（展开/偏好写入会落在
+ *   采样间隔内落地），也远大于一次本地 RPC 往返（毫秒级）；
+ * - `SAMPLES = 3`：连续 3 次相同 ⇒ 至少 800ms 无任何变化，覆盖「重连后重新订阅 + 列表重查」
+ *   这类有界抖动；只取 1-2 次会把「两次采样恰好落在同一过渡态」误判成终态（这正是旧版偶发红的形态）；
+ * - 不做任何固定 `setTimeout` 硬等、不做 retry 到通过：等待的判据就是「状态不再变化」本身。
+ */
+const SETTLE_INTERVAL_MS = 400;
+const SETTLE_SAMPLES = 3;
+/** 等待静止的总预算：正常 2-5 秒就能静止，给到 120s 是为了共享机器高负载时不误判。 */
+const SETTLE_BUDGET_MS = 120_000;
+
+interface SettledSnapshot {
+  snapshot: SidebarSnapshot;
+  /** 是否真的等到了静止（false = 超时，调用方随后用严格断言给出精确差异）。 */
+  settled: boolean;
+  samples: number;
+}
+
+async function waitForSettledSnapshot(
+  page: import("playwright-core").Page,
+  params: { label: string; target?: SidebarSnapshot; timeoutMs: number },
+): Promise<SettledSnapshot> {
+  const deadline = Date.now() + params.timeoutMs;
+  let previous: SidebarSnapshot | null = null;
+  let identicalStreak = 0;
+  let samples = 0;
+  let latest: SidebarSnapshot | null = null;
+  while (Date.now() < deadline) {
+    const current = await readSidebarSnapshot(page);
+    samples += 1;
+    latest = current;
+    const matchesTarget = !params.target || snapshotsAreIdentical(params.target, current);
+    if (
+      snapshotIsNonTrivial(current) &&
+      matchesTarget &&
+      previous &&
+      snapshotsAreIdentical(previous, current)
+    ) {
+      identicalStreak += 1;
+    } else {
+      identicalStreak = 0;
+    }
+    previous = current;
+    if (identicalStreak >= SETTLE_SAMPLES - 1) {
+      return { snapshot: current, settled: true, samples };
+    }
+    await new Promise((resolve) => setTimeout(resolve, SETTLE_INTERVAL_MS));
+  }
+  if (!latest) {
+    throw new Error(params.label + "：等待静止时一次快照都没取到");
+  }
+  return { snapshot: latest, settled: false, samples };
+}
+
+function assertSameVisibleSet(left: SidebarSnapshot, right: SidebarSnapshot, label: string): void {
+  const mismatches = collectVisibleSetMismatches(left, right);
   assert.deepEqual(mismatches, [], label + "：可见集合/会话数必须逐条一致");
   const leftPaths = left.rows.map((row) => row.path).sort();
   const rightPaths = right.rows.map((row) => row.path).sort();
@@ -422,7 +483,7 @@ test("M1 判据 3/4：断线重连后列表仍在 + 两个独立客户端可见�
 
   try {
     server = startServer({ port, dataDir });
-    await waitForServerReady(baseUrl, 60_000, port);
+    await waitForServerReady(baseUrl, SERVER_READY_BUDGET_MS, port);
     const serverInfo = (await (await fetch(baseUrl + "api/server-info?token=" + TOKEN)).json()) as {
       workspaces: Array<{ path: string }>;
     };
@@ -448,7 +509,14 @@ test("M1 判据 3/4：断线重连后列表仍在 + 两个独立客户端可见�
       60_000,
     );
     await ensureWorkspaceRowsExpanded(pageA);
-    const before = await readSidebarSnapshot(pageA);
+    // 断线前的基准也必须**静止**：旧版直接取一帧，若恰好落在首屏列表补齐途中，
+    // 后面的比较就会把「本来就在变化的基准」当成终态（偶发红的另一半来源）。
+    const settledBefore = await waitForSettledSnapshot(pageA, {
+      label: "判据 3 断线前",
+      timeoutMs: SETTLE_BUDGET_MS,
+    });
+    const before = settledBefore.snapshot;
+    assert.ok(settledBefore.settled, "断线前必须先静止（连续采样完全一致）再做比较基准");
     assert.ok(before.rows.length > 1, "断线前必须有多个工作区行");
     assert.ok(
       before.totalTaskItems > 0,
@@ -467,7 +535,7 @@ test("M1 判据 3/4：断线重连后列表仍在 + 两个独立客户端可见�
     t.diagnostic("断线中：覆盖层出现 = " + during.hasConnectionOverlay);
 
     server = startServer({ port, dataDir });
-    await waitForServerReady(baseUrl, 60_000, port);
+    await waitForServerReady(baseUrl, SERVER_READY_BUDGET_MS, port);
     await waitFor(
       "客户端 A 重新建立 WebSocket",
       () => wsOpenedA.length > wsCountBeforeKill,
@@ -483,25 +551,26 @@ test("M1 判据 3/4：断线重连后列表仍在 + 两个独立客户端可见�
       async () => (await pageA.locator(ROW_SELECTOR).count()) > 0,
       60_000,
     );
-    // 恢复需要收敛时间：重连后活跃 workspace 会短暂进入「启动中」（订阅重建），
-    // 允许过渡态、但必须收敛回断线前的状态，否则判据 3 不成立。
-    let after = await readSidebarSnapshot(pageA);
-    let settled = false;
-    await waitFor(
-      "侧栏收敛回断线前状态",
-      async () => {
-        after = await readSidebarSnapshot(pageA);
-        // 会话列表由 RPC 异步补齐，行数/条数没回来之前不算收敛。
-        if (after.rows.length === 0 || after.totalTaskItems === 0) return false;
-        settled =
-          collectVisibleSetMismatches(before, after, { transientStarting: true }).length === 0;
-        return settled;
-      },
-      90_000,
-    ).catch(() => undefined);
-    // 无论是否收敛，都用**严格口径**断言一次，让失败信息给出精确差异。
+    // 恢复需要收敛时间：重连后活跃 workspace 的 sessions-index 订阅重建、会话列表重查，
+    // 期间徽标与会话数都会动。**等状态静止**再取终态（task-38 的根因修复），
+    // 而不是对过渡态放行 —— 放行会让「以豁免口径判一致、以严格口径判不一致」两者打架。
+    const settledAfter = await waitForSettledSnapshot(pageA, {
+      label: "判据 3 恢复后",
+      target: before,
+      timeoutMs: SETTLE_BUDGET_MS,
+    });
+    const after = settledAfter.snapshot;
+    if (!settledAfter.settled) {
+      t.diagnostic(
+        "恢复后未在预算内静止（已连续采样 " +
+          settledAfter.samples +
+          " 次）—— 下面是严格口径的精确差异",
+      );
+    }
     assertSameVisibleSet(before, after, "判据 3（断线重连前后）");
-    t.diagnostic("恢复后已收敛：" + settled);
+    t.diagnostic(
+      "恢复后已静止：" + settledAfter.settled + "（采样 " + settledAfter.samples + " 次）",
+    );
     if (during.hasConnectionOverlay) {
       assert.equal(after.hasConnectionOverlay, false, "恢复后覆盖层必须消失");
     } else {
@@ -534,9 +603,14 @@ test("M1 判据 3/4：断线重连后列表仍在 + 两个独立客户端可见�
       60_000,
     );
     await ensureWorkspaceRowsExpanded(pageB);
-    await pageB.waitForTimeout(8_000);
-    const snapshotB = await readSidebarSnapshot(pageB);
-    assertSameVisibleSet(after, snapshotB, "判据 4（两个独立客户端）", { transientStarting: true });
+    const settledB = await waitForSettledSnapshot(pageB, {
+      label: "判据 4 客户端 B",
+      target: after,
+      timeoutMs: SETTLE_BUDGET_MS,
+    });
+    const snapshotB = settledB.snapshot;
+    assert.ok(settledB.settled, "客户端 B 必须先静止再与 A 比较");
+    assertSameVisibleSet(after, snapshotB, "判据 4（两个独立客户端）");
     t.diagnostic(
       `两个独立上下文可见集合与会话数逐条一致：${snapshotB.rows.length} 行 / ${snapshotB.totalTaskItems} 条会话`,
     );
@@ -551,7 +625,7 @@ test("M1 判据 3/4：断线重连后列表仍在 + 两个独立客户端可见�
     server.kill("SIGKILL");
     server = null;
     server = startServer({ port, dataDir });
-    await waitForServerReady(baseUrl, 60_000, port);
+    await waitForServerReady(baseUrl, SERVER_READY_BUDGET_MS, port);
     const contextC = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const pageC = await contextC.newPage();
     await pageC.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -561,11 +635,14 @@ test("M1 判据 3/4：断线重连后列表仍在 + 两个独立客户端可见�
       60_000,
     );
     await ensureWorkspaceRowsExpanded(pageC);
-    await pageC.waitForTimeout(8_000);
-    const snapshotC = await readSidebarSnapshot(pageC);
-    assertSameVisibleSet(after, snapshotC, "判据 4（设置清空后的新客户端）", {
-      transientStarting: true,
+    const settledC = await waitForSettledSnapshot(pageC, {
+      label: "判据 4 客户端 C",
+      target: after,
+      timeoutMs: SETTLE_BUDGET_MS,
     });
+    const snapshotC = settledC.snapshot;
+    assert.ok(settledC.settled, "客户端 C 必须先静止再与 A 比较");
+    assertSameVisibleSet(after, snapshotC, "判据 4（设置清空后的新客户端）");
     t.diagnostic(
       "清空 lastWorkspaceSession + recentProjects 后，新客户端仍看到 " +
         snapshotC.rows.length +
@@ -640,7 +717,7 @@ test("反向验证：注册表内容不同 ⇒ 集合比较必须报出差异（
     const port = await allocateFreePort();
     const baseUrl = `http://127.0.0.1:${port}/`;
     servers.push(startServer({ port, dataDir }));
-    await waitForServerReady(baseUrl, 60_000, port);
+    await waitForServerReady(baseUrl, SERVER_READY_BUDGET_MS, port);
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await context.newPage();
     await page.goto(baseUrl + "?token=" + TOKEN, {
@@ -653,15 +730,19 @@ test("反向验证：注册表内容不同 ⇒ 集合比较必须报出差异（
       60_000,
     );
     await ensureWorkspaceRowsExpanded(page);
-    await page.waitForTimeout(6_000);
-    const snapshot = await readSidebarSnapshot(page);
+    // 两个副本各等一次静止：反向验证要报的是**注册表差异**，不能混进加载过渡态。
+    const settled = await waitForSettledSnapshot(page, {
+      label: "反向验证快照",
+      timeoutMs: SETTLE_BUDGET_MS,
+    });
+    assert.ok(settled.settled, "反向验证的快照也必须先静止");
     await context.close();
-    return snapshot;
+    return settled.snapshot;
   };
   try {
     const full = await load(fullDir);
     const trimmed = await load(trimmedDir);
-    const mismatches = collectVisibleSetMismatches(full, trimmed, { transientStarting: true });
+    const mismatches = collectVisibleSetMismatches(full, trimmed);
     t.diagnostic(
       `完整库 ${full.rows.length} 行 / 剪裁库 ${trimmed.rows.length} 行；比较报出差异 ${mismatches.length} 条`,
     );
