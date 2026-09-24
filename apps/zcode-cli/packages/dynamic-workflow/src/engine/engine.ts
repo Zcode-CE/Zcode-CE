@@ -27,6 +27,7 @@ import {
 } from "./engine-artifacts.js";
 import { publishReport } from "./engine-report.js";
 import { closeImportCache, readWorld, recoverImportClosure } from "./engine-world.js";
+import { recoverSettleOrder, ReplaySettleOrder } from "./replay-order.js";
 import { settleCompleted, settleFailed, settleStopped } from "./engine-settlement.js";
 import type {
   ActorId,
@@ -53,6 +54,7 @@ import type {
 } from "./types.js";
 import { refToString, WorkflowError } from "./types.js";
 import { runLaunchedEvent, type RunLaunchConfig } from "./engine-launch.js";
+import { enrichProviderStopPhase, stampBirthPhase } from "./engine-phase-stamp.js";
 
 /** 引擎构造配置。 */
 export interface EngineConfig {
@@ -179,6 +181,12 @@ export class WorkflowEngine implements WorkflowHostApi, WorkflowReportSink {
    * 纯 ask（toolCalls 0）照常命中。resume 时从 `import-cache-closed` 事件恢复，见 {@link recoverImportClosure}。
    */
   private importClosed = false;
+  /**
+   * replay 的结算次序闸（见 replay-order.ts）：命中缓存的结算按 journal 记下的**首生结算
+   * 次序**释放，而不是按准入次序——join 之后的每一个站点序号都由那个次序决定。
+   * 非 resume 恒为空闸（人人放行）。
+   */
+  private replaySettleOrder = ReplaySettleOrder.empty();
   /** resume 时从事件恢复的「崩溃前曾 live 的 ask 实例」（`siteId@ordinal`）；非 resume 为空。 */
   private liveAskInstances: ReadonlySet<string> = new Set();
 
@@ -234,6 +242,9 @@ export class WorkflowEngine implements WorkflowHostApi, WorkflowReportSink {
       failRun: (error) => this.failRun(error),
       record: (event) => this.record(event),
       nextOrdinal: (siteId) => this.nextOrdinal(siteId),
+      holdForReplay: (instance, release) => {
+        this.replaySettleOrder.hold(instance, release);
+      },
       reportCount: () => this.reportCount,
       countReport: () => {
         this.reportCount++;
@@ -245,6 +256,9 @@ export class WorkflowEngine implements WorkflowHostApi, WorkflowReportSink {
       markSettled: (failure) => {
         this.runSettled = true;
         if (failure !== undefined) this.runFailure = failure;
+        // 闸门随结算永久打开：还挂在次序表上的释放动作一律放掉，否则脚本那侧的 promise
+        // 永不兑现（沙箱会被关掉，但同进程跑脚本的装配就此挂死）。
+        this.replaySettleOrder.open();
       },
       abortInFlight: (error, emitCancelled) => this.scheduler.abortInFlight(error, emitCancelled),
       resolveSettled: (settlement) => this.settledDeferred.resolve(settlement),
@@ -256,6 +270,9 @@ export class WorkflowEngine implements WorkflowHostApi, WorkflowReportSink {
       driver: this.driver,
       validate: this.validate,
       nextOrdinal: (siteId) => this.nextOrdinal(siteId),
+      holdForReplay: (instance, release) => {
+        this.replaySettleOrder.hold(instance, release);
+      },
       record: (event) => this.record(event),
       isRunSettled: () => this.runSettled,
       runError: () => this.runError(),
@@ -312,8 +329,12 @@ export class WorkflowEngine implements WorkflowHostApi, WorkflowReportSink {
           { mismatch: { expected: existing.scriptHash, got: config.scriptHash } },
         );
       }
-      // resume：报告计数按 journal 里 kind:"report" 的行数恢复；用量从记录恢复（跨生命周期连续）。
+      // resume：结算次序按本 run 自己的事件恢复（本闸是 replay 正确性的一部分，不是观察面：
+      // 站点序号依调用到达顺序，而扇出的到达顺序只有首生的结算次序能复现）。节点行只读一次，
+      // 下面的报告计数与产物恢复共用它。
       const nodes = this.journal.listNodes(this.runId);
+      this.replaySettleOrder = recoverSettleOrder(this.journal, this.runId, nodes);
+      // 报告计数按 journal 里 kind:"report" 的行数恢复；用量从记录恢复（跨生命周期连续）。
       this.reportCount = nodes.filter((n) => n.kind === "report").length;
       // 产物状态与 reportCount 同席恢复：id 归属（种类、预置 spec）与已成功版本数全部由
       // journal 行派生，所以崩溃恢复后第 3 版仍然是第 3 版，而不是从 1 重新数起。
@@ -638,31 +659,9 @@ export class WorkflowEngine implements WorkflowHostApi, WorkflowReportSink {
    * 必须是**同一个对象**：bootstrap 的 `createJournalSequenceCapture` 按引用相等核对序号。
    */
   private record(event: RunEvent): void {
-    const stamped = this.stampBirthPhase(event);
+    const stamped = stampBirthPhase(event, this.instancePhases);
     this.journal.appendEvent(this.runId, stamped);
     this.driver.emit(stamped);
-  }
-
-  /**
-   * actor 的 `actor-created` 按 actor 查表，
-   * 节点的 `node-queued` 按 instance 查表，命中缓存的 `node-settled { cached: true }` 同样按
-   * instance——命中的节点没有 queued，那条 settle 就是它的出生事件。其余事件原样返回：
-   * 调度器的十处发射点零改动，reducer 沿用 `actorSiteId` 的先例向前携带。
-   */
-  private stampBirthPhase(event: RunEvent): RunEvent {
-    if (event.type === "actor-created") {
-      const phaseName = this.instancePhases.get(refToString(event.actor));
-      return phaseName === undefined ? event : { ...event, phaseName };
-    }
-    if (event.type === "node-queued") {
-      const phaseName = this.instancePhases.get(refToString(event.instance));
-      return phaseName === undefined ? event : { ...event, phaseName };
-    }
-    if (event.type === "node-settled" && event.cached === true) {
-      const phaseName = this.instancePhases.get(refToString(event.instance));
-      return phaseName === undefined ? event : { ...event, phaseName };
-    }
-    return event;
   }
 }
 
@@ -674,25 +673,4 @@ export class WorkflowEngine implements WorkflowHostApi, WorkflowReportSink {
     typeof persona === "string" ? { system: persona } : persona ? { ...persona } : {};
   if (base.name === undefined && name !== undefined) base.name = name;
   return base;
-}
-
-/**
- * 给 `ProviderStop` 补上触发停止的子代理的**出生阶段**：driver 只知道 actor ref，阶段只有引擎知道（`instancePhases`，
- * 与事件流上 `phaseName` 的同一张表）。没有 providerStop、没有 subagent、或该 ref 出生在
- * 任何 `phase()` 标记之前 → 原样返回。
- */
-function enrichProviderStopPhase(
-  error: WorkflowError,
-  instancePhases: ReadonlyMap<string, string>,
-): WorkflowError {
-  const details = error.providerStop;
-  if (details === undefined || details.subagent === undefined || details.phase !== undefined) {
-    return error;
-  }
-  const phase = instancePhases.get(details.subagent);
-  if (phase === undefined) return error;
-  return new WorkflowError(error.code, error.message, {
-    providerStop: { ...details, phase },
-    cause: (error as { cause?: unknown }).cause,
-  });
 }

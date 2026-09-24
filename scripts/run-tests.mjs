@@ -42,6 +42,10 @@ const TEST_PACKAGES = [
   // 桌面端唯一的那条链路：protocol mcpServers → runtime config（逐字段白名单重建）。
   // 漏字段的后果是「设置页显示已关闭，agent 侧工具面一个没少」，同样只能靠测试钉住。
   "apps/zcode-cli/packages/bootstrap",
+  // replay 结算次序闸（replay-order.ts）的端到端复现：**必须在这里登记**，否则那 3 条断言
+  // （首生次序、修复后 resume 完成、修复前以 InputHashMismatch 失败）不进 CI。这条链路的
+  // 回归现象是**静默的**——确定性脚本在 resume 后随机失败，只在真实使用里偶发。
+  "apps/zcode-cli/packages/dynamic-workflow",
   // office 三插件的校验器测试：**必须在这里登记**，否则 4 条有牙齿的断言
   // （峰值内存受预算约束、命名空间密集 O(N²)、三份逐字节一致、staging 护栏）不进 CI。
   // 审计实测：未登记前 `pnpm test` 只跑 20 个文件，完全覆盖不到这些断言。

@@ -48,6 +48,11 @@ export interface SchedulerHost {
   readonly validate: ValidateFn;
   /** 分配某站点的下一个执行序号（与 world-read/actor 共用一套计数器）。 */
   nextOrdinal(siteId: string): number;
+  /**
+   * 受 replay 结算次序约束地释放一次命中（见 replay-order.ts 的 ReplaySettleOrder）。
+   * 非 resume、或次序表里没有这个实例时立即执行 `release`。
+   */
+  holdForReplay(instance: InstanceRef, release: () => void): void;
   /** 事件既落 journal 又扇出（Boundary C）。 */
   record(event: RunEvent): void;
   isRunSettled(): boolean;

@@ -7,6 +7,7 @@
  */
 
 import { canonicalJson, inputHash } from "./hash.js";
+import { heldResolution } from "./replay-order.js";
 import { boundWorldReadInput } from "./world-read-input.js";
 import { hashMismatch } from "./scheduler.js";
 import type { EngineState } from "./engine-state.js";
@@ -47,19 +48,25 @@ export function readWorld(
       return Promise.reject(err);
     }
     // 完结命中短路（journal 化世界读取使 resume 免疫于 run 与 resume 之间的磁盘变化）。
+    // 释放点过 replay 次序闸：一条扇出分支里的 world 读取同样是别人的续体在等的东西，
+    // 按准入顺序放会把 join 之后的序号错位。
     if (recorded.status === "completed") {
-      state.record({ type: "node-settled", instance, outcome: "ok", cached: true });
-      return Promise.resolve(recorded.result);
+      return heldResolution(state.holdForReplay, instance, () => {
+        state.record({ type: "node-settled", instance, outcome: "ok", cached: true });
+        return recorded.result;
+      });
     }
     if (recorded.status === "failed") {
-      state.record({
-        type: "node-settled",
-        instance,
-        outcome: "failed",
-        cached: true,
-        error: recorded.error,
+      return heldResolution(state.holdForReplay, instance, () => {
+        state.record({
+          type: "node-settled",
+          instance,
+          outcome: "failed",
+          cached: true,
+          error: recorded.error,
+        });
+        throw WorkflowError.fromJSON(recorded.error!);
       });
-      return Promise.reject(WorkflowError.fromJSON(recorded.error!));
     }
     // status === "running"：崩溃于执行中，落到下面重新 live 执行。
   }
