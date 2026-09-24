@@ -303,6 +303,8 @@ function CommandCenterConversationTimestamp({
     <span
       className={cn(
         "max-w-12 shrink-0 truncate font-sans text-ui-sm tracking-normal text-foreground-subtlest",
+        // 触屏上没有键盘：快捷键徽标只是噪声，还占掉每行右端的宽度（task-22 审计 §2.8）。
+        "[@media(pointer:coarse)]:hidden",
         className,
       )}
     >

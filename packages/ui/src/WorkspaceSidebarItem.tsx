@@ -921,7 +921,13 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                       logs={reconnectRuntimeLogs}
                     />
                   ) : null} */}
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div
+                    // 手机（触屏）上把行内操作图标的命中区补到 44×44：icon-sm 实测 24×24，三个图标
+                    // 相邻中心距仅 20–22px，拇指（≈44px）必然误触（task-22 审计 §2.7：更多/查看文件/
+                    // 新建任务分别出现 44/43/40 次）。用 min-* 不用 size-*，避免文字行被撑变形。
+                    // 桌面鼠标路径（pointer: fine）逐项不变。
+                    className="flex shrink-0 items-center gap-1 [@media(pointer:coarse)]:[&_button]:min-h-11 [@media(pointer:coarse)]:[&_button]:min-w-11"
+                  >
                     {shouldMountWorkspaceRowActions ? (
                       <DropdownMenu
                         open={workspaceActionMenuOpen}
@@ -979,7 +985,9 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                     ) : null}
                     {/* 文件树依赖该 workspace 的 host 连接；未打开（注册表派生）的行先不提供，避免“点了没反应”。 */}
                     {shouldMountWorkspaceRowActions && showFileTreeAction && !isRegistryDerived ? (
-                      <span className="shrink-0">
+                      // 窄屏（手机）不再并排第三个图标：文件树入口在同一个 ⋯ 菜单里已有
+                      // （workspaceSidebar.showFileTree），保留它只会把工作区名挤到更窄。
+                      <span className="shrink-0 max-md:hidden">
                         {/* Project 文件树入口以前单独覆盖 hover:bg-surface-hover，
                             与 Pinned / Grouped 的 bg-hover 不一致；三种入口统一复用同一 action。 */}
                         <TaskRowActionButton

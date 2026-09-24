@@ -385,7 +385,14 @@ export function ChatPromptEditor({
           appSlashCommands={appSlashCommands}
           enableMentionPanel={enableMentionPanel}
         />
-        <div ref={toolbarRef} className="group/toolbar flex items-end gap-3">
+        <div
+          ref={toolbarRef}
+          // 触屏（手机）上把底部动作条的命中区补到 44×44：icon-md 实测只有 28×28，而拇指命中区
+          // 约 44px，相邻按钮中心距仅 32px 时必然误触（task-22 审计 §2.4：发送/停止 23–30px）。
+          // 用 min-* 而不是 size-*：带文字的档位（模型/思考档）在触屏平板上仍需按内容占宽。
+          // 桌面鼠标路径（pointer: fine）逐项不变。
+          className="group/toolbar flex items-end gap-3 [@media(pointer:coarse)]:[&_button]:min-h-11 [@media(pointer:coarse)]:[&_button]:min-w-11"
+        >
           <div className="flex min-w-0 flex-1 items-center" data-composer-leading-actions>
             <div className="flex shrink-0 items-center gap-1" data-composer-leading-content>
               {hasActionMenu ? (

@@ -1134,7 +1134,11 @@ function ElicitationDialogContent({
               !isDialogExpanded ? "max-md:hidden" : undefined,
             )}
           >
-            <p className="flex min-w-0 flex-1 items-center gap-2 text-ui-base text-foreground-subtle max-sm:basis-full">
+            <p
+              // 触屏上没有 Tab/回车：提示改成不可见，而不是让用户照做不到的操作去做
+              // （task-22 审计 §2.10；ConfirmDialog 早有 showKeyboardHints 开关，这里用媒体查询等价实现）。
+              className="flex min-w-0 flex-1 items-center gap-2 text-ui-base text-foreground-subtle max-sm:basis-full [@media(pointer:coarse)]:hidden"
+            >
               <Info className="size-4 shrink-0 text-foreground" />
               <span className="min-w-0">
                 {intl.formatMessage({ id: "chat.elicitation.keyboardHint" })}

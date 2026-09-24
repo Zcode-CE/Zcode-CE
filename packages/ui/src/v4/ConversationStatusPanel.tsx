@@ -1863,6 +1863,10 @@ function ConversationStatusPanelImpl({
     <div
       className={cn(
         "pointer-events-none absolute top-0 z-20 pt-4",
+        // 窄屏（手机）：状态条改为在流内占一行，不再浮在正文上——手机上正文列占满宽度，
+        // 浮层必然压住某一行文本（阶段 1 审计 §2.9：388×50 z-20 盖住首行）。
+        // 桌面保持 absolute：宽屏正文列居中，浮层落在右侧留白里，不会盖字。
+        "max-md:static max-md:w-full max-md:shrink-0 max-md:pt-2 max-md:pb-2",
         // 旧 ChatView 的 inline 面板直接钉在右侧，正文列通过独立 translate 让位。
         // v4 若继续用 inset-x-0 + justify-end，会让面板容器宽铺满并改变宽屏下的横向对齐。
         layoutMode === "inline"
