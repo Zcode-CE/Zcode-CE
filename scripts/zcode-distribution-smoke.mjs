@@ -67,6 +67,46 @@ try {
     /zcode-agent/u,
     "--version 第二行应标注内置 agent 版本",
   );
+  // 内置技能包（bundled-skills）必须在解包产物里，且必须在运行时会读的那个路径上。
+  //
+  // 为什么在这里判而不是在构建期判「文件复制成功」：本项目已两次踩过「中间阶段全绿、最终消费点失败」。
+  // /workflow 是内置命令、无条件展开，它的提示词要求模型先读 dynamic-workflows 技能；技能门又会拒绝
+  // 未加载技能时的调用 ⇒ 技能文件不在包里 = 门拒 + 读不到的死循环。构建期复制成功不能证明这一点，
+  // 因为真正决定「读到哪」的是运行时 resolveBundledSkillRoots 的候选目录遍历。
+  //
+  // 判据与运行时同源：候选基目录第一顺位是 dirname(argv[1]) = agent/（见 entrypoint-candidates.ts），
+  // 所以这里断言 agent/packages/bundled-skills/skills/<skill>/SKILL.md 存在。
+  // 必需清单从包内现读（不写死第二份），新增技能时不会留下过期断言。
+  const bundledSkillRoot = join(root, "agent", "packages", "bundled-skills");
+  const bundledSkillsDir = join(bundledSkillRoot, "skills");
+  // 用 stat 判存在而不是直接 readdir：目录缺席时要给可操作原因（哪个路径、为什么重要），
+  // 而不是一条裸 ENOENT —— 这条断言的价值就在于让后来者一眼看懂漏了什么。
+  const bundledSkillsDirStat = await stat(bundledSkillsDir).catch(() => null);
+  assert.ok(
+    bundledSkillsDirStat?.isDirectory(),
+    `内置技能包不在解包产物里：${bundledSkillsDir}` +
+      "（build-zcode 的 stageBundledSkillPack 漏了？运行时 resolveBundledSkillRoots 的候选目录第一顺位就是" +
+      " agent/，这里没有它 ⇒ /workflow 要求模型读的技能不存在，技能门会把调用拒死）",
+  );
+  const bundledSkillNames = await readdir(bundledSkillsDir);
+  assert.ok(
+    bundledSkillNames.length > 0,
+    `内置技能包没有任何技能目录：${bundledSkillsDir}（stage 了空目录？）`,
+  );
+  for (const skillName of bundledSkillNames) {
+    const skillFile = join(bundledSkillRoot, "skills", skillName, "SKILL.md");
+    const skillStat = await stat(skillFile).catch(() => null);
+    assert.ok(
+      skillStat?.isFile(),
+      `内置技能正文不在解包产物里：${skillFile}` +
+        "（build-zcode 的 stageBundledSkillPack 漏了？运行时找不到它，/workflow 会被技能门拒死）",
+    );
+    assert.ok((await stat(skillFile)).size > 0, `内置技能正文为空：${skillFile}`);
+  }
+  console.log(
+    `bundled skills: ${bundledSkillNames.length} pack(s) = ${bundledSkillNames.join(", ")}`,
+  );
+
   const require = createRequire(join(root, "package.json"));
   const pty = require("node-pty");
   const runtimeCheck = join(root, "agent/check-tui.mjs");

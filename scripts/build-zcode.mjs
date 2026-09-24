@@ -8,6 +8,7 @@ import { resolve } from "node:path";
 import {
   copyRuntimeNodeModules,
   patchNodePtyPrebuilds,
+  stageBundledSkillPack,
   stageTuiRuntime,
 } from "./zcode-distribution/assets.mjs";
 import { installScriptSource } from "./zcode-distribution/installer.mjs";
@@ -193,6 +194,10 @@ async function stageZCodePackage({ packageRoot, version }) {
   await chmod(resolve(packageRoot, "agent", "zcode.cjs"), 0o755);
 
   await stageTuiRuntime(packageRoot);
+  // 内置技能包落点是 agent/packages/bundled-skills：与 agent 入口 agent/zcode.cjs 同级，
+  // 正是运行时 resolveBundledSkillRoots 候选基目录的第一顺位。
+  // 漏了它，/workflow 会要求模型读一个包里不存在的技能（详见 assets.mjs 的模块注释）。
+  await stageBundledSkillPack(packageRoot);
   await copyRuntimeNodeModules(packageRoot);
   await patchNodePtyPrebuilds(packageRoot);
 

@@ -173,6 +173,105 @@ export async function copyRuntimeNodeModules(packageRoot) {
   });
 }
 
+// 内置技能包（bundled-skills）：不是插件（无 .zcode-plugin/plugin.json），但运行时
+// （bootstrap/src/app/bundled-skills.ts 的 resolveBundledSkillRoots）会沿官方插件同款候选目录，
+// 在 agent 入口旁找 packages/bundled-skills 并原地读取。
+//
+// 为什么落点是 agent/packages/bundled-skills：分发包的 agent 入口是 agent/zcode.cjs，
+// 而候选基目录的第一顺位是 dirname(process.argv[1])，也就是 agent/。
+//
+// 为什么必须 stage：/workflow 是内置命令、无条件展开（bootstrap 的 slash-commands.ts 与
+// builtin-prompt-command.ts），它的提示词要求模型先读 dynamic-workflows 技能；技能文件不在包里时
+// 模型读不到，而技能门又会拒绝调用 ⇒ 用户侧表现为「门拒 + 读不到」的死循环，是真功能倒退。
+//
+// 范式与另外两条链一致（桌面 packages/desktop/scripts/prepare-agent-node-bundle.mjs 的
+// stageBundledSkills、远端 scripts/prepare-prebuilds.mjs 的 stageRemoteBundledSkills）：
+// 顶层白名单拷贝 + 必需资产 fail-closed 校验。
+export const BUNDLED_SKILL_PACK_TOP_LEVEL_PATHS = ["README.md", "skills"];
+export const BUNDLED_SKILL_PACK_REQUIRED_PATHS = [
+  "skills/dynamic-workflows/SKILL.md",
+  "skills/dynamic-workflows/patterns.md",
+  "skills/dynamic-workflows/examples.md",
+];
+
+/**
+ * 权威清单所在的源文件与声明前缀。
+ *
+ * 运行期闸门是 bootstrap 的 BUNDLED_SKILL_REQUIRED_PATHS（bundled-skills.ts）：它决定
+ * 「资产齐不齐、要不要整包拒收」。上面那份是本模块拷贝的一份，而拷贝就会漂移 —— 本项目已多次
+ * 因平行清单各自手写而漏 stage（见 prepare-agent-node-bundle.mjs 里那份常量的注释）。
+ * 所以这里在构建期对账一次：不一致就中止构建，而不是等用户发现技能没了。
+ */
+const BUNDLED_SKILL_AUTHORITATIVE_SOURCE =
+  "apps/zcode-cli/packages/bootstrap/src/app/bundled-skills.ts";
+const BUNDLED_SKILL_AUTHORITATIVE_DECLARATION = "export const BUNDLED_SKILL_REQUIRED_PATHS = [";
+
+/**
+ * 把内置技能包 stage 进分发包的 agent/packages/bundled-skills。
+ *
+ * 缺任一必需资产即抛错（fail-closed）：分发包不是「少一个 reference 文件」而是「技能整包不可用」，
+ * 让问题在构建期暴露，比等用户点 /workflow 时才发现便宜得多。
+ */
+export async function stageBundledSkillPack(packageRoot) {
+  await assertBundledSkillRequiredPathsInSync();
+  const sourceRoot = resolve(root, "apps/zcode-cli/packages/bundled-skills");
+  const targetRoot = resolve(packageRoot, "agent", "packages", "bundled-skills");
+  await mkdir(targetRoot, { recursive: true });
+  for (const entryName of BUNDLED_SKILL_PACK_TOP_LEVEL_PATHS) {
+    const sourcePath = resolve(sourceRoot, entryName);
+    // README.md 是可选的（运行期只校验 skills/ 下的必需资产），缺席时跳过而不是报错。
+    if (!(await pathExists(sourcePath))) continue;
+    await cp(sourcePath, resolve(targetRoot, entryName), { recursive: true });
+  }
+  for (const relativePath of BUNDLED_SKILL_PACK_REQUIRED_PATHS) {
+    const stagedAssetPath = resolve(targetRoot, ...relativePath.split("/"));
+    if (!(await pathExists(stagedAssetPath))) {
+      throw new Error(`Missing staged bundled skill asset: ${stagedAssetPath}`);
+    }
+  }
+  console.log("[zcode] staged bundled skill pack (agent/packages/bundled-skills)");
+}
+
+/**
+ * 把本模块的必需资产清单与 bootstrap 的权威清单对账。
+ *
+ * 用文本解析而不是 import：bootstrap 是 TypeScript 源码，构建脚本在 tsx 之外运行；
+ * 而声明形态变化时这里会显式报错（fail-closed），不会静默退化成「校验一个空清单」。
+ */
+async function assertBundledSkillRequiredPathsInSync() {
+  const sourcePath = resolve(root, BUNDLED_SKILL_AUTHORITATIVE_SOURCE);
+  const source = await readFile(sourcePath, "utf8");
+  const declarationIndex = source.indexOf(BUNDLED_SKILL_AUTHORITATIVE_DECLARATION);
+  if (declarationIndex < 0) {
+    throw new Error(
+      `Unable to locate ${BUNDLED_SKILL_AUTHORITATIVE_DECLARATION} in ${sourcePath}; ` +
+        "内置技能包的权威清单改名/改形后必须同步更新本对账逻辑（它防的是平行清单漂移）",
+    );
+  }
+  const bodyStart = declarationIndex + BUNDLED_SKILL_AUTHORITATIVE_DECLARATION.length;
+  const bodyEnd = source.indexOf("] as const", bodyStart);
+  if (bodyEnd < 0) {
+    throw new Error(`Unterminated BUNDLED_SKILL_REQUIRED_PATHS declaration in ${sourcePath}`);
+  }
+  const authoritative = [...source.slice(bodyStart, bodyEnd).matchAll(/"([^"]+)"/g)].map(
+    (match) => match[1],
+  );
+  if (authoritative.length === 0) {
+    throw new Error(`Parsed no required paths from ${sourcePath}`);
+  }
+  const declared = [...BUNDLED_SKILL_PACK_REQUIRED_PATHS];
+  const inSync =
+    authoritative.length === declared.length &&
+    authoritative.every((relativePath) => declared.includes(relativePath));
+  if (!inSync) {
+    throw new Error(
+      `Bundled skill required paths drifted from ${BUNDLED_SKILL_AUTHORITATIVE_SOURCE}:\n` +
+        `  authoritative: ${authoritative.join(", ")}\n` +
+        `  this module:  ${declared.join(", ")}`,
+    );
+  }
+}
+
 export async function patchNodePtyPrebuilds(packageRoot) {
   const requireFromServer = createRequire(resolve(root, "packages", "server", "package.json"));
   const nodePtyPrebuildRoot = resolve(packageRoot, "node_modules", "node-pty", "prebuilds");
