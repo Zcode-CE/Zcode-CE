@@ -17,8 +17,15 @@ export { resolveProjectMemoryRoot } from "./memory/project-root.js";
 // Tool components
 export { ToolScheduler, defaultToolScheduler, READ_ONLY_TOOLS } from "./tool/scheduler.js";
 export type { ToolSchedule, ToolScheduleItem, ToolDependency } from "./tool/scheduler.js";
-export { createToolRegistry, ToolRegistry, ToolRegistryImpl } from "./tool/registry.js";
-export { createToolExecutor, ToolExecutor, ToolExecutorImpl } from "./tool/executor.js";
+// ToolRegistry / ToolExecutor 是 interface（tool/registry.ts:12、tool/executor/types.ts:145），
+// 只以类型身份对外。写成值子句会让 tsc 在 dist 里删掉它们、而 tsx/esbuild 不会 ——
+// 于是「按源码解析 @zcode/*」的测试进程（scripts/run-tests.mjs 装的 resolver）在 import
+// @zcode/core 时炸在 "does not provide an export named 'ToolExecutor'"，而构建产物与 CI 的
+// tsc 路径都看不出问题。声明成 type 与 dist 的实际形状一致（dist/index.js 里本就没有这两个名字）。
+export { createToolRegistry, ToolRegistryImpl } from "./tool/registry.js";
+export type { ToolRegistry } from "./tool/registry.js";
+export { createToolExecutor, ToolExecutorImpl } from "./tool/executor.js";
+export type { ToolExecutor } from "./tool/executor.js";
 export { builtInTools, registerBuiltInTools } from "./tool/handlers/index.js";
 // dwf driver 的 submit profile 运行时守卫要把 typed 声明换回通用声明。
 export {
