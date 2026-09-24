@@ -11,7 +11,7 @@ import { resolveNativeSearchReleasePlan } from "../../scripts/native-search-tool
 import { getBuildMetadata } from "./scripts/build-metadata.mjs";
 import { collectRuntimeModuleClosureEntries } from "./scripts/runtime-dependency-closure.mjs";
 import {
-  resolvePackagedNodePtyPrebuildPath,
+  assertPackagedNodePtyPayloadVerified,
   restoreTargetNodePtyPrebuild,
 } from "./scripts/node-pty-package-assets.mjs";
 import { cleanupPackagedSourcemaps } from "./scripts/packaged-sourcemap-cleanup.mjs";
@@ -431,13 +431,17 @@ function assertPackagedNativeResourcePolicy(context) {
   }
 }
 
+// 断言产物里 node-pty 的**载荷完整性**（不再只是"存在性"）：
+// ① 不得带 build/Release|build/Debug 下的 pty.node —— node-pty 的加载顺序是
+//    [build/Release, build/Debug, prebuilds/<platform>-<arch>]（node-pty/lib/utils.js:19），
+//    build/Release 优先 ⇒ 带上它就会静默加载未经我们验证的原生模块；
+// ② prebuilds/<platform>/pty.node 的 md5 必须等于 @lydell/node-pty-<platform> 平台包里那一份。
+// 具体断言与原因注释见 scripts/node-pty-package-assets.mjs（含单测 packages/desktop/test/nodePtyPackagingGuard.test.ts）。
 function assertPackagedNodePtyPrebuild(context) {
-  const targetBinaryPath = resolvePackagedNodePtyPrebuildPath({
+  assertPackagedNodePtyPayloadVerified({
     resourcesDir: resolvePackagedResourcesDir(context),
     platformKey: targetPlatform.key,
   });
-  if (!existsSync(targetBinaryPath))
-    throw new Error(`node-pty 预编译产物缺失: ${targetBinaryPath}`);
 }
 
 /**
