@@ -22,10 +22,10 @@
 
 ## 2. 默认行为
 
-| 场景                                      | 默认指向                                      | 结果                                                                             |
-| ----------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------- |
-| **本项目发布的安装包**（GitHub Releases） | **社区 CDN** `https://cdn.eidolonmachine.xyz` | ✅ **开箱可用**（前提：该版本已发布到该 CDN）                                    |
-| 你从源码自己构建、且没设任何旋钮          | 官方 CDN（`https://cdn-zcode.z.ai`）          | ❌ 官方 CDN 只有官方版本号，CE 版本取不到 ⇒ 连接失败（需按 §3 指向自己的发布点） |
+| 场景                                      | 默认指向                                      | 结果                                                                                                                                                                                           |
+| ----------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **本项目发布的安装包**（GitHub Releases） | **社区 CDN** `https://cdn.eidolonmachine.xyz` | ✅ **开箱可用**（前提：该版本已发布到该 CDN；该默认值由发布流水线的仓库变量 `ZCODE_CDN_BASE_URL` 提供，且流水线**要求**它已配置，否则发布 job 直接失败 —— 见 `.github/workflows/release.yml`） |
+| 你从源码自己构建、且没设任何旋钮          | 官方 CDN（`https://cdn-zcode.z.ai`）          | ❌ 官方 CDN 只有官方版本号，CE 版本取不到 ⇒ 连接失败（需按 §3 指向自己的发布点）                                                                                                               |
 
 社区 CDN 是本项目自建的对象存储 + 自定义域名：**不中继请求**（客户端直连该域名，我们不转发你的流量），
 **不采集遥测**；资产请求只带 HTTP 客户端默认头，不带设备标识、账号或 Cookie。
@@ -41,6 +41,11 @@
 | **环境变量 `ZCODE_REMOTE_ASSET_CDN_BASE_URL`**   | 本次启动（最高）   | `ZCODE_REMOTE_ASSET_CDN_BASE_URL=https://your-host/assets pnpm dev:desktop`                |
 | **设置页「远程资产 → 自定义远程资产 CDN 地址」** | 当前安装           | 图形界面填写**发布根**；适合不想动环境变量的用户。**只在桌面端生效**（见下）               |
 | **构建期 `ZCODE_CDN_BASE_URL`**                  | 你构建出来的安装包 | `ZCODE_CDN_BASE_URL=https://your-host/assets pnpm dev:desktop`；打包发行版时设它作为默认值 |
+
+> 补充（文档此前没写全，不是行为变化）：`ZCODE_CDN_BASE_URL` **也能作为运行期环境变量**使用，
+> 只是它的优先级在 `ZCODE_REMOTE_ASSET_CDN_BASE_URL` **之下**、在内置默认值**之上**
+> （`packages/desktop/src/main/remoteCdn.ts:47` 读 `process.env.ZCODE_CDN_BASE_URL`，随后才回落到内置官方默认）。
+> 若只想临时覆盖，用第一行的 `ZCODE_REMOTE_ASSET_CDN_BASE_URL`，别用这个。
 
 > 顺序是**实现级事实**，不要凭直觉换：`desktopRuntimeEnv.ts` 把环境变量的值放进
 > `remoteCdn.ts` 的 `override` 槽位，而那是**最先**判定的分支 ⇒ 环境变量永远压过设置页。
@@ -126,7 +131,9 @@ pnpm exec tsx scripts/verify-remote-assets.mjs --root ./publish-root
 2. 新建任务 → 远程连接对话框 → 选 SSH → 填主机/端口/用户名 → 选认证方式（密码或私钥；
    私钥可从 `~/.ssh/config` 别名自动带出）→ 选「资源下载方式」。
 3. 连接日志期望看到：`deploy complete` → `handshake done, server version: …`。
-4. 远端 `~/.zcode/server/` 下会出现 `node`、`zcode-server.cjs`、`agents/`、`tools/`（约 155 MB）。
+4. 远端 `~/.zcode/server/` 下会出现 `node`、`zcode-server.cjs`、`agents/`、`tools/`（还有 `build/`）。
+   体积随版本/平台变化：**2026-09-24 在 linux-x64 上实测** `~/.zcode/server/` ≈ **158.0 MB**、含 `~/.zcode/v2/` 共 ≈ **158.5 MB**
+   （本行是快照值，不是承诺值；换版本或换平台请以实际为准）。
 
 两种「资源下载方式」（**当前只有 SSH 目标能选**：Docker / WSL 恒用默认的「本地下载后上传」）：
 
@@ -154,7 +161,7 @@ pnpm exec tsx scripts/verify-remote-assets.mjs --root ./publish-root
 
 - **不中继**：客户端直连你配置的发布根；本项目没有中间服务器转发你的连接或数据。
 - **不带标识**：资产请求只有 HTTP 客户端默认头（`host / connection / accept / accept-language / sec-fetch-mode / user-agent / accept-encoding`），
-  不含 `X-Device-Mid`、Cookie、Authorization（实测：一次完整连接共 8 个请求）。
+  不含 `X-Device-Mid`、Cookie、Authorization（**2026-09-24 实测**：一次完整连接共 8 个请求、头名称恰好上述 7 个）。
 - **版本号可见**：请求路径含版本号，托管方理论上能从访问日志看出"某 IP 在用哪个 CE 版本"；自托管时这一暴露由你掌握。
 - **SSH 主机密钥未校验**：当前实现不读 `known_hosts`、不校验主机指纹。**连接前请自行确认目标主机身份**
   （例如先在终端用 `ssh` 连一次并核对指纹，或用固定 IP / 内网可信链路）。
