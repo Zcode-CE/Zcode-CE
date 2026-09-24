@@ -7,7 +7,9 @@
  * | --- | --- |
  * | 可领取列表 | host 侧 `getManualClaimPlanPreviews()`（本 hook 只做一次性拉取 + 本地缓存） |
  * | 验证码配置 | host 侧 `getManualClaimCaptchaConfig()`（服务层 60s 快照） |
- * | 领取中 / 领取结果 | **本 hook**（`claiming` / `outcome`），刷新后即丢弃 |
+ * | 领取中 / 领取结果 | 本 hook（`claiming` / `outcome`），刷新后即丢弃 |
+ * | 领取成功票券的数据快照 | 本 hook（`claimedPlan`）。在 claim 发出的那一刻按 planId 从当时的
+ *   `plans` 里取，成功后保留到 `resetOutcome()` 或下一次 claim。 |
  * | 读取是否已出过结果 | 本 hook（`loaded`）。`loading` 只表示「本次请求在飞」，
  *   而 `INITIAL_STATE.loading` 的初值是 false ⇒ 单看 loading 分不出首屏与查完为空，
  *   失败态因此需要 `loaded && error` 这一对判据（见组件里的三态分界）。 |
@@ -26,12 +28,20 @@
  * 4. 未登录时点击领取 → 服务层返回 `login_required` → 卡片展示对应提示；
  * 5. 活动需要验证码 → 点击领取后打开验证码对话框 → 求解成功 → 带 verifyParam 再 claim；
  * 6. 领取成功 → 卡片展示生效窗口并刷新列表。
+ *
+ * ## 为什么票券快照由本 hook 持有，而且必须在 refresh() 之前取
+ *
+ * 成功分支是「先落 outcome，再 refresh()」，而**活动可能在领取成功后从列表里消失**
+ * （服务端事实）。若票券从刷新后的 `plans` 取数据，领取成功时它就没有任何数据可画。
+ * 快照与 outcome 描述的是同一件事（这一次领取），因此放同一个所有者、同一处清空，
+ * 不放到组件局部状态里造出第二份「领取结果」。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  ManualClaimCaptchaConfig,
-  ManualClaimPlanClaimOutcome,
-  ManualClaimPlanPreview,
+import {
+  pickManualClaimPlan,
+  type ManualClaimCaptchaConfig,
+  type ManualClaimPlanClaimOutcome,
+  type ManualClaimPlanPreview,
 } from "@zcode/shared";
 import { useOptionalServices } from "@/hooks/useServices.js";
 import { logger } from "@/logger.js";
@@ -39,6 +49,13 @@ import { logger } from "@/logger.js";
 interface ManualClaimPlanState {
   plans: ManualClaimPlanPreview[];
   captchaConfig: ManualClaimCaptchaConfig | null;
+  /**
+   * 领取成功票券的数据来源：claim 发出那一刻的套餐快照。
+   *
+   * 为什么不从 `plans` 现取：成功后紧接着 refresh()，而活动可能已从列表移除，
+   * 那时 `plans` 为空、票券就没数据了（见文件头注释）。
+   */
+  claimedPlan: ManualClaimPlanPreview | null;
   /**
    * 是否已经拿到过一次结果（成功或失败）。
    *
@@ -58,6 +75,7 @@ interface ManualClaimPlanState {
 const INITIAL_STATE: ManualClaimPlanState = {
   plans: [],
   captchaConfig: null,
+  claimedPlan: null,
   loaded: false,
   loading: false,
   claiming: false,
@@ -70,6 +88,8 @@ export function useManualClaimPlan(options?: { enabled?: boolean }) {
   const service = services?.codingPlanSubscriptionService;
   const enabled = options?.enabled !== false;
   const [state, setState] = useState<ManualClaimPlanState>(INITIAL_STATE);
+  // claim 里要在发出请求前取票券快照，取的就是本次渲染的这份列表。
+  const plans = state.plans;
   // 卸载后不再 setState：claim 是长动作，用户可能在等待期间离开设置页。
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -131,15 +151,32 @@ export function useManualClaimPlan(options?: { enabled?: boolean }) {
       if (!service) {
         return;
       }
-      setState((current) => ({ ...current, claiming: true, outcome: null }));
+      // 快照必须在 claim 发出前取：成功后紧接着的 refresh() 可能让活动从列表里消失。
+      // 这里读的是本次渲染的 plans（它在下面 useCallback 的依赖里）—— 就是用户点下
+      // 「领取」时看到的那份。按 planId 取而不是取「当前优先级最高的那个」：验证码路径下
+      // 用户可能先开对话框，期间列表若被刷新，按 planId 仍能命中原目标；
+      // 取不到时票券不画（退回成功文案）。
+      const claimedPlan = pickManualClaimPlan(plans, request.planId);
+      setState((current) => ({
+        ...current,
+        claiming: true,
+        outcome: null,
+        claimedPlan: null,
+      }));
       try {
         const outcome = await service.claimManualPlan(request);
         if (!mountedRef.current) {
           return;
         }
-        setState((current) => ({ ...current, claiming: false, outcome }));
+        setState((current) => ({
+          ...current,
+          claiming: false,
+          outcome,
+          claimedPlan: outcome.ok ? claimedPlan : null,
+        }));
         if (outcome.ok) {
           // 领取成功后活动可能已从列表移除，重拉一次让卡片反映服务端事实。
+          // 票券不读刷新后的 plans，它读上面那份快照。
           await refresh();
         }
       } catch (error) {
@@ -154,11 +191,12 @@ export function useManualClaimPlan(options?: { enabled?: boolean }) {
         setState((current) => ({ ...current, claiming: false, error: message }));
       }
     },
-    [refresh, service],
+    [plans, refresh, service],
   );
 
+  /** 清掉这一次领取的全部痕迹：结果与票券快照。两者同源，必须同处清空。 */
   const resetOutcome = useCallback(() => {
-    setState((current) => ({ ...current, outcome: null }));
+    setState((current) => ({ ...current, outcome: null, claimedPlan: null }));
   }, []);
 
   return { ...state, refresh, claim, resetOutcome };

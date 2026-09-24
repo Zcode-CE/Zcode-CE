@@ -11,11 +11,13 @@
  * - 领取必须由**用户点击**触发，不做任何后台自动领取或轮询。
  * - 活动要求验证码时，点击「领取」先打开验证码对话框，求解成功后再带 `verifyParam` 提交。
  * - 领取失败按 `failureKind` 给可读文案，不透传服务端原文。
+ * - 领取成功后换成自画票券（`ManualClaimTicketCard`），信息与官方票券主体等价；
+ *   票券数据来自 claim 前的套餐快照，不读刷新后的列表。
  *
  * ## 状态所有者
  *
- * 列表/验证码配置/领取结果都在 `useManualClaimPlan`（见其注释）；本组件只负责渲染与
- * 「是否先开验证码对话框」的局部判断。
+ * 列表/验证码配置/领取结果/票券快照都在 `useManualClaimPlan`（见其注释）；本组件只负责
+ * 渲染、四态分界，以及「是否先开验证码对话框」的局部判断。
  *
  * ## 验收场景
  *
@@ -24,7 +26,8 @@
  * 3. 有活动 → 展示名称、描述、权益条目与「领取」按钮；
  * 4. 活动不需要验证码（`captchaConfig.enabled === false`）→ 点击直接 claim；
  * 5. 活动需要验证码 → 先开对话框，求解成功后再 claim，求解失败则不开 claim；
- * 6. 领取成功 → 展示生效窗口；失败 → 展示对应失败文案。
+ * 6. 领取成功 → 展示自画票券（活动此时可能已从列表消失，票券仍必须有数据）；
+ *    失败 → 展示对应失败文案。
  */
 import { useState } from "react";
 import {
@@ -38,19 +41,63 @@ import { GiftIcon, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useManualClaimPlan } from "./useManualClaimPlan.js";
+import { ManualClaimTicketCard } from "./ManualClaimTicketCard.js";
 import { ManualClaimCaptchaDialog } from "@/settings/ManualClaimCaptchaDialog.js";
 
 export function ManualClaimPlanCard({ providerId }: { providerId: string }) {
   const { intl, locale } = useZCodeIntl();
-  const { plans, captchaConfig, loaded, claiming, error, outcome, claim, refresh } =
-    useManualClaimPlan();
+  const {
+    plans,
+    captchaConfig,
+    claimedPlan,
+    loaded,
+    claiming,
+    error,
+    outcome,
+    claim,
+    refresh,
+    resetOutcome,
+  } = useManualClaimPlan();
   const [captchaTarget, setCaptchaTarget] = useState<ManualClaimPlanPreview | null>(null);
   // 宿主没有 <webview> 时（手机 Web / 普通 Web）无法完成验证码求解。
   // 这里提前拦住，避免把用户送进一个必然失败的对话框。
   const [captchaUnsupported, setCaptchaUnsupported] = useState(false);
 
   // 未登录/无 provider 时服务层会返回稳定失败码，不需要在这里额外判断账号状态。
-  const view = resolveManualClaimPlanCardView({ plans, loaded, error });
+  const claimedOutcome = outcome?.ok === true ? outcome : null;
+  const view = resolveManualClaimPlanCardView({
+    plans,
+    loaded,
+    error,
+    claimed: claimedOutcome !== null,
+  });
+  // 领取已成功优先于其余三态：此刻哪怕列表刷新失败、活动已下架，票券也得照常显示 ——
+  // 把一张成功卡换成「加载失败 + 重试」是错误反馈（已经没有可重试的领取动作了）。
+  if (view === "ticket" && claimedOutcome) {
+    return (
+      <div className="space-y-2" data-testid="manual-claim-plan-card">
+        {claimedPlan ? (
+          <ManualClaimTicketCard
+            plan={claimedPlan}
+            endsAt={claimedOutcome.endsAt}
+            onDismiss={resetOutcome}
+          />
+        ) : (
+          // 快照取不到（领取前后活动已下架）：只给成功提示与关闭，
+          // 不画半张没有数据的票券，也不退回失败态。
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <ManualClaimOutcomeNotice outcome={outcome} />
+            <div className="mt-3 flex justify-end">
+              <Button type="button" size="lg" variant="outline" onClick={resetOutcome}>
+                {intl.formatMessage({ id: "settings.modelProvider.manualClaim.ticket.dismiss" })}
+              </Button>
+            </div>
+          </div>
+        )}
+        <span className="hidden" data-manual-claim-provider={providerId} />
+      </div>
+    );
+  }
   if (view === "load-failed") {
     return (
       <div className="space-y-2" data-testid="manual-claim-plan-card">
@@ -208,9 +255,9 @@ export function ManualClaimOutcomeNotice({
 }
 
 /**
- * 卡片该渲染成哪一态。抽成纯函数是为了让 CI 能直接钉住三态的分界 ——
- * 这三种状态在界面上分别是「占位失败态 + 重试」「完全不出现」「套餐卡片」，
- * 判错的后果是静默（用户什么都看不到），只能靠测试守住。
+ * 卡片该渲染成哪一态。抽成纯函数是为了让 CI 能直接钉住四态的分界 ——
+ * 这四种状态在界面上分别是「占位失败态 + 重试」「完全不出现」「套餐卡片」「成功票券」，
+ * 判错的后果是静默或错误反馈（用户什么都看不到，或把成功说成失败），只能靠测试守住。
  *
  * 判据为什么用 loaded 而不是 loading：INITIAL_STATE.loading 的初值是 false，
  * 首帧渲染时 `loading && plans.length === 0` 就不成立 —— 单看 loading 与 plans
@@ -224,7 +271,18 @@ export function resolveManualClaimPlanCardView(state: {
   plans: ManualClaimPlanPreview[];
   loaded: boolean;
   error: string | null;
-}): "hidden" | "load-failed" | "plan" {
+  /**
+   * 这一次领取是否已经成功。
+   *
+   * 为什么它必须排在最前：成功后 hook 会 refresh()，而活动可能已从列表消失 ——
+   * 那时 plans 为空、刷新甚至可能失败。领取成功是既成事实，界面不能因为
+   * 「列表没了」而退回不占位或失败态（那是把成功说成失败）。
+   */
+  claimed: boolean;
+}): "hidden" | "load-failed" | "plan" | "ticket" {
+  if (state.claimed) {
+    return "ticket";
+  }
   if (state.plans.length === 0) {
     return state.loaded && state.error ? "load-failed" : "hidden";
   }

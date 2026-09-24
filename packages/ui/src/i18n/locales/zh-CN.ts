@@ -6469,6 +6469,13 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.manualClaim.claim": "领取",
   "settings.modelProvider.manualClaim.loadFailed": "暂时无法获取可领取的套餐，请稍后重试。",
   "settings.modelProvider.manualClaim.success": "领取成功，权益已生效。",
+  // 成功票券（自画）的四条文案。有效期前缀与重播标签抄官方横幅渲染物的口径
+  // （qnn 里硬编码的「有效期至」/「Valid until」与「重播」/「Replay」），
+  // 主按钮与弹窗标题按官方 success_popup 的语义自写（那两项在服务端，我们拿不到）。
+  "settings.modelProvider.manualClaim.ticket.validUntil": "有效期至",
+  "settings.modelProvider.manualClaim.ticket.replay": "重播",
+  "settings.modelProvider.manualClaim.ticket.dismiss": "知道了",
+  "settings.modelProvider.manualClaim.ticket.effectiveAt": "{name} 将于 {time} 生效",
   "settings.modelProvider.manualClaim.captcha.title": "完成安全验证",
   "settings.modelProvider.manualClaim.captcha.description":
     "领取需要完成一次安全验证，验证在你的浏览器环境中进行，不会离开本机。",

@@ -42,32 +42,61 @@ const PLAN: ManualClaimPlanPreview = {
 
 test("判据 1：读取失败（loaded 且有 error、列表为空）判为失败态，而不是不显示", () => {
   assert.equal(
-    resolveManualClaimPlanCardView({ plans: [], loaded: true, error: "network down" }),
+    resolveManualClaimPlanCardView({
+      plans: [],
+      loaded: true,
+      error: "network down",
+      claimed: false,
+    }),
     "load-failed",
   );
 });
 
 test("判据 3 的语义面：查完为空且无 error 判为不渲染（不新增空态）", () => {
-  assert.equal(resolveManualClaimPlanCardView({ plans: [], loaded: true, error: null }), "hidden");
+  assert.equal(
+    resolveManualClaimPlanCardView({ plans: [], loaded: true, error: null, claimed: false }),
+    "hidden",
+  );
 });
 
 test("首屏（还没查完）判为不渲染，不占位", () => {
-  assert.equal(resolveManualClaimPlanCardView({ plans: [], loaded: false, error: null }), "hidden");
+  assert.equal(
+    resolveManualClaimPlanCardView({ plans: [], loaded: false, error: null, claimed: false }),
+    "hidden",
+  );
   // 首帧 INITIAL_STATE.loading 是 false ⇒ 这一态只能靠 loaded 认出来。
   assert.equal(
-    resolveManualClaimPlanCardView({ plans: [], loaded: false, error: "stale" }),
+    resolveManualClaimPlanCardView({ plans: [], loaded: false, error: "stale", claimed: false }),
     "hidden",
   );
 });
 
 test("判据 4：有活动判为套餐卡片，不受 loaded 影响", () => {
   assert.equal(
-    resolveManualClaimPlanCardView({ plans: [PLAN], loaded: true, error: null }),
+    resolveManualClaimPlanCardView({ plans: [PLAN], loaded: true, error: null, claimed: false }),
     "plan",
   );
   assert.equal(
-    resolveManualClaimPlanCardView({ plans: [PLAN], loaded: true, error: "claim failed" }),
+    resolveManualClaimPlanCardView({
+      plans: [PLAN],
+      loaded: true,
+      error: "claim failed",
+      claimed: false,
+    }),
     "plan",
+  );
+});
+
+test("判据 6（task-110）：领取成功后即使列表为空也必须渲染票券，不退回 hidden 或失败态", () => {
+  // 成功后 hook 会 refresh()，而活动可能已从列表消失 —— 这是服务端事实，
+  // 不是「我们没查到」。退回 hidden 就等于把已经领到的权益从界面上抹掉。
+  assert.equal(
+    resolveManualClaimPlanCardView({ plans: [], loaded: true, error: null, claimed: true }),
+    "ticket",
+  );
+  assert.equal(
+    resolveManualClaimPlanCardView({ plans: [], loaded: true, error: "x", claimed: true }),
+    "ticket",
   );
 });
 

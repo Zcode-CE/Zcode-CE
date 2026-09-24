@@ -6809,6 +6809,10 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.manualClaim.loadFailed":
     "Could not load claimable plans right now. Try again later.",
   "settings.modelProvider.manualClaim.success": "Claimed. The entitlement is now active.",
+  "settings.modelProvider.manualClaim.ticket.validUntil": "Valid until",
+  "settings.modelProvider.manualClaim.ticket.replay": "Replay",
+  "settings.modelProvider.manualClaim.ticket.dismiss": "Got it",
+  "settings.modelProvider.manualClaim.ticket.effectiveAt": "{name} becomes available on {time}",
   "settings.modelProvider.manualClaim.captcha.title": "Complete security check",
   "settings.modelProvider.manualClaim.captcha.description":
     "Claiming requires a one-time security check. It runs in a sandboxed browser view and stays on this machine.",
