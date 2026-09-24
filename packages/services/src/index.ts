@@ -315,6 +315,14 @@ export { IClientConfigService } from "./client-config/clientConfig.js";
 
 // Bots service — IBotsService is both a type (interface) and value (descriptor).
 export { IBotsService } from "./bots/bots.js";
+// 入站请求体上限的**耦合依据**（packages/server 的 /bot/** 上限由这两个常量推导）：
+// 合法最大 payload = ceil(N × S / 3) × 4（base64 膨胀）+ JSON 外壳。
+// 导出是为了让 packages/server 的 botIngress.test.ts 能写**耦合断言**而不是把 4/5MiB
+// 抄一遍（抄一遍的话测试自己也会漂移）。见 BOT-INGRESS-SPEC §7.1.1。
+export {
+  BOT_MAX_ATTACHMENTS_PER_MESSAGE,
+  BOT_MAX_ATTACHMENT_SIZE_BYTES,
+} from "./bots/botsService.js";
 export type {
   BotBindCodeResult,
   BotCreateBindCodeParams,

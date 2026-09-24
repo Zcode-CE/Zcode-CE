@@ -40,6 +40,7 @@ import {
 } from "@zcode/shared";
 import { connectRemote, createRemoteBackend, type RemoteConnection } from "./remote/index.js";
 import { createHostCapabilityStore } from "./hostCapability.js";
+import { createBotIngressGate } from "./botIngress.js";
 import {
   buildSecurityHeaders,
   createCrossSiteGuard,
@@ -253,6 +254,17 @@ export interface HttpServerOptions {
    * 默认 32：单机自托管下「本人所有设备 + 少量浏览器标签」远低于此值。
    */
   maxConcurrentConnections?: number;
+  /**
+   * IM 机器人**入站**面（/bot/**）。**默认不启用** ⇒ 未启用时该路径与「不存在」逐字节相同（404）。
+   *
+   * `enabled` 只是**快速短路**，不承担安全边界：真正的边界是 gate 内逐请求的
+   * 「运行期判定 + 凭据校验 + 限流」。见 botIngress.ts 的文件头。
+   *
+   * 判定由 `entry-http.ts` 在启动期求出（`listBots()` 是异步的，而本函数是同步的）。
+   */
+  botIngress?: { enabled: boolean; maxBodyBytes?: number };
+  /** bot 入站面的限流桶（测试可注入短窗口）。缺省用默认阈值。 */
+  botIngressThrottle?: AuthThrottle;
 }
 
 function readTrimmedEnv(name: string): string | undefined {
@@ -540,6 +552,15 @@ export const ROUTE_POLICY: readonly RoutePolicyEntry[] = [
   { path: "/index.html", policy: "public", note: "同上" },
   { path: "/share/**", prefix: true, policy: "public", note: "会话分享落地页（分享码本身即凭据）" },
   {
+    path: "/bot/**",
+    prefix: true,
+    policy: "public",
+    note:
+      "IM 机器人入站回调（它有自己的凭据：x-zcode-bot-secret，逐 bot 存储于 credentialService）。" +
+      "本登记不授予任何访问权 —— ROUTE_POLICY 不驱动运行期路由（matchesRoutePolicy 无调用点），" +
+      "访问权在 botIngress.ts 的 gate 内（默认不注册 = 未启用时 404）",
+  },
+  {
     path: "/assets/**",
     prefix: true,
     policy: "public",
@@ -568,8 +589,13 @@ function matchesRoutePolicy(entry: RoutePolicyEntry, pathname: string): boolean 
  * 注意 /api 与 /ws 的**精确路径**也必须算在内：此前只认 /api/ 前缀与 /ws 精确值，
  * 于是 GET /api（无尾斜杠）落到静态 SPA fallback 返回了 index.html（200）—— 不泄漏业务数据，
  * 但鉴权口径应当 fail-closed（/api 是 API 命名空间本身，不该被静态兜底接走）。
+ *
+ * **导出理由**（task-97）：`test/botIngress.test.ts` 的 A2④ 判据要**逐字节**比对
+ * 「新增 /bot/** 前后本函数的输入输出表」，这是「没有削弱令牌面」最直接的证据。
+ * 与 `ROUTE_POLICY` / `assertRoutePolicyEnforced`（同样为测试而导出）**同构**；
+ * `src/index.ts` 只导出 `createHttpServer`，故不影响包的公开面。
  */
-function isTokenProtectedPath(pathname: string): boolean {
+export function isTokenProtectedPath(pathname: string): boolean {
   return (
     pathname === "/ws" ||
     pathname === "/api" ||
@@ -839,6 +865,19 @@ export function createHttpServer(
   const throttle =
     options.throttle ??
     createAuthThrottle({ warn: (address, message) => warn(message + "（" + address + "）") });
+  // bot 入站面的**独立**限流桶（spec §4.2）。为什么不共用既有的 throttle：
+  //   ① 共享会造出一条今天不存在的**跨面拒绝服务** —— 令牌面的封禁闸门是 app.use("*")
+  //      且不看路径，实测「3 次 /api 失败后 GET /tasks 与 POST /bot/webhook 都变 403」；
+  //      若共用，则「有人暴力猜 bot secret」会连带封掉该地址的 /api/** 与 SPA 壳。
+  //   ② 两个凭据空间（lite token / bot secret）的失败**互不携带信息**，合并计数是把
+  //      两个独立威胁模型混成一个计数器。
+  //   ③ 反代/隧道后所有客户端共用一个对端地址 ⇒ 共享桶下「别人扫我」会让我的机器人掉线。
+  // 阈值与口径**复用** createAuthThrottle 默认值（10 次 / 5 分钟 ⇒ 封 15 分钟），不新造。
+  const botIngressThrottle =
+    options.botIngressThrottle ??
+    createAuthThrottle({
+      warn: (address, message) => warn(message + "（bot 入站面，" + address + "）"),
+    });
   // 审计日志（B1）：与 warn 分开的一条结构化流（一行一条 JSON，便于 grep/journald 采集）。
   const audit = options.audit ?? createAuditLog();
   if (!options.audit) {
@@ -944,6 +983,33 @@ export function createHttpServer(
       },
     }),
   );
+  // IM 机器人**入站**面（/bot/**）：**注册在令牌中间件之前**，并自行终结请求（不 next）。
+  //
+  // 为什么在之前（不是「在令牌中间件里加一条让路判断」）：
+  // 令牌面的封禁闸门是 app.use("*") 且在路径分派**之前**执行，它**不看路径** ⇒
+  // 若本 gate 注册在其后，一个被令牌面封禁的地址打 /bot/** 会拿到 403 而不是 404
+  // （「渠道未启用」的语义），且 bot 入站会被令牌面的封禁**误伤**。
+  // 放在之前 ⇒ **既有令牌中间件零改动**，隔离是**结构性**的而非条件式的。
+  // 详见 botIngress.ts 的文件头与 .reverse/93-bot-ingress/BOT-INGRESS-SPEC.md §4.3（方案 D1）。
+  //
+  // 无条件注册：未启用时 gate 在第一个判断就返回 c.notFound()，**零 I/O**，与
+  // 「这条路由根本不存在」逐字节相同（spec §8.4 R3/R15）⇒ 默认攻击面为零。
+  const botIngressGate = createBotIngressGate(services, {
+    enabled: options.botIngress?.enabled ?? false,
+    // **独立**限流桶：与令牌面共享会让「有人猜 bot secret」连带封掉 /api/** 与 SPA 壳
+    // （实测：令牌面封禁后 GET /tasks 也变 403）。见 spec §4.2。
+    throttle: botIngressThrottle,
+    audit,
+    warn,
+    trustedProxies,
+    ...(options.botIngress?.maxBodyBytes !== undefined
+      ? { maxBodyBytes: options.botIngress.maxBodyBytes }
+      : {}),
+  });
+  // Hono 里 app.use("/bot/*", ...) 的 * 同时覆盖 /bot、/bot/、/bot/x（实测：spec §8.4 R3）。
+  // 只挂这一条，不再单独挂 /bot。
+  app.use("/bot/*", botIngressGate);
+
   // 每个请求的鉴权上下文：对端地址 + 是否已记过一次失败。
   // 用 WeakMap 而不是可变闭包变量：闭包变量会在并发请求间串味（同一个中间件实例服务所有请求）。
   const perRequestAuth = new WeakMap<

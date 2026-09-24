@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { DEFAULT_BOT_COMMANDS } from "@zcode/shared";
@@ -49,9 +49,23 @@ function webhookBot(id: string, overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** 夹具里 webhook 凭据的 key 与值（与 webhookBot 的 webhookSecretRef 对应）。 */
+const FIXTURE_SECRET = "fixture-webhook-secret";
+
 async function withBotsService(
   bots: unknown[],
   run: (harness: Harness) => Promise<void>,
+  /**
+   * 凭据库返回什么。
+   * - `"value"`（默认）：返回 FIXTURE_SECRET ⇒ 请求必须带匹配的 secret 才能通过校验。
+   * - `"missing"`：返回 null ⇒ 用于验证「ref 配了但读不到」也必须 fail-closed。
+   *
+   * 为什么需要这个旋钮：fail-open 修复前，夹具靠 `load: async () => null` +
+   * `webhookSecretRef` 已配，**恰好命中原实现的短路分支**（`expected && ...`），
+   * 从而「不校验就放行」，让用例能走到附件解析那条深路径。修复后这条路不再存在，
+   * 夹具必须显式提供凭据，否则测的就不是附件而是凭据拒绝了。
+   */
+  credentialMode: "value" | "missing" = "value",
 ): Promise<void> {
   const home = await mkdtemp(join(tmpdir(), "zcode-botpath-"));
   setDataBaseDir(home);
@@ -68,7 +82,7 @@ async function withBotsService(
     await writeFile(configPath, JSON.stringify({ version: 3, bots }, null, 2));
     const service = createBotsService({
       credentialService: {
-        load: async () => null,
+        load: async () => (credentialMode === "missing" ? null : FIXTURE_SECRET),
         save: async () => undefined,
         delete: async () => undefined,
       },
@@ -101,7 +115,9 @@ async function withBotsService(
 }
 
 test("最终消费点：用户消息正文不出现在 bots 日志里（R8）", async () => {
-  const secret = "top-secret-value";
+  // 必须带**匹配**的 secret：fail-closed 之后，错误/缺失的 secret 会在凭据处就停下，
+  // 根本走不到写 `provider callback ... textLen=` 那行，本用例会退化成空转。
+  const secret = FIXTURE_SECRET;
   const userText = "MY-SECRET-MESSAGE-BODY-12345";
   await withBotsService([webhookBot("bot-1", { webhookSecretRef: "wh-1" })], async (harness) => {
     await harness.handle({
@@ -122,11 +138,14 @@ test("最终消费点：localPath 越权读在真实回调路径上被拒绝", a
   const outside = join(tmpdir(), `zcode-e2e-secret-${Date.now()}.txt`);
   await writeFile(outside, "TOP-SECRET-FILE-CONTENT");
   try {
-    await withBotsService([webhookBot("bot-1")], async (harness) => {
+    // 必须配 webhookSecretRef 并带匹配 secret：否则 fail-closed 会在凭据处就拒绝，
+    // 走不到附件路径解析，本用例会测错对象。
+    await withBotsService([webhookBot("bot-1", { webhookSecretRef: "wh-1" })], async (harness) => {
       const result = await harness.handle({
         botId: "bot-1",
         userId: "u-1",
         text: "",
+        webhookSecret: FIXTURE_SECRET,
         attachments: [
           {
             id: "a1",
@@ -160,11 +179,12 @@ test("最终消费点：localPath 越权读在真实回调路径上被拒绝", a
 });
 
 test("最终消费点：downloadUrl 指向回环时在真实回调路径上被拒绝", async () => {
-  await withBotsService([webhookBot("bot-1")], async (harness) => {
+  await withBotsService([webhookBot("bot-1", { webhookSecretRef: "wh-1" })], async (harness) => {
     const result = await harness.handle({
       botId: "bot-1",
       userId: "u-1",
       text: "",
+      webhookSecret: FIXTURE_SECRET,
       attachments: [
         {
           id: "a1",
@@ -195,4 +215,85 @@ test("最终消费点：downloadUrl 指向回环时在真实回调路径上被�
       `必须由 SSRF 校验器拒绝（而不是网络失败兜底），实际回复：${replies}`,
     );
   });
+});
+
+/**
+ * ── fail-closed 护栏（task-97 / BOT-INGRESS-SPEC §3.7）─────────────────────────
+ *
+ * 背景（实测）：修复前 `botsService.ts` 的 webhook 凭据校验是**两处条件式叠加**：
+ *   `if (bot?.provider === "webhook" && bot.webhookSecretRef) { const expected = await load(...);
+ *     if (expected && expected !== inboundSecret) { 拒绝 } }`
+ * ⇒ ① 未配 `webhookSecretRef` ⇒ 整段跳过；② ref 配了但 `load` 返回 null ⇒ `expected &&` 短路。
+ * 两种情形都**不校验就放行**（实测：攻击者不带/乱带 secret 都能执行 /help）。
+ *
+ * 这两条用例把「必须 fail-closed」钉死。它们与路由层的用例（packages/server 的 botIngress.test.ts）
+ * 是**两条独立的护栏**：路由层那条走 HTTP，只要路由层拦住就绿（**即使服务层仍 fail-open**）；
+ * 这两条直接调 service，只要服务层拦住就绿（**即使路由层没做**）。
+ * ⇒ 合起来才能证明「任一层单独失效时另一层仍在承重」。
+ */
+
+test("fail-closed①：ref 配了但凭据库读不到 ⇒ 必须拒绝（修复前会放行）", async () => {
+  await withBotsService(
+    [webhookBot("bot-1", { webhookSecretRef: "wh-1" })],
+    async (harness) => {
+      const result = await harness.handle({
+        botId: "bot-1",
+        userId: "u-1",
+        text: "/help",
+        webhookSecret: "ATTACKER-GUESS",
+      });
+      const replies = (result.replies ?? []).map((r) => r.text ?? "").join("\n");
+      // 有牙齿的断言：必须被凭据拒绝，而不是执行了命令。
+      // 反向验证：把 fail-closed 改回 `if (expectedSecret && ...)` ⇒ 本断言变红
+      // （实测修复前此处会返回 /help 的命令列表）。
+      assert.match(
+        replies,
+        /Webhook secret 校验失败|Webhook secret verification failed/,
+        "读不到期望 secret 时必须拒绝，实际回复：" + (replies || "(空)"),
+      );
+      assert.ok(
+        !replies.includes("/帮助") && !replies.includes("/help"),
+        "拒绝路径不得执行任何命令，实际回复：" + replies,
+      );
+      // 且必须体现为「本次投递未成功」：否则 provider 会把失败当成功提交消费游标。
+      assert.equal(result.ok, false, "凭据失败必须使 ok=false（否则 webhook 会以为消息已消费）");
+    },
+    "missing",
+  );
+});
+
+test("fail-closed②：完全未配 webhookSecretRef ⇒ 必须拒绝（修复前完全不校验）", async () => {
+  await withBotsService(
+    [webhookBot("bot-1")], // 注意：**没有** webhookSecretRef
+    async (harness) => {
+      const result = await harness.handle({
+        botId: "bot-1",
+        userId: "u-1",
+        text: "/help",
+        webhookSecret: "ATTACKER-GUESS",
+      });
+      const replies = (result.replies ?? []).map((r) => r.text ?? "").join("\n");
+      assert.match(
+        replies,
+        /Webhook secret 校验失败|Webhook secret verification failed/,
+        "未配 secret 时必须拒绝（不许「没配就放行」），实际回复：" + (replies || "(空)"),
+      );
+      assert.ok(!replies.includes("/帮助"), "拒绝路径不得执行任何命令，实际回复：" + replies);
+      assert.equal(result.ok, false, "凭据失败必须使 ok=false");
+    },
+  );
+});
+
+test("fail-closed③：常量时间比较（结构性断言）", async () => {
+  // 诚实边界：真正的常量时间性**无法**在本仓库测试里被证明（时序测量不可靠）。
+  // 这里只钉两件事：① 用了正确的原语；② 拒绝语义不因长度分叉。
+  const source = await readFile(new URL("../src/bots/botsService.ts", import.meta.url), "utf8");
+  assert.match(source, /timingSafeEqual/, "webhook 凭据比较必须用 timingSafeEqual");
+  // 否定式：不得存在对 webhookSecret 的直接比较（那正是非常量时间的形态）。
+  // 反向验证：改回 `expectedSecret !== inboundSecret` ⇒ 变红。
+  assert.doesNotMatch(
+    source,
+    /expectedSecret\s*!==\s*inboundSecret/,
+    "不得对 secret 做直接 !== 比较（非常量时间）",
+  );
 });

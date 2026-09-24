@@ -49,7 +49,15 @@ export type AuditEventKind =
   | "audit:origin-rejected"
   | "audit:token-reload"
   | "audit:token-reload-failed"
-  | "audit:connection-limit-rejected";
+  | "audit:connection-limit-rejected"
+  // ── IM 机器人**入站**面（/bot/**，独立于令牌面；见 botIngress.ts 与
+  //    .reverse/93-bot-ingress/BOT-INGRESS-SPEC.md §6）。
+  //    事件名带 bot 前缀是**刻意**的：审计里必须能区分「令牌面被拒」与「bot 面被拒」，
+  //    否则两个独立凭据空间的失败会混成一类，无法回答「是哪一层在承压」。
+  | "audit:bot-callback"
+  | "audit:bot-auth-failure"
+  | "audit:bot-ban"
+  | "audit:bot-rejected";
 
 export interface AuditEvent {
   kind: AuditEventKind;
@@ -150,7 +158,12 @@ export function createAuditLog(options: AuditLogOptions = {}): AuditLog {
   };
 
   const levelOf = (kind: AuditEventKind): "info" | "warn" =>
-    kind === "audit:ws-open" || kind === "audit:ws-close" || kind === "audit:token-reload"
+    kind === "audit:ws-open" ||
+    kind === "audit:ws-close" ||
+    kind === "audit:token-reload" ||
+    // bot 入站的成功路径是正常生命周期（凭据已通过）⇒ info；
+    // 其余 bot 事件（失败/封禁/拒绝）走默认的 warn。
+    kind === "audit:bot-callback"
       ? "info"
       : "warn";
 

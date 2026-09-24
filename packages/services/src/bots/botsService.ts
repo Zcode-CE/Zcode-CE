@@ -1,6 +1,6 @@
 /* eslint-disable max-lines -- Bots 服务仍复用原 RPC 文件名，先把鉴权、命令路由、ZCode Agent 桥接收口集中在同一服务内。 */
 import { Buffer } from "node:buffer";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { resolveAllowedAttachmentLocalPath } from "./attachmentPathGuard.js";
 import { fetchBotAttachmentFromUrl } from "./attachmentUrlGuard.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -397,6 +397,32 @@ function summarizeCallbackPayload(payload: unknown): string {
   ].join(" ");
 }
 
+/**
+ * 常量时间字符串比较（webhook 入站凭据）。
+ *
+ * 为什么需要：原实现用普通 `!==`，会随「前多少个字符匹配」提前返回，
+ * 从而在理论上泄漏 secret 的前缀。口径照抄本仓库既有两处先例
+ * （`apps/zcode-cli/packages/node-repl-host/src/cua-broker.ts` 与
+ * `.../bootstrap/src/app/node-repl-browser-broker.ts` 的
+ * `length !== length || !timingSafeEqual(...)`）。
+ *
+ * 注意 `timingSafeEqual` 在长度不等时**抛错**，所以长度检查必须前置。
+ * 长度不等这一分支本身会泄漏**长度** —— 但 secret 长度不是秘密（它由本机配置），
+ * 与既有两处先例保持同一取舍，不自行发明。
+ *
+ * 诚实边界：本函数只保证「用了正确的原语」，**不能**证明端到端无时序侧信道
+ * （进程调度/GC/网络抖动都在噪声量级之上）。测试只钉「用了 timingSafeEqual」
+ * 与「拒绝语义不因长度分叉」，**不是**时序测量。
+ */
+function isConstantTimeEqual(actual: string | undefined, expected: string): boolean {
+  const actualBytes = Buffer.from(actual ?? "", "utf8");
+  const expectedBytes = Buffer.from(expected, "utf8");
+  if (actualBytes.length !== expectedBytes.length) {
+    return false;
+  }
+  return timingSafeEqual(actualBytes, expectedBytes);
+}
+
 function createCode(): string {
   return randomBytes(3).toString("hex").toUpperCase();
 }
@@ -666,8 +692,12 @@ const BOT_FORCED_MODE = "yolo";
 const BOT_TYPING_INTERVAL_MS = 4_000;
 const BOT_TASK_META_RETRY_DELAYS_MS = [80, 160, 320] as const;
 const BOT_WORKSPACE_REFS_CACHE_TTL_MS = 5_000;
-const BOT_MAX_ATTACHMENTS_PER_MESSAGE = 4;
-const BOT_MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024;
+// 导出给「入站请求体上限」的耦合断言用（packages/server 的 bot 入站 spec）：
+// 合法最大 payload = ceil(N × S / 3) × 4（base64 膨胀）+ JSON 外壳，
+// 该值与请求体上限是**耦合**的，改这里必须同步重算上限，否则会打断合法流量。
+// 详见 .reverse/93-bot-ingress/BOT-INGRESS-SPEC.md §7.1.1。
+export const BOT_MAX_ATTACHMENTS_PER_MESSAGE = 4;
+export const BOT_MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024;
 const BOT_ATTACHMENT_DOWNLOAD_TIMEOUT_MS = 30_000;
 const REMOTE_RECONNECT_DEDUPE_TTL_MS = 3_000;
 const REMOTE_RECONNECT_DELIVERY_DEDUPE_TTL_MS = 2 * 60_000;
@@ -2609,10 +2639,23 @@ export function createBotsService(
         : undefined;
     for (const inbound of parsedInboundMessages) {
       const bot = findBot(config, inbound.botId);
-      if (bot?.provider === "webhook" && bot.webhookSecretRef) {
-        const expectedSecret = await deps.credentialService.load(bot.webhookSecretRef);
-        if (expectedSecret && expectedSecret !== inboundSecret) {
+      if (bot?.provider === "webhook") {
+        // Modified by ZCode: 原实现是 `if (bot.webhookSecretRef) { const expected = await load(...);
+        // if (expected && expected !== inboundSecret) { 拒绝 } }` —— 两处条件式叠加造成**真实的 fail-open**：
+        //   ① `webhookSecretRef` 未配 ⇒ 整段跳过 ⇒ 不校验就放行；
+        //   ② ref 配了但凭据库读不到（load 返回 null）⇒ `expected &&` 短路 ⇒ 同样放行。
+        // 实测（未修复时）：上述两种情形下，攻击者不带/乱带 secret 都能执行 /help。
+        // 且比较是普通 !==（非常量时间）。现改为 fail-closed + 常量时间：
+        // 「拿不到期望值」与「值不匹配」一律拒绝，不再有「跳过校验」这条路径。
+        // 这是纵深第二层：路由层（packages/server 的 /bot/** gate）也会独立拦一次。
+        const expectedSecret = bot.webhookSecretRef
+          ? await deps.credentialService.load(bot.webhookSecretRef)
+          : null;
+        if (!expectedSecret || !isConstantTimeEqual(inboundSecret, expectedSecret)) {
           replies.push(createOutbound(inbound.actor, msg(locale, "webhookSecretInvalid")));
+          // 凭据失败必须体现为「本次投递未成功」：否则 provider 会把失败当成功提交消费游标，
+          // 与 /api/bots 路由层「业务失败透传 503」是同一条理由（见 BOT-INGRESS-SPEC §7）。
+          hadBusinessFailure = true;
           continue;
         }
       }
