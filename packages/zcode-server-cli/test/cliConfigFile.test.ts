@@ -42,23 +42,20 @@ test("配置文件优先级链与 fail-closed（真实链路）", async (t) => {
     await writeFile(configPath, JSON.stringify({ host: "127.0.0.1", port: 32123 }));
     const base = { ...env, ZCODE_CLI_CONFIG: configPath };
     // flag 未给时用文件里的端口（真实链路：起服务后读日志里的地址）
-    const started = await startAndReadAddress(runner, ["--web", "--no-open"], base, dir);
+    const started = await startAndReadAddress(runner, ["--web", "--no-open"], base);
     assert.match(started.output, /127\.0\.0\.1:32123\//u, started.output);
     // flag 压过文件
     const overridden = await startAndReadAddress(
       runner,
       ["--web", "--no-open", "--port", "32456"],
       base,
-      dir,
     );
     assert.match(overridden.output, /127\.0\.0\.1:32456\//u, overridden.output);
     // env 压过文件
-    const envWins = await startAndReadAddress(
-      runner,
-      ["--web", "--no-open"],
-      { ...base, PORT: "32789" },
-      dir,
-    );
+    const envWins = await startAndReadAddress(runner, ["--web", "--no-open"], {
+      ...base,
+      PORT: "32789",
+    });
     assert.match(envWins.output, /127\.0\.0\.1:32789\//u, envWins.output);
     // 取值非法 ⇒ 拒绝启动并指出键名
     await writeFile(configPath, JSON.stringify({ port: 99999 }));
@@ -67,7 +64,7 @@ test("配置文件优先级链与 fail-closed（真实链路）", async (t) => {
     assert.match(bad.output, /"port"/u, bad.output);
     // 未知键 ⇒ 告警但可启动
     await writeFile(configPath, JSON.stringify({ port: 32890, portt: 1 }));
-    const unknown = await startAndReadAddress(runner, ["--web", "--no-open"], base, dir);
+    const unknown = await startAndReadAddress(runner, ["--web", "--no-open"], base);
     assert.match(unknown.output, /未知键/u, unknown.output);
     assert.match(unknown.output, /127\.0\.0\.1:32890\//u, unknown.output);
   } finally {
@@ -93,7 +90,7 @@ async function runToExit(runner, args, env, timeoutMs = 15_000) {
   return { code, output };
 }
 
-async function startAndReadAddress(runner, args, env, dir) {
+async function startAndReadAddress(runner, args, env) {
   const child = (await import("node:child_process")).spawn(process.execPath, [runner, ...args], {
     env,
     stdio: ["ignore", "pipe", "pipe"],

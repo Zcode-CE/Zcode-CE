@@ -1,10 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { access, readFile } from "node:fs/promises";
-import { createServer } from "node:net";
-import { homedir, networkInterfaces } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -14,128 +11,24 @@ const serverEntry = join(root, "server", "entry-http.js");
 const webRoot = join(root, "web");
 const agentEntry = join(root, "agent", "zcode.cjs");
 
-// ── CLI 配置文件（spec: .reverse/36-ssh/CONFIG-FILE-SPEC.md）─────────────────────────
-// 为什么内联：runner 会被逐字节拷进分发包的 bin/，旁路模块不会被一起拷贝（build-zcode 不搬它）。
-const CONFIG_KEY_SPECS = {
-  host: { kind: "string" },
-  port: { kind: "port" },
-  workspace: { kind: "string" },
-  token: { kind: "string" },
-  noToken: { kind: "boolean" },
-  open: { kind: "boolean" },
-  authTokensFile: { kind: "string" },
-  trustedHosts: { kind: "stringList" },
-  trustedOrigins: { kind: "stringList" },
-  trustedProxies: { kind: "stringList" },
-  csp: { kind: "enum", values: ["off", "report-only", "enforce"] },
-  hsts: { kind: "boolean" },
-};
+// ── 已被拆出的旁路模块（task-49）────────────────────────────────────────────
+// 注意**结构前提**：runner.mjs 曾被逐字节拷进分发包的 bin/zcode.mjs，而旁路模块不会自动跟过去。
+// 因此 scripts/build-zcode.mjs 现在**显式把 runner-*.mjs 逐个拷进 bin/** ——
+// 若新增旁路模块而忘了改那里，分发包会缺文件（这是拆分时最容易踩的坑）。
+import {
+  DEFAULT_HOST,
+  formatUrl,
+  isLocalHost,
+  networkUrls,
+  openBrowser,
+  pickDefaultPort,
+  shouldProtectHost,
+} from "./runner-web.mjs";
+import { configEnv, loadConfigFile } from "./runner-config.mjs";
+import { resolveAgentVersion, setUsageContext, usage } from "./runner-usage.mjs";
+// ── 身份头与 usage 文案：已拆到 runner-usage.mjs（整段原样搬，见该文件头注释）──────────────
+setUsageContext({ packageVersion: version, agentEntry });
 
-function resolveConfigPath() {
-  const explicit = process.env.ZCODE_CLI_CONFIG?.trim();
-  if (explicit) return { path: explicit, explicit: true };
-  return { path: join(homedir(), ".zcode", "cli", "server.json"), explicit: false };
-}
-
-function validateConfigValue(path, key, spec, value) {
-  const fail = (expected) => {
-    throw new Error(
-      `配置文件 ${path} 的键 ${JSON.stringify(key)} 取值非法：期望 ${expected}，实际 ${JSON.stringify(value)}`,
-    );
-  };
-  switch (spec.kind) {
-    case "string":
-      if (typeof value !== "string" || value.trim() === "") fail("非空字符串");
-      return value.trim();
-    case "boolean":
-      if (typeof value !== "boolean") fail("布尔值 true/false");
-      return value;
-    case "port":
-      if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > 65535) {
-        fail("1–65535 的整数端口");
-      }
-      return value;
-    case "stringList": {
-      const list = Array.isArray(value) ? value : typeof value === "string" ? [value] : null;
-      if (!list) fail("字符串或字符串数组");
-      const items = list
-        .map((item) => (typeof item === "string" ? item.trim() : ""))
-        .filter((item) => item);
-      if (items.length !== list.length) fail("非空字符串（或非空字符串数组）");
-      return items;
-    }
-    case "enum":
-      if (typeof value !== "string" || !spec.values.includes(value.trim().toLowerCase())) {
-        fail(spec.values.join(" / "));
-      }
-      return value.trim().toLowerCase();
-    default:
-      return fail("受支持的取值");
-  }
-}
-
-// 文件不存在（且非显式指定）⇒ 返回 {}；非法 JSON/类型错/值非法 ⇒ 抛错（fail-closed）。
-function loadConfigFile() {
-  const { path, explicit } = resolveConfigPath();
-  let raw;
-  try {
-    raw = readFileSync(path, "utf8");
-  } catch (error) {
-    if (error?.code === "ENOENT" && !explicit) return {};
-    throw new Error(`无法读取配置文件 ${path}：${error?.message ?? String(error)}`);
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (error) {
-    throw new Error(`配置文件 ${path} 不是合法 JSON：${error?.message ?? String(error)}`);
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`配置文件 ${path} 的顶层必须是对象`);
-  }
-  const out = {};
-  for (const [key, value] of Object.entries(parsed)) {
-    const spec = CONFIG_KEY_SPECS[key];
-    if (!spec) {
-      console.warn(
-        `配置文件 ${path} 含未知键 ${JSON.stringify(key)}：已忽略（不拒绝启动；已知键见 .reverse/36-ssh/CONFIG-FILE-SPEC.md）`,
-      );
-      continue;
-    }
-    out[key] = validateConfigValue(path, key, spec, value);
-  }
-  return out;
-}
-function usage() {
-  return `zcode-ce ${version}（内置 agent CLI: zcode-agent ${agentVersionLabel()}）
-
-Usage:
-  zcode --web [--host <host>] [--port <port>] [--workspace <path>] [--open|--no-open] [--token <token>|--no-token]
-  zcode --version
-
-Defaults:
-  --host       127.0.0.1（只监听回环；要对外请传局域网 IP 或 0.0.0.0，那时必须带令牌）
-  --port       3030（被占用时自动回退到空闲端口；启动日志始终打印实际地址）
-  --workspace  当前目录
-  --open       回环时开启，其它情况关闭
-  令牌         回环默认关闭；非回环自动生成（--token=<值> 可指定）
-
-环境变量（服务进程）：
-  ZCODE_SERVER_AUTH_TOKEN        显式令牌，与令牌文件**并存、取并集**
-  ZCODE_SERVER_AUTH_TOKENS_FILE  每行一条令牌的文件；SIGHUP 重载；文件空/坏 ⇒ 拒绝启动
-  ZCODE_SERVER_TRUSTED_HOSTS     Host 白名单（挡 DNS rebinding），追加在回环+本机网卡+监听地址之后
-  ZCODE_SERVER_TRUSTED_ORIGINS   跨源白名单（同源判定恒优先）
-  ZCODE_SERVER_TRUSTED_PROXIES   可信代理（IP/CIDR），只有它们给的 X-Forwarded-For 被采信；默认谁都不信
-  ZCODE_SERVER_CSP               缺省 report-only；可 off / enforce
-  ZCODE_SERVER_HSTS              只在 https 且显式开启时下发
-  数据目录                       ~/.zcode/v2（与桌面端共用）
-
-Notes:
-  --no-token 只允许与回环 host 组合（--no-token is only allowed with a loopback --host）：
-  非回环绑定必须带令牌，否则服务端会拒绝启动。
-  --web / --version 之外的参数会转发给内置 agent CLI（zcode-agent）。
-`;
-}
 function readArgValue(argv, arg, index) {
   if (arg.includes("=")) {
     return { nextIndex: index, value: arg.slice(arg.indexOf("=") + 1) };
@@ -218,14 +111,6 @@ function parseArgs(argv) {
   return options;
 }
 
-function isLocalHost(host) {
-  return host === "127.0.0.1" || host === "localhost" || host === "::1";
-}
-
-function shouldProtectHost(host) {
-  return !isLocalHost(host);
-}
-
 /**
  * 是否启用并注入后端令牌。
  *
@@ -272,44 +157,6 @@ function assertHostTokenCombination(options) {
   );
 }
 
-let cachedAgentVersion;
-
-/** 内置 agent CLI 的版本：问它自己一次（只在 --help/--version 路径上发生），失败则返回 undefined。 */
-async function resolveAgentVersion() {
-  if (cachedAgentVersion !== undefined) {
-    return cachedAgentVersion;
-  }
-  cachedAgentVersion = await new Promise((resolveVersion) => {
-    const child = spawn(process.execPath, [agentEntry, "--version"], {
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    let output = "";
-    const timer = globalThis.setTimeout(() => {
-      child.kill("SIGKILL");
-      resolveVersion(undefined);
-    }, 10_000);
-    child.stdout.on("data", (chunk) => {
-      output += chunk;
-    });
-    child.once("error", () => {
-      globalThis.clearTimeout(timer);
-      resolveVersion(undefined);
-    });
-    child.once("exit", () => {
-      globalThis.clearTimeout(timer);
-      resolveVersion(output.trim().split("\n")[0]?.trim() || undefined);
-    });
-  });
-  return cachedAgentVersion;
-}
-
-/** 同步位置的标签：agent 版本是异步取的，未就绪时退化为占位说明。 */
-function agentVersionLabel() {
-  return typeof cachedAgentVersion === "string" && cachedAgentVersion
-    ? cachedAgentVersion
-    : "版本见下";
-}
-
 /** --version 输出：第一行保持原来的纯版本号（不破坏既有解析），第二行标注两个身份。 */
 async function printVersion() {
   const agentVersion = await resolveAgentVersion();
@@ -320,79 +167,7 @@ function createToken() {
   return randomBytes(24).toString("base64url");
 }
 
-/** 默认端口：先试 3030，被占用时回退到空闲端口（长期运行需要可预期端口，共享机又要避免碰撞）。 */
-const DEFAULT_HOST = "127.0.0.1";
-const DEFAULT_WEB_PORT = 3030;
-
-async function pickDefaultPort(host) {
-  try {
-    await assertPortFree(host, DEFAULT_WEB_PORT);
-    return DEFAULT_WEB_PORT;
-  } catch {
-    const fallback = await pickPort(host);
-    console.log(`端口 ${DEFAULT_WEB_PORT} 已被占用，改用 ${fallback}（可用 --port 指定固定端口）`);
-    return fallback;
-  }
-}
-
-function assertPortFree(host, port) {
-  return new Promise((resolveFree, rejectBusy) => {
-    const server = createServer();
-    server.once("error", rejectBusy);
-    server.listen(port, host, () => {
-      server.close((error) => (error ? rejectBusy(error) : resolveFree()));
-    });
-  });
-}
-function pickPort(host) {
-  return new Promise((resolvePort, reject) => {
-    const server = createServer();
-    server.once("error", reject);
-    server.listen(0, host, () => {
-      const address = server.address();
-      const port = typeof address === "object" && address ? address.port : 0;
-      server.close((error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolvePort(port);
-      });
-    });
-  });
-}
-
-function formatUrl(host, port, token) {
-  const displayHost = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host;
-  const base = `http://${displayHost}:${port}/`;
-  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
-}
-
-function networkUrls(port, token) {
-  const urls = [];
-  for (const entries of Object.values(networkInterfaces())) {
-    for (const entry of entries ?? []) {
-      if (entry.internal || entry.family !== "IPv4") {
-        continue;
-      }
-      const base = `http://${entry.address}:${port}/`;
-      urls.push(token ? `${base}?token=${encodeURIComponent(token)}` : base);
-    }
-  }
-  return urls;
-}
-
-function openBrowser(url) {
-  const command =
-    process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
-  const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
-  const child = spawn(command, args, {
-    detached: true,
-    stdio: "ignore",
-  });
-  child.unref();
-}
-
+// ── 进程编排：spawn 服务进程、转发输出、信号处理、退出码（本文件只留这一半）──────────────
 async function assertRuntimeFiles() {
   for (const file of [serverEntry, agentEntry, webRoot]) {
     await access(file).catch((cause) => {
@@ -404,6 +179,7 @@ async function assertRuntimeFiles() {
 // 优先级链：flag > env > 文件 > 默认（spec §2）。
 function resolveOptions(options) {
   const file = loadConfigFile();
+  // 下面的 fallback 常量来自 runner-web.mjs（默认地址/端口与端口回退策略同属"监听编排"）。
   const envHost = process.env.ZCODE_SERVER_HOST?.trim();
   const envPort = process.env.PORT?.trim();
   const envWorkspace = process.env.ZCODE_SERVER_WORKSPACE?.trim();
@@ -427,28 +203,6 @@ function resolveOptions(options) {
     noToken: undefined,
   };
   return { ...options, host, port, workspace, token, tokenEnabled, open, file, passthrough };
-}
-
-// 文件里的服务端旋钮：只在环境变量没给值时透传（env > 文件）。
-function configEnv(passthrough) {
-  const env = {};
-  // env > 文件：只在该环境变量**未设置**时才用文件里的值透传。
-  const setIfUnset = (name, value) => {
-    const current = process.env[name];
-    if (current === undefined || current === "") env[name] = value;
-  };
-  if (passthrough.authTokensFile)
-    setIfUnset("ZCODE_SERVER_AUTH_TOKENS_FILE", passthrough.authTokensFile);
-  if (passthrough.trustedHosts)
-    setIfUnset("ZCODE_SERVER_TRUSTED_HOSTS", passthrough.trustedHosts.join(","));
-  if (passthrough.trustedOrigins)
-    setIfUnset("ZCODE_SERVER_TRUSTED_ORIGINS", passthrough.trustedOrigins.join(","));
-  if (passthrough.trustedProxies)
-    setIfUnset("ZCODE_SERVER_TRUSTED_PROXIES", passthrough.trustedProxies.join(","));
-  if (passthrough.csp) setIfUnset("ZCODE_SERVER_CSP", passthrough.csp);
-  if (typeof passthrough.hsts === "boolean")
-    setIfUnset("ZCODE_SERVER_HSTS", passthrough.hsts ? "1" : "");
-  return env;
 }
 
 async function serve(rawOptions) {

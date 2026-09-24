@@ -24,11 +24,26 @@ import test from "node:test";
 
 const repoRoot = resolve(import.meta.dirname, "../../..");
 const runnerSource = join(repoRoot, "scripts/zcode-distribution/runner.mjs");
+/**
+ * runner.mjs 的**旁路模块**（task-49 拆分后引入的结构依赖）。
+ *
+ * 它们必须和 runner 一起进入 `bin/`：runner 现在 `import "./runner-*.mjs"`，漏拷任何一个都会让
+ * 入口启动即 `ERR_MODULE_NOT_FOUND` —— 这正是分发打包必须同步修改的那一处
+ * （`scripts/build-zcode.mjs` 里逐个 cp）。夹具按**发行布局**复制，所以这里也必须跟。
+ * 若新增旁路模块：改 build-zcode.mjs 与这里两处，否则本文件会以"缺模块"的形式立刻变红。
+ */
+const RUNNER_SIDECAR_MODULES = ["runner-usage.mjs", "runner-config.mjs", "runner-web.mjs"];
 
 async function createDistributionFixture() {
   const directory = await mkdtemp(join(tmpdir(), "zcode-runner-guard-"));
   await mkdir(join(directory, "bin"), { recursive: true });
   await cp(runnerSource, join(directory, "bin/zcode.mjs"));
+  for (const sidecar of RUNNER_SIDECAR_MODULES) {
+    await cp(
+      join(repoRoot, "scripts/zcode-distribution", sidecar),
+      join(directory, "bin", sidecar),
+    );
+  }
   // runner 顶层会读 <root>/package.json 取 version；运行时文件检查只发生在校验通过之后。
   await writeFile(
     join(directory, "package.json"),
