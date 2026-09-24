@@ -161,9 +161,16 @@ if (command === "check") {
   const reviewRequired =
     JSON.parse(await readFile(path.join(ROOT, "third-party/inventory.json"), "utf8"))
       .reviewRequired ?? [];
+  const documentedLimitations = JSON.parse(
+    await readFile(path.join(ROOT, "third-party/inventory.json"), "utf8"),
+  ).documentedLimitations;
   if (reviewRequired.length)
     console.warn(
       `待补齐/核验材料 ${reviewRequired.length} 项；发布前运行 node scripts/licenses.mjs check --strict，不得将基础检查通过视为合规完成。`,
+    );
+  if (documentedLimitations?.length)
+    console.log(
+      `按「发布者已发布的声明 + 标准条款 + 已记录出处」记为非阻断的书面限制 ${documentedLimitations.length} 项（不等于材料齐全，见 third-party/README.md）。`,
     );
   const n = installed.size;
   console.log(

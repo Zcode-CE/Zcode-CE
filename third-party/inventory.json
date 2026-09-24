@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "e4d2046445f6423ebf8a7f35b34e8348d2c1c8bc56507c5e642e1dc5f1f6f5d3",
+  "noticesSha256": "8158bbc68ba807f2edef0d49b2fc9eeeafd8fb90e110a39089b86faedcd8c830",
   "inputs": {
     ".agents/skills/agent-browser/references/authentication.md": "e2c3b0f4a1dc1368dee821f03c000d818a48421d09f3872525dddffe73f2112b",
     ".agents/skills/agent-browser/references/commands.md": "17522fc56d742663f47231ff06c4811abc87e12c7f78e11f94d253ddd540a909",
@@ -2755,7 +2755,7 @@
     "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
     "scripts/remote-native-search-tools-config.mjs": "472322a66f84c7452f96aa9e16e9c4e0600f7c2588a03dc6bc869229161b1cb2",
     "third-party/copied-components.json": "4aa5977f93478687e7f16d1a15b853b0c9113eab6dd29542b4db049d01d8c18d",
-    "third-party/embedded-components.json": "9586ccca15897f56d4ca1d703dffe9e02880fedd766c1dff93f7ac1f52ea891a",
+    "third-party/embedded-components.json": "1160d4b37e297584099e640998b75599a9ac237dc39dc29d49f2a538e514bb4e",
     "third-party/native-search/licenses/00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce.txt": "00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce",
     "third-party/native-search/licenses/01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f.txt": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
     "third-party/native-search/licenses/029d615cc92cc216eeefa50fea59bb9838e8e8f22a9f19ec5ee224a31ec9f383.txt": "029d615cc92cc216eeefa50fea59bb9838e8e8f22a9f19ec5ee224a31ec9f383",
@@ -2871,7 +2871,7 @@
     "third-party/native-search/licenses/f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af.txt": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
     "third-party/native-search/licenses/f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505.txt": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505",
     "third-party/native-search/sources.json": "5a7b2d7abf5bd5f310712710cbbd0ca70dc9491e723cbf070b5c696fe155a962",
-    "third-party/npm-overrides.json": "86b91f9351a2b02fe1f2224027f9151f184753d31c2f30c837bfd08e1c7f61ab",
+    "third-party/npm-overrides.json": "d4d1130bd01d375c4e809c9adf7a1c5cf8d4a0e0ab00ed43a49de4f8f899df55",
     "third-party/runtime/node-22.16.0-LICENSE.txt": "1ae62e2015784ba438db7b04ebd33f3c4ff3efdb824c111c4ececd99945fd52d",
     "third-party/runtime/node-24.14.0-LICENSE.txt": "4573185d56580da2b890ba34a85a409257640f1c5632eade4300137266194d18",
     "third-party/runtime/sources.json": "b27bc8d81aeb71108e523602364ffbb6a1b19c2d5d47733fd43094b769006741",
@@ -2951,6 +2951,7 @@
     "third-party/upstream/da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93.txt": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
     "third-party/upstream/e1cfcc55c325b3f78cf55df9664abaa066e2271dffe8213347d9fccdfbac8f2c.txt": "e1cfcc55c325b3f78cf55df9664abaa066e2271dffe8213347d9fccdfbac8f2c",
     "third-party/upstream/e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c.txt": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c",
+    "third-party/upstream/e422ec4747a913fb1aa7aecf7826bb06bd49d1a0de0dca5ec55b6b06214af613.txt": "e422ec4747a913fb1aa7aecf7826bb06bd49d1a0de0dca5ec55b6b06214af613",
     "third-party/upstream/ebb2e920800c6353474e3e23d84f714ee8aaecd8f5a71851aa03594a4129d855.txt": "ebb2e920800c6353474e3e23d84f714ee8aaecd8f5a71851aa03594a4129d855",
     "third-party/upstream/ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be.txt": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
     "third-party/upstream/f158b3bd10b867740fdbf81447216f1f8685473acf61e6a105ef91ba9fe8ebc3.txt": "f158b3bd10b867740fdbf81447216f1f8685473acf61e6a105ef91ba9fe8ebc3",
@@ -30706,7 +30707,7 @@
       "file": "third-party/upstream/0ab717053f3e24736cd404a0801407fb305db75d1b58f7e6487d14feee30d28a.txt",
       "sha256": "0ab717053f3e24736cd404a0801407fb305db75d1b58f7e6487d14feee30d28a",
       "source": "https://registry.npmjs.org/unsafe-pointer/0.2.0",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
         "checkedOn": "2026-09-21",
@@ -30726,7 +30727,7 @@
       "file": "third-party/upstream/f158b3bd10b867740fdbf81447216f1f8685473acf61e6a105ef91ba9fe8ebc3.txt",
       "sha256": "f158b3bd10b867740fdbf81447216f1f8685473acf61e6a105ef91ba9fe8ebc3",
       "source": "https://registry.npmjs.org/react-remove-scroll-bar/2.3.8",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
         "checkedOn": "2026-09-21",
@@ -30745,7 +30746,7 @@
       "file": "third-party/upstream/f29b60ea39a2132e3baa98927c2d473b349a54143da44a0c6762b243e6459452.txt",
       "sha256": "f29b60ea39a2132e3baa98927c2d473b349a54143da44a0c6762b243e6459452",
       "source": "https://registry.npmjs.org/quickjs-wasi/2.2.0",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
         "checkedOn": "2026-09-21",
@@ -30762,7 +30763,7 @@
       "file": "third-party/upstream/c681d64256e752c1435814cf045f4467720a8473e425ea54103a0f5128bfc817.txt",
       "sha256": "c681d64256e752c1435814cf045f4467720a8473e425ea54103a0f5128bfc817",
       "source": "https://registry.npmjs.org/@hono%2fnode-ws/1.3.0",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
         "checkedOn": "2026-09-21",
@@ -30784,7 +30785,7 @@
       "file": "third-party/upstream/93f24a47f95aea2be1b0dad78de98dc6d3de01ce22c0b72dc73e453c7917b955.txt",
       "sha256": "93f24a47f95aea2be1b0dad78de98dc6d3de01ce22c0b72dc73e453c7917b955",
       "source": "https://registry.npmjs.org/strict-event-emitter/0.5.1",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
         "checkedOn": "2026-09-21",
@@ -30804,7 +30805,7 @@
       "file": "third-party/upstream/f18c12b8e7daf98d572518b7db133b2dc66a713921dac4825410dd656e0c1a1a.txt",
       "sha256": "f18c12b8e7daf98d572518b7db133b2dc66a713921dac4825410dd656e0c1a1a",
       "source": "https://registry.npmjs.org/lazy-val/1.0.5",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
         "checkedOn": "2026-09-21",
@@ -30824,7 +30825,7 @@
       "file": "third-party/upstream/1b8910ad1a22011c632f7ff544708be6cf08818ef80e8d4b45b6808ee8b05c17.txt",
       "sha256": "1b8910ad1a22011c632f7ff544708be6cf08818ef80e8d4b45b6808ee8b05c17",
       "source": "https://registry.npmjs.org/semaphore/1.1.0",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
         "checkedOn": "2026-09-21",
@@ -30846,7 +30847,7 @@
       "file": "third-party/upstream/2d2349188616c4b64ceeae33e1386bb546b0658864b4f7f8c9785757cb065b5d.txt",
       "sha256": "2d2349188616c4b64ceeae33e1386bb546b0658864b4f7f8c9785757cb065b5d",
       "source": "https://registry.npmjs.org/boolbase/1.0.0",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "ISC",
       "reviewEvidence": {
         "checkedOn": "2026-09-21",
@@ -30863,7 +30864,7 @@
       "file": "third-party/upstream/b1688598c3e32605b3973902a546225e0159349c05a0f74db67f76e08e116e65.txt",
       "sha256": "b1688598c3e32605b3973902a546225e0159349c05a0f74db67f76e08e116e65",
       "source": "https://registry.npmjs.org/@open-draft%2fdeferred-promise/2.2.0",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
         "checkedOn": "2026-09-21",
@@ -30885,7 +30886,7 @@
       "file": "third-party/upstream/000ffa2d773c511f4459fb31d89f841806f93bf5caf2050468ab2097c081b443.txt",
       "sha256": "000ffa2d773c511f4459fb31d89f841806f93bf5caf2050468ab2097c081b443",
       "source": "https://registry.npmjs.org/is-node-process/1.2.0",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
         "checkedOn": "2026-09-21",
@@ -30905,7 +30906,7 @@
       "file": "third-party/upstream/2c88816684a40c718113a10062a8335b665cec00d3c7b32e2b3fe9c620a3e03e.txt",
       "sha256": "2c88816684a40c718113a10062a8335b665cec00d3c7b32e2b3fe9c620a3e03e",
       "source": "https://registry.npmjs.org/ansi-to-react/6.2.6",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "BSD-3-Clause",
       "reviewEvidence": {
         "checkedOn": "2026-09-21",
@@ -31217,13 +31218,20 @@
       "file": "third-party/upstream/47a5b3dace9cce679dff68809f563a5e254152807e19d2b415e9a90d30407153.txt",
       "sha256": "47a5b3dace9cce679dff68809f563a5e254152807e19d2b415e9a90d30407153",
       "source": "https://registry.npmjs.org/fontkit/2.0.4",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
-        "checkedOn": "2026-09-23",
-        "result": "The versioned npm archive contains no standalone complete LICENSE (fontkit declares files: [src, dist], and the upstream repository root has no LICENSE file - only a README section License: MIT). Existing publisher declaration and original README license section remain preserved. Upstream authorization/copyright material is still required to close this review.",
+        "checkedOn": "2026-09-24",
+        "result": "The versioned npm archive contains no standalone LICENSE file. The package files whitelist is NOT the reason: npm always packs README, LICENSE and LICENCE whatever the files field says, so an archive without a LICENSE means the repository has none. Re-checked exhaustively: all 7 branches carry license files only under test/data (bundled test fonts), and master HEAD equals the v2.0.4 tag fbf3b9ef. The in-archive publisher statements listed below are the material we rely on; upstream-issued copyright/license material for this version still does not exist and is not recoverable.",
+        "inArchivePublisherStatements": [
+          "package/package.json declares license MIT",
+          "package/README.md carries a License heading whose body is MIT; already captured by the notice collector as the README.md (license section) member"
+        ],
+        "registryPublisherIdentity": "npm 2.0.4 metadata: author, maintainers and _npmUser are all devongovett (devongovett@gmail.com); dist.integrity sha512-syetQadaUEDNdxdugga9CpEYVaQIxOwk7GlwZWWZ19//qW4zE5bknOKeMBDYAASwnpaSHKJITRLMF9m1fp3s6g==",
+        "notPublisherMaterial": "PR foliojs/fontkit#300 (Add LICENSE, head e208a491449fe9759637e09e92bfbc9b032d2707) is an unmerged third-party contribution - re-checked 2026-09-24 as state=open, merged=false - so it is not a publisher statement and is not used as material. Downstream fork fontkitten@1.0.3 publishes package/LICENSE (sha256 e626e38b2081908f1ffa133bd13a695d7cc8f70005d2f7b282b262610fe307cd) reproducing Copyright (c) 2014 Devon Govett and stating that it applies to code originating from foliojs/fontkit; that corroborates the copyright line only and is not publisher material.",
         "npmArchiveSha256": "f686a9515af33fce16ab4bffe50570728197e53165068548c6f75a1793797a08",
         "sourceTreeUrl": "https://api.github.com/repos/foliojs/fontkit/git/trees/master?recursive=1",
+        "sourceTreeAlsoChecked": "https://api.github.com/repos/foliojs/fontkit/git/trees/v2.0.4?recursive=1 (217 entries; license paths only under test/data) plus the trees of all 7 branches",
         "upstreamLicenseFiles": []
       }
     },
@@ -31232,11 +31240,18 @@
       "file": "third-party/upstream/cfc3c11a0e3e83ced162857d81a6df9fc5e9ad61ec5883217d556c631c244793.txt",
       "sha256": "cfc3c11a0e3e83ced162857d81a6df9fc5e9ad61ec5883217d556c631c244793",
       "source": "https://registry.npmjs.org/brotli/1.3.3",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
-        "checkedOn": "2026-09-23",
-        "result": "The versioned npm archive contains no standalone complete LICENSE and the upstream repository (devongovett/brotli.js) publishes none either. The publisher declares MIT in package.json; that declaration is preserved and the standard license text is recorded instead of claiming an upstream license file. Upstream authorization material is still required to close this review.",
+        "checkedOn": "2026-09-24",
+        "result": "CORRECTED on 2026-09-24. The earlier text claimed the upstream publishes no license material at all; that was produced by a filename-only scan and is false. The versioned npm archive ships a verbatim Google copyright and Apache-2.0 notice as the leading comment of all seven shipped dec/*.js files; it is now registered as the embedded component google/brotli (vendored in brotli@1.3.3). What is still missing is a notice issued by the publisher for the package body itself, which declares MIT in package.json and carries only a README License heading. The synthesized standard MIT text is kept because the archive ships no MIT file either.",
+        "inArchivePublisherStatements": [
+          "package/package.json declares license MIT",
+          "package/readme.md carries a License heading whose body is MIT; already captured by the notice collector as the readme.md (license section) member"
+        ],
+        "registryPublisherIdentity": "npm 1.3.3 metadata: author, maintainers and _npmUser are all devongovett (devongovett@gmail.com); dist.integrity sha512-oTKjJdShmDuGW94SyyaoQvAjf30dZaHnjJ8uAF+u2/vGJkJbJPJAT1gDiOJP5v1Zb6f9KEyW/1HpuaWIXtGHPg==",
+        "inArchiveLicenseMaterialFound": "package/dec/{bit_reader,context,decode,dictionary,dictionary-data,prefix,transform}.js lines 1-13: Copyright 2013 Google Inc. All Rights Reserved. plus the Apache License 2.0 notice; byte-identical across all seven files, sha256 e422ec4747a913fb1aa7aecf7826bb06bd49d1a0de0dca5ec55b6b06214af613. The same header is still present in pdfkit@0.17.1 js/pdfkit.standalone.js (five occurrences), confirming downstreams retain it.",
+        "vendorProvenance": "foliojs/brotli.js v1.3.3 pins submodule vendor/brotli to google/brotli commit 5ce9bf11b3fe0924d87b2a2d47eb7a53a76a4421 (.gitmodules -> git@github.com:google/brotli.git); the Makefile Emscripten-compiles vendor/brotli/common and vendor/brotli/enc into build/encode.js and build/mem.js. That LICENSE is byte-identical (sha256 3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94) to the google/brotli notice already registered for @napi-rs/canvas.",
         "npmArchiveSha256": "3c7c260f6263df95fee49a9119e9fd21227d628b6c9d99080a75edfd9e2bdb24"
       }
     },
@@ -31245,12 +31260,175 @@
       "file": "third-party/upstream/1cff602ca185285d9d18ad1f9ac9b8a7c973b9d5c5ec845e29e10bd5b6c8a355.txt",
       "sha256": "1cff602ca185285d9d18ad1f9ac9b8a7c973b9d5c5ec845e29e10bd5b6c8a355",
       "source": "https://registry.npmjs.org/dfa/1.2.0",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
+      "evidenceKind": "publisher-declared-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
-        "checkedOn": "2026-09-23",
-        "result": "The versioned npm archive contains no standalone complete LICENSE and the upstream repository (devongewitt/dfa) publishes none either. The publisher declares MIT in package.json; that declaration is preserved and the standard license text is recorded instead of claiming an upstream license file. Upstream authorization material is still required to close this review.",
+        "checkedOn": "2026-09-24",
+        "result": "The versioned npm archive contains no standalone LICENSE file and the upstream repository devongovett/dfa publishes none either - re-checked exhaustively on 2026-09-24: the tarball has 6 entries with no license-named member, and the repository has a single branch whose v1.2.0 tree holds 17 entries with no license path at any depth. The in-archive publisher statements listed below are the material we rely on; upstream-issued copyright/license material for this version still does not exist and is not recoverable.",
+        "inArchivePublisherStatements": [
+          "package/package.json declares license MIT",
+          "package/README.md carries a License heading whose body is MIT; already captured by the notice collector as the README.md (license section) member"
+        ],
+        "registryPublisherIdentity": "npm 1.2.0 metadata: author, maintainers and _npmUser are all devongovett (devongovett@gmail.com); dist.integrity sha512-ED3jP8saaweFTjeGX8HQPjeC1YYyZs98jGNZx6IiBvxW7JG5v492kamAQB3m2wop07CvU/RQmzcKr6bgcC5D/Q==",
         "npmArchiveSha256": "d781eb3a307ab6aa2d97028f695b17dbeadf6fd27788c333b1fb96d18d2a23ad"
+      }
+    }
+  ],
+  "documentedLimitations": [
+    {
+      "id": "@open-draft/deferred-promise@2.2.0",
+      "tier": "publisher-declared-standard-terms",
+      "reason": "Recorded limitation, not blocking: the published artifact declares the license identifier and ships the standard terms; the upstream never published a copyright or license file of its own.",
+      "evidence": {
+        "source": "https://registry.npmjs.org/@open-draft%2fdeferred-promise/2.2.0",
+        "noticeFile": "third-party/upstream/b1688598c3e32605b3973902a546225e0159349c05a0f74db67f76e08e116e65.txt",
+        "noticeSha256": "b1688598c3e32605b3973902a546225e0159349c05a0f74db67f76e08e116e65",
+        "archiveSha256": "57f8d0cf303951c66dcdab2a10c2fe57194ad4cbb851880c604d4c3e521def2b",
+        "declaredLicense": "MIT",
+        "declarationLocation": [
+          "package.json license field"
+        ]
+      }
+    },
+    {
+      "id": "ansi-to-react@6.2.6",
+      "tier": "publisher-declared-standard-terms",
+      "reason": "Recorded limitation, not blocking: the published artifact declares the license identifier and ships the standard terms; the upstream never published a copyright or license file of its own.",
+      "evidence": {
+        "source": "https://registry.npmjs.org/ansi-to-react/6.2.6",
+        "noticeFile": "third-party/upstream/2c88816684a40c718113a10062a8335b665cec00d3c7b32e2b3fe9c620a3e03e.txt",
+        "noticeSha256": "2c88816684a40c718113a10062a8335b665cec00d3c7b32e2b3fe9c620a3e03e",
+        "archiveSha256": "e06fc6be19323cf447f0058975cfcf41923d3422ea613cff2e67d8fd8ee1d655",
+        "declaredLicense": "BSD-3-Clause",
+        "declarationLocation": [
+          "package.json license field",
+          "published notice members: README.md (license section)"
+        ]
+      }
+    },
+    {
+      "id": "boolbase@1.0.0",
+      "tier": "publisher-declared-standard-terms",
+      "reason": "Recorded limitation, not blocking: the published artifact declares the license identifier and ships the standard terms; the upstream never published a copyright or license file of its own.",
+      "evidence": {
+        "source": "https://registry.npmjs.org/boolbase/1.0.0",
+        "noticeFile": "third-party/upstream/2d2349188616c4b64ceeae33e1386bb546b0658864b4f7f8c9785757cb065b5d.txt",
+        "noticeSha256": "2d2349188616c4b64ceeae33e1386bb546b0658864b4f7f8c9785757cb065b5d",
+        "archiveSha256": "69628ff8092c5ff940ea4a0f29da98d520615bae138755c9e059033606c6caa8",
+        "declaredLicense": "ISC",
+        "declarationLocation": [
+          "package.json license field"
+        ]
+      }
+    },
+    {
+      "id": "brotli@1.3.3",
+      "tier": "publisher-declared-standard-terms",
+      "reason": "Recorded limitation, not blocking: the published artifact declares the license identifier and ships the standard terms; the upstream never published a copyright or license file of its own.",
+      "evidence": {
+        "source": "https://registry.npmjs.org/brotli/1.3.3",
+        "noticeFile": "third-party/upstream/cfc3c11a0e3e83ced162857d81a6df9fc5e9ad61ec5883217d556c631c244793.txt",
+        "noticeSha256": "cfc3c11a0e3e83ced162857d81a6df9fc5e9ad61ec5883217d556c631c244793",
+        "archiveSha256": "3c7c260f6263df95fee49a9119e9fd21227d628b6c9d99080a75edfd9e2bdb24",
+        "declaredLicense": "MIT",
+        "declarationLocation": [
+          "package.json license field",
+          "published notice members: readme.md (license section)"
+        ]
+      }
+    },
+    {
+      "id": "dfa@1.2.0",
+      "tier": "publisher-declared-standard-terms",
+      "reason": "Recorded limitation, not blocking: the published artifact declares the license identifier and ships the standard terms; the upstream never published a copyright or license file of its own.",
+      "evidence": {
+        "source": "https://registry.npmjs.org/dfa/1.2.0",
+        "noticeFile": "third-party/upstream/1cff602ca185285d9d18ad1f9ac9b8a7c973b9d5c5ec845e29e10bd5b6c8a355.txt",
+        "noticeSha256": "1cff602ca185285d9d18ad1f9ac9b8a7c973b9d5c5ec845e29e10bd5b6c8a355",
+        "archiveSha256": "d781eb3a307ab6aa2d97028f695b17dbeadf6fd27788c333b1fb96d18d2a23ad",
+        "declaredLicense": "MIT",
+        "declarationLocation": [
+          "package.json license field",
+          "published notice members: README.md (license section)"
+        ]
+      }
+    },
+    {
+      "id": "fontkit@2.0.4",
+      "tier": "publisher-declared-standard-terms",
+      "reason": "Recorded limitation, not blocking: the published artifact declares the license identifier and ships the standard terms; the upstream never published a copyright or license file of its own.",
+      "evidence": {
+        "source": "https://registry.npmjs.org/fontkit/2.0.4",
+        "noticeFile": "third-party/upstream/47a5b3dace9cce679dff68809f563a5e254152807e19d2b415e9a90d30407153.txt",
+        "noticeSha256": "47a5b3dace9cce679dff68809f563a5e254152807e19d2b415e9a90d30407153",
+        "archiveSha256": "f686a9515af33fce16ab4bffe50570728197e53165068548c6f75a1793797a08",
+        "declaredLicense": "MIT",
+        "declarationLocation": [
+          "package.json license field",
+          "published notice members: README.md (license section)"
+        ]
+      }
+    },
+    {
+      "id": "lazy-val@1.0.5",
+      "tier": "publisher-declared-standard-terms",
+      "reason": "Recorded limitation, not blocking: the published artifact declares the license identifier and ships the standard terms; the upstream never published a copyright or license file of its own.",
+      "evidence": {
+        "source": "https://registry.npmjs.org/lazy-val/1.0.5",
+        "noticeFile": "third-party/upstream/f18c12b8e7daf98d572518b7db133b2dc66a713921dac4825410dd656e0c1a1a.txt",
+        "noticeSha256": "f18c12b8e7daf98d572518b7db133b2dc66a713921dac4825410dd656e0c1a1a",
+        "archiveSha256": "7d8602ad98db3d19fbd5b46fbf3831dd996197a013ef1ff7badc205e41435372",
+        "declaredLicense": "MIT",
+        "declarationLocation": [
+          "package.json license field"
+        ]
+      }
+    },
+    {
+      "id": "react-remove-scroll-bar@2.3.8",
+      "tier": "publisher-declared-standard-terms",
+      "reason": "Recorded limitation, not blocking: the published artifact declares the license identifier and ships the standard terms; the upstream never published a copyright or license file of its own.",
+      "evidence": {
+        "source": "https://registry.npmjs.org/react-remove-scroll-bar/2.3.8",
+        "noticeFile": "third-party/upstream/f158b3bd10b867740fdbf81447216f1f8685473acf61e6a105ef91ba9fe8ebc3.txt",
+        "noticeSha256": "f158b3bd10b867740fdbf81447216f1f8685473acf61e6a105ef91ba9fe8ebc3",
+        "archiveSha256": "ccc872d7a2dc007cbf9d755f30d56b8d80eabdbe22c44c95a709129bfdc46f01",
+        "declaredLicense": "MIT",
+        "declarationLocation": [
+          "package.json license field",
+          "published notice members: README.md (license section)"
+        ]
+      }
+    },
+    {
+      "id": "strict-event-emitter@0.5.1",
+      "tier": "publisher-declared-standard-terms",
+      "reason": "Recorded limitation, not blocking: the published artifact declares the license identifier and ships the standard terms; the upstream never published a copyright or license file of its own.",
+      "evidence": {
+        "source": "https://registry.npmjs.org/strict-event-emitter/0.5.1",
+        "noticeFile": "third-party/upstream/93f24a47f95aea2be1b0dad78de98dc6d3de01ce22c0b72dc73e453c7917b955.txt",
+        "noticeSha256": "93f24a47f95aea2be1b0dad78de98dc6d3de01ce22c0b72dc73e453c7917b955",
+        "archiveSha256": "43c456f72612074a13e8399c29ffd59c8c277274924b633f6e4fa07342f63cab",
+        "declaredLicense": "MIT",
+        "declarationLocation": [
+          "package.json license field",
+          "published notice members: README.md (license section)"
+        ]
+      }
+    },
+    {
+      "id": "unsafe-pointer@0.2.0",
+      "tier": "publisher-declared-standard-terms",
+      "reason": "Recorded limitation, not blocking: the published artifact declares the license identifier and ships the standard terms; the upstream never published a copyright or license file of its own.",
+      "evidence": {
+        "source": "https://registry.npmjs.org/unsafe-pointer/0.2.0",
+        "noticeFile": "third-party/upstream/0ab717053f3e24736cd404a0801407fb305db75d1b58f7e6487d14feee30d28a.txt",
+        "noticeSha256": "0ab717053f3e24736cd404a0801407fb305db75d1b58f7e6487d14feee30d28a",
+        "archiveSha256": "9c9795688a9e224759468aeee2ff88d917fadc65f7b3480e62571f0853eaa446",
+        "declaredLicense": "MIT",
+        "declarationLocation": [
+          "package.json license field"
+        ]
       }
     }
   ],
@@ -31501,6 +31679,28 @@
           "sha256": "5f745b8244890bde0a2258fe32342d60c577fad043e8601d923690a5bfe1b54f"
         }
       ]
+    },
+    {
+      "id": "google/brotli (vendored in brotli@1.3.3)",
+      "parentPackage": "brotli@1.3.3",
+      "revision": "5ce9bf11b3fe0924d87b2a2d47eb7a53a76a4421",
+      "source": "https://github.com/foliojs/brotli.js/tree/v1.3.3",
+      "notices": [
+        {
+          "component": "google/brotli JavaScript decoder (dec/*.js)",
+          "source": "https://registry.npmjs.org/brotli/-/brotli-1.3.3.tgz (package/dec/transform.js)",
+          "extraction": "Original leading copyright and license comment, verbatim. The first 13 lines are byte-identical in all seven shipped dec/*.js files (bit_reader, context, decode, dictionary, dictionary-data, prefix, transform); only the per-file description line after the blank line differs.",
+          "file": "third-party/upstream/e422ec4747a913fb1aa7aecf7826bb06bd49d1a0de0dca5ec55b6b06214af613.txt",
+          "sha256": "e422ec4747a913fb1aa7aecf7826bb06bd49d1a0de0dca5ec55b6b06214af613"
+        },
+        {
+          "component": "google/brotli C sources (Emscripten-compiled into build/encode.js and build/mem.js)",
+          "source": "https://raw.githubusercontent.com/google/brotli/5ce9bf11b3fe0924d87b2a2d47eb7a53a76a4421/LICENSE",
+          "extraction": "The revision pinned by the vendor/brotli submodule of foliojs/brotli.js v1.3.3 (.gitmodules -> git@github.com:google/brotli.git); byte-identical to the google/brotli LICENSE already registered for the @napi-rs/canvas component, so the two share one notice text.",
+          "file": "third-party/upstream/3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94.txt",
+          "sha256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94"
+        }
+      ]
     }
   ],
   "runtimes": {
@@ -31525,48 +31725,20 @@
       "reason": "Pinned upstream README and skill declare MIT, but a complete original copyright/license notice has not been obtained."
     },
     {
-      "id": "unsafe-pointer@0.2.0",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
-    },
-    {
-      "id": "react-remove-scroll-bar@2.3.8",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
-    },
-    {
       "id": "quickjs-wasi@2.2.0",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
+      "reason": "Publisher-declaration tier criteria not met: (c) the published artifact carries no publisher copyright subject (package.json author/contributors/maintainers, or a Copyright line in a published licence text)"
     },
     {
       "id": "@hono/node-ws@1.3.0",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
-    },
-    {
-      "id": "strict-event-emitter@0.5.1",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
-    },
-    {
-      "id": "lazy-val@1.0.5",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
+      "reason": "Publisher-declaration tier criteria not met: (c) the published artifact carries no publisher copyright subject (package.json author/contributors/maintainers, or a Copyright line in a published licence text)"
     },
     {
       "id": "semaphore@1.1.0",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
-    },
-    {
-      "id": "boolbase@1.0.0",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
-    },
-    {
-      "id": "@open-draft/deferred-promise@2.2.0",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
+      "reason": "Publisher-declaration tier criteria not met: (c) the published artifact carries no publisher copyright subject (package.json author/contributors/maintainers, or a Copyright line in a published licence text)"
     },
     {
       "id": "is-node-process@1.2.0",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
-    },
-    {
-      "id": "ansi-to-react@6.2.6",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
+      "reason": "Publisher-declaration tier criteria not met: (c) the published artifact carries no publisher copyright subject (package.json author/contributors/maintainers, or a Copyright line in a published licence text)"
     },
     {
       "id": "@trycua/cua-driver@0.28.2",
@@ -31630,18 +31802,6 @@
     },
     {
       "id": "https@1.0.0",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
-    },
-    {
-      "id": "fontkit@2.0.4",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
-    },
-    {
-      "id": "brotli@1.3.3",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
-    },
-    {
-      "id": "dfa@1.2.0",
       "reason": "Original version-specific publisher copyright/license material remains incomplete."
     },
     {

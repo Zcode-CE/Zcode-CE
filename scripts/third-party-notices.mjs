@@ -26,8 +26,13 @@ export async function readVerifiedNotices(root = repositoryRoot, { requireComple
   if (requireComplete && !Array.isArray(manifest.reviewRequired))
     throw new Error("Missing material review inventory; regenerate third-party notices");
   if (requireComplete && manifest.reviewRequired.length) {
+    // 非阻断的书面限制要一并报出来：门禁变绿只说明"发布者已发布的声明不再被当作缺失"，
+    // 不说明材料齐全。详见 third-party/README.md。
+    const documented = manifest.documentedLimitations?.length
+      ? `\n\nNon-blocking documented limitations: ${manifest.documentedLimitations.length} item(s) recorded as "publisher-declared SPDX identifier + standard licence text + recorded provenance". They are not blocking, but they do not mean the material is complete; see third-party/README.md.`
+      : "";
     throw new Error(
-      `Unresolved third-party material obligations:\n${manifest.reviewRequired.map((item) => `${item.id}: ${item.reason}`).join("\n")}`,
+      `Unresolved third-party material obligations:\n${manifest.reviewRequired.map((item) => `${item.id}: ${item.reason}`).join("\n")}${documented}`,
     );
   }
   return bytes;

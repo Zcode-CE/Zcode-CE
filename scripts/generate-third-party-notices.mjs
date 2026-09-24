@@ -27,7 +27,11 @@ export async function generateThirdPartyNotices(root = repositoryRoot) {
   await readInput("pnpm-lock.yaml");
   await readInput("pnpm-workspace.yaml");
   await readInput("third-party/native-search/sources.json");
-  const { packages, notInstalled, workspaceManifests } = await collectNpmNotices(root, overrides);
+  const { packages, notInstalled, overrideAssessments, workspaceManifests } =
+    await collectNpmNotices(root, overrides);
+  // fail-closed：没有判定记录的条目一律按阻断处理。
+  const assessmentOf = new Map(overrideAssessments.map((item) => [item.package, item]));
+  const blockingOf = (item) => (assessmentOf.get(item.package) ?? { blocking: true }).blocking;
   // 修复：递归扫描会把 bundled-agents/mock-cdn 的可删除缓存当作源码输入，重建立即失效。
   // workspace 边界由 pnpm 解析，同一份项目集合用于依赖图和 manifest 新鲜度检查。
   for (const file of workspaceManifests) await readInput(file);
@@ -147,6 +151,7 @@ export async function generateThirdPartyNotices(root = repositoryRoot) {
     ),
     "## Source evidence limitations",
     "Some publishers provide only a license identifier or a short README license section instead of a complete LICENSE file. For the following packages the supplied material explicitly identifies publisher metadata and standard terms; it is not represented as an original upstream LICENSE file. Any available README copyright notice is retained:",
+    "These entries are recorded limitations, not a statement that the material is complete: the published artifact carries the declared license identifier and the standard terms below, but no copyright or license file of its own. The blocking subset of these limitations, and why each one still blocks, is listed in third-party/README.md.",
     ...overrides
       .filter((item) => item.evidenceKind)
       .map((item) => `- ${item.package}: ${item.source}`),
@@ -192,7 +197,18 @@ export async function generateThirdPartyNotices(root = repositoryRoot) {
     notInstalled,
     copied: copiedInventory,
     patches,
+    // exceptions 保持原样：非阻断的条目仍要出现在声明的 limitations 段里，不能静默消失。
     exceptions: overrides.filter((item) => item.acceptedMissingNotice || item.evidenceKind),
+    // 记录为书面限制、但不再阻断的条目（发布者已发布的声明 + 标准条款 + 已记录出处）。
+    documentedLimitations: overrideAssessments
+      .filter((item) => !item.blocking)
+      .map((item) => ({
+        id: item.package,
+        tier: item.tier,
+        reason:
+          "Recorded limitation, not blocking: the published artifact declares the license identifier and ships the standard terms; the upstream never published a copyright or license file of its own.",
+        evidence: item.evidence,
+      })),
     embedded,
     runtimes,
     reviewRequired: [
@@ -202,11 +218,17 @@ export async function generateThirdPartyNotices(root = repositoryRoot) {
         .map((item) => ({ id: item.id, reason: item.reviewRequired })),
       ...overrides
         .filter((item) => item.acceptedMissingNotice || item.evidenceKind)
-        .map((item) => ({
-          id: item.package,
-          reason:
-            "Original version-specific publisher copyright/license material remains incomplete.",
-        })),
+        .filter(blockingOf)
+        .map((item) => {
+          const assessment = assessmentOf.get(item.package);
+          return {
+            id: item.package,
+            reason:
+              item.evidenceKind && assessment && !assessment.satisfied
+                ? "Publisher-declaration tier criteria not met: " + assessment.missing.join(" ")
+                : "Original version-specific publisher copyright/license material remains incomplete.",
+          };
+        }),
       ...embedded
         .filter((item) => item.reviewRequired)
         .map((item) => ({ id: item.id, reason: item.reviewRequired })),

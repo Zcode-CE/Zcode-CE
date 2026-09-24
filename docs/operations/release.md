@@ -190,9 +190,12 @@ pnpm typecheck
 pnpm test
 ```
 
-> `pnpm licenses:check` 的 `--strict` 模式**当前不通过**（30 项材料待补齐），
-> 基础检查通过不代表合规完成。发布前需确认这是已知状态，详见
-> [与上游的差异](../development/upstream-diff.md) 的技术债 #5。
+> `pnpm licenses:check` 的 `--strict` 模式**当前不通过**，基础检查通过不代表合规完成。
+> 阻断项分两类：材料档位判据不满足（`publisher-declared-standard-terms` 的四条判据缺一），
+> 以及尚未重新分档的上游 pin 文件与非 npm 组件；确切条数以 `third-party/inventory.json` 为准。
+> 另有若干条按「发布者已发布的声明 + 标准条款 + 已记录出处」记为**非阻断的书面限制** ——
+> 这**不等于**材料齐全。口径、四条判据与反向验证要求见 [third-party/README.md](../../third-party/README.md)；
+> 发布前需确认这是已知状态，详见 [与上游的差异](../development/upstream-diff.md) 的技术债 #5。
 
 ### 3. 打 tag 并推送
 

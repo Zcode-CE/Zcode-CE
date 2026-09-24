@@ -2410,6 +2410,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 Some publishers provide only a license identifier or a short README license section instead of a complete LICENSE file. For the following packages the supplied material explicitly identifies publisher metadata and standard terms; it is not represented as an original upstream LICENSE file. Any available README copyright notice is retained:
 
+These entries are recorded limitations, not a statement that the material is complete: the published artifact carries the declared license identifier and the standard terms below, but no copyright or license file of its own. The blocking subset of these limitations, and why each one still blocks, is listed in third-party/README.md.
+
 - unsafe-pointer@0.2.0: https://registry.npmjs.org/unsafe-pointer/0.2.0
 
 - react-remove-scroll-bar@2.3.8: https://registry.npmjs.org/react-remove-scroll-bar/2.3.8
@@ -2511,6 +2513,8 @@ Fig autocomplete source carries the repository's MIT license; the generated regi
 - Skia inside @napi-rs/canvas@0.1.100; upstream revision fe2718df5f53a681087be6f0539045ca1b4b8c09; source: https://github.com/Brooooooklyn/canvas/tree/db337893b9b53483050ca7b24c6d306e4da06741/skia. Skia core notice retained. Per-platform linked third-party libraries and their exact build provenance still require a complete audit.
 
 - QuickJS-NG inside quickjs-wasi@2.2.0; upstream revision dec012362bd93876449f3ecff4f835b2eba89bab; source: https://github.com/vercel-labs/quickjs-wasi/tree/cc1fea4a6a4ac1d960e0db68d35e1459064a1a23/quickjs-ng. Engine notice retained. WASI libc and extension link provenance is not fully established by the npm package.
+
+- google/brotli (vendored in brotli@1.3.3) inside brotli@1.3.3; upstream revision 5ce9bf11b3fe0924d87b2a2d47eb7a53a76a4421; source: https://github.com/foliojs/brotli.js/tree/v1.3.3. 
 
 Electron/Chromium target-specific notices are shipped separately under Resources/licenses/electron. Distributions containing an independent Node runtime also include its exact-version LICENSE.node.txt; SEA includes that text in --licenses output.
 
@@ -42306,6 +42310,8 @@ freely, subject to the following restrictions:
 
 - brotli (inside @napi-rs/canvas@0.1.100): https://raw.githubusercontent.com/google/brotli/6d03dfbedda1615c4cba1211f8d81735575209c8/LICENSE
 
+- google/brotli C sources (Emscripten-compiled into build/encode.js and build/mem.js) (inside brotli@1.3.3): https://raw.githubusercontent.com/google/brotli/5ce9bf11b3fe0924d87b2a2d47eb7a53a76a4421/LICENSE
+
 
 
 ````text
@@ -44983,6 +44989,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  *  This file is part of Mbed TLS (https://tls.mbed.org)
  */
+
+````
+
+### Notice e422ec4747a913fb1aa7aecf7826bb06bd49d1a0de0dca5ec55b6b06214af613
+
+- google/brotli JavaScript decoder (dec/*.js) (inside brotli@1.3.3): https://registry.npmjs.org/brotli/-/brotli-1.3.3.tgz (package/dec/transform.js)
+
+
+
+````text
+/* Copyright 2013 Google Inc. All Rights Reserved.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 
 ````
 

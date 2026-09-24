@@ -211,12 +211,194 @@ export function missingProductionPackages(required, installed) {
   return missing;
 }
 
+/**
+ * 许可材料证据档位表。
+ *
+ * **fail-closed**：只有在本表里显式登记为 `blocking: false`、**且**运行时判据核对全部通过的
+ * 档位才不阻断发布门禁。未登记的 `evidenceKind`（含拼写错误）一律按阻断处理。
+ *
+ * 档位语义与判据见 `third-party/README.md`：
+ * - `publisher-declared-standard-terms`：发布者**已发布**的 SPDX 声明 + 对应**标准未修改**条款文本
+ *   + 已发布的发布者版权主体 + 已记录的出处与版本锁定。四条同时成立才非阻断。
+ *   非阻断**不等于**"材料齐全"，只表示"我们不再把发布者已发布的声明当作缺失"。
+ * - `pinned-upstream-license-file`：登记的是**上游仓库**里 pin 住的许可文件。材料性质与上面那档不同，
+ *   本次实现**刻意**未重新分档（保持阻断），见 third-party/README.md 的说明。
+ * - `incomplete-unverified`：声明缺失、含糊，或文本是自定义条款 ⇒ 阻断。
+ */
+export const EVIDENCE_TIERS = new Map([
+  ["publisher-declared-standard-terms", { blocking: false, guard: "published-declaration" }],
+  ["pinned-upstream-license-file", { blocking: true, guard: null }],
+  ["incomplete-unverified", { blocking: true, guard: null }],
+]);
+
+/**
+ * 每个 SPDX 标识对应的**标准条款片段**（逐行照抄，避免跨行断句）。
+ *
+ * 判据 (b) 只核对"我们随包分发的通知文本里确实包含该标识的标准条款"。
+ * 它**不能**证明文本未被改动过——那是人工复核的职责；但它能拦住"换成自定义文案"
+ * 这类会让门禁静默变绿的情况。**没有表项的标识一律判为无法核对 ⇒ 阻断**（fail-closed）。
+ */
+const STANDARD_CLAUSES = new Map([
+  [
+    "MIT",
+    [
+      "Permission is hereby granted, free of charge, to any person obtaining a copy",
+      'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR',
+    ],
+  ],
+  [
+    "ISC",
+    [
+      "Permission to use, copy, modify, and/or distribute this software for any",
+      "purpose with or without fee is hereby granted, provided that the above",
+    ],
+  ],
+  [
+    "BSD-3-Clause",
+    [
+      "Redistribution and use in source and binary forms, with or without",
+      "3. Neither the name of the copyright holder nor the names of its contributors",
+      'THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"',
+    ],
+  ],
+  [
+    "BSD-2-Clause",
+    [
+      "Redistribution and use in source and binary forms, with or without",
+      'THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"',
+    ],
+  ],
+  [
+    "Apache-2.0",
+    [
+      'Licensed under the Apache License, Version 2.0 (the "License");',
+      "http://www.apache.org/licenses/LICENSE-2.0",
+    ],
+  ],
+]);
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+
+function declaredLicenseText(value) {
+  if (typeof value === "string") return value.trim();
+  if (Array.isArray(value)) return value.map(declaredLicenseText).filter(Boolean).join(" OR ");
+  return value?.type?.trim() ?? "";
+}
+
+function publisherSubjectText(value) {
+  if (typeof value === "string") return value.trim();
+  if (Array.isArray(value)) return value.map(publisherSubjectText).filter(Boolean).join(", ");
+  if (value && typeof value === "object") return String(value.name ?? "").trim();
+  return "";
+}
+
+/** 某个标识是否以独立词出现（避免 MIT 命中 MIT/X11 之外的同名子串）。 */
+function mentionsIdentifier(text, identifier) {
+  if (!text) return false;
+  return new RegExp(
+    `(?:^|[^A-Za-z0-9.-])${escapeRegExp(identifier)}(?:[^A-Za-z0-9.-]|$)`,
+    "u",
+  ).test(text);
+}
+
+/**
+ * 核对"发布者声明档"的四条判据。
+ *
+ * 输入刻意分成两类，避免**循环论证**：
+ * - `publishedNotices`：来自**已发布包目录**的成员（README 许可段、包内 LICENSE），它才代表"发布者已发布"；
+ * - `record.file`：我们自己登记的文本，只用来核对判据 (b)，**不**用来证明声明或版权主体存在。
+ */
+export function assessOverrideMaterials(key, record, { pkg, notices }) {
+  const tier =
+    record.evidenceKind ?? (record.acceptedMissingNotice ? "accepted-missing-notice" : "unknown");
+  const policy = EVIDENCE_TIERS.get(tier) ?? { blocking: true, guard: null };
+  const publishedNotices = notices.filter((notice) => !notice.injected);
+  const publishedText = publishedNotices.map((notice) => notice.bytes.toString("utf8")).join("\n");
+  const noticeText = record.file
+    ? (notices.find((notice) => notice.injected)?.bytes.toString("utf8") ?? "")
+    : "";
+  const missing = [];
+  const declared = declaredLicenseText(record.license);
+  const artifactDeclaration = declaredLicenseText(pkg.license) || declaredLicenseText(pkg.licenses);
+
+  if (policy.guard === "published-declaration") {
+    // (a) 已发布物里声明了 SPDX 标识
+    if (!declared) missing.push("(a) no licence identifier is recorded for this entry");
+    else if (!STANDARD_CLAUSES.has(declared))
+      missing.push(`(a) identifier ${declared} has no standard-clause table entry`);
+    else if (
+      !mentionsIdentifier(artifactDeclaration, declared) &&
+      !mentionsIdentifier(publishedText, declared)
+    )
+      missing.push(
+        `(a) the published artifact does not declare ${declared} (neither the package.json licence field nor a README/licence-section paragraph)`,
+      );
+
+    // (b) 该标识对应标准、未修改的条款文本
+    const clauses = STANDARD_CLAUSES.get(declared);
+    if (!record.file) missing.push("(b) no notice text file is recorded");
+    else if (!clauses)
+      missing.push(`(b) identifier ${declared} has no comparable standard clauses`);
+    else
+      for (const clause of clauses)
+        if (!noticeText.includes(clause))
+          missing.push(
+            `(b) notice text is missing the ${declared} standard clause: ${clause.slice(0, 56)}`,
+          );
+
+    // (c) 发布者版权主体已发布（只用已发布物，不用我们自己写的文本）
+    const subject =
+      publisherSubjectText(pkg.author) ||
+      publisherSubjectText(pkg.contributors) ||
+      publisherSubjectText(pkg.maintainers) ||
+      (/\bcopyright\b/iu.test(publishedText) ? "artifact copyright line" : "");
+    if (!subject)
+      missing.push(
+        "(c) the published artifact carries no publisher copyright subject (package.json author/contributors/maintainers, or a Copyright line in a published licence text)",
+      );
+
+    // (d) 出处与版本锁定
+    if (!record.source) missing.push("(d) no provenance source recorded");
+    if (!record.file || !record.sha256) missing.push("(d) no content pin recorded (file + sha256)");
+    if (
+      !record.reviewEvidence?.npmArchiveSha256 &&
+      !record.reviewEvidence?.sourceRevision &&
+      !(record.refs?.length > 0)
+    )
+      missing.push(
+        "(d) no version pin recorded (none of npmArchiveSha256 / sourceRevision / refs)",
+      );
+  }
+
+  return {
+    package: key,
+    tier,
+    blocking: policy.blocking || missing.length > 0,
+    satisfied: missing.length === 0,
+    missing,
+    evidence: {
+      source: record.source ?? null,
+      noticeFile: record.file ?? null,
+      noticeSha256: record.sha256 ?? null,
+      archiveSha256: record.reviewEvidence?.npmArchiveSha256 ?? null,
+      declaredLicense: declared || null,
+      declarationLocation: [
+        artifactDeclaration ? "package.json license field" : null,
+        publishedNotices.length
+          ? `published notice members: ${publishedNotices.map((n) => n.member).join(", ")}`
+          : null,
+      ].filter(Boolean),
+    },
+  };
+}
+
 export async function collectNpmNotices(root, overrides) {
   root = await realpath(root);
   const { required, projects } = await readWorkspaceProductionGraph(root);
   // 修复：标识门禁和声明生成必须扫描同一安装集合，避免嵌套版本只进声明、不进门禁。
   const installed = await scanInstalledPackages(root, projects);
   const packages = [];
+  const overrideAssessments = [];
   const missing = [];
   const notInstalled = missingProductionPackages(required, installed);
   for (const [key, item] of [...required].sort(([a], [b]) => a.localeCompare(b, "en"))) {
@@ -230,7 +412,9 @@ export async function collectNpmNotices(root, overrides) {
     if (override?.file) {
       const bytes = await readFile(join(root, override.file));
       if (hashBytes(bytes) !== override.sha256) throw new Error(`Changed upstream notice: ${key}`);
-      notices.push({ member: override.source, bytes });
+      // injected 标记：这条成员是我们自己登记的快照，不是发布者发布物。
+      // 判据 (a)/(c) 必须只用发布物，否则等于拿自己的断言给自己作证。
+      notices.push({ member: override.source, bytes, injected: true });
     }
     // README 中仅有 MIT 等标签不能冒充完整许可文件；这种包仍需要版本固定的补充材料。
     if (
@@ -238,6 +422,9 @@ export async function collectNpmNotices(root, overrides) {
       !override?.acceptedMissingNotice
     )
       missing.push(key);
+    // 分档判定：只对登记了 evidenceKind 的条目做，判据核对不通过会被升级为阻断。
+    if (override?.evidenceKind)
+      overrideAssessments.push(assessOverrideMaterials(key, override, { pkg, notices }));
     packages.push({
       ...item,
       license:
@@ -256,6 +443,7 @@ export async function collectNpmNotices(root, overrides) {
   return {
     packages,
     notInstalled,
+    overrideAssessments,
     workspaceManifests: projects.map((project) =>
       relative(root, join(project.path, "package.json")).replaceAll("\\", "/"),
     ),

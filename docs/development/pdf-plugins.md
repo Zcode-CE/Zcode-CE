@@ -44,7 +44,7 @@
 
 - `pdfkit`（MIT）、`fontkit`（MIT）作为 `pdf-plugin/package.json` 的**构建期依赖**进仓库安装树；随包分发的是 bundle。
 - `scripts/licenses.mjs` 的 `MANUAL_LICENSE` 登记 `png-js: "MIT"`（包内 LICENSE 为 MIT 全文；package.json 无 license 字段）。
-- `third-party/npm-overrides.json` 新增四条：`fontkit@2.0.4`、`brotli@1.3.3`、`dfa@1.2.0`（npm 包内与上游仓库均无独立 LICENSE ⇒ 按既有 `publisher-license-identifier-and-standard-terms` 约定登记标准 MIT 全文 + npm tarball sha256）、`png-js@1.1.0`（包内 LICENSE 即上游文本，登记 `packaged-license-file`）。
+- `third-party/npm-overrides.json` 新增四条：`fontkit@2.0.4`、`brotli@1.3.3`、`dfa@1.2.0`（npm 包内与上游仓库均无独立 LICENSE ⇒ 按 `publisher-declared-standard-terms` 档登记标准 MIT 全文 + npm tarball sha256）、`png-js@1.1.0`（包内 LICENSE 即上游文本，登记真实文件快照，不带 `evidenceKind`）。
 - 生成物：`node scripts/licenses.mjs notices` → `THIRD-PARTY-NOTICES.md`；检查 `node scripts/licenses.mjs check`（本仓当前绿）。
 - **未引入随包字体**，因此**没有 OFL 与 Reserved Font Name 义务**。若将来随包 OFL 子集字体：必须改字体名（Noto 是 RFN）+ 附 OFL 全文与版权声明，并同步登记。
 

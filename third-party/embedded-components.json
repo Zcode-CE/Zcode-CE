@@ -245,5 +245,27 @@
         "sha256": "5f745b8244890bde0a2258fe32342d60c577fad043e8601d923690a5bfe1b54f"
       }
     ]
+  },
+  {
+    "id": "google/brotli (vendored in brotli@1.3.3)",
+    "parentPackage": "brotli@1.3.3",
+    "revision": "5ce9bf11b3fe0924d87b2a2d47eb7a53a76a4421",
+    "source": "https://github.com/foliojs/brotli.js/tree/v1.3.3",
+    "notices": [
+      {
+        "component": "google/brotli JavaScript decoder (dec/*.js)",
+        "source": "https://registry.npmjs.org/brotli/-/brotli-1.3.3.tgz (package/dec/transform.js)",
+        "extraction": "Original leading copyright and license comment, verbatim. The first 13 lines are byte-identical in all seven shipped dec/*.js files (bit_reader, context, decode, dictionary, dictionary-data, prefix, transform); only the per-file description line after the blank line differs.",
+        "file": "third-party/upstream/e422ec4747a913fb1aa7aecf7826bb06bd49d1a0de0dca5ec55b6b06214af613.txt",
+        "sha256": "e422ec4747a913fb1aa7aecf7826bb06bd49d1a0de0dca5ec55b6b06214af613"
+      },
+      {
+        "component": "google/brotli C sources (Emscripten-compiled into build/encode.js and build/mem.js)",
+        "source": "https://raw.githubusercontent.com/google/brotli/5ce9bf11b3fe0924d87b2a2d47eb7a53a76a4421/LICENSE",
+        "extraction": "The revision pinned by the vendor/brotli submodule of foliojs/brotli.js v1.3.3 (.gitmodules -> git@github.com:google/brotli.git); byte-identical to the google/brotli LICENSE already registered for the @napi-rs/canvas component, so the two share one notice text.",
+        "file": "third-party/upstream/3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94.txt",
+        "sha256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94"
+      }
+    ]
   }
 ]
