@@ -46,10 +46,10 @@ export interface WebAppRootBootstrap {
  *
  * 与 task-16 之前的差别：那时入口在 `connectViaWebSocket` 之后一次性挂载 `Root`，断线回调是空的，
  * 于是断线等于假死。现在由 supervisor 持有连接：断开 → 显示覆盖层 + 退避重连；重连成功 →
- * 用**新的 services** 重新挂载应用（`key={generation}`），应用自身按 `web-remote-replayable`
+ * 用新的 services 重新挂载应用（`key={generation}`），应用自身按 `web-remote-replayable`
  * 语义重新拉快照（快照/etag 恢复在 packages/ui 里已存在）。
  *
- * 明确不承诺：恢复到断线前那个**任务**（应用的 store 由 `StoreProvider` 每次挂载时创建，
+ * 明确不承诺：恢复到断线前那个任务（应用的 store 由 `StoreProvider` 每次挂载时创建，
  * 见 packages/ui/src/store/StoreProvider.tsx，跨重新挂载读不回来）。见 docs/development/web-remote-control.md §4。
  */
 export function WebAppRoot({
@@ -83,7 +83,7 @@ export function WebAppRoot({
         // 普通 Web 客户端没有 window host：`window-controller` 只由桌面 Host 注册
         // （packages/desktop/src/host/index.ts 的 services.register(IWindowControllerService, …)），
         // 服务端入口 entry-http → createLocalServices 不注册它。而 SDK 的 RemoteServiceAccess 会
-        // **无条件**为每个 channel 建 proxy（packages/client/src/remoteServiceAccess.ts），于是共享 UI
+        // 无条件为每个 channel 建 proxy（packages/client/src/remoteServiceAccess.ts），于是共享 UI
         // 的 `useGlobalTaskList` 会把 `controller ? …` 判成 truthy，向不存在的通道发 RPC，服务端只打
         // `Unknown channel: window-controller`（实测每次页面加载 5 行），污染真实排障信号。
         // 这里如实声明「本宿主没有该能力」：IServiceAccessor 本来就把 windowControllerService 标为可选，
@@ -108,11 +108,11 @@ export function WebAppRoot({
   /**
    * 连不上时判定是不是授权问题（401/403）。
    *
-   * 是授权问题就**停止自动重连**并切到未授权态：401 不会自愈，继续退避重试只会让用户
+   * 是授权问题就停止自动重连并切到未授权态：401 不会自愈，继续退避重试只会让用户
    * 看到「正在重连（第 N 次）」这种把授权说成网络问题的误导提示（task-21 的缺陷 (a)）。
    * 真·网络问题仍然走重连覆盖层。
    *
-   * 关键（task-22 阶段 2 修掉的缺陷）：**每个新的 attempt 都要重新探测**，不能「一个相位
+   * 关键（task-22 阶段 2 修掉的缺陷）：每个新的 attempt 都要重新探测，不能「一个相位
    * 只探一次」—— 断线往往就是服务在重启，那一刻探测只能得到 unreachable；此后不再探测的话，
    * 即使服务已经起来并用 401 拒绝这个浏览器，页面也会永远停在「正在重连…无需刷新」，
    * 用户拿不到那条「怎么拿到带令牌链接」的可照做文案。判定逻辑见 authorizationProbeController。
@@ -155,7 +155,7 @@ export function WebAppRoot({
         attempt={connection.attempt}
         onRetry={retry}
       />
-      {/* 未授权时**不渲染任何应用内容**（此时 session 可能是失效 cookie 留下的陈旧连接）：
+      {/* 未授权时不渲染任何应用内容（此时 session 可能是失效 cookie 留下的陈旧连接）：
           授权问题必须显式、且不得继续展示会话内容。见 docs/development/web-remote-control.md。 */}
       {session && !unauthorized ? (
         <AppErrorBoundary key={session.generation}>

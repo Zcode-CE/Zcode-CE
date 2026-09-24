@@ -21,6 +21,7 @@
 | [工具与权限：按资源/工具精细启停](development/tool-policy.md)            | 危险命令判定、MCP 单工具启停、持久授权策略               |
 | [遥测与隐私](development/telemetry.md)                                   | 本版移除遥测的范围、保留的能力边界、验证方法             |
 | [工作区可见性](development/workspace-registry.md)                        | 可见工作区的真相源、能全看不默认全看、未启动态           |
+| [文案与格式纪律](development/copy-and-format.md)                         | UI 文案 / 注释 / 文档三面的 markdown 强调规则与护栏      |
 
 ### `community/` — 社区
 

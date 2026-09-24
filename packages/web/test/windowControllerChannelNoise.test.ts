@@ -23,18 +23,18 @@ import { fileURLToPath } from "node:url";
  * 桌面 Host 注册**（`packages/desktop/src/host/index.ts`），服务端入口 `entry-http → createLocalServices`
  * 不注册它 ⇒ 服务端每次加载打约 5 行 `Unknown channel: window-controller`（客户端 console 反而没有 error，
  * 因为它已静默降级到 fallback）。噪音本身不破坏功能，但会淹没真实排障信号。
- * 根因在 `packages/client/src/remoteServiceAccess.ts`：SDK 为**每个** channel 无条件建 proxy，
+ * 根因在 `packages/client/src/remoteServiceAccess.ts`：SDK 为每个 channel 无条件建 proxy，
  * 使 `IServiceAccessor.windowControllerService?` 的可选语义对 RPC 客户端失效（消费方
  * `useGlobalTaskList` 的 `controller ? …` 永远走 truthy 分支）。
  *
  * ## 修法（在 web 平台层如实声明能力）
  * `packages/web/src/WebAppRoot.tsx` 的 `connect` 包一层：拿到 accessor 后返回
  * `{ ...services, windowControllerService: undefined }` —— 本宿主没有 window host ⇒ 该服务不存在，
- * 消费方走既有 fallback。**不是** try/catch 消音。
+ * 消费方走既有 fallback。不是 try/catch 消音。
  *
  * ## 断言打在最终消费点
  * 不看源码、不看类型：自起隔离 `ZCODE_DATA_BASE_DIR` 的真实服务端 + 构建产物 + 真浏览器，
- * 390×844 与 1440×900 各加载一次，断言**服务端日志里 `Unknown channel: window-controller` 计数 = 0**。
+ * 390×844 与 1440×900 各加载一次，断言服务端日志里 `Unknown channel: window-controller` 计数 = 0。
  * 反向验证：把那 3 行改回原样并重建 ⇒ 计数回到 5/次 ⇒ 本条变红（已实测）。
  */
 
@@ -93,7 +93,7 @@ function resolveChromiumExecutable(): string | null {
   return null;
 }
 
-/** 只读拷贝用户数据到临时目录：**从不写真实 `~/.zcode`**，凭据在 0700 临时目录内并 chmod 600。 */
+/** 只读拷贝用户数据到临时目录：从不写真实 `~/.zcode`，凭据在 0700 临时目录内并 chmod 600。 */
 function prepareIsolatedDataDir(): string {
   const dataDir = mkdtempSync(join(tmpdir(), "zcode-task32-"));
   const target = join(dataDir, ".zcode", "v2");

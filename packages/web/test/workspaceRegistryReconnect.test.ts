@@ -21,23 +21,23 @@ import { fileURLToPath } from "node:url";
 /**
  * M1 验收判据 3 / 4 的真浏览器证据（task-30）。
  *
- * - **判据 3**：断线重连后侧栏可见集合仍在且逐条一致（复用 web-remote-replayable 的恢复语义）；
+ * - 判据 3：断线重连后侧栏可见集合仍在且逐条一致（复用 web-remote-replayable 的恢复语义）；
  *   同时未启动徽标 / 持久层会话数不得因重连而错乱。
- * - **判据 4**：两个**独立浏览器上下文**（各自 cookie / storage，非同一 context 的两次加载）
- *   对同一服务端的可见集合与会话数逐条一致；客户端设置（`lastWorkspaceSession`）**不参与枚举**
+ * - 判据 4：两个独立浏览器上下文（各自 cookie / storage，非同一 context 的两次加载）
+ *   对同一服务端的可见集合与会话数逐条一致；客户端设置（`lastWorkspaceSession`）不参与枚举
  *   —— 把它清空后可见集合不变。
  *
  * ## 数据隔离（重要）
  * 测试自己起真实服务端（`packages/server/dist/entry-http.js`），数据目录用 `ZCODE_DATA_BASE_DIR`
- * 指向 `mkdtemp` 出来的临时目录，**从不写用户真实 `~/.zcode`**。为了让 web 客户端能进入主界面
- * （否则停在登录门）并让注册表有真实数据，把下列文件**只读拷贝**进临时目录（随后 chmod 600，
+ * 指向 `mkdtemp` 出来的临时目录，从不写用户真实 `~/.zcode`。为了让 web 客户端能进入主界面
+ * （否则停在登录门）并让注册表有真实数据，把下列文件只读拷贝进临时目录（随后 chmod 600，
  * 结束时整目录删除）：`credentials.json` / `provider_config.json` / `config.json` /
  * `model-providers.json` / `agents-state.json` / `onboarding-record.json` / `setting.json` /
  * `tasks-index.sqlite`（含 -wal/-shm）。拷贝的凭据只存在于 0700 临时目录内，不打印内容。
  *
  * ## 为什么这里的过期产物检查与 webLoadConsoleErrors 不同
- * 那条测试断言的是「某个**修复**在产物里生效」，产物早于源码就必须 skip。
- * 这里断言的是**已提交的 M1 行为**在产物里成立（M1.4 在 8a17bd4 就已进入构建），
+ * 那条测试断言的是「某个修复在产物里生效」，产物早于源码就必须 skip。
+ * 这里断言的是已提交的 M1 行为在产物里成立（M1.4 在 8a17bd4 就已进入构建），
  * 与源码是否更新无关，因此只要求 dist 存在；证据里记录 dist 的构建时间。
  */
 
@@ -53,7 +53,7 @@ interface WorkspaceRowSnapshot {
   /** 行上的 runtime 徽标状态（未启动 / 启动中 / 启动失败 / null）。 */
   badge: string | null;
   /**
-   * 该行**列出的会话条数**（`task-item-*`）。这是判据 4「各 workspace 的会话数一致」的
+   * 该行列出的会话条数（`task-item-*`）。这是判据 4「各 workspace 的会话数一致」的
    * 主证据：runtime 未启动时这些行来自服务端持久层（tasks-index），与 runtime 无关。
    */
   taskItemCount: number;
@@ -197,7 +197,7 @@ function startServer(params: { port: number; dataDir: string }): ChildProcess {
 }
 
 /**
- * 服务端就绪预算。这是**前置条件**而不是断言：共享机器上服务端要跑 provider 初始化（含真实网络
+ * 服务端就绪预算。这是前置条件而不是断言：共享机器上服务端要跑 provider 初始化（含真实网络
  * 调用），负载高时 60s 会不够（实测出现过一次约 70s 的整体超时）。给到 120s，并把进程输出尾部
  * 带进失败信息，使超时可诊断。
  */
@@ -229,7 +229,7 @@ async function waitForServerReady(baseUrl: string, timeoutMs: number, port: numb
  *
  * 为什么必须展开：行内的会话列表与未启动态都渲染在 `CollapsibleContent` 里，收起时不挂载 ——
  * 不展开就只能比较「行集合」，判据 4 的「会话数一致」会退化成空断言。
- * 这里只按**结果**判断（尝试点「展开全部」，然后看是否真的有行渲染出内容），
+ * 这里只按结果判断（尝试点「展开全部」，然后看是否真的有行渲染出内容），
  * 不硬绑定那个开关控件本身：本轮 UI 归手机批次在改，绑定控件会把我的断言变成它们的负担。
  */
 async function countRowsWithContent(page: import("playwright-core").Page): Promise<number> {
@@ -250,7 +250,7 @@ async function countRowsWithContent(page: import("playwright-core").Page): Promi
 
 async function ensureWorkspaceRowsExpanded(page: import("playwright-core").Page): Promise<boolean> {
   // 先等：默认展开时内容会自己出现（实测 ~2-5 秒内即有 23 条会话 + 8 处未启动态）。
-  // **只有一行内容都没有时才去点「展开全部」** —— 那个开关的文案在 hydrate 过渡期会复用上一帧
+  // 只有一行内容都没有时才去点「展开全部」 —— 那个开关的文案在 hydrate 过渡期会复用上一帧
   // 展示模型（见 taskGroupTogglePresentation 的 transitionPending 分支），无脑点击可能把
   // 已经展开的列表整体收起，反而制造出「列表空」的假象。
   let lastFailure: unknown = null;
@@ -509,7 +509,7 @@ test("M1 判据 3/4：断线重连后列表仍在 + 两个独立客户端可见�
       60_000,
     );
     await ensureWorkspaceRowsExpanded(pageA);
-    // 断线前的基准也必须**静止**：旧版直接取一帧，若恰好落在首屏列表补齐途中，
+    // 断线前的基准也必须静止：旧版直接取一帧，若恰好落在首屏列表补齐途中，
     // 后面的比较就会把「本来就在变化的基准」当成终态（偶发红的另一半来源）。
     const settledBefore = await waitForSettledSnapshot(pageA, {
       label: "判据 3 断线前",
@@ -730,7 +730,7 @@ test("反向验证：注册表内容不同 ⇒ 集合比较必须报出差异（
       60_000,
     );
     await ensureWorkspaceRowsExpanded(page);
-    // 两个副本各等一次静止：反向验证要报的是**注册表差异**，不能混进加载过渡态。
+    // 两个副本各等一次静止：反向验证要报的是注册表差异，不能混进加载过渡态。
     const settled = await waitForSettledSnapshot(page, {
       label: "反向验证快照",
       timeoutMs: SETTLE_BUDGET_MS,

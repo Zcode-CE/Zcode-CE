@@ -82,10 +82,10 @@ docker history zcode-headless:local --format "{{.Size}}\t{{.CreatedBy}}"   # 看
 
 ## 4. 数据在哪（卷）
 
-- **`/data`（named volume `zcode-data`）**：设置、provider 凭据、任务库。**删卷 = 丢配置**。
-- **`/workspace`**：你自己的工作区（bind mount 到你机器上的目录）。
+- `/data`（named volume `zcode-data`）：设置、provider 凭据、任务库。**删卷 = 丢配置**。
+- `/workspace`：你自己的工作区（bind mount 到你机器上的目录）。
 
-容器内的数据根是 **`ZCODE_DATA_BASE_DIR=/data`**（`Dockerfile` 里写死，并带 `VOLUME ["/data"]`）⇒ 业务数据落在 **`/data/.zcode/v2`**。实测的目录形态：
+容器内的数据根是 `ZCODE_DATA_BASE_DIR=/data`（`Dockerfile` 里写死，并带 `VOLUME ["/data"]`）⇒ 业务数据落在 `/data/.zcode/v2`。实测的目录形态：
 
 ```text
 /data/.zcode/v2/tasks-index.sqlite          # 任务索引（会话列表）
@@ -94,11 +94,11 @@ docker history zcode-headless:local --format "{{.Size}}\t{{.CreatedBy}}"   # 看
 /data/.zcode/v2/runtime/                   # 运行时状态
 ```
 
-**不要**把宿主机的 `~/.zcode` 直接挂进 `/data`：那会把宿主的凭据交给容器（见 §8）。
+不要把宿主机的 `~/.zcode` 直接挂进 `/data`：那会把宿主的凭据交给容器（见 §8）。
 
 ### 4.1 备份与恢复（可照做）
 
-**备份**（先停容器 —— 任务库跑在 WAL 模式，运行中复制会得到撕裂的快照）：
+备份（先停容器 —— 任务库跑在 WAL 模式，运行中复制会得到撕裂的快照）：
 
 ```bash
 docker compose stop                      # ① 先停，保证 WAL 已落盘
@@ -112,10 +112,10 @@ docker compose start                     # ④ 起回来
 > 卷名是 `<compose 项目名>_zcode-data`。本项目目录名不是 `zcode-ce` 时卷名会不同 ——
 > 用 `docker volume ls` 或 `docker compose config --volumes` 确认，别照抄。
 
-**恢复**（三步，顺序不能反）：
+恢复（三步，顺序不能反）：
 
 ```bash
-docker compose down                      # ① 停掉并移除容器（**不要加 -v**，那会删卷）
+docker compose down                      # ① 停掉并移除容器（不要加 -v，那会删卷）
 docker volume rm zcode-ce_zcode-data     # ② 删掉旧卷（或先改名留底）
 docker volume create zcode-ce_zcode-data
 docker run --rm -v zcode-ce_zcode-data:/data -v "$PWD/backup:/backup" alpine \
@@ -123,11 +123,11 @@ docker run --rm -v zcode-ce_zcode-data:/data -v "$PWD/backup:/backup" alpine \
 docker compose up -d
 ```
 
-**实测**：备份产出 `zcode-data.tgz`（空部署约 24 KB），还原后 `/data/.zcode/v2` 目录结构与权限位完整，服务照常启动、令牌仍有效。
+实测：备份产出 `zcode-data.tgz`（空部署约 24 KB），还原后 `/data/.zcode/v2` 目录结构与权限位完整，服务照常启动、令牌仍有效。
 
-### 4.2 ⚠️ 备份**不可移植到另一台机器**（真实的坑）
+### 4.2 ⚠️ 备份不可移植到另一台机器（真实的坑）
 
-**会话与工作区记录里存的是绝对路径。** 任务索引库的 `tasks` / `workspace_registry` 表都有 `workspace_path` 列
+会话与工作区记录里存的是绝对路径。 任务索引库的 `tasks` / `workspace_registry` 表都有 `workspace_path` 列
 （`packages/services/src/session/tasksDatabase/schema-v1.ts`），存的是**当时那台机器上的绝对路径**，例如：
 
 ```text
@@ -141,10 +141,10 @@ docker compose up -d
 - 即使路径存在，也**不保证是同一个项目** —— 服务会把它当成同一个工作区（`workspace_key` 就是路径本身，除非有 `workspaceIdentity`）；
 - 表现是：**列表里出现点不开的工作区**，或**打开后看到的不是原来那个项目**。
 
-⇒ **正确用法**：把备份当作**同一台机器上的灾难恢复**手段（换盘、重装容器、回滚误操作），
-而**不是**迁移工具。跨机器搬数据请连同工作区目录一起搬，并在目标机上用**同样的绝对路径**挂载。
+⇒ **正确用法**：把备份当作同一台机器上的灾难恢复手段（换盘、重装容器、回滚误操作），
+而不是迁移工具。跨机器搬数据请连同工作区目录一起搬，并在目标机上用同样的绝对路径挂载。
 
-### 4.3 我们**不提供**什么（如实声明）
+### 4.3 我们不提供什么（如实声明）
 
 | 不提供                                  | 说明                                                                                                                                                                                                                                                                                 |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -223,7 +223,7 @@ docker inspect -f "{{.State.Health.Status}}" zcode-ce-zcode-1   # healthy
 
 推荐做法：一个项目一个工作区目录；需要更大权限时显式再加一个挂载，而不是整盘挂家目录。
 
-### 8.1 ⚠️ 容器**管不了没挂进去的目录** —— 这是容器边界本身，不是缺陷
+### 8.1 ⚠️ 容器管不了没挂进去的目录 —— 这是容器边界本身，不是缺陷
 
 最常见的困惑是："agent 在容器里看不到我机器上的某个目录。" 这是**容器的定义**：容器只能看到
 **显式挂进去**的路径。不是配置漏了，也不是 bug —— 换成 Docker 就必然如此。

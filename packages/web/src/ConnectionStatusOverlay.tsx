@@ -7,7 +7,7 @@ import { buildUnauthorizedMessage } from "./authProbe.js";
  * 三种真实状态，绝不混说：
  * - reconnecting：连接断了正在退避重连（网络层问题）；
  * - failed：自动重连预算用尽，给手动重试；
- * - unauthorized：服务在运行、但拒绝我们（401/403）—— 这是**授权问题**，不再显示
+ * - unauthorized：服务在运行、但拒绝我们（401/403）—— 这是授权问题，不再显示
  *   「正在重连（第 N 次）」，而是给出「怎么拿到带 token 的链接」的可照做文案，且不自动重试
  *   （401 不会自愈）。文案与启动期未授权屏共用 authProbe.buildUnauthorizedMessage。
  *

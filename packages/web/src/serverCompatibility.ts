@@ -1,10 +1,10 @@
 /**
- * web 资产与服务器的**契约版本**比对。
+ * web 资产与服务器的契约版本比对。
  *
  * 分发链路上 web 资产与 server 由同一次构建产出（`scripts/build-zcode.mjs` 同批 stage），
  * 但源码态/手工部署完全可能出现「旧 web 资产 + 新 server」或反之。RPC 层不做版本协商
- * （`packages/rpc/src` 无 protocolVersion 校验），因此**必须**在这里显式判断：
- * 不一致就明确报错、不进入应用，**不允许静默降级**（AGENTS.md 对降级的要求）。
+ * （`packages/rpc/src` 无 protocolVersion 校验），因此必须在这里显式判断：
+ * 不一致就明确报错、不进入应用，不允许静默降级（AGENTS.md 对降级的要求）。
  */
 
 export interface ServerInfoLike {

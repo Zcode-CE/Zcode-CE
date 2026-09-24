@@ -1,7 +1,7 @@
 # CJK 字体供给
 
-> 状态：**已定方案** · 2026-09-21
-> 结论：**跟随官方的 Local-font-first 策略，不自建字体分发。**
+> 状态：已定方案 · 2026-09-21
+> 结论：跟随官方的 Local-font-first 策略，不自建字体分发。
 
 ## 一、结论先行
 
@@ -17,7 +17,7 @@
 > installed font. Use bundled or downloaded fonts only as fallbacks; **do not install fonts without the
 > user's confirmation**.
 
-**证据链**：
+证据链：
 
 | 证据                                     | 结果                                         |
 | ---------------------------------------- | -------------------------------------------- |
@@ -25,7 +25,7 @@
 | `SKILL.md` 是否引用 `setup_mac_linux.sh` | **0 处**（该脚本无人调用）                   |
 | 该脚本里的 `FONT_CDN_BASE` 可达性        | **404 `NoSuchKey`**（阿里云 OSS 对象不存在） |
 
-**`setup_mac_linux.sh` 是官方遗留的废弃脚本**，其中的字体 CDN 地址已失效。官方当前的实际做法是**用系统字体**。
+`setup_mac_linux.sh` 是官方遗留的废弃脚本，其中的字体 CDN 地址已失效。官方当前的实际做法是**用系统字体**。
 
 ### 为什么可以确认是「路径废弃」而非「鉴权拦截」
 
@@ -66,7 +66,7 @@ OSS 返回的是对象级错误，不是权限错误：
 
 ## 五、如需兜底（未来可选项）
 
-若实测发现某些环境确实缺字，再考虑：从各字体**上游**（Noto / Sarasa / LXGW，均为 OFL-1.1）按需下载，并**在用户确认后**安装。**当前不实现。**
+若实测发现某些环境确实缺字，再考虑：从各字体上游（Noto / Sarasa / LXGW，均为 OFL-1.1）按需下载，并在用户确认后安装。**当前不实现。**
 
 ```bash
 FONT_CDN_BASE="https://z-cdn.chatglm.cn/office-skill/fonts"
@@ -86,7 +86,7 @@ fc-cache -f "$USER_FONT_DIR"   # Linux 刷新字体缓存
 | `.../fonts/chinese/NotoSansSC-Regular.ttf`           | **404**         |
 | `.../fonts/font_list.txt`                            | **404**         |
 
-**所有具体字体文件都是 404。** 因此**不能依赖官方 CDN**。
+所有具体字体文件都是 404。 因此**不能依赖官方 CDN**。
 
 ## 三、字体构成与许可（全部开源）
 
@@ -109,7 +109,7 @@ fc-cache -f "$USER_FONT_DIR"   # Linux 刷新字体缓存
 
 ## 四、体积问题（关键约束）
 
-**实测单个 CJK 字体的体积**（本机已装字体）：
+实测单个 CJK 字体的体积（本机已装字体）：
 
 | 字体                  | 体积        |
 | --------------------- | ----------- |
@@ -118,7 +118,7 @@ fc-cache -f "$USER_FONT_DIR"   # Linux 刷新字体缓存
 | NotoSerifCJK Bold     | 26.1 MB     |
 | NotoSansCJK 系列      | ~25 MB/个   |
 
-**估算**：
+估算：
 | 方案 | 体积 |
 | --- | --- |
 | 官方 80 个字体全量 | **300-500 MB** |
@@ -137,7 +137,7 @@ fc-cache -f "$USER_FONT_DIR"   # Linux 刷新字体缓存
 | **推荐** | 2 个中文字体（Noto Sans SC + Noto Serif SC）     | ~30 MB | 首次生成中文文档时提示下载 |
 | **可选** | 其余字体（LXGW WenKai / Sarasa Mono / 拉丁字体） | 按需   | 设置页手动勾选             |
 
-**核心原则**：**优先用系统字体**（DSH skill 已要求「Local-font-first」），只在缺失时提示下载。
+**核心原则**：优先用系统字体（DSH skill 已要求「Local-font-first」），只在缺失时提示下载。
 
 ### 5.2 字体源
 

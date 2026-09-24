@@ -6,9 +6,9 @@ import { buildUnauthorizedMessage, classifyServerInfoProbe } from "../src/authPr
  * 未授权态的判定与文案护栏（task-21 缺陷 (a)）。
  *
  * 缺陷现象：无凭据访问时界面显示「连接已中断，正在重连（第 N 次）」并无限重试 ——
- * 把**授权问题说成网络问题**，且不给用户任何可照做的下一步。
+ * 把授权问题说成网络问题，且不给用户任何可照做的下一步。
  * 这里钉住两件事：① 401/403 必须判成 unauthorized（不是 unreachable）；
- * ② 未授权文案必须是可照做的（含 origin 与 ?token=），并且**不得**出现「重连 / reconnect」字样。
+ * ② 未授权文案必须是可照做的（含 origin 与 ?token=），并且不得出现「重连 / reconnect」字样。
  */
 
 test("classifyServerInfoProbe：401/403 = 未授权，2xx = 已授权，其余 = 不可达", () => {

@@ -60,7 +60,7 @@ node bin/zcode.mjs --web [--host <host>] [--port <port>] [--workspace <path>] \
 
 ---
 
-## 4. 安全边界（**按危险品对待**）
+## 4. 安全边界（按危险品对待）
 
 > **这条链路暴露的是 agent 级能力** —— 拿到连接就能在 `--workspace` 指向的目录里**执行命令、读写文件**。
 > 把它当"一个网页"来暴露是本次最容易犯的错。
@@ -131,7 +131,7 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
 
 ---
 
-## 6. 交付渠道取舍（**本轮不发布任何 registry**）
+## 6. 交付渠道取舍（本轮不发布任何 registry）
 
 | 渠道                            | 用户门槛           | 维护成本                               | 命名风险                      | 外部副作用                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------------------------- | ------------------ | -------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -152,47 +152,47 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
 
 ---
 
-## 7. 「ce.3 发版时的发布清单」（已批准，**本轮不执行**）
+## 7. 「ce.3 发版时的发布清单」（已批准，本轮不执行）
 
 > 前提：真正打 tag 发 release 时才做；**失败不得阻塞 tag 发版**（job 独立、`continue-on-error` 或仅 tag/dispatch 触发）。
 > 下面每一步都写成照着做即可的动作。
 
 ### 7.1 npm
 
-1. **包名固定用 `zcode-ce`**（只读核对：`npm view zcode-ce version` 目前返回 E404 = 尚无同名已发布包；**E404 不等于保证能注册**，最终以首次 publish 结果为准）。**不得用 `@zcode/*`**（官方 scope）。
-2. **打包来源 = 分发包根**：先 `pnpm build:zcode`，再对 `dist/zcode/` 生成 `package.json`；`bin` 必须映射到 **`bin/zcode.mjs`**（与 `install.sh` 用的同一个入口），不要指向任何 `packages/**/dist/*.js`。
-3. **准备包描述**：在 staging 目录（`dist/zcode/`）生成 `package.json`：
+1. **包名固定用 `zcode-ce`**（只读核对：`npm view zcode-ce version` 目前返回 E404 = 尚无同名已发布包；E404 不等于保证能注册，最终以首次 publish 结果为准）。不得用 `@zcode/*`（官方 scope）。
+2. **打包来源 = 分发包根**：先 `pnpm build:zcode`，再对 `dist/zcode/` 生成 `package.json`；`bin` 必须映射到 `bin/zcode.mjs`（与 `install.sh` 用的同一个入口），不要指向任何 `packages/**/dist/*.js`。
+3. 准备包描述：在 staging 目录（`dist/zcode/`）生成 `package.json`：
    `{ "name": "zcode-ce", "version": "<与 tag 一致的版本>", "bin": { "zcode": "bin/zcode.mjs" }, "files": ["bin", "server", "agent", "web"], "engines": { "node": ">=24" }, "license": "Apache-2.0", "repository": "Zcode-CE/Zcode-CE", "description": "社区版（非官方）无头服务器 + Web 面板" }`。
    注意：`bin/zcode.mjs` 首行要有 shebang（`#!/usr/bin/env node`）并保持可执行位。
-4. **凭据**：在仓库 secrets 里加 `NPM_TOKEN`（npm Access Token，**Automation** 类型；权限只需 publish 该包）。
-5. **CI job 形态**：新 job `publish-npm-headless`，`if: startsWith(github.ref, 'refs/tags/') && inputs.publish_registry == true`（或独立的 `workflow_dispatch`）；
-   步骤：checkout → pnpm install → `pnpm build:zcode --base-url <依赖托管基址>` → 生成 `package.json` → `npm publish --access public`。**`continue-on-error: true`**。
-6. **发布后验证**：`npm view <名字>@<版本> dist.shasum` 有值；另起干净容器 `npx -y <名字>@<版本> --web --no-open --port 3030` 后 `curl -sI localhost:3030/` 应为 200。
-7. **回滚**：72 小时内可 `npm unpublish <名字>@<版本>`；之后只能 `npm deprecate <名字>@<版本> "原因"` 并发布修复版本。
+4. 凭据：在仓库 secrets 里加 `NPM_TOKEN`（npm Access Token，Automation 类型；权限只需 publish 该包）。
+5. CI job 形态：新 job `publish-npm-headless`，`if: startsWith(github.ref, 'refs/tags/') && inputs.publish_registry == true`（或独立的 `workflow_dispatch`）；
+   步骤：checkout → pnpm install → `pnpm build:zcode --base-url <依赖托管基址>` → 生成 `package.json` → `npm publish --access public`。`continue-on-error: true`。
+6. 发布后验证：`npm view <名字>@<版本> dist.shasum` 有值；另起干净容器 `npx -y <名字>@<版本> --web --no-open --port 3030` 后 `curl -sI localhost:3030/` 应为 200。
+7. 回滚：72 小时内可 `npm unpublish <名字>@<版本>`；之后只能 `npm deprecate <名字>@<版本> "原因"` 并发布修复版本。
 
 ### 7.2 Docker
 
-**本版状态（ce.3）**：仓库根**已提供本地 Docker 资产** —— `Dockerfile` + `compose.yaml`（**不推任何 registry**，由用户本地 `docker build`）。
+本版状态（ce.3）：仓库根已提供本地 Docker 资产 —— `Dockerfile` + `compose.yaml`（不推任何 registry，由用户本地 `docker build`）。
 用法、卷/令牌/局域网访问/安全边界与九条实测证据见 [headless-server-docker.md](./headless-server-docker.md)；
 下面第 1、3~7 条是**将来真要发布镜像时**的清单（今天未执行）。
 
-1. **确定镜像名**：建议 `ghcr.io/<你的 org>/zcode-ce-server`（走 GitHub Container Registry 可复用 `GITHUB_TOKEN`，无需额外账号）。
-2. **镜像构建**（**已落地**为仓库根的 `Dockerfile`）：以 `dist/zcode/` 为上下文、**单阶段**、基础镜像 `node:24-slim`（Debian/glibc）——
+1. 确定镜像名：建议 `ghcr.io/<你的 org>/zcode-ce-server`（走 GitHub Container Registry 可复用 `GITHUB_TOKEN`，无需额外账号）。
+2. 镜像构建（已落地为仓库根的 `Dockerfile`）：以 `dist/zcode/` 为上下文、单阶段、基础镜像 `node:24-slim`（Debian/glibc）——
    产物已是自包含分发包，因此**不需要**多阶段构建。`ADD releases/<版本>/zcode-<版本>.tar.gz /opt/`（ADD 自动解包），
    `ENV ZCODE_DATA_BASE_DIR=/data`、`VOLUME /data`、`EXPOSE 3030`、`ENTRYPOINT ["node","/opt/zcode/bin/zcode.mjs"]`、
    默认 `CMD ["--web","--host","0.0.0.0","--no-open","--workspace","/workspace"]`，非 root（uid 10001）运行并带 `HEALTHCHECK`。
    **令牌必须由运行方注入**（`--token=<值>` 或令牌文件 `ZCODE_SERVER_AUTH_TOKENS_FILE`），**不要**打进镜像；
    用 `alpine` 基础镜像必须先自装 musl 版 **Node ≥24**，且**终端功能不可用**（见 §10 的 `Alpine / musl` 一行）。
-3. **凭据**：ghcr 用内置 `GITHUB_TOKEN`（需 `packages: write` 权限）；若推别的 registry，加 `REGISTRY_USERNAME`/`REGISTRY_TOKEN` secrets。
-4. **CI job 形态**：job `publish-docker-headless`，条件同 npm；步骤：build → `docker tag` → `docker push` 两个 tag（`:<版本>` 与 `:latest`）。`continue-on-error: true`。
-5. **发布后验证**：`docker run --rm <镜像>:<版本> --help` 退出码 0；再 `docker run --rm -p 3030:3030 <镜像>:<版本> --web --host 0.0.0.0 --token <临时>` 后 `curl -sI localhost:3030/` → 200、`curl -sI localhost:3030/api/server-info` 无 token → 401。
-6. **回滚**：删除该 tag（ghcr 网页或 `gh api -X DELETE`）；`:latest` 指回上一个版本。
+3. 凭据：ghcr 用内置 `GITHUB_TOKEN`（需 `packages: write` 权限）；若推别的 registry，加 `REGISTRY_USERNAME`/`REGISTRY_TOKEN` secrets。
+4. CI job 形态：job `publish-docker-headless`，条件同 npm；步骤：build → `docker tag` → `docker push` 两个 tag（`:<版本>` 与 `:latest`）。`continue-on-error: true`。
+5. 发布后验证：`docker run --rm <镜像>:<版本> --help` 退出码 0；再 `docker run --rm -p 3030:3030 <镜像>:<版本> --web --host 0.0.0.0 --token <临时>` 后 `curl -sI localhost:3030/` → 200、`curl -sI localhost:3030/api/server-info` 无 token → 401。
+6. 回滚：删除该 tag（ghcr 网页或 `gh api -X DELETE`）；`:latest` 指回上一个版本。
 
 ### 7.3 两者共同的注意事项
 
 - **不要**把凭据写进镜像层、命令行参数（会进进程列表/镜像历史）或日志。
-- 发布 job **必须**与 tag 发版解耦或 `continue-on-error`：registry 故障不该让"安装包已经好了"的发版失败。
-- 发布前先跑既有 smoke（见 §8）；发布后在**干净环境**复核 §7.1/§7.2 的验证命令。
+- 发布 job 必须与 tag 发版解耦或 `continue-on-error`：registry 故障不该让"安装包已经好了"的发版失败。
+- 发布前先跑既有 smoke（见 §8）；发布后在干净环境复核 §7.1/§7.2 的验证命令。
 
 ---
 
@@ -247,7 +247,7 @@ smoke-exit=0
 
 ---
 
-## 10. 平台支持矩阵（**未实测的不要当已验证**）
+## 10. 平台支持矩阵（未实测的不要当已验证）
 
 | 平台                                          | 能构建                                                   | 能启动 `--web`            | 能连面板  | 终端功能                                             | 令牌轮换（`SIGHUP`）                                                        |
 | --------------------------------------------- | -------------------------------------------------------- | ------------------------- | --------- | ---------------------------------------------------- | --------------------------------------------------------------------------- |
@@ -270,7 +270,7 @@ smoke-exit=0
 
 **远端工作区另有一套守卫**：远端必须是 glibc，连接时在部署资产之前就拦断 —— 口径见 [remote-workspace.md §7](../development/remote-workspace.md) 第 8 条；本页讲的是**本机**（CLI / 无头 server）这条路径，今天没有运行时守卫，只能靠本文档说清。核实方式：看构建期裁剪原生载荷的脚本 `packages/desktop/scripts/node-pty-package-assets.mjs`（它按当前平台拷贝预编译产物），以及本页 §10 的支持矩阵。
 
-### 10.1 ⚠️ Windows 上没有 SIGHUP（**照抄 `kill -HUP` 会打死服务**）
+### 10.1 ⚠️ Windows 上没有 SIGHUP（照抄 `kill -HUP` 会打死服务）
 
 令牌文件的轮换靠 `SIGHUP`（`packages/server/src/entry-http.ts`）。Windows **没有这个信号**，而且**对进程发 SIGHUP 的语义是终止进程** ⇒ 在 Windows 上执行 `kill -HUP <pid>` 不是"重载令牌"，而是**把服务杀掉**。
 

@@ -7,7 +7,7 @@ export interface AuthorizationProbeController {
   /**
    * 连接状态（相位 + 尝试次数）变化时调用。
    *
-   * 语义：**每个新的 attempt 都要重新探测一次**。
+   * 语义：每个新的 attempt 都要重新探测一次。
    *
    * 为什么不能「一个相位只探一次」（task-22 阶段 2 修掉的缺陷）：
    * 断线往往就是服务在重启 —— 那一刻 /api/server-info 也连不上，探测只能得到

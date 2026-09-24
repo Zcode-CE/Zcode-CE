@@ -10,19 +10,19 @@ import { fileURLToPath } from "node:url";
  * 真浏览器「加载不产生渲染错误」回归（task-29）。
  *
  * ## 为什么需要它
- * `packages/ui/test/hookOrderStability.test.ts` 只能钉住缺陷的**结构形态**（源码级）。
- * 真正被用户看到的现象只在真实浏览器里出现，而且**dev 与 prod 的表现不同**：
+ * `packages/ui/test/hookOrderStability.test.ts` 只能钉住缺陷的结构形态（源码级）。
+ * 真正被用户看到的现象只在真实浏览器里出现，而且dev 与 prod 的表现不同：
  *  - dev：React 额外打印 `React has detected a change in the order of Hooks called by …`；
  *  - prod：没有那条表，只有 `TypeError: Cannot read properties of undefined (reading 'length')`
  *    以及 `The above error occurred in the <OnboardingDialog> component`（子树被错误边界重建）。
- * 所以这一条必须在**构建产物 + 真实服务端**上跑，它才是最终消费点的证据。
+ * 所以这一条必须在构建产物 + 真实服务端上跑，它才是最终消费点的证据。
  *
  * ## 运行方式
  *  - 已起动服务端时：`ZCODE_WEB_E2E_URL=http://host:port/`（此时只断言渲染错误类，
  *    不断言「控制台零 error」—— 用户自己的服务器可能缺 channel 而打印 RPC 噪音）；
  *  - 未提供 URL 时：若 `packages/web/dist` 与 `packages/server/dist/entry-http.js` 都存在、
- *    且构建产物**不早于**源码（否则断言的是旧产物），本测试会自己起一个隔离 `ZCODE_DATA_BASE_DIR`
- *    的服务端，并断言**控制台零 error**；
+ *    且构建产物不早于源码（否则断言的是旧产物），本测试会自己起一个隔离 `ZCODE_DATA_BASE_DIR`
+ *    的服务端，并断言控制台零 error；
  *  - 前置条件不满足时 `t.skip` 并打印原因（显式跳过，不静默通过）。
  */
 

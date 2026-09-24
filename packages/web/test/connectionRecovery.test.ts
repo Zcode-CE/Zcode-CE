@@ -13,7 +13,7 @@ import { evaluateServerCompatibility } from "../src/serverCompatibility.js";
  * 断线自愈的护栏（task-16 的最高价值项）。
  *
  * 为什么必须钉住：手机锁屏/切后台必然断连，而修复前 `packages/client/src/websocket.ts` 不重连、
- * web 入口的 onClose 是空实现 —— 断线后页面假死且没有任何提示。这里断言的是**行为契约**：
+ * web 入口的 onClose 是空实现 —— 断线后页面假死且没有任何提示。这里断言的是行为契约：
  * 退避序列、失败次数上限、用户手动重试、以及断线后一定会重新建立连接。
  * 时钟与连接函数都是注入的，因此不依赖真实网络与真实计时器。
  */
