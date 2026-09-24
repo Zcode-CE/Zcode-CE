@@ -180,17 +180,26 @@ pnpm exec tsx scripts/verify-remote-assets.mjs --root ./publish-root
    server-bundle / node-pty / glm / bfs / ripgrep / ugrep）→ 资产上传进容器（在容器内取到
    `/root/.zcode/server/{zcode-server.cjs, agents/glm/…, tools/…}`）→ **容器内起 server 并握手成功**
    （`handshake done, server version: 3.14.3-ce.2`）→ 干净退出。
-   **口径说明（重要）**：这次是在 **podman 的 docker 兼容套接字上**实测通过的 —— 该机器装有 docker CLI 29.8.0，
-   但**没有 docker 守护进程/套接字**（`/var/run/docker.sock` 不存在），因此不能表述为"在 Docker 上实测"。
-   另外该环境是 rootless podman，容器在默认参数下**无法 fork**（`sh: 4: Cannot fork`，会直接卡在 `detect()`），
-   需要 `--pids-limit -1`；这是该测试环境的约束，不是你本地 docker 的问题。
+   **运行时与版本（写清是为了让你能判断结论适用面）**：**真实 Docker 守护进程 29.8.0**、rootless、cgroup v2、
+   overlayfs、容器**默认参数**（未加任何额外 flag）。同样的链路此前也在 podman 的 docker 兼容套接字上跑通过一轮
+   （并因此被记为「不能表述为『在 Docker 上实测』」）；现在两者都有证据，真 Docker 是主线。
+   容器内实测取到的落点：`/root/.zcode/server/{node, zcode-server.cjs, agents/, tools/{bfs,ripgrep,ugrep}, build/}` 与 `/root/.zcode/v2/`；
+   远端安装体积实测 `~/.zcode = 158.5 MB`（`server/ = 158.0 MB`）。
+   **一条环境附注（只在 podman 下适用，与产品无关）**：用 **podman 的 docker 兼容套接字**跑时，容器在**默认参数**下
+   容器内无法 fork（`sh: 4: Cannot fork`，会直接卡在 `detect()`），需要 `--pids-limit -1`；
+   真 Docker 默认参数下实测**不需要**该 flag（容器内 `pids.max` = 37829，正常 fork）。
+   也就是说：`--pids-limit` 是**podman 环境特有的坑**（该机 rootless podman 且 `/etc/subuid` 缺少映射），不是 Docker 的要求。
 7. **WSL：未实测**。`packages/server/src/remote/wsl-backend.ts:504` 与 `wsl-detect.ts:148/166` 硬性要求
    `process.platform === "win32"`（要调 `wsl.exe`）⇒ 只能在 **Windows 客户端**上验证，Linux/macOS 主机无法实测。
    验证条件：一台 Windows 客户端，或 CI 的 `windows-latest` runner 并且已启用 WSL2 且有发行版。
    静态核查结论（供参考，不等于验证）：WSL 的 Windows 专属假设（`wsl.exe` 调用、UTF-16LE 输出解码、
    `wsl.exe -- bash -lc` 的参数重组）**全部落在 WSL 后端内部**，不扩散到资产层；WSL 内的远端是 Linux，
    需要的是已发布的 `linux-x64/arm64`，因此**缺少 win32 平台类不影响 WSL 远端**。
-8. **Alpine(musl) 预期不可用（未实测）**：自托管资产里的 `components/linux-x64/node-runtime` 解出的 `node` 是
-   **glibc 动态链接**（`ldd` 依赖 `libdl.so.2` / `libstdc++.so.6` / `libm.so.6`，解释器 `/lib64/ld-linux-x86-64.so.2`），
-   而 Alpine 用 musl 且没有该解释器 ⇒ 预期起不来。**本文未在 Alpine 容器里实测**，所以这是"有证据的预期"，不是结论。
+8. **Alpine(musl)：实测不可用**（2026-09-24 实测，不再是预期）。自托管资产里的
+   `components/linux-x64/node-runtime` 解出的 `node` 是 **glibc 动态链接**（`ldd` 依赖 `libdl.so.2` /
+   `libstdc++.so.6` / `libm.so.6`，解释器 `/lib64/ld-linux-x86-64.so.2`），而 Alpine 用 musl、没有该解释器。
+   实测对照（同一份载荷、同一台机器）：**Debian 系容器**（`kalilinux/kali-rolling`）里
+   `/root/.zcode/server/node --version` ⇒ `v22.16.0`；**Alpine 容器**（`postgres:16-alpine`）里执行同一文件 ⇒
+   `/payload/node: cannot execute: required file not found`，**退出码 127**。
+   ⇒ 结论：**Alpine 系远端当前不可用**；远端请用 glibc 发行版（Debian / Ubuntu / RHEL 系等）。
 9. 桌面端以外的客户端（Web）**没有**远程工作区入口。

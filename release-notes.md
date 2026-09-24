@@ -62,7 +62,8 @@
 - **反代配置未实测**：文档里的 Caddy / nginx 最小配置需要在你自己有证书的环境里自测。
 - **"先被扫描、再被封"的过程未复现**：限流在受控条件下验证过，但没有在真实公网扫描下跑过。
 - **CI 新增的两个 job 未在真实 runner 上跑过**：无头服务器发行包的构建/挂载 job、远程资产上传 job 都只在本地核对（release 流水线**其余** job 长期在真实 runner 上运行，不受这条影响）。
-- **Docker / WSL 作为远程工作区承载未实测**（本批只在 Linux 上验证）。
+- **WSL 作为远程工作区承载未实测**：需要 Windows 客户端或 `windows-latest` CI，且需启用 WSL2；**Docker 承载已实测通过**（真实 Docker 29.8.0、rootless、cgroup v2，容器用默认参数，含在容器内启动服务并完成握手）。
+- **远程工作区的载荷是 glibc 动态链接，Alpine(musl) 容器实测不可用**（`node` 报 `cannot execute: required file not found`，缺 `/lib64/ld-linux-x86-64.so.2`）⇒ 远端请用 glibc 发行版。
 - **本说明不含任何性能数字**：没有实测的性能结论一律不写。
 - **⚠️ Windows 上不要用 kill -HUP**：令牌轮换依赖 SIGHUP，而 Windows 没有这个信号、**对进程发 SIGHUP 会终止进程** ⇒ 那不是重载令牌，是**把服务杀掉**。Windows 下改完令牌文件请**重启服务**。
 - **手机 + 桌面同时操作同一会话的并发写语义没有任何实测**：CommandInbox 的串行 admission 是**设计约定**，不是并发写的验收结论；连接数上限（默认 32）只防资源耗尽，**不要读作「并发写已被保护」**。
@@ -134,7 +135,8 @@
 - **Reverse-proxy configuration not measured**: test the Caddy / nginx snippets in your own certificate environment.
 - **"Scanned first, then banned" was not reproduced**: the rate limit was verified under controlled conditions, not against a real internet scan.
 - **The two new CI jobs have not run on a real runner**: the headless-server package build/attach job and the remote-asset upload job were verified locally only (the **rest** of the release workflow runs on real runners and is unaffected).
-- **Docker / WSL as remote-workspace hosts untested** (this batch was verified on Linux only).
+- **WSL as a remote-workspace host is untested**: it needs a Windows client or a `windows-latest` CI runner with WSL2 enabled. **Docker as a host was measured working** (real Docker 29.8.0, rootless, cgroup v2, default container flags, including starting the server inside the container and completing the handshake).
+- **The remote-workspace payload is glibc-linked, so Alpine (musl) containers are measured unusable** (`node` fails with `cannot execute: required file not found`, missing `/lib64/ld-linux-x86-64.so.2`) — use a glibc distribution as the remote host.
 - **No performance numbers are quoted**: nothing without a measurement is written here.
 - **On Windows, do not use kill -HUP**: token rotation relies on SIGHUP, which Windows does not have — and sending SIGHUP **terminates the process**, so it is not a reload, it is killing your server. On Windows, restart the service after editing the token file.
 - **Concurrent writes to one session from a phone and a desktop at the same time have no measurements at all**: the CommandInbox serial admission is a **design convention**, not a verification result for concurrent writes; the connection cap (default 32) only prevents resource exhaustion and must **not** be read as "concurrent writes are protected".
