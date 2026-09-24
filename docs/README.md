@@ -13,12 +13,14 @@
 | [与官方发行版的差异](development/official-diff.md)                       | 官方有哪些能力、我们补了什么、哪些做不了及原因           |
 | [Computer Use](development/computer-use.md)                              | 开源桌面自动化实现的平台、能力面与安全语义               |
 | [办公插件](development/office-plugins.md)                                | 办公三件套的来源标注规范、逐文件归属、上游跟进           |
+| [PDF 插件](development/pdf-plugins.md)                                   | PDF 能力的载荷构成、注册闸门、校验器契约与降级边界       |
 | [模型列表](development/model-list.md)                                    | 内置模型隐藏与从供应商拉取模型列表                       |
 | [本地开发](development/local-setup.md)                                   | 环境准备、构建、调试、测试入口                           |
 | [网页远控（无头服务器 + 浏览器面板）](development/web-remote-control.md) | 自托管网页远控：启动方式、安全默认值、手机使用、未测边界 |
 | [远程工作区（SSH / Docker / WSL）](development/remote-workspace.md)      | 远程工作区的默认行为、自建发布点、验收与排障             |
 | [工具与权限：按资源/工具精细启停](development/tool-policy.md)            | 危险命令判定、MCP 单工具启停、持久授权策略               |
 | [遥测与隐私](development/telemetry.md)                                   | 本版移除遥测的范围、保留的能力边界、验证方法             |
+| [工作区可见性](development/workspace-registry.md)                        | 可见工作区的真相源、能全看不默认全看、未启动态           |
 
 ### `community/` — 社区
 
@@ -29,13 +31,18 @@
 
 ### `operations/` — 运维与发布
 
-| 文档                                                     | 内容                                  |
-| -------------------------------------------------------- | ------------------------------------- |
-| [发布流程](operations/release.md)                        | 版本号、构建产物、更新渠道、平台支持  |
-| [持续集成](operations/ci.md)                             | CI 校验项、发布矩阵、打包命令与踩坑   |
-| [数据与配置](operations/data-layout.md)                  | 数据目录布局、迁移说明、备份建议      |
-| [远程资产 CDN](operations/remote-assets-cdn.md)          | R2 发布点运维：认证、发布、排障、红线 |
-| [Code signing policy](operations/code-signing-policy.md) | 代码签名政策、团队角色、隐私政策      |
+| 文档                                                              | 内容                                                   |
+| ----------------------------------------------------------------- | ------------------------------------------------------ |
+| [发布流程](operations/release.md)                                 | 版本号、构建产物、更新渠道、平台支持                   |
+| [持续集成](operations/ci.md)                                      | CI 校验项、发布矩阵、打包命令与踩坑                    |
+| [数据与配置](operations/data-layout.md)                           | 数据目录布局、身份变更的数据影响、备份                 |
+| [无头服务器发行包](operations/headless-server.md)                 | 自包含 `zcode` 包：运行、旋钮、安全边界、平台支持      |
+| [无头服务器反代部署](operations/headless-server-reverse-proxy.md) | 反代/TLS 之后的三件事：Host 白名单、挂域名根、可信代理 |
+| [CJK 字体供给](operations/font-provisioning.md)                   | 字体策略：用系统已装字体、不下载不打包                 |
+| [GitHub 加速配置](operations/github-mirror.md)                    | 国内网络下的镜像/加速配置与验证方式                    |
+| [发布设计](operations/release-design.md)                          | 包名、构建产物与更新渠道的设计与决策记录               |
+| [远程资产 CDN](operations/remote-assets-cdn.md)                   | R2 发布点运维：认证、发布、排障、红线                  |
+| [Code signing policy](operations/code-signing-policy.md)          | 代码签名政策、团队角色、隐私政策                       |
 
 ## 文档边界
 

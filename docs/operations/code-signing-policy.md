@@ -33,11 +33,11 @@ Foundation；它的含义是「SignPath Foundation 验证过这个二进制由�
 
 签名对象是 CI 构建的产物，构建过程可复现、可审查：
 
-| 项目         | 位置                                                                |
-| ------------ | ------------------------------------------------------------------- |
-| 构建定义     | [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
-| 发布流程说明 | [`docs/operations/release.md`](operations/release.md)               |
-| CI 说明      | [`docs/operations/ci.md`](operations/ci.md)                         |
+| 项目         | 位置                                                                   |
+| ------------ | ---------------------------------------------------------------------- |
+| 构建定义     | [`.github/workflows/release.yml`](../../.github/workflows/release.yml) |
+| 发布流程说明 | [`docs/operations/release.md`](release.md)                             |
+| CI 说明      | [`docs/operations/ci.md`](ci.md)                                       |
 
 构建在 GitHub Actions 上执行（`ubuntu-latest` 与 `windows-latest`），产物上传到本仓库的
 GitHub Release。签名的二进制来自这些 Release 产物，不来自开发者本机。
@@ -56,12 +56,12 @@ GitHub Release。签名的二进制来自这些 Release 产物，不来自开发
 | **反馈**     | 仅在用户主动点击反馈时打开外部地址；渠道可配置或关闭                                |
 | **强制升级** | 不执行远端强制升级检查                                                              |
 
-第三方组件与服务的隐私政策见 [NOTICE.md](../NOTICE.md) 与
-[THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md)。详细的遥测说明见
-[`docs/development/telemetry.md`](development/telemetry.md)。
+第三方组件与服务的隐私政策见 [NOTICE.md](../../NOTICE.md) 与
+[THIRD-PARTY-NOTICES.md](../../THIRD-PARTY-NOTICES.md)。详细的遥测说明见
+[`docs/development/telemetry.md`](../development/telemetry.md)。
 
 ## 相关文档
 
-- [与官方发行版的差异](development/official-diff.md)
-- [发布流程](operations/release.md)
-- [NOTICE.md](../NOTICE.md) —— 功能说明与风险提示
+- [与官方发行版的差异](../development/official-diff.md)
+- [发布流程](release.md)
+- [NOTICE.md](../../NOTICE.md) —— 功能说明与风险提示
