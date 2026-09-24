@@ -9,6 +9,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
 } from "@zcode/shared";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+import { RemoteControlEntryButton, type RemoteControlEntry } from "@/RemoteControlEntryButton.js";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.js";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
@@ -100,6 +101,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   workspaceRemoteSessionId,
   activeTaskId,
   isDesktop = false,
+  remoteControlEntry,
   className,
 }: {
   theme: Theme;
@@ -120,6 +122,12 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   workspaceRemoteSessionId?: string;
   activeTaskId?: string | null;
   isDesktop?: boolean;
+  /**
+   * 远控入口（ce.3 · 切片 1）：状态与打开动作**由调用方注入**，footer 不自己取状态。
+   * 不传则不渲染入口（Settings 等复用 footer 的场景无需知道远控）。
+   * 切片 4 会把它接到后端的 webService:status 上，并把 onOpen 指向面板。
+   */
+  remoteControlEntry?: RemoteControlEntry;
   className?: string;
 }) {
   const { intl } = useZCodeIntl();
@@ -369,6 +377,8 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="flex shrink-0 items-center gap-1.5">
+          {/* 远控入口：账号名右侧、设置按钮之前（spec 决策⑤）。 */}
+          {remoteControlEntry ? <RemoteControlEntryButton entry={remoteControlEntry} /> : null}
           <ControlHintTooltip title={settingsButtonLabel}>
             <Button
               type="button"

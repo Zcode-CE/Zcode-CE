@@ -1279,6 +1279,11 @@ const zhCN: Record<string, string> = {
   "workspaceSidebar.showSidebar": "显示侧边栏",
   "workspaceSidebar.hideSidebar": "隐藏侧边栏",
   "workspaceSidebar.toggleSidebar": "切换侧边栏",
+  // 远控入口（ce.3 · 切片 1）：只加入口状态相关键，面板键留给后续切片。
+  "remotePanel.entry.title": "远程控制",
+  "remotePanel.entry.status.off": "未开启",
+  "remotePanel.entry.status.running": "运行中",
+  "remotePanel.entry.status.waiting": "等待连接",
   "workspaceSidebar.resizeSidebar": "调整侧边栏宽度",
   "workspaceSidebar.toggleArchivedTasks": "归档",
   "workspaceSidebar.showFileTree": "查看文件",

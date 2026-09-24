@@ -1372,6 +1372,11 @@ const enUS: Record<string, string> = {
   "workspaceSidebar.showSidebar": "Toggle sidebar",
   "workspaceSidebar.hideSidebar": "Toggle sidebar",
   "workspaceSidebar.toggleSidebar": "Toggle sidebar",
+  // Remote-control entry (ce.3 · slice 1): entry-status keys only; panel keys come later.
+  "remotePanel.entry.title": "Remote control",
+  "remotePanel.entry.status.off": "Off",
+  "remotePanel.entry.status.running": "Running",
+  "remotePanel.entry.status.waiting": "Waiting for connection",
   "workspaceSidebar.resizeSidebar": "Resize sidebar",
   "workspaceSidebar.toggleArchivedTasks": "Archived",
   "workspaceSidebar.showFileTree": "Show files",

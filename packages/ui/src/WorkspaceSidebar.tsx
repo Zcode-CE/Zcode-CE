@@ -1803,6 +1803,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
           </div>
 
           <WorkspaceSidebarFooter
+            // 远控入口（ce.3 · 切片 1）：状态由 props 注入。当前还没有状态源（后端契约接线在切片 4），
+            // 因此这里固定传 off、onOpen 先留空动作 —— 切片 4 会换成 webService:status 与打开面板。
+            remoteControlEntry={{ status: "off", onOpen: () => {} }}
             className="pr-3"
             theme={theme}
             localeMenuValue={localeMenuValue}
