@@ -59,6 +59,8 @@ export function RemoteControlPanelHost({
           </DialogDescription>
         </DialogHeader>
         <RemoteControlPanel
+          // 标题由本层 DialogHeader 渲染；面板内部的 header 关掉，避免同一个标题渲染两遍。
+          showHeader={false}
           status={wiring.panel.status}
           connection={wiring.panel.connection}
           lanExposureConfirmed={wiring.lanExposureConfirmed}

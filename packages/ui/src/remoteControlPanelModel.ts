@@ -304,3 +304,152 @@ export function shouldRenderQrCode(
 ): boolean {
   return view.showConnection === true && hasUsableRemoteControlLink(connection);
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 标签页共存（task-93）：两条**不同的**远控路径，不合并、不互相替代。
+ *
+ * 为什么必须分开而不是二选一：两者的问题不同、可执行的层面也不同 ——
+ *   · Web 控制：在这台机器上起一个服务，浏览器打开链接操作**这台机器上的工作台**
+ *     （不需要外部账号、不经第三方）。默认路径。
+ *   · IM 机器人：把聊天软件当工作区前端，机器人在 IM 里收发消息
+ *     （**需要外部账号、消息经第三方平台**）。默认关闭，启用前必须提醒。
+ *
+ * 命名纪律（用户拍板，不得回退）：**UI 里不出现「自托管」** —— 那是实现方式，
+ * 不是用户能做的事。伞名（入口 tooltip / 弹窗标题）仍叫「远程控制」，
+ * 两条路径各自叫「Web 控制」与「IM 机器人」。
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** 面板的两个标签页。 */
+export type RemoteControlPanelTab = "web" | "imBot";
+
+/**
+ * 默认标签页 = **Web 控制**。
+ *
+ * 读法（与 Lead 对齐）：指**默认选中该标签页**，**不是**自动启动服务面 ——
+ * 服务面仍要用户点「开启」并走决策①的首次确认。把"默认开启"实现成自动起服务
+ * 会是行为变更（静默对局域网开放），本项目明确不做。
+ */
+export const REMOTE_CONTROL_DEFAULT_TAB: RemoteControlPanelTab = "web";
+
+export const REMOTE_CONTROL_PANEL_TABS_TEST_ID = "remote-control-tabs";
+export const REMOTE_CONTROL_PANEL_TAB_WEB_TEST_ID = "remote-control-tab-web";
+export const REMOTE_CONTROL_PANEL_TAB_IM_BOT_TEST_ID = "remote-control-tab-im-bot";
+export const REMOTE_CONTROL_IM_BOT_TEST_ID = "remote-control-im-bot";
+export const REMOTE_CONTROL_IM_BOT_BADGE_TEST_ID = "remote-control-im-bot-badge";
+export const REMOTE_CONTROL_IM_BOT_NOTICE_TEST_ID = "remote-control-im-bot-notice";
+export const REMOTE_CONTROL_IM_BOT_ENABLE_TEST_ID = "remote-control-im-bot-enable";
+export const REMOTE_CONTROL_IM_BOT_CONFIRM_TEST_ID = "remote-control-im-bot-enable-confirm";
+
+/**
+ * IM 机器人标签页的**可达状态**。
+ *
+ * 每个取值都有产出路径（ce.3 硬规矩）：
+ * - `disabled`：**默认档**。宿主没注入通道（今天 Bot 服务端零产出路径）与
+ *   宿主注入了通道但 `status === "disabled"` 都落在这里 ⇒ **都渲染「启用」**。
+ * - `enabling`：用户已确认提醒、请求在途（**渲染进程本地**标记，与 Web 面在途同一机制）。
+ * - `requested`：请求已结算但宿主仍未回传 `enabled` ⇒ 如实说「已请求，等待服务端就绪」。
+ *   **不写「已启用」** —— 服务端还没接入，写成已启用就是谎报。
+ * - `enabled`：宿主回传 `status: "enabled"`。
+ *
+ * **没有 `unavailable` 档**（Lead 拍板，2026-09-24）：早先的写法是"没注入通道 ⇒
+ * 不渲染启用按钮、只给一句说明"，被否掉了 —— 那等于**没同步上游入口**，
+ * 只多了一页说明文字。用户的原则是「不能少东西」，且本仓已有先例（切片 1：
+ * 入口先渲染、动作待接线，如实标为已知限制）。因此：
+ * **默认关闭由"通道未注入 ⇒ 未启用"承载，不是靠"没有按钮"**；
+ * 代价是必须给点击**可见反馈**（确认弹窗 → `enabling` → `requested`），不许静默。
+ */
+export type RemoteControlImBotState = "disabled" | "enabling" | "requested" | "enabled";
+
+/**
+ * 调用方注入的 IM 机器人通道（**纯注入**，与 Web 面同一纪律：面板不读服务、不订阅 IPC）。
+ *
+ * `status` 的真相源在**宿主**：面板不自己宣布"已启用"。面板只持有两个本地标记
+ * （`inFlight` 与 `requested`），因此宿主把 `status` 一直留在 `"disabled"` 时，
+ * 面板显示的是「已请求启用，等待服务端就绪」，而不是谎报已启用。
+ */
+export interface RemoteControlImBotChannel {
+  /** 宿主持有的启用状态。**默认关闭** —— 由调用方给 `"disabled"` 承载。 */
+  status: "disabled" | "enabled";
+  /** 用户确认提醒后的启用请求；宿主负责真正落地并在状态变化时回传 `status`。 */
+  onEnable: () => void | Promise<void>;
+}
+
+/**
+ * 「启用前提醒」的**三条事实**（唯一所有者）。
+ *
+ * 组件按这个顺序渲染，测试按同一常量断言 ⇒ 文案与断言不会分家。
+ * 三条都对应 CLOSED-SOURCE-MECHANISMS.md §2.2 的实测事实（四条渠道全部出网到 IM 厂商、
+ * 凭据由平台签发），不是泛泛的风险提示。
+ */
+export const REMOTE_CONTROL_IM_BOT_REMINDER_MESSAGE_IDS = [
+  "remotePanel.imBot.reminder.account",
+  "remotePanel.imBot.reminder.thirdParty",
+  "remotePanel.imBot.reminder.platformRecords",
+] as const;
+
+export interface RemoteControlImBotView {
+  state: RemoteControlImBotState;
+  /** 状态徽标文案（短语式）。 */
+  badgeMessageId: string;
+  /**
+   * 是否渲染「启用」主操作。
+   *
+   * **默认关闭不隐藏按钮**（Lead 拍板）：用户要能在这里把它打开，
+   * 否则"同步上游入口"等于只多了一页说明。只有已经在途 / 已请求 / 已启用时才不渲染 ——
+   * 那时按钮会承诺一个重复或不存在的动作（与 Web 面 `primaryAction === "none"` 时不渲染按钮同一规则）。
+   */
+  showEnableAction: boolean;
+  /**
+   * 当前状态的说明；`null` = 无需额外说明（提醒块已经说清楚了）。
+   *
+   * 未注入通道时**必须**有说明（`remotePanel.imBot.state.pendingServer`）：
+   * 按钮渲染了但服务端还没接入，不说清楚就是让用户以为点完就能用。
+   */
+  stateMessageId: string | null;
+}
+
+/**
+ * 解析 IM 机器人标签页该显示哪一档。**唯一所有者**（组件不再自己 switch）。
+ *
+ * 优先级刻意这样排：在途 > 宿主已启用 > 已请求 > 默认关闭。
+ * 「在途」压过「宿主已启用」是为了让点击**立刻**有可见反馈（与 Web 面 `inFlight` 同一语义）。
+ */
+export function resolveRemoteControlImBotView(input: {
+  channel: RemoteControlImBotChannel | null | undefined;
+  /** 渲染进程本地在途标记（确认后到 promise 结算之间）。 */
+  inFlight: boolean;
+  /** 本次会话内用户已确认并请求过启用（本地标记）。 */
+  requested: boolean;
+}): RemoteControlImBotView {
+  if (input.inFlight) {
+    return {
+      state: "enabling",
+      badgeMessageId: "remotePanel.imBot.badge.enabling",
+      showEnableAction: false,
+      stateMessageId: "remotePanel.imBot.state.enabling",
+    };
+  }
+  if (input.channel?.status === "enabled") {
+    return {
+      state: "enabled",
+      badgeMessageId: "remotePanel.imBot.badge.enabled",
+      showEnableAction: false,
+      stateMessageId: "remotePanel.imBot.state.enabled",
+    };
+  }
+  if (input.requested) {
+    return {
+      state: "requested",
+      badgeMessageId: "remotePanel.imBot.badge.disabled",
+      showEnableAction: false,
+      stateMessageId: "remotePanel.imBot.state.requested",
+    };
+  }
+  return {
+    state: "disabled",
+    badgeMessageId: "remotePanel.imBot.badge.disabled",
+    showEnableAction: true,
+    // 通道缺席 ⇒ 服务端能力尚未接入；这一档**仍然渲染启用按钮**，但必须如实说明。
+    stateMessageId: input.channel ? null : "remotePanel.imBot.state.pendingServer",
+  };
+}

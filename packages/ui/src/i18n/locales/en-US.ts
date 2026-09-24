@@ -3261,7 +3261,7 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.modelCatalog.partialFailure": "Some models could not be added",
   "settings.modelProvider.hiddenModels.title": "Hidden models ({count})",
   "settings.modelProvider.hiddenModels.description":
-    "These built-in models were deleted. Built-in models come from the app's bundled configuration, so deleting them hides them; restoring brings them back to the list and the model picker.",
+    "These built-in models were deleted; restoring brings them back to the list and the model picker.",
   "settings.modelProvider.hiddenModels.restore": "Restore",
   "settings.modelProvider.modelId": "Model ID",
   "settings.modelProvider.modelDisplayName": "Display name",
@@ -6724,7 +6724,7 @@ const enUS: Record<string, string> = {
   "settings.computerUse.pluginState.unavailableTitle":
     "The Computer Use plugin is unavailable in this build",
   "settings.computerUse.pluginState.unavailableDescription":
-    "This build's plugin list has no computer-use@zcode-plugins-official entry, so the switch is unavailable. Report it through the feedback entry, or bundle that plugin in a custom build.",
+    "This build does not bundle the plugin. Report it through the feedback entry, or bundle it in a custom build.",
   "settings.computerUse.pluginState.enableFailedTitle": "Could not enable Computer Use",
   "settings.computerUse.pluginState.enableFailedFallback":
     "Unknown error. Restart ZCode and try again.",

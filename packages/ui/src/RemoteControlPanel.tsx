@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import QRCode from "qrcode";
-import { AlertTriangleIcon, CheckIcon, CopyIcon, RefreshCwIcon, SquareIcon } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { Bot as BotIcon, GlobeIcon, RefreshCwIcon, SquareIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge.js";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -11,32 +10,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { cn } from "@/components/lib/utils.js";
-import { writeTextToClipboard } from "@/lib/clipboardText.js";
-import { logger } from "@/logger.js";
+import { RemoteControlConnectionSection } from "@/RemoteControlConnectionSection.js";
+import { RemoteControlImBotTab } from "@/RemoteControlImBotTab.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import {
+  REMOTE_CONTROL_DEFAULT_TAB,
   REMOTE_CONTROL_FIRST_RUN_CONFIRM_TEST_ID,
   REMOTE_CONTROL_PANEL_BADGE_TEST_ID,
-  REMOTE_CONTROL_PANEL_CONNECTION_TEST_ID,
-  REMOTE_CONTROL_PANEL_COPY_TEST_ID,
-  REMOTE_CONTROL_PANEL_FAILURE_TEST_ID,
-  REMOTE_CONTROL_PANEL_LINK_TEST_ID,
-  REMOTE_CONTROL_PANEL_QR_TEST_ID,
   REMOTE_CONTROL_PANEL_SAFETY_TEST_ID,
   REMOTE_CONTROL_PANEL_SERVICE_PLANE_TEST_ID,
   REMOTE_CONTROL_PANEL_START_TEST_ID,
   REMOTE_CONTROL_PANEL_STOP_TEST_ID,
+  REMOTE_CONTROL_PANEL_TABS_TEST_ID,
+  REMOTE_CONTROL_PANEL_TAB_IM_BOT_TEST_ID,
+  REMOTE_CONTROL_PANEL_TAB_WEB_TEST_ID,
   REMOTE_CONTROL_PANEL_TEST_ID,
   DEFAULT_REMOTE_CONTROL_START_SCOPE,
-  hasUsableRemoteControlLink,
   resolveRemoteControlPanelView,
   shouldConfirmBeforeStart,
-  shouldRenderQrCode,
   withRemoteControlInFlight,
   type RemoteControlConnectionInfo,
+  type RemoteControlImBotChannel,
   type RemoteControlPanelBranch,
   type RemoteControlPanelStatus,
+  type RemoteControlPanelTab,
   type RemoteControlStartScope,
 } from "@/remoteControlPanelModel.js";
 
@@ -69,6 +68,21 @@ export interface RemoteControlPanelProps {
   onLanExposureConfirmed?: () => void;
   /** 关闭面板；不传则不渲染关闭入口。 */
   onClose?: () => void;
+  /**
+   * IM 机器人通道（task-93）。**可选**，不传 ⇒ 该标签页如实显示"本版本尚未提供启用入口"。
+   *
+   * 为什么可选而不是必填：现有契约是纯注入式的，桌面宿主今天还没有这条通道；
+   * 做成必填会逼调用方编一个假的 `onEnable`（切片 1 的教训：空动作必须如实标注，
+   * 不能靠一个永远成功的回调掩盖）。
+   */
+  imBot?: RemoteControlImBotChannel | null;
+  /**
+   * 是否渲染面板内部的标题区（默认 true）。
+   *
+   * 宿主弹窗（`RemoteControlPanelHost`）自己渲染标题，传 false 避免同一个标题渲染两遍。
+   * 默认 true 是为了不改变切片 3 验收壳的既有形态（它只渲染面板本体）。
+   */
+  showHeader?: boolean;
   className?: string;
 }
 
@@ -80,27 +94,23 @@ export function RemoteControlPanel({
   lanExposureConfirmed = false,
   onLanExposureConfirmed,
   onClose,
+  imBot,
+  showHeader = true,
   className,
 }: RemoteControlPanelProps) {
   const { intl } = useZCodeIntl();
   const t = useCallback((id: string) => intl.formatMessage({ id }), [intl]);
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [confirmOpen, setConfirmOpen] = useState(false);
   // 在途标记是**渲染进程本地**状态：start 最长可等 15s（WEB_SERVICE_READY_TIMEOUT_MS），
   // 期间必须让用户看出"正在开启"，而不是停在一个禁用的"开启"按钮上。
   const [inFlight, setInFlight] = useState<"starting" | "stopping" | null>(null);
+  // 标签页是**面板本地**状态：它不是服务端事实，也不该被当成"用户在设置里选了哪条路径"。
+  // 默认值来自 model 的唯一常量（"Web 控制默认开启" = 默认选中这一页）。
+  const [activeTab, setActiveTab] = useState<RemoteControlPanelTab>(REMOTE_CONTROL_DEFAULT_TAB);
   const view = useMemo(
     () => withRemoteControlInFlight(resolveRemoteControlPanelView(status), inFlight),
     [inFlight, status],
   );
-
-  // 链接变化后重置复制反馈：否则用户会看到上一个链接的「已复制」留在新链接上。
-  const link = connection?.linkWithToken ?? "";
-  // 「有没有可用链接」只判定一次（model 的唯一所有者），链接行与二维码共用同一个结论。
-  const hasLink = hasUsableRemoteControlLink(connection);
-  useEffect(() => {
-    setCopyState("idle");
-  }, [link]);
 
   const startService = useCallback(async () => {
     setInFlight("starting");
@@ -135,21 +145,6 @@ export function RemoteControlPanel({
     await startService();
   }, [onLanExposureConfirmed, startService]);
 
-  const copyLink = useCallback(() => {
-    if (!hasLink) return;
-    // 非安全上下文（局域网 http://<ip>:<port>）没有 navigator.clipboard，
-    // 必须走既有 lib/clipboardText.ts（它在用户手势的同步调用栈内回退到 execCommand）。
-    writeTextToClipboard(link).then(
-      () => setCopyState("copied"),
-      (error: unknown) => {
-        logger.warn("[RemoteControlPanel] 复制链接失败", error);
-        setCopyState("failed");
-      },
-    );
-  }, [hasLink, link]);
-
-  const showQr = shouldRenderQrCode(view, connection);
-
   return (
     <div
       data-testid={REMOTE_CONTROL_PANEL_TEST_ID}
@@ -157,136 +152,111 @@ export function RemoteControlPanel({
       data-remote-control-loopback={status.loopback ? "true" : "false"}
       className={cn("flex min-h-0 flex-col gap-4", className)}
     >
-      <header className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <h2 className="text-ui-lg font-semibold text-foreground">{t("remotePanel.title")}</h2>
-          <p className="text-ui-base text-foreground-subtle">{t("remotePanel.subtitle")}</p>
-        </div>
-        {onClose ? (
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            {t("common.close")}
-          </Button>
-        ) : null}
-      </header>
-
-      {/* 服务面：启停 + 状态徽标。 */}
-      <section
-        data-testid={REMOTE_CONTROL_PANEL_SERVICE_PLANE_TEST_ID}
-        className="flex flex-wrap items-center gap-2"
-      >
-        <Badge
-          data-testid={REMOTE_CONTROL_PANEL_BADGE_TEST_ID}
-          data-remote-control-badge={view.branch}
-          variant={badgeVariant(view.branch)}
-        >
-          {t(view.badgeMessageId)}
-        </Badge>
-        <p className="min-w-0 flex-1 text-ui-base text-foreground-subtle">
-          {t(view.adviceMessageId)}
-        </p>
-        <PrimaryActionButton
-          view={view}
-          label={t(view.primaryActionMessageId)}
-          onClick={() => void runPrimaryAction()}
-        />
-      </section>
-
-      {/* 失败/异常分支：把原因单独成块，避免它和正常态挤在同一行被忽略。 */}
-      {view.branch === "failed" || view.branch === "untrusted" ? (
-        <div
-          data-testid={REMOTE_CONTROL_PANEL_FAILURE_TEST_ID}
-          data-remote-control-failure={view.branch}
-          className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-ui-base text-destructive"
-        >
-          <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
-          <span className="min-w-0">{t(view.adviceMessageId)}</span>
-        </div>
-      ) : null}
-
-      {/* 连接面：地址 / 链接 / 二维码 / 复制链接。只在 running 档渲染。 */}
-      {view.showConnection ? (
-        <section
-          data-testid={REMOTE_CONTROL_PANEL_CONNECTION_TEST_ID}
-          className="flex flex-col gap-3"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-ui-base font-medium text-foreground">
-              {t("remotePanel.connection.title")}
-            </span>
-            <span className="text-ui-caption text-foreground-subtle">
-              {t("remotePanel.connection.audience")}
-            </span>
+      {showHeader ? (
+        <header className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <h2 className="text-ui-lg font-semibold text-foreground">{t("remotePanel.title")}</h2>
+            <p className="text-ui-base text-foreground-subtle">{t("remotePanel.subtitle")}</p>
           </div>
-
-          {hasLink ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <code
-                data-testid={REMOTE_CONTROL_PANEL_LINK_TEST_ID}
-                className="min-w-0 flex-1 truncate rounded-md border border-border bg-surface px-2 py-1 text-ui-base text-foreground"
-              >
-                {link}
-              </code>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                data-testid={REMOTE_CONTROL_PANEL_COPY_TEST_ID}
-                data-remote-control-copy-state={copyState}
-                // 粗指针（手机/平板）命中区 ≥44：size="sm" 只有 24 高，触屏上很难点中。
-                // 与切片 1 入口同一机制（只按 pointer:coarse，桌面保持紧凑）。
-                className="[@media(pointer:coarse)]:min-h-11"
-                onClick={copyLink}
-              >
-                {copyState === "copied" ? (
-                  <CheckIcon className="size-3.5" />
-                ) : (
-                  <CopyIcon className="size-3.5" />
-                )}
-                {copyState === "copied"
-                  ? t("remotePanel.action.copied")
-                  : copyState === "failed"
-                    ? t("remotePanel.action.copyFailed")
-                    : t("remotePanel.action.copyLink")}
-              </Button>
-            </div>
-          ) : (
-            <p className="text-ui-base text-foreground-subtle">
-              {t("remotePanel.connection.linkPending")}
-            </p>
-          )}
-
-          {/*
-            二维码的渲染判定**只有这一个所有者**（model 的 shouldRenderQrCode）。
-            这里刻意**不**把它塞进上面 `link ?` 的分支里：那样会出现两个判定点，
-            改坏其中一个时另一个仍然兜住，反向验证就会"怎么改都不变红"——
-            等于这条断言没打在它声称的面上（实测踩过：只改 shouldRenderQrCode 时 0 条变红）。
-          */}
-          {showQr ? <RemoteControlQrCode value={link} alt={t("remotePanel.qr.alt")} /> : null}
-          <p className="text-ui-caption text-foreground-subtle">{t("remotePanel.qr.fallback")}</p>
-        </section>
+          {onClose ? (
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+              {t("common.close")}
+            </Button>
+          ) : null}
+        </header>
       ) : null}
 
-      {/* 常驻安全提示：不可关闭（spec §3.6 / §3.5 危险品口径）。 */}
-      <section
-        data-testid={REMOTE_CONTROL_PANEL_SAFETY_TEST_ID}
-        className="flex flex-col gap-1 rounded-lg border border-border bg-surface px-3 py-2"
+      {/*
+        一个入口 + 两个标签页（task-93）：两条路径的问题不同、可执行的层面也不同，
+        因此并列而不是合并。伞名仍是「远程控制」，两个页各自叫「Web 控制」/「IM 机器人」。
+      */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(next) => setActiveTab(next as RemoteControlPanelTab)}
+        data-testid={REMOTE_CONTROL_PANEL_TABS_TEST_ID}
+        className="min-h-0 gap-3"
       >
-        <span className="text-ui-base font-medium text-foreground">
-          {t("remotePanel.safety.title")}
-        </span>
-        {/* 非回环运行时把「同网段可尝试连接」提到最前并加重 —— 这是本面板最要紧的后果。 */}
-        {view.emphasizeLanExposure ? (
-          <p data-remote-control-lan-warning="true" className="text-ui-base text-foreground-subtle">
-            {t("remotePanel.safety.lanExposure")}
-          </p>
-        ) : null}
-        <p className="text-ui-base text-foreground-subtle">
-          {t("remotePanel.safety.tokenIsTheOnlyBarrier")}
-        </p>
-        <p className="text-ui-base text-foreground-subtle">
-          {t("remotePanel.safety.linkIsCredential")}
-        </p>
-      </section>
+        <TabsList variant="line" className="w-full justify-start">
+          <TabsTrigger
+            value="web"
+            data-testid={REMOTE_CONTROL_PANEL_TAB_WEB_TEST_ID}
+            className="flex-none gap-1.5"
+          >
+            <GlobeIcon aria-hidden="true" className="size-3.5" />
+            <span>{t("remotePanel.tab.web")}</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="imBot"
+            data-testid={REMOTE_CONTROL_PANEL_TAB_IM_BOT_TEST_ID}
+            className="flex-none gap-1.5"
+          >
+            <BotIcon aria-hidden="true" className="size-3.5" />
+            <span>{t("remotePanel.tab.imBot")}</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/*
+          Web 控制页：**现有面板内容原样搬进来，一个元素都没改**。
+          这是"不能少东西"的可执行证据 —— 切片 3 的全部 data-testid 与根属性保持原值，
+          旧探针不重写一行也应仍全绿（实测见回传）。
+        */}
+        <TabsContent value="web" className="flex min-h-0 flex-col gap-4">
+          {/* 服务面：启停 + 状态徽标。 */}
+          <section
+            data-testid={REMOTE_CONTROL_PANEL_SERVICE_PLANE_TEST_ID}
+            className="flex flex-wrap items-center gap-2"
+          >
+            <Badge
+              data-testid={REMOTE_CONTROL_PANEL_BADGE_TEST_ID}
+              data-remote-control-badge={view.branch}
+              variant={badgeVariant(view.branch)}
+            >
+              {t(view.badgeMessageId)}
+            </Badge>
+            <p className="min-w-0 flex-1 text-ui-base text-foreground-subtle">
+              {t(view.adviceMessageId)}
+            </p>
+            <PrimaryActionButton
+              view={view}
+              label={t(view.primaryActionMessageId)}
+              onClick={() => void runPrimaryAction()}
+            />
+          </section>
+
+          {/* 失败块与连接面（地址/链接/二维码/复制）原样搬进 RemoteControlConnectionSection。 */}
+          <RemoteControlConnectionSection view={view} connection={connection} />
+
+          {/* 常驻安全提示：不可关闭（spec §3.6 / §3.5 危险品口径）。 */}
+          <section
+            data-testid={REMOTE_CONTROL_PANEL_SAFETY_TEST_ID}
+            className="flex flex-col gap-1 rounded-lg border border-border bg-surface px-3 py-2"
+          >
+            <span className="text-ui-base font-medium text-foreground">
+              {t("remotePanel.safety.title")}
+            </span>
+            {/* 非回环运行时把「同网段可尝试连接」提到最前并加重 —— 这是本面板最要紧的后果。 */}
+            {view.emphasizeLanExposure ? (
+              <p
+                data-remote-control-lan-warning="true"
+                className="text-ui-base text-foreground-subtle"
+              >
+                {t("remotePanel.safety.lanExposure")}
+              </p>
+            ) : null}
+            <p className="text-ui-base text-foreground-subtle">
+              {t("remotePanel.safety.tokenIsTheOnlyBarrier")}
+            </p>
+            <p className="text-ui-base text-foreground-subtle">
+              {t("remotePanel.safety.linkIsCredential")}
+            </p>
+          </section>
+        </TabsContent>
+
+        {/* IM 机器人页：默认关闭，启用前必须过确认弹窗（三条事实）。 */}
+        <TabsContent value="imBot" className="min-h-0">
+          <RemoteControlImBotTab channel={imBot ?? null} />
+        </TabsContent>
+      </Tabs>
 
       <FirstRunConfirmDialog
         open={confirmOpen}
@@ -336,46 +306,6 @@ function PrimaryActionButton({
       {isStop ? <SquareIcon className="size-3.5" /> : <RefreshCwIcon className="size-3.5" />}
       {label}
     </Button>
-  );
-}
-
-/**
- * 二维码：复用既有 `qrcode` 依赖（`packages/ui` 的 dependencies 里已有，**不新增依赖**）。
- *
- * 用 SVG 渲染而不是 canvas：`qrcode/lib/browser.js` 的 `toString({type:"svg"})` 不碰
- * `document.createElement("canvas")`，因此**可断言**（SVG 直接进 DOM，浏览器脚本能读到
- * `<path d>`），而 canvas 只能靠像素比对。
- */
-function RemoteControlQrCode({ value, alt }: { value: string; alt: string }) {
-  const [svg, setSvg] = useState<string | null>(null);
-
-  useEffect(() => {
-    let disposed = false;
-    QRCode.toString(value, { type: "svg", margin: 1, width: 160, errorCorrectionLevel: "M" }).then(
-      (markup: string) => {
-        if (!disposed) setSvg(markup);
-      },
-      (error: unknown) => {
-        // 生成失败就当作没有二维码（不渲染半张图）；链接本身仍可复制。
-        logger.warn("[RemoteControlPanel] 二维码生成失败", error);
-        if (!disposed) setSvg(null);
-      },
-    );
-    return () => {
-      disposed = true;
-    };
-  }, [value]);
-
-  if (!svg) return null;
-  return (
-    <div
-      data-testid={REMOTE_CONTROL_PANEL_QR_TEST_ID}
-      // 二维码**本身就是凭据**：不给它加 title/可复制文本，避免被顺手截图外发时的额外提示。
-      role="img"
-      aria-label={alt}
-      className="size-40 shrink-0 rounded-md bg-white p-1 [&>svg]:size-full"
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
   );
 }
 
