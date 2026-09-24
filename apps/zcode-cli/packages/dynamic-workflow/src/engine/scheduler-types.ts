@@ -5,8 +5,14 @@
  *
  * 单独成文件的理由不只是行数：scheduler-submit.ts 里的自由函数也要拿到 AskNode / SchedulerHost，
  * 从这里导入，两侧都不必反向 import 调度器本体。
+ *
+ * Modified by ZCode: 三个纯辅助函数（hashMismatch / describeCause / headOfInstructions）也收在此处，
+ * 与上游同一处置。原因是仓库级 oxfmt 展开后 scheduler.ts 越过 400 行门（实测 542 行），而这三个
+ * 函数与调度器状态无关，搬过来行为不变；scheduler.ts 仍原地再导出 hashMismatch，
+ * engine-report / engine-world / engine-artifacts 的既有导入路径不受影响。
  */
 
+import { INSTRUCTIONS_HEAD_MAX_CHARS, refToString, WorkflowError } from "./types.js";
 import type { ImportedActorState } from "./imported-cache.js";
 import type {
   ActorId,
@@ -20,7 +26,6 @@ import type {
   SessionRef,
   ValidateFn,
   WorkflowDriver,
-  WorkflowError,
 } from "./types.js";
 
 /** 一个可外部结算的 promise。 */
@@ -112,4 +117,36 @@ export interface Actor {
    * imported-cache.ts 的 `matchImportedActor`）。缺席即该 actor 全新重跑。
    */
   imported?: ImportedActorState;
+}
+
+/** replay 命中但 inputHash 不一致——纯度契约被破坏，run 大声失败。 */
+export function hashMismatch(instance: InstanceRef, expected: string, got: string): WorkflowError {
+  return new WorkflowError(
+    "InputHashMismatch",
+    `Replay hit at ${refToString(instance)} but inputHash differs (expected ${expected}, got ` +
+      `${got}): the script is not deterministic, so the journal cannot be replayed.`,
+    // 结构化 mismatch 与 ScriptHashMismatch 对齐：两个哈希不一致错误共用同一个字段，
+    // 读端不必再从 message 文本里抠哈希。
+    { mismatch: { expected, got } },
+  );
+}
+
+/** cause → 一行有界文本（Error 取 message，其余 String()；空则给占位）。 */
+export function describeCause(cause: unknown): string {
+  const text = cause instanceof Error ? cause.message : String(cause);
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return "unknown error";
+  return trimmed.length > 300 ? `${trimmed.slice(0, 300)}…` : trimmed;
+}
+
+/**
+ * 作者指令的开头（{@link INSTRUCTIONS_HEAD_MAX_CHARS} 个字符，去两端空白，**不加省略号**）。
+ * 空指令返回 undefined：缺席的键比一个空串诚实——读面据此退回「不知道它被交代了什么」。
+ */
+export function headOfInstructions(instructions: string): string | undefined {
+  const trimmed = instructions.trim();
+  if (trimmed.length === 0) return undefined;
+  return trimmed.length <= INSTRUCTIONS_HEAD_MAX_CHARS
+    ? trimmed
+    : trimmed.slice(0, INSTRUCTIONS_HEAD_MAX_CHARS);
 }

@@ -29,6 +29,8 @@ export * from "./wire.js";
 export * from "./wire-codec.js";
 export * from "./wire-reassembly.js";
 export * from "./wire-assembler.js";
+// 帧组装 fault 的分类（内容确定性失败 vs 瞬态）：常量 + 谓词 + 客户端终态 code。
+export * from "./wire-fault.js";
 export * from "./sessions-index.js";
 export * from "./sessions-index-workflow-activity.js";
 export * from "./workspace-config.js";
