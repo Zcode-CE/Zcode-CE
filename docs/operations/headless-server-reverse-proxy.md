@@ -8,10 +8,13 @@
 ## 0. 三条先记住的结论
 
 1. **只支持挂在域名根（`/`）**：SPA 静态、`/api`、`/ws` 必须在**同一 origin**（见 §2）。
-2. **Host 白名单（G6）当前尚未实现**：服务用 `Host` 头只是为了推导"自我来源"做跨站判定，
-   **没有**允许主机名白名单 ⇒ **Origin 校验挡不住 DNS rebinding**。核对方法与修法见 §1 与 §5。
-3. **`X-Forwarded-For` 当前被无条件信任**（用作对端地址的日志/告警）：因此**不要**把它当成安全判据（§3）。
-   在「可信代理 + XFF 收紧」落地之前，**不要把服务暴露到公网**。
+2. **Host 白名单（G6）已实现**（task-39）：`Host` 必须落在白名单里，否则 403。
+   默认白名单 = 回环各形态 + 本机网卡地址 + 实际监听地址；**反代域名必须显式登记**
+   `ZCODE_SERVER_TRUSTED_HOSTS`，否则你的域名会被 403。核对方法见 §1 与 §5.1。
+3. **`X-Forwarded-For` 默认不被采信**（task-35）：只有在 socket 对端落在
+   `ZCODE_SERVER_TRUSTED_PROXIES` 内时才采信它，且从右往左取第一个不可信地址。
+   **反代部署要配这个变量** —— 否则所有客户端都表现为回环地址，鉴权失败限流会共用一个计数桶，
+   一个人的连续失败会让所有人在封禁期内被拒。详见 §3。
 
 ---
 
@@ -30,18 +33,22 @@
 同类项目的对策就是**主机名白名单**：Grafana 的 `enforce_domain` 选项明写
 "**Prevents DNS rebinding attacks**"（来源：Grafana 配置文档，属同类项目文档证据）。
 
-### 1.2 我们今天的实现口径（**如实：缺口**）
+### 1.2 我们今天的实现口径（**已实现**）
 
-| 事实                                                                                                                     | 证据                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `Host` 头只被用来**推导自我来源**（`resolveSelfOrigin(hostHeader, protocol, requestUrl)`），用于跨站请求的 `Origin` 判定 | `packages/server/src/webExposureGuard.ts:112-133`（"Host 头是唯一第一手信息"）；`http.ts:730`、`webExposureGuard.ts:301` 传 `host` 进来 |
-| **不存在**允许主机名白名单（`allowedHost`/`expectedHost`/`ALLOWED_HOST`/`enforceDomain` 之类）                           | 全仓检索这些标识：**0 命中**（命令见 §5.2）                                                                                             |
-| 跨源部署可用 `ZCODE_SERVER_TRUSTED_ORIGINS` 显式放行（批次 A 的机制）                                                    | `packages/server/src/entry-http.ts:47`、`http.ts:157-159,529,682-683`                                                                   |
+| 事实                                                                                                                             | 证据                                                                                              |
+| -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `Host` **现在是被校验的**：必须落在白名单里，否则 403（+ `X-ZCode-Host-Rejected: 1` + 可操作原因）                               | `packages/server/src/hostAllowlist.ts`（`evaluateHost`）；`http.ts` 的 Host 中间件与 upgrade gate |
+| 默认白名单 = 回环各形态（含 `127/8`、`::1`、`localhost`、大小写与尾随点）+ **本机网卡地址** + 实际监听地址；**不含任何外部域名** | `hostAllowlist.ts` 的 `buildTrustedHostEntries`；启动日志逐类打印生效项                           |
+| 反代域名必须显式登记 `ZCODE_SERVER_TRUSTED_HOSTS`（支持 `host`/`host:port`/`[IPv6]:port`）                                       | `entry-http.ts` 读环境变量；`http.ts` 追加进白名单                                                |
+| **WebSocket 升级同样校验**（`/ws` 绕过中间件链的响应通道）                                                                       | `http.ts` 的 `server.on("upgrade")` 里 Host 分支先于来源判定                                      |
+| 跨源部署另有 `ZCODE_SERVER_TRUSTED_ORIGINS`（**不同防线**：Origin 挡跨站、Host 挡 rebinding）                                    | `webExposureGuard.ts`；两者分工见 `docs/development/web-remote-control.md` §6.2                   |
 
-**结论**：**§1.1 那条攻击链今天仍然成立**。Origin 校验解决的是"别的网站冒充浏览器发起请求"，
-不解决"攻击者用自己的域名重绑定到本机"（那时它的 `Origin` 与 `Host` 是自洽的）。
+**结论**：§1.1 那条攻击链**已关闭** —— 攻击者的请求 `Host: evil.com` 不在白名单里 ⇒ 403，
+浏览器读不到任何响应（而 `Origin` 校验单独是挡不住它的：那时 `Origin` 与 `Host` 自洽）。
 
-**修法（已登记，未实现）**：见 [.reverse/43-web-security/B2-REVERSE-PROXY-GAPS.md](../../.reverse/43-web-security/B2-REVERSE-PROXY-GAPS.md)（G6 待办：允许主机名白名单 + 拒绝不匹配的 `Host`）。
+**反代部署的唯一注意点**：登记你的域名，否则**你自己的域名也会 403**（这是有意行为，不是 bug）。
+核对命令见 §5.1；设计与取舍（端口语义、缺失 Host 的处理、与 `TRUSTED_ORIGINS` 的分工）见
+[docs/development/web-remote-control.md](../../docs/development/web-remote-control.md) §6。
 
 ---
 
@@ -141,21 +148,31 @@ server {
 
 ## 5. 核对方法（可执行）
 
-### 5.1 Host 白名单是否已落地
+### 5.1 Host 白名单是否生效（**实现后**：核心线索是"伪 Host 一律 403"）
 
 ```bash
-# 带一个不属于本服务的 Host 访问：若实现白名单，应被拒绝（403/400）而不是正常返回
+# ① 伪 Host ⇒ 403（且响应体给出去哪里登记域名）；这条**不受令牌状态影响**
 curl -sS -o /dev/null -w '%{http_code}\n' -H 'Host: attacker.example' http://127.0.0.1:3030/api/server-info
-# 今天（无白名单）预期：401（缺令牌）——**这不能证明安全**，它只说明令牌仍在拦；
-# 用一个有效令牌再试：若能返回 200，说明 Host 未被校验
-curl -sS -o /dev/null -w '%{http_code}\n' -H 'Host: attacker.example' \
-  -H 'Cookie: zcode_lite_token=<令牌>' http://127.0.0.1:3030/api/server-info
+# 期望 403（不是 401：401 说明 Host 根本没被校验）
+
+# ② 看拒绝原因是否可操作（应提到 ZCODE_SERVER_TRUSTED_HOSTS）
+curl -sS -H 'Host: attacker.example' http://127.0.0.1:3030/api/server-info
+
+# ③ 合法 Host（回环 + 真实端口）仍应照常：401/200 取决于是否带令牌
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3030/api/server-info      # 401（缺令牌）
+
+# ④ 启动日志里逐类打印生效白名单（排障第一站）
+#    trusted hosts: loopback=[127.0.0.1,::1,localhost] interface=[...] configured=[...]
+
+# ⑤ 反代域名必须登记，否则你自己的域名也会被 403：
+#    ZCODE_SERVER_TRUSTED_HOSTS=zcode.example.com
 ```
 
-### 5.2 是否真的没有主机名白名单
+### 5.2 实现位置（核对该实现是否存在）
 
 ```bash
-grep -rnE 'allowedHost|expectedHost|ALLOWED_HOST|enforceDomain' packages/server/src packages/server/test scripts | wc -l   # 今天 → 0
+grep -rnE 'evaluateHost|buildTrustedHostEntries|ZCODE_SERVER_TRUSTED_HOSTS' packages/server/src | head
+# 期望：hostAllowlist.ts（判定）+ http.ts（中间件与 upgrade gate）+ entry-http.ts（读环境变量）
 ```
 
 ### 5.3 反代三条要求是否满足
@@ -171,8 +188,9 @@ curl -sS -o /dev/null -w '%{http_code}\n' -H 'Origin: https://zcode.example.com'
 
 ## 6. 未验证 / 限制
 
-- **Host 白名单尚未实现**（§1.2）：这是本文最重要的**缺口**声明，不是"待确认"。
-- **`XFF` 收紧尚未实现**（§3.3）：落地前不要暴露到公网。
+- **Host 白名单已实现**（§1.2）：默认白名单不含任何外部域名 ⇒ **反代域名必须显式登记**，
+  否则会 403（这是有意行为，不是 bug）。
+- **`XFF` 收紧已实现**（§3）：反代部署请配 `ZCODE_SERVER_TRUSTED_PROXIES`，否则限流按反代地址计数。
 - 本文的 Caddy/nginx 配置在**本机未实测**（没有可用的对外域名与证书环境）；请按 §5.3 在自己的环境核对。
 - 子路径部署**不支持**（§2），且不是"配置一下就好"——需要 base path 改造，属未排期工作。
 

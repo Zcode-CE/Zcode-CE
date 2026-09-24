@@ -8,6 +8,16 @@ import {
   createHttpServer,
   isNonLoopbackAddress,
 } from "../src/http.js";
+import { parseTrustedProxies } from "../src/authThrottle.js";
+
+/**
+ * task-35 起的**口径变化**（本文件里的 XFF 用法随之调整，不是放宽断言）：
+ * 服务端不再默认采信 `X-Forwarded-For`（否则按地址限流可被伪造头绕过）。
+ * 因此「用 XFF 伪装一个非回环对端」必须**显式把回环声明为可信代理**才成立 ——
+ * 那正是真实反代部署的形态（反代在回环上，它给出真实客户端地址）。
+ * 另外新增一条断言：**未声明可信代理时，XFF 不能伪造出「非回环对端」告警**。
+ */
+const LOOPBACK_AS_TRUSTED_PROXY = parseTrustedProxies("127.0.0.1");
 
 /**
  * task-27 暴露检查：非回环绑定与「非回环对端 + 非 TLS」必须醒目告警但不得拒绝。
@@ -173,6 +183,8 @@ test("运行期告警只出现一次，且明文 http 请求照常成功（不�
   const server = createHttpServer(new ServiceCollection(), 0, {
     host: "127.0.0.1",
     authToken: "task27",
+    // 模拟「反代在回环上」：只有声明可信后才采信 XFF（task-35 的口径，见文件头注释）。
+    trustedProxies: LOOPBACK_AS_TRUSTED_PROXY,
   });
   const port = await resolveListenPort(server);
   try {
@@ -199,10 +211,35 @@ test("运行期告警只出现一次，且明文 http 请求照常成功（不�
   }
 });
 
+test("未声明可信代理时，XFF 不得伪造出「非回环对端」告警（task-35 新口径）", async () => {
+  const server = createHttpServer(new ServiceCollection(), 0, {
+    host: "127.0.0.1",
+    authToken: "task27",
+  });
+  const port = await resolveListenPort(server);
+  try {
+    const warnings = await captureWarnings(async () => {
+      const response = await fetch("http://127.0.0.1:" + port + "/api/server-info?token=task27", {
+        headers: { "x-forwarded-for": "10.122.18.101" },
+      });
+      assert.equal(response.status, 200);
+    });
+    assert.deepEqual(
+      warnings.filter((entry) => entry.includes("非回环对端")),
+      [],
+      "未声明可信代理时对端一律取 socket（回环）⇒ 不得告警，伪造头不能制造告警噪音",
+    );
+  } finally {
+    await closeServer(server);
+  }
+});
+
 test("反代已声明 https 时运行期不得告警（X-Forwarded-Proto）", async () => {
   const server = createHttpServer(new ServiceCollection(), 0, {
     host: "127.0.0.1",
     authToken: "task27",
+    // 同上：不声明可信代理时 XFF 根本不被采信，这条断言会退化成空断言。
+    trustedProxies: LOOPBACK_AS_TRUSTED_PROXY,
   });
   const port = await resolveListenPort(server);
   try {

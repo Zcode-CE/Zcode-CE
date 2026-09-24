@@ -4,6 +4,9 @@ import {
   readBundledZCodeBuiltinProviderConfig,
 } from "./bundledZCodeBuiltinProviderConfig.js";
 import { DEFAULT_HTTP_LISTEN_HOST, assertListenSecurity, createHttpServer } from "./http.js";
+import { createAuthTokenStore, loadAuthTokensFromFile, type AuthTokenRecord } from "./authToken.js";
+import { parseTrustedProxies } from "./authThrottle.js";
+import { parseTrustedHosts } from "./hostAllowlist.js";
 
 /** `ZCODE_SERVER_HSTS`：只认显式的真值，缺省与拼错都当 false（安全默认值）。 */
 function isTruthyEnv(value: string | undefined): boolean {
@@ -52,11 +55,44 @@ async function main(): Promise<void> {
   // 就无法回退（用户会被浏览器强制跳 https）。两者都要用户显式开启。
   const cspMode = resolveCspMode(process.env["ZCODE_SERVER_CSP"]);
   const hsts = isTruthyEnv(process.env["ZCODE_SERVER_HSTS"]);
+  // 可信代理：**默认空 = 不采信 X-Forwarded-For**（见 authThrottle.ts 的模块注释）。
+  // 这是为了让 A3 的按地址限流无法被伪造头绕过；反代后要拿真实客户端地址才需要显式配置。
+  const trustedProxies = parseTrustedProxies(process.env["ZCODE_SERVER_TRUSTED_PROXIES"]);
+  // Host 白名单（G6）：**默认 = 回环 + 本机网卡 + 实际监听地址**，这里只追加运维显式登记的域名。
+  // 与 TRUSTED_ORIGINS 是两道不同防线（Host 挡 DNS rebinding、Origin 挡跨站），不要互相替代；
+  // 非法项丢弃（一个写错的域名不该让服务起不来），生效项由 http.ts 在监听后打印。
+  const trustedHosts = parseTrustedHosts(process.env["ZCODE_SERVER_TRUSTED_HOSTS"]);
+  // 令牌文件（A4）：多条令牌 + SIGHUP 重载，让「撤销一台设备」不必重启、也不影响其他设备。
+  // 读取失败**直接抛错**（fail-closed）：配了一个读不了 / 为空的令牌文件，绝不能静默退化成无鉴权。
+  const authTokensFilePath = process.env["ZCODE_SERVER_AUTH_TOKENS_FILE"]?.trim() || undefined;
+  const authFileRecords: AuthTokenRecord[] = authTokensFilePath
+    ? loadAuthTokensFromFile(authTokensFilePath)
+    : [];
+  const explicitTokenRecords: AuthTokenRecord[] = authToken
+    ? [{ token: authToken, label: "<env>" }]
+    : [];
+  const tokenSource =
+    explicitTokenRecords.length > 0 || authFileRecords.length > 0
+      ? createAuthTokenStore({
+          records: explicitTokenRecords,
+          fileRecords: authFileRecords,
+          ...(authTokensFilePath ? { filePath: authTokensFilePath } : {}),
+          log: (...args: unknown[]) => console.log(...args),
+          warn: (...args: unknown[]) => console.warn(...args),
+        })
+      : undefined;
+  const authEnabled = Boolean(tokenSource?.enabled);
 
   // 先做监听安全前置检查，再初始化任何服务：被拒绝时不应该先拉起 provider runtime /
   // CUA 等一堆子系统再报错（那些日志会淹没真正的拒绝原因），也不应产生副作用。
   // 同一判定在 createHttpServer 内再执行一次，保证任何调用方都绕不过。
-  assertListenSecurity({ host: host ?? DEFAULT_HTTP_LISTEN_HOST, authToken });
+  // 「配了令牌文件却没解析出令牌」在这里就拒绝启动（authSourceConfigured + 未 enabled）。
+  assertListenSecurity({
+    host: host ?? DEFAULT_HTTP_LISTEN_HOST,
+    ...(authToken ? { authToken } : {}),
+    authSourceConfigured: Boolean(authTokensFilePath || authToken),
+    authSourceEnabled: authEnabled,
+  });
 
   const zcodeBuiltinProviderConfigFilePath = await materializeBundledZCodeBuiltinProviderConfig({
     environmentConfigRoot: getAppConfigDir(),
@@ -64,17 +100,36 @@ async function main(): Promise<void> {
   });
   const services = createLocalServices({
     zcodeBuiltinProviderConfigFilePath,
-    providerProvisioningTargetEnabled: Boolean(authToken),
+    providerProvisioningTargetEnabled: authEnabled,
   });
 
-  createHttpServer(services, port, {
+  const server = createHttpServer(services, port, {
     ...(host ? { host } : {}),
     ...(staticRoot ? { staticRoot, spaFallback: true } : {}),
-    ...(authToken ? { authToken, authRequired: true } : {}),
+    ...(authEnabled ? { authRequired: true } : {}),
+    ...(tokenSource ? { tokenSource } : {}),
     ...(trustedOrigins.length > 0 ? { trustedOrigins } : {}),
+    ...(trustedProxies.length > 0 ? { trustedProxies } : {}),
+    ...(trustedHosts.length > 0 ? { trustedHosts } : {}),
     ...(cspMode ? { cspMode } : {}),
     ...(hsts ? { hsts } : {}),
   });
+
+  // SIGHUP ⇒ 重载令牌文件（`kill -HUP <pid>`）。这是本进程对 SIGHUP 的全部语义：
+  // http 入口（`zcode --web`）此前**没有** SIGHUP 处理器（那套在 entry-stdio.ts 的桌面 stdio
+  // 链路里，互不影响），所以注册它不会覆盖既有行为；注册后 SIGHUP 不再走 Node 默认的终止进程。
+  if (tokenSource && authTokensFilePath) {
+    process.on("SIGHUP", () => {
+      const result = tokenSource.reload();
+      if (!result.ok) {
+        console.warn(
+          "[zcode-server:http] SIGHUP 重载失败，继续使用上一份令牌集合：" +
+            (result.error ?? "未知原因"),
+        );
+      }
+    });
+  }
+  void server;
 }
 
 void main().catch((error: unknown) => {

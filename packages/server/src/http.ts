@@ -48,6 +48,15 @@ import {
   parseTrustedOrigins,
   rejectUpgrade,
 } from "./webExposureGuard.js";
+import type { AuthTokenSource } from "./authToken.js";
+import {
+  createAuthThrottle,
+  parseTrustedProxies,
+  resolveClientAddress,
+  type AuthThrottle,
+  type TrustedProxyRange,
+} from "./authThrottle.js";
+import { buildTrustedHostEntries, evaluateHost, type TrustedHostEntry } from "./hostAllowlist.js";
 
 function wrapWebSocket(ws: WebSocket): ISocket {
   const onData = new Emitter<VSBuffer>();
@@ -161,6 +170,25 @@ export interface HttpServerOptions {
   hsts?: boolean;
   /** CSP 模式：默认 report-only（观察期），见 webExposureGuard.ts 的说明。 */
   cspMode?: "report-only" | "enforce" | "off";
+  /**
+   * 令牌来源。缺省时由 `authToken` 包装成一个只读集合（既有调用方的契约不变）；
+   * 传 AuthTokenSource 时使用它的 `enabled`/`verify`（令牌文件与 SIGHUP 重载由此接入）。
+   */
+  tokenSource?: AuthTokenSource;
+  /**
+   * 可信代理（IP 或 CIDR）。**默认空 = 不采信 X-Forwarded-For**，一律用 socket 对端地址。
+   * 来源：`ZCODE_SERVER_TRUSTED_PROXIES`（逗号分隔），解析在 entry-http.ts。
+   */
+  trustedProxies?: TrustedProxyRange[];
+  /** 鉴权失败限流（A3）。缺省用默认阈值；测试可注入短窗口。 */
+  throttle?: AuthThrottle;
+  /**
+   * 运维显式登记的 Host 白名单条目（`ZCODE_SERVER_TRUSTED_HOSTS`）。**追加**在默认白名单
+   * （回环 + 本机网卡 + 实际监听地址）之后，不替换默认值。见 hostAllowlist.ts。
+   */
+  trustedHosts?: { host: string; port?: number }[];
+  /** 直接注入白名单条目（测试用；给定时不再从监听地址/接口推导）。 */
+  trustedHostEntries?: TrustedHostEntry[];
 }
 
 function readTrimmedEnv(name: string): string | undefined {
@@ -371,21 +399,44 @@ export function buildPlainHttpPeerWarning(params: {
   ].join("\n");
 }
 
-/** 对端地址：优先 X-Forwarded-For 首跳（可伪造，但伪造只会多打一次告警），否则取 socket 地址。 */
-function resolvePeerAddress(c: Context): string | undefined {
-  const forwarded = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
-  if (forwarded) return forwarded;
+/**
+ * 对端地址（**可信代理**口径，见 authThrottle.ts 的模块注释）。
+ *
+ * 修改前这里**无条件**采信 `X-Forwarded-For` 首跳，理由是「伪造只会多打一次告警」——
+ * 那条理由在只有告警时成立，但一旦按地址做限流，XFF 就成了攻击者自选的键。
+ * 现在只有 socket 对端落在 `trustedProxies` 里才采信 XFF，且从右往左取第一个不可信地址。
+ */
+function resolvePeerAddress(
+  c: Context,
+  trustedProxies: readonly TrustedProxyRange[],
+): string | undefined {
   const env = c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined;
-  return env?.incoming?.socket?.remoteAddress ?? undefined;
+  return resolveClientAddress({
+    socketAddress: env?.incoming?.socket?.remoteAddress ?? undefined,
+    forwardedFor: c.req.header("x-forwarded-for"),
+    trustedProxies,
+  });
 }
 
-function hasValidLiteToken(c: Context, token: string): boolean {
+/**
+ * 校验候选令牌并**在有令牌来源时**种 cookie。
+ *
+ * 与修改前的差别：不再拿一个字符串做字面比较，而是委托 `AuthTokenSource`（支持多条令牌 +
+ * 热重载 + 常量时间比较）。`source.enabled === false`（显式 `--no-token`）时不种 cookie ——
+ * 修改前若 `authToken` 为空则整段令牌中间件不挂载，因此「空令牌却种 cookie」不可能发生；
+ * 这里保持同一语义，避免出现「看似有鉴权、实则任何令牌都能种上」的假象。
+ */
+function hasValidLiteToken(c: Context, source: AuthTokenSource): boolean {
+  if (!source.enabled) {
+    return false;
+  }
   const url = new URL(c.req.url);
-  if (url.searchParams.get("token") === token) {
-    c.header("Set-Cookie", buildLiteTokenCookie(token, isSecureRequest(c)));
+  const candidate = url.searchParams.get("token") ?? undefined;
+  if (candidate !== undefined && source.verify(candidate)) {
+    c.header("Set-Cookie", buildLiteTokenCookie(candidate, isSecureRequest(c)));
     return true;
   }
-  return parseCookieHeader(c.req.header("cookie")).get(zcodeLiteTokenCookieName) === token;
+  return source.verify(parseCookieHeader(c.req.header("cookie")).get(zcodeLiteTokenCookieName));
 }
 
 /**
@@ -492,9 +543,34 @@ export function isLoopbackHost(host: string): boolean {
  * trusted-host ticket 发放接口交给整个网段，静默降级在这里是不可接受的。
  * 立场与 server-core 一致（那边对非回环直接抛错）。
  */
-export function assertListenSecurity(options: { host: string; authToken?: string }): void {
-  if (isLoopbackHost(options.host) || options.authToken?.trim()) {
+export function assertListenSecurity(options: {
+  host: string;
+  authToken?: string;
+  /** 环境里是否配了令牌来源（显式令牌或令牌文件）。区分「没配」与「配了但没解析出令牌」。 */
+  authSourceConfigured?: boolean;
+  /** 令牌集合是否真的可用（`AuthTokenSource.enabled`）。 */
+  authSourceEnabled?: boolean;
+}): void {
+  // fail-closed：非回环必须有**可用**的令牌来源。
+  // 注意区分两种情况：没配（下面给三条做法）与配了但为空（文件损坏/空文件 ⇒ 必须显式拒绝，
+  // 否则会静默退化成「无鉴权的对外监听」，那正是本函数要防的那一档）。
+  const hasUsableSource = options.authSourceEnabled ?? Boolean(options.authToken?.trim());
+  if (isLoopbackHost(options.host) || hasUsableSource) {
     return;
+  }
+  if (options.authSourceConfigured && !hasUsableSource) {
+    throw new Error(
+      [
+        `拒绝启动：绑定非回环地址 "${options.host}"，且配置的令牌来源没有可用令牌。`,
+        "",
+        "原因：令牌文件为空、只有注释、或被解析出 0 条令牌时，若继续运行，服务会**看起来开启了鉴权、",
+        "实际上没有任何凭据能通过**（对外监听 = 无鉴权）。这是安全相关的错误行为，不能静默降级。",
+        "",
+        "两种做法：",
+        "  1. 往令牌文件里写入至少一条令牌（每行 `<token>` 或 `<token> <标签>`）；",
+        "  2. 或删掉 ZCODE_SERVER_AUTH_TOKENS_FILE / ZCODE_SERVER_AUTH_TOKEN 这两个配置。",
+      ].join("\n"),
+    );
   }
   throw new Error(
     [
@@ -524,15 +600,41 @@ export function createHttpServer(
 
   // 唯一所有者：默认值与 fail-closed 判定都在这里，入口只负责从环境读取「是否显式指定」。
   const host = options.host?.trim() || DEFAULT_HTTP_LISTEN_HOST;
-  const authToken = options.authToken?.trim();
-  assertListenSecurity({ host, authToken });
+  const explicitToken = options.authToken?.trim();
+  // 令牌来源：显式令牌是「运维手上那把钥匙」，AuthTokenSource（令牌文件）是「可批量撤销的设备钥匙」。
+  // 两者都支持；都为空 ⇒ 不启用鉴权（回环下的合法形态）。
+  const explicitTokenSource: AuthTokenSource | undefined = explicitToken
+    ? {
+        enabled: true,
+        verify: (candidate) => candidate === explicitToken,
+        snapshot: () => ({ count: 1, labels: ["<env>"] }),
+      }
+    : undefined;
+  const tokenSource = options.tokenSource ?? explicitTokenSource;
+  assertListenSecurity({
+    host,
+    ...(explicitToken ? { authToken: explicitToken } : {}),
+    authSourceConfigured: Boolean(options.tokenSource || explicitToken),
+    authSourceEnabled: Boolean(tokenSource?.enabled),
+  });
   const trustedOrigins = parseTrustedOrigins(options.trustedOrigins?.join(","));
+  const trustedProxies = options.trustedProxies ?? [];
+  // Host 白名单（G6）：默认 = 回环各形态 + 本机网卡地址 + 实际监听地址；运维显式登记追加其后。
+  const trustedHostEntries =
+    options.trustedHostEntries ??
+    buildTrustedHostEntries({
+      configuredEntries: options.trustedHosts ?? [],
+      listenHost: host,
+    });
+  const throttle =
+    options.throttle ??
+    createAuthThrottle({ warn: (address, message) => warn(message + "（" + address + "）") });
   // 运行期暴露面告警：只在首次遇到「非回环对端 + 非 TLS」时提示一次（不拒绝请求）。
   let plainHttpPeerWarned = false;
   app.use("*", async (c, next) => {
     if (!plainHttpPeerWarned) {
       const warning = buildPlainHttpPeerWarning({
-        remoteAddress: resolvePeerAddress(c),
+        remoteAddress: resolvePeerAddress(c, trustedProxies),
         secure: isSecureRequest(c),
       });
       if (warning) {
@@ -550,6 +652,35 @@ export function createHttpServer(
     secure: false,
   } as const;
   app.use("*", createSecurityHeaders(securityHeadersOptions));
+  // Host 白名单（G6）：**排在最前面**，它是唯一能区分「浏览器以为在跟 evil.com 说话，其实在跟本机说话」
+  // 的信号；来源校验做不到这一点（rebinding 时 Origin 与 Host 自洽）。顺序理由：Host 是请求的基本
+  // 属性，连"这是发给谁的请求"都没确认之前，不该继续走后续任何判定。
+  const hostGuardWarned = new Set<string>();
+  app.use("*", async (c, next) => {
+    const decision = evaluateHost(c.req.header("host"), trustedHostEntries);
+    if (decision.allowed) {
+      await next();
+      return;
+    }
+    const hostHeader = c.req.header("host") ?? "<missing>";
+    // 每台主机名只告警一次：扫描器会持续打不同的 Host，不能让日志被淹没。
+    if (!hostGuardWarned.has(hostHeader)) {
+      hostGuardWarned.add(hostHeader);
+      warn(
+        "[host-allowlist] 已拒绝 Host=" +
+          hostHeader +
+          " 的请求（" +
+          c.req.method +
+          " " +
+          new URL(c.req.url).pathname +
+          "）。这是 DNS rebinding 防护；若这是你的反代域名，请登记进 ZCODE_SERVER_TRUSTED_HOSTS。",
+      );
+    }
+    return c.json({ error: decision.reason ?? "Host not allowed" }, 403, {
+      "X-ZCode-Host-Rejected": "1",
+      ...buildSecurityHeaders(securityHeadersOptions),
+    });
+  });
   // 来源校验排在令牌中间件**之前**：跨站 + 未授权的请求应得到明确的 403（跨站），
   // 而不是先被令牌层拦成 401 —— 否则运维无法区分「没带凭据」与「带了凭据但被跨站利用」。
   // denialHeaders 是必须的：这条 403 是**独立返回**的，后续中间件不会跑到它（见其注释）。
@@ -561,13 +692,65 @@ export function createHttpServer(
       denialHeaders: () => buildSecurityHeaders(securityHeadersOptions),
     }),
   );
-  if (authToken) {
+  // 每个请求的鉴权上下文：对端地址 + 是否已记过一次失败。
+  // 用 WeakMap 而不是可变闭包变量：闭包变量会在并发请求间串味（同一个中间件实例服务所有请求）。
+  const perRequestAuth = new WeakMap<Context, { peer?: string; failureRecorded: boolean }>();
+  if (tokenSource?.enabled) {
     app.use("*", async (c, next) => {
       const pathname = new URL(c.req.url).pathname;
-      const validToken = hasValidLiteToken(c, authToken);
+      const peer = resolvePeerAddress(c, trustedProxies);
+      // ⓪ 限流闸门：被封禁的地址在做任何校验之前就被拒（按地址计数 ⇒ 暴力破解被截断）。
+      const gate = throttle.check(peer);
+      if (!gate.allowed) {
+        warn(
+          "已拒绝来自被封禁地址的请求（剩余 " +
+            String(Math.ceil((gate.retryAfterMs ?? 0) / 1000)) +
+            " 秒）：" +
+            pathname,
+        );
+        return c.json(
+          {
+            error:
+              "Too many failed authentication attempts. This client address is temporarily blocked.",
+          },
+          403,
+        );
+      }
+      const validToken = hasValidLiteToken(c, tokenSource);
       if (!isTokenProtectedPath(pathname) || validToken) {
+        if (validToken) {
+          // 成功即清零：正常用户的偶发输错不会累积到阈值（阈值只拦持续失败的暴力破解）。
+          throttle.recordSuccess(peer);
+        }
+        perRequestAuth.set(c, peer ? { peer, failureRecorded: false } : { failureRecorded: false });
         await next();
         return;
+      }
+      // ① 鉴权失败：计数 + 可观测（修改前这条链路上没有任何失败记录，入侵完全静默）。
+      const banned = throttle.recordFailure(peer);
+      perRequestAuth.set(c, { ...(peer ? { peer } : {}), failureRecorded: true });
+      warn(
+        "鉴权失败（" +
+          (banned ? "已触发封禁" : "累计 " + String(throttle.failureCount(peer ?? "")) + " 次") +
+          "）：" +
+          c.req.method +
+          " " +
+          pathname +
+          "，对端=" +
+          (peer ?? "unknown"),
+      );
+      // ② 反代形态下的**误伤风险**必须说出来：未声明可信代理时，反代后的所有客户端都表现为
+      //    回环地址 ⇒ 一个客户端的失败会把这唯一一个计数桶封掉，整台机器（含正常用户）
+      //    在封禁期内全部 403。这不是「不可能发生」，而是「配了反代却没配
+      //    ZCODE_SERVER_TRUSTED_PROXIES」时的默认现象，所以必须给出可操作的修法。
+      if (banned && isLoopbackHost(peer ?? "") && trustedProxies.length === 0) {
+        warn(
+          "注意：被封禁的是回环地址，且未配置 ZCODE_SERVER_TRUSTED_PROXIES —— " +
+            "若你在反向代理之后部署，所有客户端目前共用同一个计数桶，" +
+            "任何人的连续失败都会让**所有人**在封禁期内被拒绝。" +
+            "请把反代地址登记进 ZCODE_SERVER_TRUSTED_PROXIES（例如 127.0.0.1），" +
+            "让限流按真实客户端地址计数。",
+        );
       }
       return c.json({ error: "Unauthorized" }, 401);
     });
@@ -595,6 +778,12 @@ export function createHttpServer(
   app.use("/ws/host", async (c, next) => {
     const capability = c.req.header(ZCODE_RPC_HOST_CAPABILITY_HEADER);
     if (!hostCapabilities.consume(capability)) {
+      // 票据失败也要计数：有效令牌 + 反复猜票据同样是鉴权暴力破解的一种形态。
+      // 只在令牌层没记过时补记，避免同一请求被计两次。
+      const auth = perRequestAuth.get(c);
+      if (tokenSource?.enabled && !auth?.failureRecorded) {
+        throttle.recordFailure(auth?.peer ?? resolvePeerAddress(c, trustedProxies));
+      }
       return c.json({ error: "Invalid or expired host capability" }, 401);
     }
     await next();
@@ -682,16 +871,41 @@ export function createHttpServer(
     if (trustedOrigins.length > 0) {
       log(`cross-site allowlist: ${trustedOrigins.join(", ")}`);
     }
+    const tokenCount = tokenSource?.snapshot().count ?? 0;
     log(
       isLoopbackHost(host)
-        ? `bind=${host} scope=loopback-only token-auth=${authToken ? "enabled" : "disabled"}`
+        ? `bind=${host} scope=loopback-only token-auth=${tokenSource?.enabled ? "enabled" : "disabled"}`
         : `bind=${host} scope=non-loopback token-auth=enabled (非回环绑定的 fail-closed 前置检查已通过)
 `,
     );
+    if (tokenSource?.enabled && tokenCount > 1) {
+      // 多令牌是「可批量撤销」的前提：打印条数与标签（**绝不打印令牌本身**）便于核对。
+      log(`token source: ${String(tokenCount)} 条（${tokenSource.snapshot().labels.join(", ")}）`);
+    }
+    // 打印生效的 Host 白名单（**这是排障的关键信息**：反代域名没登记时，用户看到 403 却不知道
+    // 该写进哪个变量；启动日志直接给出来）。
+    const bySource = trustedHostEntries.reduce<Record<string, string[]>>((accumulator, entry) => {
+      const list = accumulator[entry.label] ?? [];
+      list.push(entry.port === undefined ? entry.host : entry.host + ":" + String(entry.port));
+      accumulator[entry.label] = list;
+      return accumulator;
+    }, {});
+    log(
+      "trusted hosts: " +
+        Object.entries(bySource)
+          .map(([label, hosts]) => label + "=[" + hosts.join(",") + "]")
+          .join(" "),
+    );
+    if (trustedProxies.length > 0) {
+      log(`trusted proxies: ${String(trustedProxies.length)} 条（采信 X-Forwarded-For）`);
+    } else {
+      // 默认不采信 XFF：运维若把反代配上了却不知道这一点，会看到「限流按反代 IP 计数」的现象。
+      log("trusted proxies: 未配置 ⇒ 不采信 X-Forwarded-For，对端地址一律取 socket");
+    }
     const exposureWarning = buildNonLoopbackListenWarning({
       host,
       port: listenPort,
-      tokenAuth: Boolean(authToken),
+      tokenAuth: Boolean(tokenSource?.enabled),
     });
     if (exposureWarning) warn(exposureWarning);
   });
@@ -721,8 +935,38 @@ export function createHttpServer(
       installGuardedUpgradeListener(listener as UpgradeListener);
     }
   };
+  // Host 白名单与来源校验一样必须在**这一层**做：`/ws` 的升级请求绕过 Hono 中间件链里的响应通道，
+  // 中间件里返回的 403 会被 node-ws 的适配器丢掉响应体与响应头（A-1 的实测教训）。
+  const upgradeHostRejected = new Set<string>();
   server.on("upgrade", (request, socket) => {
     const pathname = new URL(request.url ?? "/", "http://placeholder").pathname;
+    // ① Host 白名单（G6）：先于来源判定 —— rebinding 的请求 Host 是攻击者的域名，
+    //    而它的 Origin 与 Host 自洽，只有这一步能拦住。
+    const hostDecision = evaluateHost(request.headers.host, trustedHostEntries);
+    if (!hostDecision.allowed) {
+      const hostHeader = request.headers.host ?? "<missing>";
+      if (!upgradeHostRejected.has(hostHeader)) {
+        upgradeHostRejected.add(hostHeader);
+        warn(
+          "[host-allowlist] 已拒绝 Host=" +
+            hostHeader +
+            " 的 WebSocket 升级 " +
+            pathname +
+            "（DNS rebinding 防护；反代域名请登记进 ZCODE_SERVER_TRUSTED_HOSTS）",
+        );
+      }
+      rejectedUpgradeSockets.add(socket);
+      rejectUpgrade({
+        socket,
+        reason: hostDecision.reason ?? "Host not allowed",
+        extraHeaders: {
+          "X-ZCode-Host-Rejected": "1",
+          ...buildSecurityHeaders(securityHeadersOptions),
+        },
+      });
+      return;
+    }
+    // ② 来源校验（跨站请求）。
     const decision = evaluateUpgradeOrigin(
       {
         pathname,

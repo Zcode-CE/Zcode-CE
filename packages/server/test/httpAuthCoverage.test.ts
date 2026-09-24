@@ -6,6 +6,7 @@ import test from "node:test";
 import { WebSocket } from "ws";
 import { ServiceCollection } from "@zcode/services";
 import { createHttpServer } from "../src/http.js";
+import { createAuthThrottle } from "../src/authThrottle.js";
 
 /**
  * 鉴权覆盖面回归（task-21 缺陷 (b) 的护栏）。
@@ -67,21 +68,59 @@ const PROTECTED_GET_PATHS = [
 test("无凭据：所有 /api* 与 /ws* 路径必须 401，且 body 不含业务数据", async () => {
   const fixture = await createFixture();
   try {
-    await withServer({ authToken: "s3cret", staticRoot: fixture.staticRoot }, async (baseUrl) => {
-      for (const path of PROTECTED_GET_PATHS) {
-        const response = await fetch(baseUrl + path);
-        assert.equal(response.status, 401, "GET " + path + " 必须 401");
-        const body = await response.text();
-        assert.equal(body, '{"error":"Unauthorized"}', "GET " + path + " 不得返回别的内容");
-        assert.doesNotMatch(body, /session|taskId|workspace/i, "GET " + path + " 泄漏了业务数据");
-      }
+    await withServer(
+      {
+        authToken: "s3cret",
+        staticRoot: fixture.staticRoot,
+        // 本用例会打十几条无凭据请求，**超过默认限流阈值**（10 次/5 分钟 ⇒ 之后的请求会是 403）。
+        // 这里显式放宽：本用例要验的是「鉴权覆盖面与响应体」，不是限流（限流有自己的用例文件）。
+        throttle: createAuthThrottle({ maxFailures: 10_000 }),
+      },
+      async (baseUrl) => {
+        for (const path of PROTECTED_GET_PATHS) {
+          const response = await fetch(baseUrl + path);
+          assert.equal(response.status, 401, "GET " + path + " 必须 401");
+          const body = await response.text();
+          assert.equal(body, '{"error":"Unauthorized"}', "GET " + path + " 不得返回别的内容");
+          assert.doesNotMatch(body, /session|taskId|workspace/i, "GET " + path + " 泄漏了业务数据");
+        }
 
-      for (const path of ["/api/rpc-host-capability", "/api/connect-remote"]) {
-        const response = await fetch(baseUrl + path, { method: "POST" });
-        assert.equal(response.status, 401, "POST " + path + " 必须 401");
-        assert.doesNotMatch(await response.text(), /capability|deviceSid|session/i);
-      }
-    });
+        // ② 写方法（POST）无凭据时有**两道**闸，谁先命中取决于请求头：
+        //    - 不带 `Origin`（curl / CLI / 测试）：来源链放行（无 Origin 视为非浏览器客户端）⇒ 令牌链 401；
+        //    - 带跨站 `Origin`：来源链先拒（403）—— 这正是 task-34 的 CSRF 防护，
+        //      且 403 响应体里**不得**出现 capability 之类的业务词。
+        // 两条都要求「不泄漏业务数据」。
+        for (const path of ["/api/rpc-host-capability", "/api/connect-remote"]) {
+          const noOrigin = await fetch(baseUrl + path, { method: "POST" });
+          assert.equal(noOrigin.status, 401, "POST " + path + "（无 Origin）必须 401");
+          assert.doesNotMatch(await noOrigin.text(), /capability|deviceSid|session/i);
+
+          const crossSite = await fetch(baseUrl + path, {
+            method: "POST",
+            headers: { origin: "https://attacker.example" },
+          });
+          assert.equal(
+            crossSite.status,
+            403,
+            "POST " + path + "（跨站 Origin）必须被来源链拒绝（403）",
+          );
+          assert.doesNotMatch(
+            await crossSite.text(),
+            /capability|deviceSid|session/i,
+            "跨站 403 响应体不得泄漏业务数据",
+          );
+        }
+
+        // ③ 同源 Origin 的写方法无凭据 ⇒ 由令牌链给 401（来源链放行、令牌链拦住）。
+        for (const path of ["/api/rpc-host-capability", "/api/connect-remote"]) {
+          const sameOrigin = await fetch(baseUrl + path, {
+            method: "POST",
+            headers: { origin: baseUrl },
+          });
+          assert.equal(sameOrigin.status, 401, "POST " + path + "（同源 Origin）必须 401");
+        }
+      },
+    );
   } finally {
     await rm(fixture.root, { recursive: true, force: true });
   }
