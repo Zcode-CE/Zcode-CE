@@ -48,8 +48,30 @@
   原因：把回环端口放到同机反向代理或隧道后面时，请求看起来来自本机，令牌关卡会被绕过。只登记跨源来源 `ZCODE_SERVER_TRUSTED_ORIGINS` 时**只告警、不拒绝启动**。判据读**解析后的生效项**：写错的非法值会被丢弃，不算信号（打错字不该让服务起不来）。
 - **分发入口的同一组合在起进程之前就被拒绝**：`zcode --web` 以前会先打印启动横幅、再由服务端报错；现在这类组合在**启动前**就拦下，不会再出现"先看到 running、再被二段错误打断"。
 - **"缺 Origin 就放行"是有意的取舍**：非浏览器客户端（curl、脚本、CLI）不带 `Origin`，一律放行。因此来源校验**不覆盖非浏览器客户端**；DNS 重绑定由 Host 白名单单独挡（见上一条）。反过来，**用 HTTP/1.1 但完全不发 `Host` 的手工探针会被拒绝**（curl 默认会带，不受影响）。
-- **远控面板不是官方那套 relay / Bot Channel**：本项目**不引入中继**，也不做 IM 机器人；面板只提供"扫码 / 在手机浏览器打开链接"这一条**自托管**路径。
+- **「Web 控制」与「IM 机器人」是两条不同的路径，不要混为一谈**：
+  「**Web 控制**」用浏览器完整操作这台机器上的工作台（扫码 / 打开链接即可），**不经过任何第三方**，是默认开启的那条；
+  「**IM 机器人**」是让聊天机器人代你操作工作区，**需要你自己的外部账号**（微信 / 飞书 / Telegram 等）、**数据会经过第三方平台**，因此**默认关闭**，启用前会给出提醒。
+  本项目**不引入中继**：这两条都不依赖任何 ZCode 云服务。
 - **手机窄屏上部分入口换了位置**（例如"切换终端"进入 ⋯ 菜单）——不是功能删除，是为触屏可达。
+
+## 同步上游
+
+> 上游有时只发闭源包、有时更新开源仓库；两者的**确认方式不同**，故逐条标出依据。
+> 本节说明本版**同步了什么**与**有意未同步什么** —— 「未跟进」不等于漏了。
+
+**本版同步的上游版本**：`v3.14.3`（来源：**开源仓库**；依据：**源码比对**）。
+
+| 条目                                                    | 同步情况                                                                             |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 工作流引擎：续跑确定性修复（重放次序）                  | **已跟进** —— 不修则确定性脚本在续跑后会**静默失败**                                 |
+| 工作流卡片：性能与稳定性建模                            | **已跟进**                                                                           |
+| 工作流失败语义：内容拒收可诊断                          | **已跟进** —— 否则跨版本时会把「版本不匹配」表现成一片网络抖动 + 反复重订阅          |
+| 协议 v4：workflowRuns 扩张（op 5→7、实例上限 256→1024） | **未跟进（有意）** —— 必须整体搬运；当前跨版本互连会表现为内容拒收，见「已知限制」   |
+| IM 机器人（上游称 Bot Channel）                         | **部分跟进** —— 入口与启用流程已提供且**默认关闭**；服务端能力待接入，见「已知限制」 |
+| 云端 relay / 配对服务器 / 移动壳                        | **不适用** —— 实测上游开源版**也不提供**（全仓检索 0 命中）；本项目同样不引入中继    |
+
+**一处与上游不同的选择（有意偏离）**：飞书 SDK 我们钉 **1.74.0**，上游钉 **1.64.0**。
+理由：1.64.0 的两个缺陷正好落在飞书**唯一使用的那条长连接路径**上 —— 一个会**杀掉宿主进程**，一个会**静默丢事件**；两者在 1.74.0 均已修复。
 
 ## 已知限制
 
@@ -60,6 +82,9 @@
   顺带修正一处署名：`brotli` 内嵌的 `google/brotli` 解码器是 **Apache-2.0**，此前被我们记为 MIT；本版已补上其版权与许可声明。
 - **远程控制（桌面端）本次只到「开服务 + 连接信息」**：已连设备列表与逐设备断开、端口与监听范围选择、令牌轮换入口**尚未提供**（排后续批次）。
 - **桌面端安装包因此增大约 66 MB**（服务端入口 7.2 MB + Web 界面资源 59 MB，已排除 source map）—— 手机扫码打开的就是这份 Web 界面，必须随包。
+- **IM 机器人（Chat bot）默认关闭，且服务端能力本版尚未接入**：入口与启用流程已提供（点了会**如实显示**"已请求启用，等待服务端就绪"，不谎报已启用）。
+  启用后消息会经**你选择的那家平台**（Telegram / 微信 / 飞书 / Lark）的服务器，**不经过智谱服务器**；需要你自己的外部账号。
+- **协议 v4 的 workflowRuns 扩张未跟进**：跨版本互连时可能表现为「内容被拒收」而非静默错乱 —— 这是刻意的（见「同步上游」）。
 - **容器形态只能管理挂载进去的目录**（这是容器边界本身，不是缺陷）：需要主机全盘访问时，用 npm 形态直接在主机上运行。
 - **Docker 镜像约 801 MB**（基础镜像 `node:24-slim` 330 MB + 分发包 391 MB；换 Node 版本或分发内容会变）。
 - 与上一版相同（Windows 构建未签名、Windows / macOS 未在真机做完整功能回归、Linux 桌面自动化为实验性等），本批**未新增**其他长期限制。
@@ -139,8 +164,30 @@
   Reason: when a loopback port is put behind an on-host reverse proxy or tunnel, requests look local and the token gate is bypassed. Registering only cross-origin sources (`ZCODE_SERVER_TRUSTED_ORIGINS`) **warns but does not refuse to start**. The judgement reads **effective entries after parsing**: malformed values are dropped and do not count as a signal (a typo should not stop the service from starting).
 - **The distribution entry point refuses the same combinations before starting the process**: `zcode --web` used to print the startup banner first and let the server report the error afterwards; these combinations are now rejected **before startup**, so you no longer see "running" followed by a second-stage failure.
 - **"No Origin ⇒ allow" is a deliberate trade-off**: non-browser clients (curl, scripts, CLI) send no `Origin` and are always allowed. The origin check therefore **does not cover non-browser clients**; DNS rebinding is blocked separately by the Host allowlist (previous item). Conversely, **a manual probe that uses HTTP/1.1 but sends no `Host` at all is rejected** (curl sends one by default, so it is unaffected).
-- **The remote-control panel is not the official relay / Bot Channel**: this project ships **no relay** and **no IM bots**; the panel offers only the **self-hosted** "scan the code / open the link on your phone" path.
+- **"Web control" and "IM bot" are two different paths — do not conflate them**:
+  **Web control** drives the workbench on this machine in full, from a browser (scan the code / open the link); it goes through **no third party** and is the path that is on by default.
+  An **IM bot** lets a chat bot act on the workbench for you; it **needs your own external account** (WeChat / Feishu / Telegram, …) and **your data passes through a third-party platform**, so it is **off by default** and warns you before you enable it.
+  This project ships **no relay**: neither path depends on any ZCode cloud service.
 - **Some entries moved on narrow screens** (e.g. "switch terminal" into the ⋯ menu) — not a removal, but touch reachability.
+
+## Upstream sync
+
+> Upstream sometimes ships only a closed-source package and sometimes updates the open-source repo; the two require **different levels of confirmation**, so each row states its basis.
+> This section says what was **synced** and what was **deliberately not synced** — "not synced" does not mean "missed".
+
+**Upstream version synced in this release**: `v3.14.3` (source: **open-source repo**; basis: **source comparison**).
+
+| Item                                                                 | Status                                                                                                                                               |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workflow engine: resume determinism fix (replay order)               | **Synced** — without it, deterministic scripts **fail silently** after a resume                                                                      |
+| Workflow cards: performance/stability modelling                      | **Synced**                                                                                                                                           |
+| Workflow failure semantics: diagnosable content rejection            | **Synced** — otherwise a version mismatch surfaces as a burst of network flakiness plus repeated resubscribes                                        |
+| Protocol v4: workflowRuns expansion (5→7 ops, instance cap 256→1024) | **Not synced (deliberate)** — must move as a whole; cross-version interop currently surfaces as content rejection, see Known limitations             |
+| IM bots (upstream calls it Bot Channel)                              | **Partially synced** — entry point and enable flow shipped and **off by default**; server-side capability pending, see Known limitations             |
+| Cloud relay / pairing server / mobile shell                          | **Not applicable** — measured: the upstream open-source repo **does not provide it either** (exhaustive search, 0 hits); this project ships no relay |
+
+**One deliberate divergence from upstream**: we pin the Feishu SDK at **1.74.0** while upstream pins **1.64.0**.
+Reason: two defects in 1.64.0 sit exactly on the **only long-connection path** Feishu uses — one **kills the host process**, one **silently drops events**; both are fixed in 1.74.0.
 
 ## Known limitations
 
