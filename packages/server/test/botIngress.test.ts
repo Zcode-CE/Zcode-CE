@@ -15,12 +15,12 @@ import { createAuthThrottle } from "../src/authThrottle.js";
 import { createAuditLog } from "../src/auditLog.js";
 
 /**
- * IM 机器人**入站**面（/bot/**）的验收判据（task-97）。
+ * IM 机器人入站面（/bot/**）的验收判据（task-97）。
  *
  * 判据编号与 `.reverse/93-bot-ingress/BOT-INGRESS-SPEC.md` §8.2 一一对应（A1–A15），
- * 另加 §7.1.1 的两条**耦合断言**（C1/C2）。
+ * 另加 §7.1.1 的两条耦合断言（C1/C2）。
  *
- * 本文件的**核心目的**是证明「新增 /bot/** 没有削弱既有令牌面」——
+ * 本文件的核心目的是证明「新增 /bot/** 没有削弱既有令牌面」——
  * 因此 A1/A2/A7 是本文件的重点，其余是功能与语义的钉桩。
  */
 
@@ -111,7 +111,7 @@ function postBot(base: string, path: string, secret?: string, body = "{}") {
 // ── A1/A2：令牌面逐字节未变（本设计要防的核心风险）──────────────────────────
 
 /**
- * A1 的冻结表：**字面量**，不是计算值。
+ * A1 的冻结表：字面量，不是计算值。
  *
  * 来源：spec §8.2.1 的 FROZEN_TABLE 快照（改动前实测，SHA-256 记录在 R17）。
  * 为什么用字面量而不是「再写一遍归一化逻辑」：那会让测试自己也成为一处会漂移的实现。
@@ -361,7 +361,7 @@ test("A6：令牌面封禁不误伤 /bot/**，bot 面封禁不误伤令牌面", 
       await fetch(base + "/api/server-info");
       await fetch(base + "/api/server-info");
       assert.equal((await fetch(base + "/api/server-info")).status, 403, "令牌面应已封禁");
-      // ② 令牌面封禁后：带**正确** secret 打 /bot/** 仍须 200（不被误伤）。
+      // ② 令牌面封禁后：带正确 secret 打 /bot/** 仍须 200（不被误伤）。
       const botRes = await postBot(base, "/bot/webhook/b1", SECRET);
       assert.equal(botRes.status, 200, "令牌面封禁不得误伤 bot 入站面（核心风险 R-b）");
       // ③ 未启用渠道在令牌面封禁时仍须 404（不是 403）—— 否则泄漏「有没有开 bot」。
@@ -425,7 +425,7 @@ test("A9：Host 白名单对 /bot/** 仍然生效（403 + 标记头）", async (
   await withServer(
     { authToken: TOKEN, botIngressEnabled: true, bots: [webhookBot("b1")] },
     async (base) => {
-      // 必须用**裸 socket**：undici（fetch）会忽略调用方给的 Host 头（它按 URL 自己填），
+      // 必须用裸 socket：undici（fetch）会忽略调用方给的 Host 头（它按 URL 自己填），
       // 因此用 fetch 测不出 Host 校验。这里是实测踩过的坑，写下来免得后人再踩。
       const { request } = await import("node:http");
       const url = new URL(base);
@@ -545,7 +545,7 @@ test("A15：请求体上限生效，且不误伤合法最大 payload", async () 
 // ── C1/C2：与既有上限的耦合断言（spec §7.1.1）────────────────────────────
 
 test("C1：请求体上限必须覆盖「合法最大 payload」（改了附件上限就必须重算）", () => {
-  // 这是**耦合断言**：若 BOT_MAX_ATTACHMENTS_PER_MESSAGE 或 BOT_MAX_ATTACHMENT_SIZE_BYTES
+  // 这是耦合断言：若 BOT_MAX_ATTACHMENTS_PER_MESSAGE 或 BOT_MAX_ATTACHMENT_SIZE_BYTES
   // 被调大而没同步上调 BOT_INGRESS_MAX_BODY_BYTES，本断言变红。
   // 反向验证：把 BOT_INGRESS_MAX_BODY_BYTES 调成 6MiB ⇒ 变红（这正是初稿的失败形态）。
   const legalBytes =
@@ -566,7 +566,7 @@ test("C2：走请求体的附件来源集合恰好是 {dataBase64}", async () =>
   ).readFile(new URL("../src/botIngress.ts", import.meta.url), "utf8");
   // botIngress.ts 只负责上限，不解析附件；这里钉的是「上限的推导依据」写在注释里，
   // 且指向 botsService 的 dataBase64 通道。真正的来源集合断言放在 services 侧更合适，
-  // 此处只做**文档-实现一致性**的弱断言（避免跨包读源码的脆弱测试）。
+  // 此处只做文档-实现一致性的弱断言（避免跨包读源码的脆弱测试）。
   assert.match(source, /dataBase64/, "上限的推导依据必须写明 dataBase64 通道");
 });
 
@@ -605,7 +605,7 @@ test("A12：secret 与令牌绝不出现在审计输出里（否定式）", asyn
  * 为什么不用一条正则：本文件的路由路径里含 `/*`（`"/bot/*"`），而块注释也以 `/*` 开头 ⇒
  * 任何「先剥注释再匹配」的正则都会把字符串里的 `/*` 当成注释起点，从而吞掉后面的真实注册
  * （实测踩过两次：先漏掉 3 条 `app.use("*")`，再漏掉 `app.use("/bot/*")`）。
- * 这里改为**逐字符扫描**，正确区分字符串与注释 —— 与它要保护的东西（注册面）同级的可靠性。
+ * 这里改为逐字符扫描，正确区分字符串与注释 —— 与它要保护的东西（注册面）同级的可靠性。
  */
 function scanRouteRegistrations(source: string): string[] {
   const found: string[] = [];
@@ -683,7 +683,7 @@ test("A13：http.ts 的中间件注册点集合等于字面量白名单", async 
   const useStarCount = counts.get("use *") ?? 0;
   counts.delete("use *");
   // 当前为 5 条（实测计数，非估算）：① 暴露面告警 ② 安全响应头 ③ Host 白名单
-  // ④ 来源校验 ⑤ 令牌中间件。**任何变化都必须是有意的**（全局中间件链的规模变了）。
+  // ④ 来源校验 ⑤ 令牌中间件。任何变化都必须是有意的（全局中间件链的规模变了）。
   assert.equal(
     useStarCount,
     5,

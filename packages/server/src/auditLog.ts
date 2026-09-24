@@ -50,9 +50,9 @@ export type AuditEventKind =
   | "audit:token-reload"
   | "audit:token-reload-failed"
   | "audit:connection-limit-rejected"
-  // ── IM 机器人**入站**面（/bot/**，独立于令牌面；见 botIngress.ts 与
+  // ── IM 机器人入站面（/bot/**，独立于令牌面；见 botIngress.ts 与
   //    .reverse/93-bot-ingress/BOT-INGRESS-SPEC.md §6）。
-  //    事件名带 bot 前缀是**刻意**的：审计里必须能区分「令牌面被拒」与「bot 面被拒」，
+  //    事件名带 bot 前缀是刻意的：审计里必须能区分「令牌面被拒」与「bot 面被拒」，
   //    否则两个独立凭据空间的失败会混成一类，无法回答「是哪一层在承压」。
   | "audit:bot-callback"
   | "audit:bot-auth-failure"

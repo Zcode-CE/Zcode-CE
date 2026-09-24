@@ -255,9 +255,9 @@ export interface HttpServerOptions {
    */
   maxConcurrentConnections?: number;
   /**
-   * IM 机器人**入站**面（/bot/**）。**默认不启用** ⇒ 未启用时该路径与「不存在」逐字节相同（404）。
+   * IM 机器人入站面（/bot/**）。默认不启用 ⇒ 未启用时该路径与「不存在」逐字节相同（404）。
    *
-   * `enabled` 只是**快速短路**，不承担安全边界：真正的边界是 gate 内逐请求的
+   * `enabled` 只是快速短路，不承担安全边界：真正的边界是 gate 内逐请求的
    * 「运行期判定 + 凭据校验 + 限流」。见 botIngress.ts 的文件头。
    *
    * 判定由 `entry-http.ts` 在启动期求出（`listBots()` 是异步的，而本函数是同步的）。
@@ -590,9 +590,9 @@ function matchesRoutePolicy(entry: RoutePolicyEntry, pathname: string): boolean 
  * 于是 GET /api（无尾斜杠）落到静态 SPA fallback 返回了 index.html（200）—— 不泄漏业务数据，
  * 但鉴权口径应当 fail-closed（/api 是 API 命名空间本身，不该被静态兜底接走）。
  *
- * **导出理由**（task-97）：`test/botIngress.test.ts` 的 A2④ 判据要**逐字节**比对
+ * 导出理由（task-97）：`test/botIngress.test.ts` 的 A2④ 判据要逐字节比对
  * 「新增 /bot/** 前后本函数的输入输出表」，这是「没有削弱令牌面」最直接的证据。
- * 与 `ROUTE_POLICY` / `assertRoutePolicyEnforced`（同样为测试而导出）**同构**；
+ * 与 `ROUTE_POLICY` / `assertRoutePolicyEnforced`（同样为测试而导出）同构；
  * `src/index.ts` 只导出 `createHttpServer`，故不影响包的公开面。
  */
 export function isTokenProtectedPath(pathname: string): boolean {
@@ -865,14 +865,14 @@ export function createHttpServer(
   const throttle =
     options.throttle ??
     createAuthThrottle({ warn: (address, message) => warn(message + "（" + address + "）") });
-  // bot 入站面的**独立**限流桶（spec §4.2）。为什么不共用既有的 throttle：
-  //   ① 共享会造出一条今天不存在的**跨面拒绝服务** —— 令牌面的封禁闸门是 app.use("*")
+  // bot 入站面的独立限流桶（spec §4.2）。为什么不共用既有的 throttle：
+  //   ① 共享会造出一条今天不存在的跨面拒绝服务 —— 令牌面的封禁闸门是 app.use("*")
   //      且不看路径，实测「3 次 /api 失败后 GET /tasks 与 POST /bot/webhook 都变 403」；
   //      若共用，则「有人暴力猜 bot secret」会连带封掉该地址的 /api/** 与 SPA 壳。
-  //   ② 两个凭据空间（lite token / bot secret）的失败**互不携带信息**，合并计数是把
+  //   ② 两个凭据空间（lite token / bot secret）的失败互不携带信息，合并计数是把
   //      两个独立威胁模型混成一个计数器。
   //   ③ 反代/隧道后所有客户端共用一个对端地址 ⇒ 共享桶下「别人扫我」会让我的机器人掉线。
-  // 阈值与口径**复用** createAuthThrottle 默认值（10 次 / 5 分钟 ⇒ 封 15 分钟），不新造。
+  // 阈值与口径复用 createAuthThrottle 默认值（10 次 / 5 分钟 ⇒ 封 15 分钟），不新造。
   const botIngressThrottle =
     options.botIngressThrottle ??
     createAuthThrottle({
@@ -983,20 +983,20 @@ export function createHttpServer(
       },
     }),
   );
-  // IM 机器人**入站**面（/bot/**）：**注册在令牌中间件之前**，并自行终结请求（不 next）。
+  // IM 机器人入站面（/bot/**）：注册在令牌中间件之前，并自行终结请求（不 next）。
   //
   // 为什么在之前（不是「在令牌中间件里加一条让路判断」）：
-  // 令牌面的封禁闸门是 app.use("*") 且在路径分派**之前**执行，它**不看路径** ⇒
+  // 令牌面的封禁闸门是 app.use("*") 且在路径分派之前执行，它不看路径 ⇒
   // 若本 gate 注册在其后，一个被令牌面封禁的地址打 /bot/** 会拿到 403 而不是 404
-  // （「渠道未启用」的语义），且 bot 入站会被令牌面的封禁**误伤**。
-  // 放在之前 ⇒ **既有令牌中间件零改动**，隔离是**结构性**的而非条件式的。
+  // （「渠道未启用」的语义），且 bot 入站会被令牌面的封禁误伤。
+  // 放在之前 ⇒ 既有令牌中间件零改动，隔离是结构性的而非条件式的。
   // 详见 botIngress.ts 的文件头与 .reverse/93-bot-ingress/BOT-INGRESS-SPEC.md §4.3（方案 D1）。
   //
-  // 无条件注册：未启用时 gate 在第一个判断就返回 c.notFound()，**零 I/O**，与
+  // 无条件注册：未启用时 gate 在第一个判断就返回 c.notFound()，零 I/O，与
   // 「这条路由根本不存在」逐字节相同（spec §8.4 R3/R15）⇒ 默认攻击面为零。
   const botIngressGate = createBotIngressGate(services, {
     enabled: options.botIngress?.enabled ?? false,
-    // **独立**限流桶：与令牌面共享会让「有人猜 bot secret」连带封掉 /api/** 与 SPA 壳
+    // 独立限流桶：与令牌面共享会让「有人猜 bot secret」连带封掉 /api/** 与 SPA 壳
     // （实测：令牌面封禁后 GET /tasks 也变 403）。见 spec §4.2。
     throttle: botIngressThrottle,
     audit,

@@ -406,13 +406,13 @@ function summarizeCallbackPayload(payload: unknown): string {
  * `.../bootstrap/src/app/node-repl-browser-broker.ts` 的
  * `length !== length || !timingSafeEqual(...)`）。
  *
- * 注意 `timingSafeEqual` 在长度不等时**抛错**，所以长度检查必须前置。
- * 长度不等这一分支本身会泄漏**长度** —— 但 secret 长度不是秘密（它由本机配置），
+ * 注意 `timingSafeEqual` 在长度不等时抛错，所以长度检查必须前置。
+ * 长度不等这一分支本身会泄漏长度 —— 但 secret 长度不是秘密（它由本机配置），
  * 与既有两处先例保持同一取舍，不自行发明。
  *
- * 诚实边界：本函数只保证「用了正确的原语」，**不能**证明端到端无时序侧信道
+ * 诚实边界：本函数只保证「用了正确的原语」，不能证明端到端无时序侧信道
  * （进程调度/GC/网络抖动都在噪声量级之上）。测试只钉「用了 timingSafeEqual」
- * 与「拒绝语义不因长度分叉」，**不是**时序测量。
+ * 与「拒绝语义不因长度分叉」，不是时序测量。
  */
 function isConstantTimeEqual(actual: string | undefined, expected: string): boolean {
   const actualBytes = Buffer.from(actual ?? "", "utf8");
@@ -694,7 +694,7 @@ const BOT_TASK_META_RETRY_DELAYS_MS = [80, 160, 320] as const;
 const BOT_WORKSPACE_REFS_CACHE_TTL_MS = 5_000;
 // 导出给「入站请求体上限」的耦合断言用（packages/server 的 bot 入站 spec）：
 // 合法最大 payload = ceil(N × S / 3) × 4（base64 膨胀）+ JSON 外壳，
-// 该值与请求体上限是**耦合**的，改这里必须同步重算上限，否则会打断合法流量。
+// 该值与请求体上限是耦合的，改这里必须同步重算上限，否则会打断合法流量。
 // 详见 .reverse/93-bot-ingress/BOT-INGRESS-SPEC.md §7.1.1。
 export const BOT_MAX_ATTACHMENTS_PER_MESSAGE = 4;
 export const BOT_MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024;
@@ -2641,7 +2641,7 @@ export function createBotsService(
       const bot = findBot(config, inbound.botId);
       if (bot?.provider === "webhook") {
         // Modified by ZCode: 原实现是 `if (bot.webhookSecretRef) { const expected = await load(...);
-        // if (expected && expected !== inboundSecret) { 拒绝 } }` —— 两处条件式叠加造成**真实的 fail-open**：
+        // if (expected && expected !== inboundSecret) { 拒绝 } }` —— 两处条件式叠加造成真实的 fail-open：
         //   ① `webhookSecretRef` 未配 ⇒ 整段跳过 ⇒ 不校验就放行；
         //   ② ref 配了但凭据库读不到（load 返回 null）⇒ `expected &&` 短路 ⇒ 同样放行。
         // 实测（未修复时）：上述两种情形下，攻击者不带/乱带 secret 都能执行 /help。

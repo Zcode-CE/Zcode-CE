@@ -19,7 +19,7 @@ function isTruthyEnv(value: string | undefined): boolean {
 /**
  * 启动期判定：是否存在 enabled 的 webhook bot（决定 `/bot/**` 入站面是否挂载）。
  *
- * **只做快速短路，不承担安全边界**：真正的边界在 gate 内逐请求判定。
+ * 只做快速短路，不承担安全边界：真正的边界在 gate 内逐请求判定。
  * 失败时返回 `false`（fail-closed：读不到配置 ⇒ 不挂载入站面，而不是「读不到就当有」）。
  */
 async function resolveBotIngressEnabled(services: ServiceCollection): Promise<boolean> {
@@ -143,15 +143,15 @@ async function main(): Promise<void> {
   // 审计日志（B1）由入口创建并注入：这样入口自己也能为「令牌重载」写审计事件 —— 重载发生在
   // http 服务之外，却是最需要留痕的动作之一（谁在什么时候撤销了哪把钥匙）。
   const audit = createAuditLog();
-  // IM 机器人**入站**面（/bot/**）的启动期判定：是否存在 enabled 的 webhook bot。
+  // IM 机器人入站面（/bot/**）的启动期判定：是否存在 enabled 的 webhook bot。
   //
-  // 为什么在入口判定而不是在 createHttpServer 里：createHttpServer 是**同步**函数，
+  // 为什么在入口判定而不是在 createHttpServer 里：createHttpServer 是同步函数，
   // 而 listBots() 是异步的；把它改成异步会波及全部调用点与既有测试。入口本来就是
   // 「读环境 → 判定 → 传 options」的位置，加一个布尔量与既有形态同构。
   //
-  // 注意 enabled **只是快速短路**，不承担安全边界 —— 真正的边界是 gate 内逐请求的
+  // 注意 enabled 只是快速短路，不承担安全边界 —— 真正的边界是 gate 内逐请求的
   // 「运行期判定 + 凭据校验 + 限流」（见 botIngress.ts 文件头）。因此这里的快照即使
-  // 陈旧也不会放行任何请求；而「配了 bot 却需要重启才生效」是**有意**的取舍（新增方向
+  // 陈旧也不会放行任何请求；而「配了 bot 却需要重启才生效」是有意的取舍（新增方向
   // fail-safe，删除方向即时生效 = fail-closed），须在 UI 与文档里如实说明。
   const botIngressEnabled = await resolveBotIngressEnabled(services);
   const server = createHttpServer(services, port, {

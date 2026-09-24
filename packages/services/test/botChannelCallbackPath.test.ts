@@ -61,7 +61,7 @@ async function withBotsService(
    * - `"missing"`：返回 null ⇒ 用于验证「ref 配了但读不到」也必须 fail-closed。
    *
    * 为什么需要这个旋钮：fail-open 修复前，夹具靠 `load: async () => null` +
-   * `webhookSecretRef` 已配，**恰好命中原实现的短路分支**（`expected && ...`），
+   * `webhookSecretRef` 已配，恰好命中原实现的短路分支（`expected && ...`），
    * 从而「不校验就放行」，让用例能走到附件解析那条深路径。修复后这条路不再存在，
    * 夹具必须显式提供凭据，否则测的就不是附件而是凭据拒绝了。
    */
@@ -115,7 +115,7 @@ async function withBotsService(
 }
 
 test("最终消费点：用户消息正文不出现在 bots 日志里（R8）", async () => {
-  // 必须带**匹配**的 secret：fail-closed 之后，错误/缺失的 secret 会在凭据处就停下，
+  // 必须带匹配的 secret：fail-closed 之后，错误/缺失的 secret 会在凭据处就停下，
   // 根本走不到写 `provider callback ... textLen=` 那行，本用例会退化成空转。
   const secret = FIXTURE_SECRET;
   const userText = "MY-SECRET-MESSAGE-BODY-12345";
@@ -220,15 +220,15 @@ test("最终消费点：downloadUrl 指向回环时在真实回调路径上被�
 /**
  * ── fail-closed 护栏（task-97 / BOT-INGRESS-SPEC §3.7）─────────────────────────
  *
- * 背景（实测）：修复前 `botsService.ts` 的 webhook 凭据校验是**两处条件式叠加**：
+ * 背景（实测）：修复前 `botsService.ts` 的 webhook 凭据校验是两处条件式叠加：
  *   `if (bot?.provider === "webhook" && bot.webhookSecretRef) { const expected = await load(...);
  *     if (expected && expected !== inboundSecret) { 拒绝 } }`
  * ⇒ ① 未配 `webhookSecretRef` ⇒ 整段跳过；② ref 配了但 `load` 返回 null ⇒ `expected &&` 短路。
- * 两种情形都**不校验就放行**（实测：攻击者不带/乱带 secret 都能执行 /help）。
+ * 两种情形都不校验就放行（实测：攻击者不带/乱带 secret 都能执行 /help）。
  *
  * 这两条用例把「必须 fail-closed」钉死。它们与路由层的用例（packages/server 的 botIngress.test.ts）
- * 是**两条独立的护栏**：路由层那条走 HTTP，只要路由层拦住就绿（**即使服务层仍 fail-open**）；
- * 这两条直接调 service，只要服务层拦住就绿（**即使路由层没做**）。
+ * 是两条独立的护栏：路由层那条走 HTTP，只要路由层拦住就绿（即使服务层仍 fail-open）；
+ * 这两条直接调 service，只要服务层拦住就绿（即使路由层没做）。
  * ⇒ 合起来才能证明「任一层单独失效时另一层仍在承重」。
  */
 
@@ -264,7 +264,7 @@ test("fail-closed①：ref 配了但凭据库读不到 ⇒ 必须拒绝（修复
 
 test("fail-closed②：完全未配 webhookSecretRef ⇒ 必须拒绝（修复前完全不校验）", async () => {
   await withBotsService(
-    [webhookBot("bot-1")], // 注意：**没有** webhookSecretRef
+    [webhookBot("bot-1")], // 注意：没有 webhookSecretRef
     async (harness) => {
       const result = await harness.handle({
         botId: "bot-1",
@@ -285,7 +285,7 @@ test("fail-closed②：完全未配 webhookSecretRef ⇒ 必须拒绝（修复�
 });
 
 test("fail-closed③：常量时间比较（结构性断言）", async () => {
-  // 诚实边界：真正的常量时间性**无法**在本仓库测试里被证明（时序测量不可靠）。
+  // 诚实边界：真正的常量时间性无法在本仓库测试里被证明（时序测量不可靠）。
   // 这里只钉两件事：① 用了正确的原语；② 拒绝语义不因长度分叉。
   const source = await readFile(new URL("../src/bots/botsService.ts", import.meta.url), "utf8");
   assert.match(source, /timingSafeEqual/, "webhook 凭据比较必须用 timingSafeEqual");
