@@ -385,13 +385,62 @@ test("安全提示是常驻的（三句危险品口径都在），且组件不�
   assert.equal(source.includes("token="), false, "面板不得自己拼令牌");
 });
 
-test("WorkspaceSidebar 的入口按能力门控（web 上不渲染）", () => {
+test("WorkspaceSidebar 的入口按能力门控（web 上不渲染）+ 打开的是真面板", () => {
   const source = readSource("src/WorkspaceSidebar.tsx");
-  assert.match(source, /canRenderRemoteControlPanel\(\{ servicePlane: isDesktop === true \}\)/);
+  // 能力判定只在接线 hook 里做一次，入口与面板共用同一个结论。
+  assert.match(source, /remoteControl\.renderable/);
   // 不得回退成无条件注入（切片 1 的写法会让 web 客户端也渲染入口）。
   assert.equal(
     source.includes('remoteControlEntry={{ status: "off", onOpen: () => {} }}'),
     false,
     "入口不得无条件注入",
   );
+  // tag 前硬要求：onOpen 必须真的打开面板（不能是空动作）。
+  assert.match(source, /onOpen: \(\) => setRemoteControlOpen\(true\)/);
+  assert.match(source, /<RemoteControlPanelHost/);
+});
+
+test("入口状态只含可达取值：waiting 已删（连接面 ce.4 才有数据源）", () => {
+  // ce.3 硬规矩：产不出来的取值要么删、要么给出产出路径。
+  // waiting 需要"有没有设备连进来"，而连接面按契约 §7 延后到 ce.4
+  // （web-service/** 里 0 处 connections）⇒ 今天没有产出路径，故删。
+  const entrySource = readSource("src/RemoteControlEntryButton.tsx");
+  const statusUnion =
+    entrySource.match(/export type RemoteControlEntryStatus =([^;]+);/)?.[1] ?? "";
+  assert.equal(/waiting/.test(statusUnion), false, "入口状态不得含 waiting");
+  assert.equal(
+    /remotePanel\.entry\.status\.waiting/.test(entrySource),
+    false,
+    "入口不得再引用 waiting 文案键",
+  );
+  // 不可达的文案键也必须清掉（否则留下"看似有这条路径"的痕迹）。
+  assert.equal("remotePanel.entry.status.waiting" in zhCN, false, "zh-CN 残留 waiting 文案键");
+  assert.equal("remotePanel.entry.status.waiting" in enUS, false, "en-US 残留 waiting 文案键");
+  // 两个可达取值的文案必须齐备。
+  for (const key of ["remotePanel.entry.status.off", "remotePanel.entry.status.running"]) {
+    assert.equal(typeof zhCN[key], "string", "zh-CN 缺文案：" + key);
+    assert.equal(typeof enUS[key], "string", "en-US 缺文案：" + key);
+  }
+});
+
+test("接线层：令牌只从 connectionInfo 走，且不 import 任何 React/组件", () => {
+  const source = readSource("src/remoteControlWiring.ts");
+  // 纯映射：不得 import React 或组件（否则 desktop 的 Node 集成测试引不动它）。
+  assert.equal(/from "react"|@\/RemoteControlPanel|@\/components/.test(source), false);
+  // 相对路径导入（@/ 别名只在 ui 包内成立，跨包引用会 ERR_MODULE_NOT_FOUND）。
+  assert.match(source, /from "\.\/remoteControlPanelModel\.js"/);
+  // 跨进程载荷必须校验：不能直接信任 payload 形状。
+  assert.match(source, /parseRemoteControlConnectionInfo/);
+});
+
+test("接线 hook：靠 changed 广播回显，不轮询", () => {
+  const source = readSource("src/hooks/useRemoteControlWiring.ts");
+  // 契约 §5：入口据此回显，**不轮询**。
+  assert.equal(/setInterval|setTimeout\(.*refresh/.test(source), false, "不得轮询状态");
+  assert.match(source, /onWebServiceChanged/);
+  assert.match(source, /getWebServiceConnectionInfo/);
+  // 订阅必须返回 disposer（与既有 preload 写法一致）。
+  assert.match(source, /dispose\?\.\(\)/);
+  // 令牌不得进日志。
+  assert.equal(/logger\.[a-z]+\([^)]*linkWithToken/.test(source), false, "令牌不得进日志");
 });

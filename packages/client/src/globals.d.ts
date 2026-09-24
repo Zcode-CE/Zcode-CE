@@ -33,6 +33,8 @@ import type {
   RemoteSessionClosedEvent,
   RemoteTarget,
   SSHConfigAliasOption,
+  WebServiceConnectionInfoPayload,
+  WebServiceStatusPayload,
   // 遥测已移除（P1）：RendererTelemetryEventPayload / RendererActionTraceBatchV1 /
   // RendererActionTraceConfigV1 / TelemetryRendererContext 已随 shared 模块删除。
   // RendererHeapSample 保留 —— 它是本地内存诊断，非上报。
@@ -114,6 +116,21 @@ declare global {
        * 由 preload 内部交给 webUtils.getPathForFile 处理。
        */
       getPathForFile?(file: unknown): string | null;
+      /**
+       * 本地 Web 服务（远程控制）五条通道（契约 §5）。preload 通过 contextBridge 暴露，
+       * `desktopPlatform.ts` 再映射进 `IPlatformService`（两处都要有：少一处会让
+       * UI 的能力探测把**桌面端**也判成"能力缺失"，入口与面板静默不渲染）。
+       * 令牌不变式：带令牌链接**只**经 `getWebServiceConnectionInfo`。
+       */
+      getWebServiceStatus(): Promise<WebServiceStatusPayload>;
+      startWebService(options: {
+        scope: "loopback" | "lan";
+        port?: number;
+      }): Promise<WebServiceStatusPayload>;
+      stopWebService(): Promise<WebServiceStatusPayload>;
+      getWebServiceConnectionInfo(): Promise<WebServiceConnectionInfoPayload | null>;
+      /** 订阅探活结论变化（入口据此回显，不轮询），返回 disposer */
+      onWebServiceChanged(handler: (status: WebServiceStatusPayload) => void): () => void;
       /** 订阅当前窗口内远程连接过程日志，返回 disposer */
       onRemoteConnectionLog(handler: (entry: RemoteConnectionRuntimeLog) => void): () => void;
       /** 订阅远程 workspace session 关闭事件，返回 disposer */

@@ -181,6 +181,20 @@ export const PlatformChannels = {
   ListDockerContainers: "zcode:list-docker-containers",
   /** Renderer → Main：列出 SSH config 里可用于快速填表的 alias */
   ListSSHConfigAliases: "zcode:list-ssh-config-aliases",
+  /**
+   * 远程控制（本地 Web 服务）四条 handle 通道 + 一条广播（契约 §5）。
+   *
+   * 为什么集中在这里而不是留在 `packages/desktop/src/main/web-service/ipc.ts`：
+   * preload 需要同一份字符串才能订阅，而 preload 属于 shared 的消费方 —— 两处各写一份
+   * 字符串迟早漂移（改一处忘一处 ⇒ 通道名对不上，且**静默**：渲染进程永远收不到广播）。
+   * `web-service/ipc.ts` 的 `WEB_SERVICE_CHANNELS` 现在从这里取，保持单一来源。
+   */
+  WebServiceStatus: "webService:status",
+  WebServiceStart: "webService:start",
+  WebServiceStop: "webService:stop",
+  WebServiceConnectionInfo: "webService:connectionInfo",
+  /** Main → Renderer：探活结论变化时的广播（入口据此回显，**不轮询**）。 */
+  WebServiceChanged: "webService:changed",
   /** Renderer → Main：从用户目录加载 CLI MCP 配置 */
   LoadMcpFromUserDirectory: "zcode:load-mcp-from-user-directory",
   /** Renderer → Main：保存 CLI MCP 配置到用户目录 */

@@ -13,6 +13,14 @@ export function createDesktopPlatform(options: {
     selectFile: () => window.zcode.selectFile(),
     selectFiles: () => window.zcode.selectFiles?.() ?? Promise.resolve([]),
     createTempTextAttachment: (payload) => window.zcode.createTempTextAttachment(payload),
+    // 本地 Web 服务（远程控制，契约 §5）。preload 已暴露这五条；这里把它们映射进
+    // IPlatformService —— 少这一步的话 `window.zcode` 有、`IPlatformService` 没有，
+    // UI 侧的能力探测会判成"能力缺失"⇒ 入口与面板在**桌面端也不渲染**（静默失效）。
+    getWebServiceStatus: () => window.zcode.getWebServiceStatus(),
+    startWebService: (options) => window.zcode.startWebService(options),
+    stopWebService: () => window.zcode.stopWebService(),
+    getWebServiceConnectionInfo: () => window.zcode.getWebServiceConnectionInfo(),
+    onWebServiceChanged: (handler) => window.zcode.onWebServiceChanged(handler),
     onRemoteConnectionLog: (handler) => window.zcode.onRemoteConnectionLog(handler),
     onRemoteSessionClosed: (handler) => window.zcode.onRemoteSessionClosed(handler),
     activateOrSetWorkspace: (path) =>

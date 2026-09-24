@@ -114,7 +114,8 @@ import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import { WorkspaceFileTree } from "@/WorkspaceFileTree.js";
 import { WorkspaceArchivedTasksFlatSection } from "@/WorkspaceArchivedTasksFlatSection.js";
 import { WorkspaceSidebarFooter } from "@/WorkspaceSidebarFooter.js";
-import { canRenderRemoteControlPanel } from "@/remoteControlPanelModel.js";
+import { RemoteControlPanelHost } from "@/RemoteControlPanelHost.js";
+import { useRemoteControlWiring } from "@/hooks/useRemoteControlWiring.js";
 import { WorkspacePinnedTasksSection } from "@/WorkspacePinnedTasksSection.js";
 import { WorkspaceTimelineTasksSection } from "@/WorkspaceTimelineTasksSection.js";
 import { WorkspaceGroupedTasksSection } from "@/WorkspaceGroupedTasksSection.js";
@@ -434,6 +435,11 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
     null,
   );
   const [isFileTreeOpen, setIsFileTreeOpen] = useState(false);
+  // 远控面板宿主（ce.3 · 切片 4）：入口点击置 true。
+  const [remoteControlOpen, setRemoteControlOpen] = useState(false);
+  // 接线**只做一次**（入口与面板宿主共用同一份）：取两次会建立两条 IPC 订阅、
+  // 各自拉一次状态，两边可能短暂不一致（入口"运行中"而面板"未开启"）。
+  const remoteControl = useRemoteControlWiring();
   const [fileTreeTarget, setFileTreeTarget] = useState<SidebarFileTreeTarget | null>(null);
   const [groupedStickyHeader, setGroupedStickyHeader] = useState<ReactNode | null>(null);
   const [taskOrganizeBy, setTaskOrganizeBy] = useState<TaskOrganizeBy>(
@@ -1804,14 +1810,16 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
           </div>
 
           <WorkspaceSidebarFooter
-            // 远控入口（ce.3 · 切片 1 入口 / 切片 3 能力门）：状态由 props 注入。
-            // **能力缺失 ⇒ 不渲染**（spec §3.2 规则②）：Web 客户端没有 webService:start|stop
-            // 这条服务面通道（契约 §5），所以整个入口在 DOM 里**不存在**，而不是渲染成禁用按钮。
-            // 判定所有者是 model 的 canRenderRemoteControlPanel，此处只提供能力事实。
-            // 状态源与「打开面板」留给切片 4 接线（当前仍是 off + 空动作）。
+            // 远控入口（ce.3 · 切片 4 接线）：状态来自 `webService:changed` 广播（不轮询），
+            // 点击打开面板宿主。**能力缺失 ⇒ 不渲染**（spec §3.2 规则②）：Web 客户端没有
+            // webService:* 这套通道 ⇒ `renderable` 为 false ⇒ 入口在 DOM 里**不存在**，
+            // 而不是渲染成禁用按钮。判定只在接线 hook 里做一次（入口与面板共用）。
             remoteControlEntry={
-              canRenderRemoteControlPanel({ servicePlane: isDesktop === true })
-                ? { status: "off", onOpen: () => {} }
+              remoteControl.renderable
+                ? {
+                    status: remoteControl.entryStatus,
+                    onOpen: () => setRemoteControlOpen(true),
+                  }
                 : undefined
             }
             className="pr-3"
@@ -1830,6 +1838,12 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
             workspaceRemoteSessionId={workspaceRemoteSessionId}
             activeTaskId={activeTaskId}
             isDesktop={isDesktop}
+          />
+          {/* 面板宿主与入口渲染在同一棵树里 ⇒ "点入口 ⇒ 打开面板"不依赖任何全局状态。 */}
+          <RemoteControlPanelHost
+            wiring={remoteControl}
+            open={remoteControlOpen}
+            onOpenChange={setRemoteControlOpen}
           />
         </div>
         <div

@@ -428,6 +428,47 @@ export interface RemoteSessionClosedEvent {
   signal: string | null;
 }
 
+/**
+ * 本地 Web 服务的对外状态（契约 §5 `WebServiceStatus`）。**不含令牌**。
+ *
+ * 只列**真的会被产出**的取值（ce.3 硬规矩）：`starting`/`stopping` 已删 ——
+ * `start`/`stop` 同步等到最终态才返回，IPC 也只在动作之后广播一次，中间态没有出口；
+ * 那 15 秒的在途反馈由渲染进程本地状态承载。
+ *
+ * `staleReason` 仅在 `state === "stopped"` 且是"陈旧条目"时出现（上一次的服务已不在、
+ * 状态文件还留着）—— 用它区分"从未开启"与"上次异常退出"。
+ */
+export type WebServiceStatusState = "stopped" | "running" | "running-untrusted" | "failed";
+
+export type WebServiceStatusStaleReason = "pid-dead" | "port-closed" | "probe-timeout";
+
+export type WebServiceStatusErrorCode =
+  | "spawn-failed"
+  | "port-taken"
+  | "probe-timeout"
+  | "token-unreadable"
+  | "non-loopback-without-token";
+
+export interface WebServiceStatusPayload {
+  state: WebServiceStatusState;
+  /** true = 接管了已在跑的服务（不是我们起的）。 */
+  adopted: boolean;
+  /** false ⇒ UI 必须显示"同网段可尝试连接"的安全提示。 */
+  loopback: boolean;
+  host?: string;
+  port?: number;
+  url?: string;
+  startedAt?: number;
+  error?: { code: WebServiceStatusErrorCode; message: string };
+  staleReason?: WebServiceStatusStaleReason;
+}
+
+/** `getWebServiceConnectionInfo` 的返回。**带令牌的链接只走这一条通道**（契约 §5）。 */
+export interface WebServiceConnectionInfoPayload {
+  url: string;
+  linkWithToken: string;
+}
+
 export interface EmbeddedBrowserOpenUrlRequest {
   url: string;
   disposition: "default" | "foreground-tab" | "background-tab" | "new-window" | "other";
@@ -559,6 +600,33 @@ export interface IPlatformService {
   createTempTextAttachment?(
     payload: CreateTempTextAttachmentRequest,
   ): Promise<CreateTempTextAttachmentResult>;
+
+  /**
+   * 本地 Web 服务（远程控制）的四条查询/动作通道 + 一条订阅（契约 §5）。
+   *
+   * **全部可选**：只有桌面端主进程提供这套服务面（它才有"启动一个本机服务进程"的能力）；
+   * Web 客户端没有这条通道 ⇒ 实现里不提供 ⇒ UI 侧"能力缺失 ⇒ **不渲染**"入口与面板
+   * （spec §3.8 撤回后，web 端两者都不该出现）。这样 web/其它平台的实现**不必被迫实现**它们。
+   *
+   * **令牌不变式**：带令牌的链接**只**经 `getWebServiceConnectionInfo` 返回；
+   * `getWebServiceStatus` 的返回值**不含令牌**（契约 §5 约定）。
+   */
+  getWebServiceStatus?(): Promise<WebServiceStatusPayload>;
+
+  /** 启动本机 Web 服务；首次对局域网开放的确认弹窗由 UI 负责（决策①）。 */
+  startWebService?(options: {
+    scope: "loopback" | "lan";
+    port?: number;
+  }): Promise<WebServiceStatusPayload>;
+
+  /** 停止本机 Web 服务。 */
+  stopWebService?(): Promise<WebServiceStatusPayload>;
+
+  /** 取带令牌的连接信息；`null` = 当前没有可派发的链接（此时 UI 不渲染二维码）。 */
+  getWebServiceConnectionInfo?(): Promise<WebServiceConnectionInfoPayload | null>;
+
+  /** 订阅探活结论变化（入口据此回显，**不轮询**），返回 disposer。 */
+  onWebServiceChanged?(handler: (status: WebServiceStatusPayload) => void): () => void;
 
   /** 订阅当前窗口内远程连接过程日志，返回 disposer */
   onRemoteConnectionLog(handler: (entry: RemoteConnectionRuntimeLog) => void): () => void;

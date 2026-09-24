@@ -14,7 +14,17 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
  *   把状态词直接显示出来**（复用仓库既有 `[@media(hover:none)]` 模式，先例见
  *   `ToolCallBlocks/ToolSummaryRow.tsx:216-218`）。
  */
-export type RemoteControlEntryStatus = "off" | "running" | "waiting";
+/**
+ * 入口状态。**只列真的会被产出的取值**（ce.3 硬规矩：产不出来的取值要么删、要么给出产出路径）。
+ *
+ * `"waiting"`（等待连接）已在切片 4 删除：它需要"有没有设备连进来"，而连接面
+ * （已连设备清单）按契约 §7 **延后到 ce.4** —— `packages/desktop/src/main/web-service/**`
+ * 里 0 处 connections，服务端只有限流用的内部 `activeConnections` 计数、未对外暴露。
+ * ⇒ 今天它**没有任何产出路径**，留着只会让读者以为存在一条其实不存在的路径。
+ * ce.4 落地连接面后，本类型加回 `"waiting"` 并在
+ * `remoteControlWiring.resolveRemoteControlEntryStatus` 里给出判定即可。
+ */
+export type RemoteControlEntryStatus = "off" | "running";
 
 /** 调用方注入的入口状态与打开动作（切片 4 的接线点）。 */
 export interface RemoteControlEntry {
@@ -27,15 +37,13 @@ export const REMOTE_CONTROL_ENTRY_TEST_ID = "remote-control-entry";
 const STATUS_MESSAGE_ID: Record<RemoteControlEntryStatus, string> = {
   off: "remotePanel.entry.status.off",
   running: "remotePanel.entry.status.running",
-  waiting: "remotePanel.entry.status.waiting",
 };
 
-// 三种状态的语义色：未开启=弱化前景（不是"错误"），运行中=success，等待连接=warning。
-// 不使用 destructive —— 「等待连接」不是故障（DESIGN.md：语义色只用于真实语义状态）。
+// 两种状态的语义色：未开启=弱化前景（不是"错误"），运行中=success。
+// 不使用 destructive —— 「未开启」不是故障（DESIGN.md：语义色只用于真实语义状态）。
 const STATUS_DOT_CLASS: Record<RemoteControlEntryStatus, string> = {
   off: "bg-foreground-subtlest",
   running: "bg-[var(--color-success)]",
-  waiting: "bg-[var(--color-warning)]",
 };
 
 export function RemoteControlEntryButton({

@@ -66,6 +66,8 @@ import type {
   WindowControlsOverlayReadyPayload,
   CreateTempTextAttachmentRequest,
   OpenCuaPermissionOnboardingOptions,
+  WebServiceStatusPayload,
+  WebServiceConnectionInfoPayload,
 } from "@zcode/shared";
 import { InternalChannels, PlatformChannels, formatZCodeRendererProcessName } from "@zcode/shared";
 import { createOAuthCallbackHandler } from "./oauthCallbackBridge.js";
@@ -285,6 +287,27 @@ contextBridge.exposeInMainWorld("zcode", {
   /** 长文本粘贴落盘为真正的本地附件，避免正文和 prompt payload 被撑大 */
   createTempTextAttachment: (payload: CreateTempTextAttachmentRequest) =>
     ipcRenderer.invoke(PlatformChannels.CreateTempTextAttachment, payload),
+  /**
+   * 本地 Web 服务（远程控制）五条通道（契约 §5）。
+   *
+   * 令牌不变式：`webService:connectionInfo` **是唯一**把带令牌链接交给渲染进程的通道；
+   * 其余四条（status/start/stop/changed）的载荷都不含令牌。
+   * 通道名统一取自 `PlatformChannels`，与 main 侧 `web-service/ipc.ts` 共用同一份常量。
+   */
+  getWebServiceStatus: (): Promise<WebServiceStatusPayload> =>
+    ipcRenderer.invoke(PlatformChannels.WebServiceStatus),
+  startWebService: (options: { scope: "loopback" | "lan"; port?: number }) =>
+    ipcRenderer.invoke(PlatformChannels.WebServiceStart, options),
+  stopWebService: () => ipcRenderer.invoke(PlatformChannels.WebServiceStop),
+  getWebServiceConnectionInfo: (): Promise<WebServiceConnectionInfoPayload | null> =>
+    ipcRenderer.invoke(PlatformChannels.WebServiceConnectionInfo),
+  /** 订阅探活结论变化（入口据此回显，不轮询），返回 disposer */
+  onWebServiceChanged: (callback: (status: WebServiceStatusPayload) => void) => {
+    const handler = (_event: unknown, payload: unknown) =>
+      callback(payload as WebServiceStatusPayload);
+    ipcRenderer.on(PlatformChannels.WebServiceChanged, handler);
+    return () => ipcRenderer.removeListener(PlatformChannels.WebServiceChanged, handler);
+  },
   /** 订阅当前窗口内远程连接过程日志，返回 disposer */
   onRemoteConnectionLog: (callback: (entry: RemoteConnectionRuntimeLog) => void) => {
     const handler = (_event: unknown, payload: unknown) =>

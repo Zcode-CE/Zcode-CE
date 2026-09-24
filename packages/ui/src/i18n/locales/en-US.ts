@@ -1379,7 +1379,8 @@ const enUS: Record<string, string> = {
   "remotePanel.entry.title": "Remote control",
   "remotePanel.entry.status.off": "Off",
   "remotePanel.entry.status.running": "Running",
-  "remotePanel.entry.status.waiting": "Waiting for connection",
+  // "remotePanel.entry.status.waiting" removed together with the entry's waiting state
+  // (ce.3 rule: no unreachable values or copy keys). Add it back with the connection plane.
   "remotePanel.title": "Remote control",
   "remotePanel.subtitle": "Scan or open the link to use the workbench on this machine",
   "remotePanel.badge.stopped": "Off",

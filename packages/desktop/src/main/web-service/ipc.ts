@@ -1,3 +1,4 @@
+import { PlatformChannels } from "@zcode/shared";
 import type { WebServiceController, WebServiceStatus } from "./service.js";
 
 /**
@@ -6,12 +7,19 @@ import type { WebServiceController, WebServiceStatus } from "./service.js";
  * 安全不变式：**令牌只经 `connectionInfo` 的 `linkWithToken` 交给渲染进程**；
  * `status` 与 `changed` 的载荷一律是 `WebServiceStatus`，**不含令牌**（本文件的广播路径只拿 `controller.status()`）。
  */
+/**
+ * 通道名**从 `@zcode/shared` 取，不在本文件重写字符串**。
+ *
+ * 原因：preload 必须订阅**完全相同**的字符串。两处各写一份的话，改一处忘一处会让
+ * 渲染进程永远收不到广播 —— 而且**静默**（没有报错，只是"状态不更新"），
+ * 这类漂移只能靠人工比对发现。集中到 shared 后，两处共用同一个常量。
+ */
 export const WEB_SERVICE_CHANNELS = {
-  status: "webService:status",
-  start: "webService:start",
-  stop: "webService:stop",
-  connectionInfo: "webService:connectionInfo",
-  changed: "webService:changed",
+  status: PlatformChannels.WebServiceStatus,
+  start: PlatformChannels.WebServiceStart,
+  stop: PlatformChannels.WebServiceStop,
+  connectionInfo: PlatformChannels.WebServiceConnectionInfo,
+  changed: PlatformChannels.WebServiceChanged,
 } as const;
 
 /**

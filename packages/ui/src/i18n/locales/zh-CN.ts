@@ -1285,7 +1285,8 @@ const zhCN: Record<string, string> = {
   "remotePanel.entry.title": "远程控制",
   "remotePanel.entry.status.off": "未开启",
   "remotePanel.entry.status.running": "运行中",
-  "remotePanel.entry.status.waiting": "等待连接",
+  // "remotePanel.entry.status.waiting" 已随入口的 waiting 状态一并删除（ce.3 硬规矩：
+  // 不留不可达的取值与文案键）。连接面落地（ce.4）时与状态一起加回。
   "remotePanel.title": "远程控制",
   "remotePanel.subtitle": "扫码或打开链接，即可操作这台机器上的工作台",
   "remotePanel.badge.stopped": "未开启",
