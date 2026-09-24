@@ -12,6 +12,8 @@ import {
   type TerminalThemeProfile,
 } from "./terminalProfile.js";
 import { registerMemoryDiagnosticsProvider } from "#src/memoryDiagnostics.js";
+import { createServiceLogger } from "#src/logger/serviceLogger.js";
+import { assertLocalTerminalNativeSupported, type LocalLibcSnapshot } from "./localLibcSupport.js";
 
 const require = createRequire(import.meta.url);
 type NodePtyModule = typeof import("node-pty");
@@ -25,6 +27,7 @@ interface TerminalInstance {
 
 let hasEnsuredNodePtyHelper = false;
 let nodePtyModulePromise: Promise<NodePtyModule> | null = null;
+const terminalLogger = createServiceLogger("terminal");
 
 async function loadNodePtyModule(): Promise<NodePtyModule> {
   if (!nodePtyModulePromise) {
@@ -322,6 +325,10 @@ function resolveTerminalCwd(cwd?: string): string {
 
 export function createTerminalService(dependencies: {
   settingService: ISettingService;
+  /** 测试缝：注入本地 libc 快照（默认读真实运行环境）。 */
+  localLibcSnapshot?: () => LocalLibcSnapshot;
+  /** 测试缝：注入 node-pty 装载器，用于断言「musl 判定后没有发生 dlopen」。 */
+  loadNodePty?: () => Promise<NodePtyModule>;
 }): ITerminalService {
   const terminals = new Map<string, TerminalInstance>();
   let nextId = 0;
@@ -371,7 +378,14 @@ export function createTerminalService(dependencies: {
         settings: terminalProfileSettings,
         env: process.env,
       });
-      const nodePty = await loadNodePtyModule();
+      // musl 主机必须在**第一次原生 dlopen / spawn 之前**拦住：实测 musl 能成功装载这份 glibc pty.node，
+      // 因此下面 import("node-pty") 的 .catch 不会触发，失败发生在 spawn 的原生 fork（段错误、不可捕获、
+      // 进程级死亡）。所以这里是前置拦断，而不是「打日志后继续」。
+      assertLocalTerminalNativeSupported({
+        snapshot: dependencies.localLibcSnapshot?.(),
+        log: (message, ...rest) => terminalLogger.warn(undefined, message, ...rest),
+      });
+      const nodePty = await (dependencies.loadNodePty ?? loadNodePtyModule)();
       ensureNodePtySpawnHelperExecutable();
       const dataEmitter = new Emitter<string>();
       const exitEmitter = new Emitter<number>();
