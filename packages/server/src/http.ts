@@ -1,6 +1,8 @@
 /* eslint-disable max-lines -- HTTP、WebSocket 与静态资源路由集中注册，保持同一鉴权顺序。 */
 import { randomUUID } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
+import type { Duplex } from "node:stream";
+import type { IncomingMessage } from "node:http";
 import { basename, extname, relative, resolve, sep } from "node:path";
 import { hostname } from "node:os";
 import { Hono, type Context } from "hono";
@@ -38,6 +40,14 @@ import {
 } from "@zcode/shared";
 import { connectRemote, createRemoteBackend, type RemoteConnection } from "./remote/index.js";
 import { createHostCapabilityStore } from "./hostCapability.js";
+import {
+  buildSecurityHeaders,
+  createCrossSiteGuard,
+  createSecurityHeaders,
+  evaluateUpgradeOrigin,
+  parseTrustedOrigins,
+  rejectUpgrade,
+} from "./webExposureGuard.js";
 
 function wrapWebSocket(ws: WebSocket): ISocket {
   const onData = new Emitter<VSBuffer>();
@@ -133,7 +143,7 @@ function generateId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-interface HttpServerOptions {
+export interface HttpServerOptions {
   serverId?: string;
   name?: string;
   host?: string;
@@ -142,6 +152,15 @@ interface HttpServerOptions {
   spaFallback?: boolean;
   staticRoot?: string;
   workspaces?: ServerRemoteWorkspaceInfo[];
+  /**
+   * 跨源合法部署的白名单（反代在不同域名/端口时）。空 = 只接受同源。
+   * 来源：`ZCODE_SERVER_TRUSTED_ORIGINS`（逗号分隔），解析在 entry-http.ts。
+   */
+  trustedOrigins?: string[];
+  /** 随 https 请求下发 HSTS。默认 false —— HSTS 一旦下发就无法回退（见 local-setup.md）。 */
+  hsts?: boolean;
+  /** CSP 模式：默认 report-only（观察期），见 webExposureGuard.ts 的说明。 */
+  cspMode?: "report-only" | "enforce" | "off";
 }
 
 function readTrimmedEnv(name: string): string | undefined {
@@ -507,6 +526,7 @@ export function createHttpServer(
   const host = options.host?.trim() || DEFAULT_HTTP_LISTEN_HOST;
   const authToken = options.authToken?.trim();
   assertListenSecurity({ host, authToken });
+  const trustedOrigins = parseTrustedOrigins(options.trustedOrigins?.join(","));
   // 运行期暴露面告警：只在首次遇到「非回环对端 + 非 TLS」时提示一次（不拒绝请求）。
   let plainHttpPeerWarned = false;
   app.use("*", async (c, next) => {
@@ -522,6 +542,25 @@ export function createHttpServer(
     }
     await next();
   });
+  // 安全响应头必须注册在**最外层**（先执行、最后写头）：它要覆盖包括「被来源校验拒绝的响应」
+  // 在内的所有响应 —— 尤其是 WS 的 403，那条响应不经过任何后面的中间件。
+  const securityHeadersOptions = {
+    hsts: options.hsts ?? false,
+    cspMode: options.cspMode ?? "report-only",
+    secure: false,
+  } as const;
+  app.use("*", createSecurityHeaders(securityHeadersOptions));
+  // 来源校验排在令牌中间件**之前**：跨站 + 未授权的请求应得到明确的 403（跨站），
+  // 而不是先被令牌层拦成 401 —— 否则运维无法区分「没带凭据」与「带了凭据但被跨站利用」。
+  // denialHeaders 是必须的：这条 403 是**独立返回**的，后续中间件不会跑到它（见其注释）。
+  app.use(
+    "*",
+    createCrossSiteGuard({
+      trustedOrigins,
+      warn,
+      denialHeaders: () => buildSecurityHeaders(securityHeadersOptions),
+    }),
+  );
   if (authToken) {
     app.use("*", async (c, next) => {
       const pathname = new URL(c.req.url).pathname;
@@ -640,6 +679,9 @@ export function createHttpServer(
     // 与「未指定 = 绑所有网卡」的实际行为不符（误导用户以为只在本机可达）。
     const urlHost = host.includes(":") ? `[${normalizeListenHost(host)}]` : host;
     log(`http://${urlHost}:${listenPort}`);
+    if (trustedOrigins.length > 0) {
+      log(`cross-site allowlist: ${trustedOrigins.join(", ")}`);
+    }
     log(
       isLoopbackHost(host)
         ? `bind=${host} scope=loopback-only token-auth=${authToken ? "enabled" : "disabled"}`
@@ -654,7 +696,72 @@ export function createHttpServer(
     if (exposureWarning) warn(exposureWarning);
   });
 
+  // WebSocket 的来源校验必须挂在 **HTTP 升级事件**上，而不是 Hono 中间件里：
+  // @hono/node-ws 的升级适配器只取响应状态码、自己拼一条 Content-Length: 0 的响应，
+  // 在 fetch 层返回的 403 会把响应体与安全响应头一起丢掉（实测见 webOriginGuard.test.ts）。
+  // 因此这里先于 injectWebSocket 挂自己的 upgrade 监听：拒绝的直接写 socket 并结束，
+  // 放行的**不处理**（不消费 socket），交给随后注册的 node-ws 监听器正常升级。
+  const upgradeGuardWarned = new Set<string>();
+  // 被本 gate 拒绝的升级请求要在 socket 上留标记：@hono/node-ws 的监听器随后仍会被调用，
+  // 它会往已 end 的 socket 再写一次响应（实测崩法：ERR_STREAM_WRITE_AFTER_END）。
+  // 所以 gate **之后**注册的每个 upgrade 监听器都被包一层「已拒绝就跳过」。
+  const rejectedUpgradeSockets = new WeakSet<Duplex>();
+  type UpgradeListener = (request: IncomingMessage, socket: Duplex, head: Buffer) => void;
+  const installGuardedUpgradeListener = (listener: UpgradeListener): void => {
+    server.on("upgrade", (request, socket, head) => {
+      if (rejectedUpgradeSockets.has(socket)) {
+        return;
+      }
+      listener(request, socket, head);
+    });
+  };
+  const wrapPendingUpgradeListeners = (): void => {
+    for (const listener of server.listeners("upgrade")) {
+      server.removeListener("upgrade", listener);
+      installGuardedUpgradeListener(listener as UpgradeListener);
+    }
+  };
+  server.on("upgrade", (request, socket) => {
+    const pathname = new URL(request.url ?? "/", "http://placeholder").pathname;
+    const decision = evaluateUpgradeOrigin(
+      {
+        pathname,
+        originHeader: request.headers.origin,
+        hostHeader: request.headers.host,
+        protocol: "http:",
+        requestUrl: "http://" + (request.headers.host ?? "placeholder") + (request.url ?? "/"),
+      },
+      trustedOrigins,
+    );
+    if (decision.allowed) {
+      return;
+    }
+    if (!upgradeGuardWarned.has(pathname)) {
+      upgradeGuardWarned.add(pathname);
+      warn(
+        "[cross-site] 已拒绝跨站 WebSocket 升级 " +
+          pathname +
+          "（Origin=" +
+          (request.headers.origin ?? "") +
+          "，对端=" +
+          (request.headers["x-forwarded-for"] ?? "socket") +
+          "）",
+      );
+    }
+    rejectedUpgradeSockets.add(socket);
+    rejectUpgrade({
+      socket,
+      reason: decision.reason ?? "Cross-site WebSocket upgrade rejected",
+      extraHeaders: {
+        "X-ZCode-Cross-Site-Rejected": "1",
+        ...buildSecurityHeaders(securityHeadersOptions),
+      },
+    });
+  });
+
+  // injectWebSocket 注册的 node-ws 监听器同样要包一层，否则被拒的 socket 会被它二次写入。
   injectWebSocket(server);
+  wrapPendingUpgradeListeners();
 
   return server;
 }
