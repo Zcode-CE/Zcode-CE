@@ -4,14 +4,12 @@
 
 ## 新增功能
 
-- **无头服务器 + 浏览器面板可以交付了**：新增「无头服务器发行包」——一个自包含的 `zcode` 包（服务端入口 + Agent 运行时 + Web 静态资源 + 启动器）。
-  在**没有桌面环境**的机器上跑 `zcode --web`，同一局域网内的手机或另一台电脑用浏览器就能操作这个工作台（含手机窄屏适配）。
-  常用参数可以写进配置文件 `~/.zcode/cli/server.json`（命令行 > 环境变量 > 配置文件 > 内置默认），也可以先跑 `--web --help` 看全部默认值与旋钮。
-  三条启动期安全约束已由自动冒烟测试长期守着：`/api/server-info` 无令牌 401 / 带令牌 200、`/ws` 无令牌升级被拒、**非回环 + 无令牌拒绝启动**。
-  > 本节指的是"服务 + 浏览器界面"这条路径；**面板的图形界面（桌面入口与面板本身）尚未实现**。
-- **网页里直接操作工作台（自托管）**：浏览器客户端连服务端进程这条链路补齐了**断线恢复**与**版本配套校验**——手机窄屏下不再"一连就断、断了只能重开"。
+- **无头服务器 + 浏览器界面**：自包含发行包（服务端入口 + Agent 运行时 + Web 静态资源 + 启动器）。
+  在没有桌面环境的机器上跑 `zcode --web`，同一局域网内的手机或另一台电脑用浏览器即可操作该工作台（含手机窄屏适配）；解包后 `node bin/zcode.mjs --web` 直接起服务。
+  常用参数写入 `~/.zcode/cli/server.json`（命令行 > 环境变量 > 配置文件 > 内置默认），`--web --help` 列出全部默认值与旋钮。
+  默认只监听本机；**非回环地址必须带令牌，否则拒绝启动**。
+- **浏览器会话的断线恢复与版本配套校验**：浏览器客户端连服务端进程这条链路补齐了**断线恢复**与**版本配套校验** —— 手机窄屏下不再"一连就断、断了只能重开"。
 - **工作区列表不再由客户端设置决定**：可见工作区改由**服务端注册表**作为唯一真相源，客户端只做派生视图；未启动的工作区有**诚实的"未启动"状态**，不再假装已就绪。
-- **无头服务器可以直接下载运行了**：发行包是自包含的 tar 包，解包后 `node bin/zcode.mjs --web` 即可起服务；包内的服务端打包缺陷已修（此前会抛 `Dynamic require of "fs" is not supported`）。
 - **PDF 制作能力**：随包 Node 载荷（PDFKit + FontKit，MIT），**零外部依赖**，可生成中文正文、表格与页码。
 - **MCP 可以按单个工具启停**：不想让模型看到某个工具，就在 MCP 服务器配置里写 `disabledTools`（设置页也有对应表单）。
 - **引导式授权**：命令块新增「发送到终端」——命令进入**你自己的终端**，**由你按回车**才执行，而不是替你在后台跑。
@@ -29,6 +27,7 @@
 - **未授权态不再伪装成"正在重连"**：401 与断线现在如实区分；`/api` 精确路径纳入鉴权面。
 - **局域网内无凭证即可操作本机工作台**：本地 Web 服务此前默认不设防，同一局域网内的任何人都能拿到一个权限**高于**普通客户端的凭据。现在默认只监听本机；要对局域网开放必须显式指定地址并带令牌。
 - **上传自检的假失败**：网络抖动误判为失败、以及把"对象确实不可取"当成同一件事；发布根配置写错时改为**上传前**给出可行动的报错。
+- **发行包内的服务端打包缺陷**：解包后起服务会抛 `Dynamic require of "fs" is not supported`，已修。
 
 ## 升级须知（行为变化）
 
@@ -47,15 +46,14 @@
 
 ## 已知限制
 
-- **平台支持：正式支持 Linux-x64（glibc）**。macOS / Windows 未实测且当前包内原生载荷只含 Linux ⇒ **不承诺可用**。
+- **平台支持（指无头服务器发行包：服务端 + 内置 Agent 运行时 + Web 静态资源）：正式支持 Linux-x64（glibc）**。
+  该发行包的 macOS / Windows 构建未实测，且包内原生载荷只含 Linux ⇒ **不承诺可用**；**桌面客户端与浏览器界面不在这条平台口径内** —— 浏览器界面只需要浏览器，手机与其它系统的浏览器同样可用。
 - **Alpine / musl 不在支持范围**；实测行为是：服务与面板**可以运行**（npm 形态，需自带 **Node ≥24** 的 musl 构建；Alpine 3.24 的 `apk add nodejs` 实测 24.18.1 即满足），**终端功能不可用** —— 会在创建终端时给出明确提示，而不是崩溃。
 - **第三方许可材料：随包通知里仍有部分组件的出版方材料不全** —— 我们按「**发布者声明 + 标准条款 + 已记录的出处**」逐条登记，未闭环的条目在随包的 `THIRD-PARTY-NOTICES.md` 与 `third-party/README.md` 里如实列出（**登记了不等于材料齐全**）。
   顺带修正一处署名：`brotli` 内嵌的 `google/brotli` 解码器是 **Apache-2.0**，此前被我们记为 MIT；本版已补上其版权与许可声明。
 - 与上一版相同（Windows 构建未签名、Windows / macOS 未在真机做完整功能回归、Linux 桌面自动化为实验性等），本批**未新增**其他长期限制。
 
 ## 本版尚未验证
-
-> 这一节存在的意义：**不让"没验证"被读成"已验证"**。
 
 - **真机软键盘（IME）未验证**：窄屏键盘避让只在受控环境下核对，未在真机 IME 上验证。
 - **手机 + 桌面同时连同一会话的并发语义未测**：两端能各自连接，但同一会话被两端同时操作的行为**没有测**，不要依赖。
@@ -73,7 +71,6 @@
   因此连接时会**在部署资产之前拦断**并给可操作原因；改用 glibc 发行版的远端镜像即可。
 - **上游同样不支持 musl**（不是本版独有的取舍）：上游 `node-pty` 没有 musl 预编译，官方发行版的资产集也只有 `platformArch` 维度、没有 `-musl` 平台类。
 - **npm 形态的 Node 下限是 `>=24`**：低于下限时可能在打印启动横幅后才失败（实测 Node 20 在导入期即失败），请先用 `node --version` 确认。
-- **本说明不含任何性能数字**：没有实测的性能结论一律不写。
 - **⚠️ Windows 上不要用 kill -HUP**：令牌轮换依赖 SIGHUP，而 Windows 没有这个信号、**对进程发 SIGHUP 会终止进程** ⇒ 那不是重载令牌，是**把服务杀掉**。Windows 下改完令牌文件请**重启服务**。
 - **手机 + 桌面同时操作同一会话的并发写语义没有任何实测**：CommandInbox 的串行 admission 是**设计约定**，不是并发写的验收结论；连接数上限（默认 32）只防资源耗尽，**不要读作「并发写已被保护」**。
 
@@ -87,13 +84,12 @@
 
 ## New features
 
-- **The headless server + browser panel is now deliverable**: a new "headless server package" — a self-contained `zcode` bundle (server entry + Agent runtime + Web static assets + launcher). Run `zcode --web` on a machine **without a desktop environment**, and a phone or another computer on the same LAN can drive that workbench in a browser (narrow-screen phones included).
+- **Headless server + browser UI**: a self-contained distribution (server entry + Agent runtime + Web static assets + launcher).
+  Run `zcode --web` on a machine **without a desktop environment** and a phone or another computer on the same LAN can drive that workbench in a browser (narrow-screen phones included); after unpacking, `node bin/zcode.mjs --web` starts the service directly.
   Frequently used options can be written to the config file `~/.zcode/cli/server.json` (command line > environment variables > config file > built-in defaults), and `--web --help` now lists every default and knob.
-  Three startup security constraints are guarded by an automated smoke test: `/api/server-info` returns 401 without a token and 200 with one, unauthenticated `/ws` upgrades are rejected, and a **non-loopback bind without a token refuses to start**.
-  > This paragraph is about the "service + browser UI" path; the **panel's graphical UI (desktop entry point and the panel itself) is not implemented yet**.
-- **Operate the workbench from a browser (self-hosted)**: the browser-client → server path gained **disconnect recovery** and **version compatibility checks** — on narrow screens it no longer "connects once, then dies and has to be reopened".
+  It listens on loopback by default; a **non-loopback bind without a token refuses to start**.
+- **Disconnect recovery and version compatibility checks for browser sessions**: the browser-client → server path gained **disconnect recovery** and **version compatibility checks** — on narrow screens it no longer "connects once, then dies and has to be reopened".
 - **The workspace list no longer depends on client settings**: visible workspaces now come from a **server-side registry** as the single source of truth, with the client as a derived view; a workspace that is not running shows an honest **"not started"** state instead of pretending to be ready.
-- **The headless server is now downloadable and runnable**: the distribution is a self-contained tarball — unpack it, run `node bin/zcode.mjs --web`, and the service is up. A packaging defect in the bundled server is fixed (it used to fail with `Dynamic require of "fs" is not supported`).
 - **PDF generation**: bundled Node payload (PDFKit + FontKit, MIT), **zero external dependencies** — CJK body text, tables, page numbers.
 - **Per-tool MCP toggles**: hide a single tool from the model via `disabledTools` in the MCP server config (the settings page has a form for it too).
 - **Guided authorization**: a new "send to terminal" action on command blocks — the command lands in **your** terminal and only runs when **you** press Enter.
@@ -111,6 +107,7 @@
 - **Unauthorized state no longer masquerades as "reconnecting"**: 401 and a dropped connection are now distinguished; the exact `/api` path is inside the auth surface.
 - **Any device on the LAN could drive the local workbench without credentials**: the local Web service used to be open by default, so anyone on the same LAN could obtain a credential with **higher** privilege than a normal client. It now listens on loopback only; exposing it to the LAN requires an explicit bind address and a token.
 - **False failures in upload self-checks**: network flakiness was reported as a failure, and "object really is not retrievable" was conflated with it; a misconfigured publish root now fails **before** uploading with an actionable error.
+- **A packaging defect in the bundled server**: starting the service from an unpacked distribution used to fail with `Dynamic require of "fs" is not supported`; fixed.
 
 ## Upgrade notes (behaviour changes)
 
@@ -129,15 +126,14 @@
 
 ## Known limitations
 
-- **Platform support: Linux-x64 (glibc) is the supported one.** macOS / Windows are untested and the native payloads in the bundle are Linux-only, so they are **not promised to work** (details in the previous section).
+- **Platform support (for the headless server distribution: server + bundled Agent runtime + Web static assets): Linux-x64 (glibc) is the supported one.**
+  macOS / Windows builds of that distribution are untested and its native payloads are Linux-only, so they are **not promised to work**. The **desktop client and the browser UI are not covered by this platform statement** — the browser UI only needs a browser, so phones and browsers on other systems work too.
 - **Alpine / musl is outside the supported set.** Measured behaviour: the service and the panel do run (npm form, with a musl build of **Node >= 24** — on Alpine 3.24 `apk add nodejs` yields 24.18.1, which satisfies it), while the **terminal is unavailable** and is refused with an actionable message instead of crashing.
 - **Third-party licence material: some bundled components still lack publisher material** — every such entry is recorded against "**publisher declaration + standard terms + recorded provenance**", and the ones that are not closed are listed honestly in the shipped `THIRD-PARTY-NOTICES.md` and `third-party/README.md` (**being recorded is not a claim that the material is complete**).
   One attribution fix in the same pass: the `google/brotli` decoder vendored inside `brotli` is **Apache-2.0** and had been recorded as MIT; its copyright and licence notice are now included.
 - Unchanged from the previous version (unsigned Windows build, no full on-device regression on Windows/macOS, experimental Linux desktop automation, …); this batch adds **no** other long-term limitations.
 
 ## Not verified in this release
-
-> The point of this section is to **keep "not verified" from being read as "verified"**.
 
 - **Real-device soft keyboard (IME) not verified**: keyboard-avoidance changes were checked in a controlled environment only.
 - **Phone + desktop on the same session at the same time is untested**: both can connect, but concurrent driving of one session is **not tested** — do not rely on it.
@@ -153,7 +149,6 @@
 - **Remote workspaces on a musl target are not usable (measured)**: the payload is a glibc build (`node` fails with `cannot execute: required file not found`, missing `/lib64/ld-linux-x86-64.so.2`), so a connection is **refused before assets are deployed**, with an actionable reason; use a glibc-based image as the remote host.
 - **Upstream does not support musl either** (so this is not a choice unique to this build): upstream `node-pty` ships no musl prebuilds, and the official distribution asset set has only a `platformArch` dimension with no `-musl` platform class.
 - **The npm form requires Node >= 24**: below that, startup can fail _after_ the banner is printed (Node 20 was measured failing at import time) — check `node --version` first.
-- **No performance numbers are quoted**: nothing without a measurement is written here.
 - **On Windows, do not use kill -HUP**: token rotation relies on SIGHUP, which Windows does not have — and sending SIGHUP **terminates the process**, so it is not a reload, it is killing your server. On Windows, restart the service after editing the token file.
 - **Concurrent writes to one session from a phone and a desktop at the same time have no measurements at all**: the CommandInbox serial admission is a **design convention**, not a verification result for concurrent writes; the connection cap (default 32) only prevents resource exhaustion and must **not** be read as "concurrent writes are protected".
 
