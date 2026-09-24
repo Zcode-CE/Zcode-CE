@@ -70,6 +70,9 @@ export function GroupedDraftTaskRow({
             </span>
             {onClose ? (
               <span className="absolute inset-0 hidden items-center justify-center group-hover/task-row:flex">
+                {/* 这里的行内动作**故意保持 24×24**（不随其他任务行加 [@media(pointer:coarse)]:min-h-11）：
+            它嵌在外层整行可点（role=button、h-8 全宽）的草稿行里，放大内层会吃掉今天属于整行的点击、
+            改变命中归属（task-22 §3b 侦察结论；P1-BATCH.md 有例外记录）。改这里前请先改外层行级目标语义。 */}
                 <TaskRowActionButton
                   label={intl.formatMessage({ id: "common.close" })}
                   onClick={handleClose}
