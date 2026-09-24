@@ -1501,7 +1501,7 @@
     "packages/rpc/src/remote.ts": "a11e072d5df7e1c1ce64814a68f72afc081246b364f0da409b5c9d22bc815957",
     "packages/rpc/src/serialization.ts": "e949418e1cd17cc863c147fc8d1ff15237e1b5f0cb8e3344fd2a9ccfae9d54e7",
     "packages/server/package.json": "0a6119239c88af79bc766e3c023eb4437105a0d35b03ecca1137d1e688e60a90",
-    "packages/services/package.json": "8d7757a8d8328ef827925cb730c28ce21fed20e27ddd83f2aae7b447229bd17a",
+    "packages/services/package.json": "07b8fa3e6b8120fe341d9d98921a3ecb951ec92e9cb7add226c5f71debfdc68f",
     "packages/shared/package.json": "27426dda8fb05376acfef8bf004d86522c1e555213f01fed19f5397d30a2c84e",
     "packages/shared/src/zcode-protocol-v4/wire-codec.ts": "ac2494a3acc795c809c94ee9393f50271a9c2a0fd33813459e5ab93842ceef75",
     "packages/ui/package.json": "220e916077604008bb6ffea19d6bdf7148c4b09472bea251248a230ba3c69bf5",
