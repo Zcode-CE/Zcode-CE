@@ -40,6 +40,13 @@ export default defineConfig({
     "combined-stream",
     "proxy-from-env",
     "follow-redirects",
+    // 与 packages/server/tsup.config.ts 的 SERVER_HTTP_EXTERNAL_DEPENDENCIES 同一结论：
+    // services 的反馈日志 ZIP 链路引入 CJS 包 yazl（其 require("fs")/require("stream") 被内联进
+    // ESM bundle 后会落到 esbuild 的 __require 兜底上，运行时抛 Dynamic require of "fs" is not
+    // supported，直接执行 dist/server-cli.js 即崩）；yauzl 是同一链路里的解包侧。两者都保留为
+    // 外部依赖、交给 Node 原生加载，不引入新的 require shim 机制。
+    "yazl",
+    "yauzl",
     "@lydell/node-pty-darwin-arm64",
     "@lydell/node-pty-darwin-x64",
     "@lydell/node-pty-linux-arm64",

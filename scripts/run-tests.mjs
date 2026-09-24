@@ -64,6 +64,10 @@ const TEST_PACKAGES = [
   // 远程资产基址契约：两个自定义旋钮按字面值（发布根）、官方默认值保留前缀。
   // 漏测的后果是"安装包默认指向一个取不到 manifest 的地址"，用户侧表现为连接失败。
   "packages/desktop",
+  // 无头 CLI 发行包的两个入口：tsup 必须把内联 CJS 依赖（yazl/yauzl）保留为 external。
+  // 漏测的后果是「bundle 里留下会抛错的动态 require 兜底」⇒ 入口直接执行即崩 —— 而这条
+  // 路径正是我们要发 npm/Docker 的用户形态（源码级断言恒跑；bundle/运行级断言在未构建时**显式 skip**）。
+  "packages/zcode-server-cli",
 ];
 
 /** 允许的测试文件后缀：packages 下用 TS（走 tsx），apps 下的脚本测试用 .mjs。 */
