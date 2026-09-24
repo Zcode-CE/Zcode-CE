@@ -47,6 +47,29 @@ bash scripts/desktop-typecheck-baseline.sh diff
 
 它用 `git worktree` 取真实 HEAD 做对比，只报**净增**的错误。
 
+## 在共享机器上起停本地服务（多 agent / 多人同时开工时必读）
+
+本仓库的开发过程经常**同机并行**：多个 agent/人各自起服务端与浏览器端。下面三条是踩出来的，属于操作纪律：
+
+- **停服务不要用 `pkill -f <模式>`**。`-f` 按**整条命令行做子串/正则匹配**，会把别人的进程一起杀掉。
+  实例：`pkill -f 'PORT=3850'` 会命中 `PORT=38500`（子串包含）；`pkill -f 'entry-http.js'` 会命中**所有**用同一入口起的服务 ——
+  本仓库已经因此误杀过多次（含验收服务与队友的探针服务）。正确做法是**按端口查 PID、按 PID 杀**：
+
+  ```bash
+  PID=$(ss -ltnp | grep ':38490' | grep -oP 'pid=\K[0-9]+' | head -1); [ -n "$PID" ] && kill "$PID"
+  ```
+
+- **重启前先等端口释放**：`kill` 之后立刻重启会撞 `EADDRINUSE`，而入口目前是**直接退出**（不是重试）。
+  轮询 `ss -ltn | grep -c ':<端口>'` 归零再起。
+- **重启前先重建运行产物**：`packages/server/dist` 会被并发构建覆盖（别人的 `tsup`、或 `tsc -b` 的类型检查构建），
+  处于中间态时启动会报 `ERR_MODULE_NOT_FOUND`。重启前跑一次：
+
+  ```bash
+  pnpm --filter @zcode/server build     # 需要时再加 pnpm --filter @zcode/web build
+  ```
+
+  `dist` 在 `.gitignore` 内，它是**共享可变状态**：谁都能覆盖它，所以「启动前重建」是唯一稳妥的顺序。
+
 ## Web 工作台的监听与对外访问
 
 **默认只绑回环**：`pnpm dev:web`（以及 `pnpm dev:server`）在未设置 `HOST` / `ZCODE_SERVER_HOST` 时监听 `127.0.0.1`，且不启用令牌鉴权 —— 这类「无鉴权的对外监听」被明确禁止：服务端的 `/api/*`、`/ws`、`/ws/host` 在该配置下等同于把 Agent 级 RPC 与 trusted-host 凭据发放接口交给整个网段（`POST /api/rpc-host-capability` 会签发 30 秒有效的一次性 ticket，`/ws/host` 凭该 ticket 即得 trusted host 角色）。因此：
