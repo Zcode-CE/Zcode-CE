@@ -1289,6 +1289,37 @@ const zhCN: Record<string, string> = {
   // 不留不可达的取值与文案键）。连接面落地（ce.4）时与状态一起加回。
   "remotePanel.title": "远程控制",
   "remotePanel.subtitle": "扫码或打开链接，即可操作这台机器上的工作台",
+  // ── 标签页共存（task-93）：两条**不同的**远控路径，命名必须让人一眼看出是两件事 ──
+  // 命名红线：UI 里**不得出现「自托管」** —— 那是实现方式，不是用户能做的事。
+  // 伞名仍是「远程控制」；两条路径叫「Web 控制」（浏览器操作这台机器的工作台）
+  // 与「IM 机器人」（在聊天软件里跟机器人对话）。注意别与侧栏已有的
+  // `remote.trigger`「远程连接」（我连出去）撞名 —— 那一个方向相反。
+  "remotePanel.tab.web": "Web 控制",
+  "remotePanel.tab.imBot": "IM 机器人",
+  "remotePanel.imBot.description": "在微信、飞书或 Telegram 里跟机器人对话，让它操作这个工作区。",
+  "remotePanel.imBot.badge.disabled": "未启用",
+  "remotePanel.imBot.badge.enabling": "启用中",
+  "remotePanel.imBot.badge.enabled": "已启用",
+  "remotePanel.imBot.action.enable": "启用",
+  // 未注入通道（今天 Bot 服务端零产出路径）**仍然渲染启用按钮**（Lead 拍板：不能少东西），
+  // 但必须如实说明"点了会发生什么" —— 否则按钮就是个骗人的动作。
+  "remotePanel.imBot.state.pendingServer":
+    "机器人通道的服务端能力尚未接入：现在启用只会记下请求，机器人还不会收发消息。",
+  "remotePanel.imBot.state.enabling": "正在启用…",
+  "remotePanel.imBot.state.requested":
+    "已请求启用，等待服务端就绪；在此之前机器人不会收发任何消息。",
+  "remotePanel.imBot.state.enabled": "已启用：在聊天软件里给机器人发消息即可操作这个工作区。",
+  "remotePanel.imBot.reminder.title": "启用前须知",
+  "remotePanel.imBot.reminder.account":
+    "需要外部账号：微信、飞书、Telegram 的机器人身份与凭据由对应平台签发，ZCode 不代你注册。",
+  "remotePanel.imBot.reminder.thirdParty":
+    "消息与文件会经过第三方平台的服务端：你发给机器人的内容、机器人回复的内容都不只在本机流转。",
+  "remotePanel.imBot.reminder.platformRecords":
+    "这些平台侧的记录不在这台机器的控制范围内，删除本机数据也不会删掉它们。",
+  "remotePanel.imBot.confirm.title": "启用 IM 机器人？",
+  "remotePanel.imBot.confirm.body":
+    "启用后，机器人会把消息和文件发到第三方聊天平台。确认这三点再继续：",
+  "remotePanel.imBot.confirm.continue": "继续启用",
   "remotePanel.badge.stopped": "未开启",
   "remotePanel.badge.stale": "已停止",
   "remotePanel.badge.starting": "开启中",
@@ -6332,7 +6363,7 @@ const zhCN: Record<string, string> = {
   "settings.remoteAssets.title": "远程资产",
   "settings.remoteAssets.cdnBaseUrl": "自定义远程资产 CDN 地址",
   "settings.remoteAssets.cdnBaseUrlDescription":
-    "远程工作区从哪个发布根下载运行时资产。必须是 http/https 地址，**指向发布根即可，不要带版本号**（例如 https://your-host/assets）。留空 = 用默认地址。仅影响桌面端发起的远程连接，且只对修改后新建的连接生效；运行期环境变量 ZCODE_REMOTE_ASSET_CDN_BASE_URL 的优先级高于此处。",
+    "远程工作区从哪个发布根下载运行时资产。必须是 http/https 地址，指向发布根即可，不要带版本号（例如 https://your-host/assets）。留空 = 用默认地址。仅影响桌面端发起的远程连接，且只对修改后新建的连接生效；运行期环境变量 ZCODE_REMOTE_ASSET_CDN_BASE_URL 的优先级高于此处。",
   "settings.remoteAssets.savedHint": "已保存。新建的远程连接会使用该地址。",
   "settings.remoteAssets.error.protocol": "地址必须以 http:// 或 https:// 开头。",
   "settings.remoteAssets.error.invalid": "地址不是有效的 URL。",

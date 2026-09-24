@@ -1383,6 +1383,43 @@ const enUS: Record<string, string> = {
   // (ce.3 rule: no unreachable values or copy keys). Add it back with the connection plane.
   "remotePanel.title": "Remote control",
   "remotePanel.subtitle": "Scan or open the link to use the workbench on this machine",
+  // Tabs (task-93): two **different** remote paths, side by side rather than merged.
+  // Naming red line: never call our path "self-hosted" in the UI — that is an implementation
+  // detail, not a user capability. The umbrella name stays "Remote control"; the two paths are
+  // "Web control" (a browser drives the workbench on this machine) and "Chat bot" (you talk to a
+  // bot inside a chat app). Keep clear of the sidebar's existing "Remote connection"
+  // (`remote.trigger`, i.e. connect out) — that one points the opposite way.
+  // "Chat bot" is chosen because it is literally the official English wording
+  // (`webRemoteControl.description` says "through chat bots") and shares no words with
+  // "Remote connection". The description names WeChat / Feishu / Telegram to disambiguate.
+  "remotePanel.tab.web": "Web control",
+  "remotePanel.tab.imBot": "Chat bot",
+  "remotePanel.imBot.description":
+    "Talk to a bot in WeChat, Feishu or Telegram and let it drive this workspace.",
+  "remotePanel.imBot.badge.disabled": "Not enabled",
+  "remotePanel.imBot.badge.enabling": "Enabling",
+  "remotePanel.imBot.badge.enabled": "Enabled",
+  "remotePanel.imBot.action.enable": "Enable",
+  // The channel not being injected (today the bot server side has no producer) still renders the
+  // enable button — "we must not ship less" — but the copy must say what clicking actually does.
+  "remotePanel.imBot.state.pendingServer":
+    "The bot channel's server-side capability is not wired in yet: enabling now only records the request, and the bot will not send or receive anything.",
+  "remotePanel.imBot.state.enabling": "Enabling…",
+  "remotePanel.imBot.state.requested":
+    "Enable requested, waiting for the server side; the bot sends and receives nothing until then.",
+  "remotePanel.imBot.state.enabled":
+    "Enabled: message the bot in your chat app to drive this workspace.",
+  "remotePanel.imBot.reminder.title": "Before you enable",
+  "remotePanel.imBot.reminder.account":
+    "An external account is required: the bot identity and credentials for WeChat, Feishu and Telegram are issued by those platforms, not by ZCode.",
+  "remotePanel.imBot.reminder.thirdParty":
+    "Messages and files go through the third-party platform's servers: what you send the bot and what it replies are not confined to this machine.",
+  "remotePanel.imBot.reminder.platformRecords":
+    "Those platform-side records are outside this machine's control; deleting local data does not delete them.",
+  "remotePanel.imBot.confirm.title": "Enable the chat bot?",
+  "remotePanel.imBot.confirm.body":
+    "Once enabled, the bot sends messages and files to a third-party chat platform. Confirm these three points before continuing:",
+  "remotePanel.imBot.confirm.continue": "Enable anyway",
   "remotePanel.badge.stopped": "Off",
   "remotePanel.badge.stale": "Stopped",
   "remotePanel.badge.starting": "Starting",
@@ -6655,7 +6692,7 @@ const enUS: Record<string, string> = {
   "settings.remoteAssets.title": "Remote assets",
   "settings.remoteAssets.cdnBaseUrl": "Custom remote asset CDN URL",
   "settings.remoteAssets.cdnBaseUrlDescription":
-    "Where remote workspaces download their runtime assets from. Use an http/https URL that points at the **publish root — do not include a version** (for example https://your-host/assets). Leave empty to use the default. This only affects remote connections started from the desktop app, and only connections created after the change. The runtime environment variable ZCODE_REMOTE_ASSET_CDN_BASE_URL takes precedence over this setting.",
+    "Where remote workspaces download their runtime assets from. Use an http/https URL that points at the publish root — do not include a version (for example https://your-host/assets). Leave empty to use the default. This only affects remote connections started from the desktop app, and only connections created after the change. The runtime environment variable ZCODE_REMOTE_ASSET_CDN_BASE_URL takes precedence over this setting.",
   "settings.remoteAssets.savedHint": "Saved. New remote connections will use this URL.",
   "settings.remoteAssets.error.protocol": "The URL must start with http:// or https://.",
   "settings.remoteAssets.error.invalid": "That is not a valid URL.",
