@@ -618,6 +618,30 @@ export default {
           },
         ]
       : []),
+    // ── 本地 Web 服务（远程控制，Slice 1）随包 ──────────────────────────────────────────
+    // 三件事：HTTP 入口 .cjs、它的运行时依赖闭包、裁剪后的 web 静态资源。
+    // 主进程用 `process.resourcesPath/web-service/**` 解析（见 web-service/paths.ts 的所有权约定）。
+    {
+      from: resolve(workspaceRoot, "packages/server/dist/remote/zcode-server-http.cjs"),
+      to: "web-service/zcode-server-http.cjs",
+    },
+    {
+      // node-pty 的**原生件**：bundle 里 node-pty 的 JS 被内联，它按自身 __dirname 找
+      // `build/Release/pty.node` ⇒ 必须与 .cjs 同级同构地放在 web-service/ 下。
+      from: resolve(workspaceRoot, "node_modules/node-pty/build/Release/pty.node"),
+      to: "web-service/build/Release/pty.node",
+    },
+    {
+      // web 静态资源：**排除 sourcemap**（`**/*.map`，实测占 packages/web/dist 的 55%）。
+      // 规则与前提（task-80 步骤 3，已定）：
+      //   · `pdfjs/`、`pdf.worker.min.mjs` 必须保留 —— pdf.js 的 cMapUrl 指向它，剪掉会让含 CJK 字体的 PDF **静默缺字**；
+      //   · `material-icons/` 必须保留 —— 文件类型图标全部来自它，剪掉全 404；
+      //   · Office 预览 wasm（*.wasm）必须保留 —— 剪掉会直接收窄能力；
+      //   · 只有 `*.map` 是纯调试产物 ⇒ 本版不随包；**若将来要做崩溃符号化，需按版本另存 maps**（届时要改这一行）。
+      from: resolve(workspaceRoot, "packages/web/dist"),
+      to: "web-service/web",
+      filter: ["**/*", "!**/*.map"],
+    },
     {
       // 正式包不能依赖仓库目录读取社区、反馈等内置兜底配置。
       // 显式放入 resources/config，与主进程的 process.resourcesPath 解析保持一致。

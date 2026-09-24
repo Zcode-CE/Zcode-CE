@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { build, type Plugin } from "esbuild";
+import { build, type BuildOptions, type Plugin } from "esbuild";
 import { validateRemoteServerBundle } from "./buildRemoteValidation.js";
 import { loadBuiltinProviderConfig } from "../../scripts/builtin-provider-config.mjs";
 import { stageThirdPartyNotices } from "../../scripts/third-party-notices.mjs";
@@ -27,10 +27,9 @@ const nativeAddonPlugin: Plugin = {
   },
 };
 
-const buildResult = await build({
-  entryPoints: ["src/entry-stdio.ts"],
+/** 两个入口共用同一套 esbuild 选项：**不要**为 HTTP 入口另写一份（否则 external/define 会漂移）。 */
+const sharedOptions: BuildOptions = {
   bundle: true,
-  outfile: "dist/remote/zcode-server.cjs",
   platform: "node",
   format: "cjs",
   target: "node22",
@@ -47,12 +46,22 @@ const buildResult = await build({
     __ZCODE_BUILTIN_PROVIDER_CONFIG_JSON__: JSON.stringify(zcodeBuiltinProviderConfigJson),
   },
   metafile: true,
-});
+};
 
-const remoteBundleSource = readFileSync("dist/remote/zcode-server.cjs", "utf-8");
-const bundledInputs = Object.keys(buildResult.metafile.inputs);
-validateRemoteServerBundle({ bundledInputs, source: remoteBundleSource });
+const entrypoints = [
+  // 远端工作区部署用（单文件上传到 ~/.zcode/server/）。
+  { entryPoint: "src/entry-stdio.ts", outfile: "dist/remote/zcode-server.cjs" },
+  // 桌面端「本地 Web 服务（远程控制）」随包用：extraResources 里的 web-service/zcode-server-http.cjs。
+  { entryPoint: "src/entry-http.ts", outfile: "dist/remote/zcode-server-http.cjs" },
+];
+
+for (const { entryPoint, outfile } of entrypoints) {
+  const result = await build({ ...sharedOptions, entryPoints: [entryPoint], outfile });
+  const source = readFileSync(outfile, "utf-8");
+  // 两个入口都跑同一套校验（当前校验项：不得残留裸 undici 运行时导入）。
+  validateRemoteServerBundle({ bundledInputs: Object.keys(result.metafile.inputs), source });
+  console.log(`Built ${outfile}`);
+}
+
 // 修复：remote 单文件 bundle 内联第三方代码，dist/remote 也必须附完整声明。
 await stageThirdPartyNotices("dist/remote");
-
-console.log("Built dist/remote/zcode-server.cjs");
