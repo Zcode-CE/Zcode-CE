@@ -339,6 +339,7 @@ export const REMOTE_CONTROL_IM_BOT_BADGE_TEST_ID = "remote-control-im-bot-badge"
 export const REMOTE_CONTROL_IM_BOT_NOTICE_TEST_ID = "remote-control-im-bot-notice";
 export const REMOTE_CONTROL_IM_BOT_ENABLE_TEST_ID = "remote-control-im-bot-enable";
 export const REMOTE_CONTROL_IM_BOT_CONFIRM_TEST_ID = "remote-control-im-bot-enable-confirm";
+export const REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_TEST_ID = "remote-control-im-bot-restart-notice";
 
 /**
  * IM 机器人标签页的**可达状态**。
@@ -386,6 +387,22 @@ export const REMOTE_CONTROL_IM_BOT_REMINDER_MESSAGE_IDS = [
   "remotePanel.imBot.reminder.thirdParty",
   "remotePanel.imBot.reminder.platformRecords",
 ] as const;
+
+/**
+ * 「生效时机」的唯一所有者：新增或启用渠道后，入站回调要重启服务才生效。
+ *
+ * 为什么单列一条而不是并进上面那三条：那三条讲的是把消息交给第三方平台的代价（风险告知），
+ * 这一条讲的是配置什么时候起作用（可操作信息）—— 两类信息不该混在一个列表里。
+ *
+ * 为什么必须写出来（spec §2.3 的代价 + §10 P4 裁决）：路由只在服务启动时挂载，运行期不增删路由
+ * ⇒ 新增方向要重启才生效，而删除方向（逐请求读配置）立即生效。这个不对称是有意的
+ * （删除方向 fail-closed、新增方向 fail-safe），但用户看到的是「配了却不生效」——
+ * 那正是最容易被误判成 bug 的形态，因此不得静默（P4 原文：可接受，但必须如实说明）。
+ *
+ * 依据：packages/server/src/entry-http.ts 的 resolveBotIngressEnabled（启动期快照）
+ * 与 packages/server/src/botIngress.ts 的运行期判定（逐请求读配置）。
+ */
+export const REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_MESSAGE_ID = "remotePanel.imBot.restartNotice";
 
 export interface RemoteControlImBotView {
   state: RemoteControlImBotState;

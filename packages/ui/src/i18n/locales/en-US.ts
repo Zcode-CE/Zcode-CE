@@ -1416,6 +1416,11 @@ const enUS: Record<string, string> = {
     "Messages and files go through the third-party platform's servers: what you send the bot and what it replies are not confined to this machine.",
   "remotePanel.imBot.reminder.platformRecords":
     "Those platform-side records are outside this machine's control; deleting local data does not delete them.",
+  // When it takes effect (spec §10 P4: a newly added channel needs a restart; acceptable, but
+  // must not be silent). Not phrased as "the config has not taken effect" — the user needs to
+  // know what to do now.
+  "remotePanel.imBot.restartNotice":
+    "After you add or enable a channel, inbound callbacks only work once the service is restarted; deleting a channel takes effect immediately.",
   "remotePanel.imBot.confirm.title": "Enable the chat bot?",
   "remotePanel.imBot.confirm.body":
     "Once enabled, the bot sends messages and files to a third-party chat platform. Confirm these three points before continuing:",

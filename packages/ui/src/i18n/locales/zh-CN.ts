@@ -1316,6 +1316,10 @@ const zhCN: Record<string, string> = {
     "消息与文件会经过第三方平台的服务端：你发给机器人的内容、机器人回复的内容都不只在本机流转。",
   "remotePanel.imBot.reminder.platformRecords":
     "这些平台侧的记录不在这台机器的控制范围内，删除本机数据也不会删掉它们。",
+  // 生效时机（spec §10 P4：新增渠道要重启才生效，可接受但不得静默）。
+  // 不写成"配置未生效"这类含糊说法 —— 用户要知道的是"现在该做什么"。
+  "remotePanel.imBot.restartNotice":
+    "新增或启用渠道后，入站回调要重启服务才生效；删除渠道立即生效。",
   "remotePanel.imBot.confirm.title": "启用 IM 机器人？",
   "remotePanel.imBot.confirm.body":
     "启用后，机器人会把消息和文件发到第三方聊天平台。确认这三点再继续：",

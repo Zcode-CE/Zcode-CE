@@ -18,6 +18,8 @@ import {
   REMOTE_CONTROL_IM_BOT_ENABLE_TEST_ID,
   REMOTE_CONTROL_IM_BOT_NOTICE_TEST_ID,
   REMOTE_CONTROL_IM_BOT_REMINDER_MESSAGE_IDS,
+  REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_MESSAGE_ID,
+  REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_TEST_ID,
   REMOTE_CONTROL_IM_BOT_TEST_ID,
   resolveRemoteControlImBotView,
   type RemoteControlImBotChannel,
@@ -40,6 +42,9 @@ import {
  * - **不许静默**：点击 → 确认弹窗（三条事实）→ 确认后立刻进入 `enabling`，
  *   结算后落到 `requested`（"已请求启用，等待服务端就绪"）。任何一步都有可见结果。
  * - **提醒常显**：三条事实在任何状态下都在页面上，不藏在 tooltip 或"了解更多"里。
+ * - 生效时机单独一条（spec §10 P4）：新增/启用渠道要重启服务才生效，删除渠道立即生效。
+ *   它与上面三条并列常显，但不属于那个列表 —— 三条讲的是把消息交给第三方平台的代价，
+ *   这一条讲的是"配置什么时候起作用"（可操作信息），混在一起会让人读不出该做什么。
  */
 export interface RemoteControlImBotTabProps {
   /**
@@ -144,6 +149,13 @@ export function RemoteControlImBotTab({ channel, className }: RemoteControlImBot
             <li key={id}>{t(id)}</li>
           ))}
         </ul>
+        {/* 生效时机：与提醒块同一容器（同属"启用前须知"），但独立一行 —— 见文件头的分组理由。 */}
+        <p
+          data-testid={REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_TEST_ID}
+          className="mt-1 border-t border-border pt-1.5 text-ui-base text-foreground-subtle"
+        >
+          {t(REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_MESSAGE_ID)}
+        </p>
       </section>
 
       <ImBotEnableConfirmDialog

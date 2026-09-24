@@ -9,6 +9,7 @@ import {
   DEFAULT_REMOTE_CONTROL_START_SCOPE,
   REMOTE_CONTROL_DEFAULT_TAB,
   REMOTE_CONTROL_IM_BOT_REMINDER_MESSAGE_IDS,
+  REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_MESSAGE_ID,
   canRenderRemoteControlPanel,
   hasUsableRemoteControlLink,
   resolveRemoteControlImBotView,
@@ -626,6 +627,24 @@ test("启用前提醒：三条事实常显，且确认弹窗里再列一次", ()
   const enText = REMOTE_CONTROL_IM_BOT_REMINDER_MESSAGE_IDS.map((k) => enUS[k]).join(" | ");
   assert.ok(/external account/i.test(enText), "EN 提醒必须点明需要外部账号");
   assert.ok(/third-party/i.test(enText), "EN 提醒必须点明经过第三方平台");
+});
+
+test("生效时机常显：新增/启用渠道要重启才生效（spec §10 P4：可接受，但不得静默）", () => {
+  // 这条钉的是用户能看到那句话：文案在两个语言里都存在、非空，且组件把它渲染在
+  // 常显的提醒块里（不在任何条件分支内）。
+  for (const [name, dict] of [
+    ["zh-CN", zhCN],
+    ["en-US", enUS],
+  ] as const) {
+    const text = dict[REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_MESSAGE_ID];
+    assert.equal(typeof text, "string", name + " 缺生效时机文案");
+    assert.notEqual(text, "", name + " 生效时机文案为空");
+    // 必须说清"要重启"与"删除立即生效"这两件事 —— 只说其一，用户仍会误判另一半。
+    assert.match(text, /重启|restart/i, name + " 必须点明需要重启");
+    assert.match(text, /立即|immediately/i, name + " 必须点明删除方向立即生效");
+  }
+  assert.match(IM_BOT_TAB_SOURCE.source, /REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_TEST_ID/);
+  assert.match(IM_BOT_TAB_SOURCE.source, /REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_MESSAGE_ID/);
 });
 
 test("命名红线：UI 里不得出现「自托管」；两条路径的名字不得互相顶掉", () => {
