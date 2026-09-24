@@ -328,3 +328,69 @@ jobs:
       # 脚本内部：内容寻址对象已存在即跳过；每个对象上传后逐个 HEAD 自检（对发布根）。
       - name: Upload to bucket
         run: node scripts/upload-remote-assets-r2.mjs --root .tmp/remote-assets-publish --public-base-url "$ZCODE_PUBLIC_BASE_URL"
+  # 无头服务器发行包（tarball）：构建 + 冒烟 + 挂 Release / 上传 artifact。
+  #
+  # 为什么不阻塞发版：这个包与安装包互相独立，registry/打包出问题不该让「安装包已经好了」的发版失败。
+  # 整个 job 用 continue-on-error: true，内部再做一次「基址未配置就跳过」的软降级。
+  # 本轮**不发布到任何 registry**（npm/Docker 的清单见 docs/operations/headless-server.md §7）。
+  headless-server-package:
+    name: headless server package
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # --base-url 决定 install.sh 去哪里取依赖；未配置时**跳过而不是失败**：
+      # 既避免「配置缺失」染红发版流程，也避免把占位域名写进用户拿到的 install.sh。
+      - name: Build headless server package
+        id: build_package
+        env:
+          ZCODE_DIST_BASE_URL: ${{ vars.ZCODE_DIST_BASE_URL }}
+        run: |
+          if [ -z "$ZCODE_DIST_BASE_URL" ]; then
+            echo "::warning::仓库变量 ZCODE_DIST_BASE_URL 未设置，跳过无头服务器发行包构建（见 docs/operations/headless-server.md §2/§6）"
+            exit 0
+          fi
+          node scripts/build-zcode.mjs --base-url "$ZCODE_DIST_BASE_URL"
+          echo "packaged=true" >> "$GITHUB_OUTPUT"
+
+      # 打到最终消费点：smoke 在隔离目录里解包并真跑 TUI 与 --web 面板。
+      - name: Smoke test unpacked package
+        if: steps.build_package.outputs.packaged == 'true'
+        run: node scripts/zcode-distribution-smoke.mjs dist/zcode/releases/*.tar.gz
+
+      - name: Upload package artifact
+        if: steps.build_package.outputs.packaged == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: zcode-headless-server
+          path: |
+            dist/zcode/releases/*.tar.gz
+            dist/zcode/releases/sha256.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+      # tag 发版时顺带挂到 Release（与安装包并列）。失败只 warn：这个包不该影响 Release 本身。
+      - name: Attach package to release
+        if: steps.build_package.outputs.packaged == 'true' && startsWith(github.ref, 'refs/tags/')
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            dist/zcode/releases/*.tar.gz dist/zcode/releases/sha256.txt \
+            --clobber --repo "${{ github.repository }}"

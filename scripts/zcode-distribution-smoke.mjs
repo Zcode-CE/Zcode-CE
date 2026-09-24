@@ -76,11 +76,17 @@ try {
   terminal = undefined;
 
   let webOutput = "";
-  web = spawn(process.execPath, [runner, "--web", "--workspace", workspace, "--no-open"], {
-    cwd: workspace,
-    env,
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  // 鉴权与非回环这两条是**安全不变式**：必须在解包产物上验，单测里验过 ≠ 分发物里成立。
+  const webToken = "smoke-token-7f3a";
+  web = spawn(
+    process.execPath,
+    [runner, "--web", "--workspace", workspace, "--no-open", "--token", webToken],
+    {
+      cwd: workspace,
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
   web.stdout.on("data", (data) => {
     webOutput += data;
   });
@@ -100,7 +106,7 @@ try {
   await until(
     async () => {
       try {
-        const response = await fetch(new URL("api/server-info", base), {
+        const response = await fetch(new URL("api/server-info?token=" + webToken, base), {
           signal: AbortSignal.timeout(1000),
         });
         if (!response.ok) return false;
@@ -114,11 +120,24 @@ try {
     () => webOutput,
   );
   assert.equal(info.workspaces[0].path, workspace);
+  // 安全不变式 ①：无令牌 401、带令牌 200（面板壳本身仍可匿名取到，见下面的 `/` 200）
+  const unauthenticated = await fetch(new URL("api/server-info", base));
+  assert.equal(unauthenticated.status, 401, "server-info must be 401 without a token");
+  const authenticated = await fetch(new URL("api/server-info?token=" + webToken, base));
+  assert.equal(authenticated.status, 200, "server-info must be 200 with a token");
   const html = await fetch(base);
   assert.equal(html.status, 200);
   assert.match(await html.text(), /<html/i);
   const { default: WebSocket } = await import(pathToFileURL(require.resolve("ws")).href);
-  const socket = new WebSocket(new URL("ws", base.replace("http:", "ws:")));
+  const webSocketBase = base.replace("http:", "ws:");
+  // 安全不变式 ①（续）：/ws 也必须鉴权 —— 无令牌升级被判 401，而不是静默放行。
+  const unauthenticatedSocket = new WebSocket(new URL("ws", webSocketBase));
+  const upgradeRejection = await new Promise((done) => {
+    unauthenticatedSocket.once("error", (error) => done(String(error)));
+    unauthenticatedSocket.once("open", () => done("unexpected-open"));
+  });
+  assert.match(upgradeRejection, /401|Unexpected server response/u);
+  const socket = new WebSocket(new URL("ws?token=" + webToken, webSocketBase));
   await once(socket, "open");
   socket.close();
   await once(socket, "close");
@@ -126,6 +145,26 @@ try {
   web.kill("SIGTERM");
   assert.deepEqual(await exited, [0, null]);
   web = undefined;
+
+  // 安全不变式 ②：非回环 + 无令牌必须**拒绝启动**（退出码非 0 的数字），且日志给出可操作原因。
+  // 真起服务而被超时杀掉时 exit code 是 null（signal）⇒ 下面的 typeof 断言会把这种情况判红，不会假通过。
+  const refusal = await runToExit([
+    runner,
+    "--web",
+    "--workspace",
+    workspace,
+    "--no-open",
+    "--host",
+    "0.0.0.0",
+    "--no-token",
+  ]);
+  assert.ok(
+    typeof refusal.code === "number" && refusal.code !== 0,
+    `non-loopback without a token must refuse to start, got exit=${String(refusal.code)}\n${refusal.output}`,
+  );
+  assert.match(refusal.output, /Refusing to start|拒绝启动/u);
+  assert.match(refusal.output, /token|令牌/u);
+
   console.log(
     JSON.stringify({
       version,
@@ -133,6 +172,7 @@ try {
       arch: process.arch,
       tui: "native import, initialized render, keyboard exit passed",
       web: "HTML, server-info, workspace, WebSocket, shutdown passed",
+      security: "401 without token, 200 with token, non-loopback without token refused",
       isolated: true,
     }),
   );
@@ -140,6 +180,28 @@ try {
   terminal?.kill();
   web?.kill();
   await rm(directory, { recursive: true, force: true });
+}
+
+/** 跑一个必然退出的子进程并回收输出（用于断言"拒绝启动"这类 fail-closed 行为）。 */
+async function runToExit(args, timeoutMs = 10_000) {
+  const child = spawn(process.execPath, args, {
+    cwd: workspace,
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let output = "";
+  child.stdout.on("data", (data) => {
+    output += data;
+  });
+  child.stderr.on("data", (data) => {
+    output += data;
+  });
+  // 注意：本文件从 `node:timers/promises` 导入了 `setTimeout`（签名是 (ms)），
+  // 这里必须用全局定时器，否则会把回调当成 delay 传进去（ERR_INVALID_ARG_TYPE）。
+  const timer = globalThis.setTimeout(() => child.kill("SIGKILL"), timeoutMs);
+  const [code] = await once(child, "exit");
+  globalThis.clearTimeout(timer);
+  return { code, output };
 }
 
 async function until(check, label, diagnostic) {
