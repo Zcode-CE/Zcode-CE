@@ -51,7 +51,7 @@
 
 > **列表 = `existing-only`；打开 = 按需 `start-if-needed`。**
 
-- **列出全部工作区不得顺带拉起 Agent runtime**：侧栏/首屏等被动订阅一律 `runtimePolicy: 'existing-only'`；runtime 不存在时返回稳定错误 `ZCode Agent runtime is not running.`。
+- **列出全部工作区不得同时拉起 Agent runtime**：侧栏/首屏等被动订阅一律 `runtimePolicy: 'existing-only'`；runtime 不存在时返回稳定错误 `ZCode Agent runtime is not running.`。
 - **只有用户主动打开某个工作区才允许启动 runtime**。这条是成本模型的一部分：列表 ≈14 KB/工作区，而每个 live runtime ≈+20 MB 与 1 个子进程（外推 50 个 ≈1 GB + 50 进程）。
 - 该规矩由自动化护栏钉住（见 §5），不是注释级约定。
 

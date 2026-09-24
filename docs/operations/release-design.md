@@ -175,7 +175,7 @@ ripgrep 等）按平台分目录准备，Linux 机器上拿不到 Windows 的原
 
 #### CI 上的构建
 
-发布构建由 GitHub Actions 承担（Linux x64 + Windows x64 矩阵），流程、额外系统依赖与踩坑点
+发布构建由 GitHub Actions 承担（Linux x64 + Windows x64 矩阵），流程、额外系统依赖与常见失败点
 见 [持续集成](./ci.md)。
 
 ### 3.2 签名

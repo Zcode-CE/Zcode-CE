@@ -263,10 +263,10 @@ SIGHUP 轮换后旧令牌立即 401、未撤销令牌与 env 令牌仍 200；文
 
 ### 6.2 与 `ZCODE_SERVER_TRUSTED_ORIGINS` 的关系（**两道不同防线，不要互相替代**）
 
-| 防线                           | 校验对象 | 挡什么                                                                | 机制                        |
-| ------------------------------ | -------- | --------------------------------------------------------------------- | --------------------------- |
-| `ZCODE_SERVER_TRUSTED_HOSTS`   | `Host`   | **DNS rebinding**（"浏览器以为在跟 evil.com 说话，其实在跟本机说话"） | `hostAllowlist.ts`          |
-| `ZCODE_SERVER_TRUSTED_ORIGINS` | `Origin` | **跨站请求**（"别的网站代浏览器发请求"）                              | `webExposureGuard.ts`（§4） |
+| 防线                           | 校验对象 | 挡什么                                                                  | 机制                        |
+| ------------------------------ | -------- | ----------------------------------------------------------------------- | --------------------------- |
+| `ZCODE_SERVER_TRUSTED_HOSTS`   | `Host`   | **DNS rebinding**（"浏览器以为在跟 evil.com 说话，实际连的是本机服务"） | `hostAllowlist.ts`          |
+| `ZCODE_SERVER_TRUSTED_ORIGINS` | `Origin` | **跨站请求**（"别的网站代浏览器发请求"）                                | `webExposureGuard.ts`（§4） |
 
 两者都必要且都不充分：**只配 ORIGINS 挡不住 rebinding**（Origin 与 Host 自洽）；
 **只配 HOSTS 挡不住跨站**（攻击者不需要伪造 Host 就能让受害者浏览器替他发请求）。

@@ -1,10 +1,10 @@
 # Computer Use（开源实现）
 
+> 面向使用与二次开发的开发者：说明这套桌面自动化支持哪些平台、能做什么、有哪些安全语义与已知限制。
+
 ZCode 的 Computer Use 由 MIT 许可的开源驱动 [`@trycua/cua-driver`](https://www.npmjs.com/package/@trycua/cua-driver)
 提供，上游是 [trycua/cua](https://github.com/trycua/cua)。它让模型通过 `node_repl` 里的
-JavaScript 观察和操作本机桌面。
-
-> 本文面向使用与二次开发的开发者。模块内部设计与实测记录见源码注释。
+JavaScript 观察和操作本机桌面。模块内部设计与实测记录见源码注释。
 
 ## 支持的平台
 
