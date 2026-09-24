@@ -57,7 +57,10 @@ import type {
   ToolExecutionTelemetry,
 } from "@zcode/contracts";
 import type { DangerousCommandPolicy } from "@zcode/shared";
-import type { PersistedReadFileStateMetadata } from "./read-file-state-metadata.js";
+import type {
+  PersistedReadFileStateMetadata,
+  PersistedReadFileStateTool,
+} from "./read-file-state-metadata.js";
 import type { RuntimeTaskRegistry } from "../runtime-task/registry.js";
 
 // -----------------------------------------------
@@ -209,7 +212,7 @@ export interface ReadFileStateEntry {
   limit?: number;
   isPartialView: boolean;
   readAt: Date;
-  sourceTool?: "Read" | "Write" | "Edit";
+  sourceTool?: PersistedReadFileStateTool;
   revisionId?: string;
   mtimeMs?: number;
   sizeBytes?: number;

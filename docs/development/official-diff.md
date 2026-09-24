@@ -56,6 +56,7 @@
 | 遥测与上报          | 有                     | 已移除                       | 本仓库的主动改动                                                                                                                     |
 | 国内网络加速        | 无                     | 有                           | 本仓库的主动改动                                                                                                                     |
 | GitHub Actions 构建 | 无                     | 有                           | 本仓库的主动改动                                                                                                                     |
+| headless 动态工作流 | 默认关闭               | 默认开启                     | 本仓库的主动差异（官方靠 `--enable-workflow` 打开）；见「其它差距」                                                                  |
 
 ## 常见「缺失」说法的逐条核实
 
@@ -387,6 +388,28 @@ Superpowers，本仓库用户没有这个入口。
 的校验）。那条报错的判据是市场清单，不是这张默认启用名单，两者不能混为一谈。
 
 这是本仓库需要修正的一致性问题（声明与实际分发不一致），不是官方的问题。
+
+### headless 动态工作流的默认值：与官方相反
+
+官方 v3.14.3 给 headless 加了 `--enable-workflow`，**默认关闭**动态工作流
+（其 `-p` 路径写的是 `dynamicWorkflowEnabled: options.enableWorkflow === true`）。
+本仓库 headless **默认开启** —— core 的 `dynamicWorkflowEnabled` 是「缺席即开启」，
+CLI 侧过去从不写这个字段，于是 `zcode -p "/workflow …"` 一直可用。
+
+两边都保留官方那个拼写（传了不报未知参数），但本仓库另加了真正能改变行为的反向开关：
+
+| 命令                     | 官方 headless 行为 | 本仓库 headless 行为   |
+| ------------------------ | ------------------ | ---------------------- |
+| `zcode -p "<文本>"`      | 动态工作流关闭     | 动态工作流开启         |
+| `… --enable-workflow`    | 动态工作流开启     | 动态工作流开启（幂等） |
+| `… --no-enable-workflow` | 未知参数，退出码 1 | 动态工作流关闭         |
+
+两个开关都只接受 `-p/--prompt` 或 `--target`；用在 TUI 或子命令上会报错并退出码 1
+（不静默忽略）。判据与取值在 `apps/zcode-cli/packages/cli/src/workflow-flag.ts`，
+`zcode --help` 的两行文案同时写明了这条差异。
+
+**照抄官方文档会误导**：官方的 `--enable-workflow` 说明是「默认关闭」，直接搬过来会让人
+以为不传就没有工作流 —— 在本仓库恰好相反。要关掉请用 `--no-enable-workflow`。
 
 ### 插件资源规模差异
 

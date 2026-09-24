@@ -78,9 +78,17 @@ test("AmendWorkflow：只改设定的调用放行，带 path 或 script 的拒�
   assert.equal(amendWorkflowNeedsSkill({ run_id: "r", path: "a.ts" }), true);
   assert.equal(amendWorkflowNeedsSkill(undefined), true);
 
-  const settingsOnly = refuse(amendWorkflowToolEntry, { run_id: "r", max_concurrency: 2 }, NOT_LOADED);
+  const settingsOnly = refuse(
+    amendWorkflowToolEntry,
+    { run_id: "r", max_concurrency: 2 },
+    NOT_LOADED,
+  );
   assert.equal(settingsOnly, undefined, "只改设定的调用不得被技能门拒绝");
-  const withScript = refuse(amendWorkflowToolEntry, { run_id: "r", script: "return 1;" }, NOT_LOADED);
+  const withScript = refuse(
+    amendWorkflowToolEntry,
+    { run_id: "r", script: "return 1;" },
+    NOT_LOADED,
+  );
   assert.ok(withScript);
   assert.equal(withScript.errorCode, WORKFLOW_SKILL_NOT_LOADED_CODE);
   assert.match(withScript.message ?? "", /AmendWorkflow/);
@@ -114,7 +122,11 @@ test("sessionHasLoadedSkill：判据取自历史，只有成功闭合的 Skill �
       },
     },
   ];
-  assert.equal(sessionHasLoadedSkill(entries, "dynamic-workflows"), false, "只有调用、没有结果不算");
+  assert.equal(
+    sessionHasLoadedSkill(entries, "dynamic-workflows"),
+    false,
+    "只有调用、没有结果不算",
+  );
   assert.equal(
     sessionHasLoadedSkill(
       [...entries, { message: { role: "tool" as const, content: "ok", toolCallId: "c1" } }],
@@ -124,7 +136,10 @@ test("sessionHasLoadedSkill：判据取自历史，只有成功闭合的 Skill �
   );
   assert.equal(
     sessionHasLoadedSkill(
-      [...entries, { message: { role: "tool" as const, content: "no", toolCallId: "c1", isError: true } }],
+      [
+        ...entries,
+        { message: { role: "tool" as const, content: "no", toolCallId: "c1", isError: true } },
+      ],
       "dynamic-workflows",
     ),
     false,

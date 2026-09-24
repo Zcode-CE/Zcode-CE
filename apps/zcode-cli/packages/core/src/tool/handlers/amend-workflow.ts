@@ -23,6 +23,7 @@ import {
 } from "@zcode/contracts";
 import type { ToolApprovalGate, ToolEntry, ToolHandler, ToolHandlerFailure } from "../types.js";
 import { AMEND_WORKFLOW_TOOL_DESCRIPTION } from "./amend-workflow-description.js";
+import { recordAuthoredWorkflowDraft } from "./workflow-draft-read-state.js";
 import { amendWorkflowNeedsSkill, requireDynamicWorkflowSkill } from "./workflow-skill-gate.js";
 import {
   AMEND_WORKFLOW_ERROR_CODE,
@@ -134,6 +135,15 @@ const amendWorkflowHandler: ToolHandler = async (input, context) => {
           source: script,
         })
       : undefined;
+  // 模型本次亲手写的脚本才记作它写过的文件；沿用前驱脚本的新草稿不记——那份字节可能来自别的
+  // 会话或压缩之前，替模型担保它没看过的内容正是 read-before-edit 要防的事。
+  if (inlineDraft !== undefined && parsed.predecessor?.script_inherited !== true) {
+    await recordAuthoredWorkflowDraft(context, {
+      path: inlineDraft.path,
+      source: script,
+      toolName: "AmendWorkflow",
+    });
+  }
   // run 记的永远是**装着这一次脚本**的文件。脚本改了就绝不沿用前驱的路径：那个文件装的是旧
   // 脚本，记到新 run 上就是让模型下次去编辑一段已经不在跑的代码。沿用脚本时前驱的文件可以继续
   // 记，但只在它此刻的字节仍是这份脚本时（resolveKeptScriptFile 已核对过）。

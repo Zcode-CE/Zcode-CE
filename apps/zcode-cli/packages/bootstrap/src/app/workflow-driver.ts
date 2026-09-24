@@ -44,7 +44,6 @@
 
 import type {
   SessionId,
-  SubmitResultRequest,
   SubmitVerdict as ContractsSubmitVerdict,
   WorkflowEscalatePort,
   WorkflowSubmitPort,
@@ -72,6 +71,7 @@ import {
 import { executeArtifactPublish } from "./workflow-artifact-publish.js";
 import { qualityEpilogue } from "./workflow-ask-epilogue.js";
 import { ensureSubmitProfileFits } from "./workflow-driver-submit-profile.js";
+import { makeSessionSubmitPort, type SubmitBridgeHost } from "./workflow-driver-submit-bridge.js";
 import { executeWorldRead } from "./workflow-world-read.js";
 import {
   createActorModelActivity,
@@ -93,7 +93,6 @@ import {
   isTurnCancelled,
   mapViolations,
   mintActorSessionId,
-  rejectWith,
   reportTurnObservations,
   schemaEpilogue,
   toWorkflowError,
@@ -130,6 +129,11 @@ class AgentRuntimeWorkflowDriver implements WorkflowDriver {
    * 经闭包回到本类——私有状态不外露，桥接函数也不需要知道类的形状。
    */
   private readonly escalationHost: EscalationHost;
+  /**
+   * 交给 submit 桥接（workflow-driver-submit-bridge.ts）的宿主面：会话表按引用共享，向上回报面
+   * 就是本类持有的那只 sink（引擎在本调用栈内同步回裁决，两者必须是同一世的那一对）。
+   */
+  private readonly submitHost: SubmitBridgeHost;
   /** 交给模型侧失败收容（workflow-driver-model-failure.ts）的宿主面：同一套按引用共享的思路。 */
   private readonly modelFailureHost: ModelFailureHost;
   /** run 级 stall 时钟：所有 actor 的成功 / 重试节拍汇到这一只表。 */
@@ -146,6 +150,10 @@ class AgentRuntimeWorkflowDriver implements WorkflowDriver {
       qidToSession: this.qidToSession,
       nextEscalationSeq: () => ++this.escalationSeq,
       record: (event) => this.record(event),
+    };
+    this.submitHost = {
+      sessions: this.sessions,
+      sink,
     };
     this.modelFailureHost = {
       deps,
@@ -249,7 +257,12 @@ class AgentRuntimeWorkflowDriver implements WorkflowDriver {
         : { modelRequestAdmission: modelActivity.admission }),
     });
     if (seed !== undefined) {
-      await seedActorSession(this.deps, { journaledSessionId: journaled, runtime, seed, sessionId });
+      await seedActorSession(this.deps, {
+        journaledSessionId: journaled,
+        runtime,
+        seed,
+        sessionId,
+      });
     }
     state = {
       ref,
@@ -529,40 +542,12 @@ class AgentRuntimeWorkflowDriver implements WorkflowDriver {
 
   // ——————————————————————————————— 内部：submit 桥接 ———————————————————————————————
 
-  /** 造一个会话级 submit 端口：submit_result handler mid-turn 调用它并阻塞等裁决。 */
+  /**
+   * 造一个会话级 submit 端口；实现体在 workflow-driver-submit-bridge.ts
+   * （{@link makeSessionSubmitPort}），与紧随其后的升级端口逐条对称。
+   */
   private makeSubmitPort(sessionId: SessionId): WorkflowSubmitPort {
-    return {
-      respond: (request: SubmitResultRequest): Promise<ContractsSubmitVerdict> => {
-        const state = this.sessions.get(sessionId);
-        const instance = state?.currentInstance;
-        if (state === undefined || instance === undefined) {
-          // 无在飞 ask 却收到 submit：不路由到引擎，直接拒绝（避免悬挂）。
-          return Promise.resolve(rejectWith("no active ask is awaiting a submitted result"));
-        }
-        // Untyped ask 守卫：设计上「全 untyped 的 actor 不注册 submit_result」，
-        // 但 driver 在 createActorSession 时拿不到 actor 的聚合 typed 信息（需 site graph，未透传），故
-        // 一律注册。为不依赖引擎「submitAttempted 对 untyped 早退」的行为（那会让 deferred 永久悬挂），
-        // 这里在 driver 内部直接拦截：untyped ask 收到 submit 时立即回一条合成 rejection 让模型改用纯文本，
-        // 绝不上报 askSubmitAttempted。后续版本可据 actor-graph 投影把 per-actor typed 信息透传进来，
-        // 真正在 untyped-only actor 上跳过注册（关系到 prompt-cache 的 frozen-tools 不变式）。
-        if (!state.currentTyped) {
-          return Promise.resolve(
-            rejectWith(
-              "this ask does not accept submit_result; provide your answer as your final message",
-            ),
-          );
-        }
-        // 单前实例不变式：至多一个挂起 deferred。若已有（不应发生），先拒旧的避免泄漏。
-        state.pendingSubmit?.reject(
-          new WorkflowError("DriverError", "This submit was superseded by a newer submit."),
-        );
-        const deferred = defer<ContractsSubmitVerdict>();
-        state.pendingSubmit = deferred;
-        // 同步上报：引擎在本调用栈内校验并经 respondToSubmit 回裁决（同步解开 deferred）。
-        this.sink.askSubmitAttempted(instance, request.result);
-        return deferred.promise;
-      },
-    };
+    return makeSessionSubmitPort(this.submitHost, sessionId);
   }
 
   // ——————————————————————————————— 内部：升级问答桥接 ———————————————————————————————

@@ -28,6 +28,7 @@ import {
 } from "@zcode/contracts";
 import type { ToolApprovalGate, ToolEntry, ToolExecutionContext, ToolHandler } from "../types.js";
 import { CREATE_WORKFLOW_TOOL_DESCRIPTION } from "./create-workflow-description.js";
+import { recordAuthoredWorkflowDraft } from "./workflow-draft-read-state.js";
 import { createWorkflowNeedsSkill, requireDynamicWorkflowSkill } from "./workflow-skill-gate.js";
 import {
   resolveCreateWorkflowInput,
@@ -90,6 +91,14 @@ const createWorkflowHandler: ToolHandler = async (input, context) => {
           source: script,
         })
       : undefined;
+  // 这份草稿的字节就是模型本次的 `script`：记作它写过的文件，下一次 Edit 不必先 Read。
+  if (inlineDraft !== undefined) {
+    await recordAuthoredWorkflowDraft(context, {
+      path: inlineDraft.path,
+      source: script,
+      toolName: "CreateWorkflow",
+    });
+  }
   const location = describeScriptLocation(parsed, inlineDraft?.path, cwd);
 
   if (!ok) {
