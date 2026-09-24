@@ -8,6 +8,10 @@
   在没有桌面环境的机器上跑 `zcode --web`，同一局域网内的手机或另一台电脑用浏览器即可操作该工作台（含手机窄屏适配）；解包后 `node bin/zcode.mjs --web` 直接起服务。
   常用参数写入 `~/.zcode/cli/server.json`（命令行 > 环境变量 > 配置文件 > 内置默认），`--web --help` 列出全部默认值与旋钮。
   默认只监听本机；**非回环地址必须带令牌，否则拒绝启动**。
+- **桌面端的远程控制入口**：账号区新增入口，从这里**启动/停止一个供浏览器访问的服务**，并把地址、二维码与链接交给手机或另一台电脑；对方用浏览器即可操作**这台机器上的工作台**。
+  它**不是**接管桌面端正在开的会话，桌面端已连的远端 SSH / Docker 目标也**不会**共享给浏览器。默认只监听本机，要开放到局域网需显式选择并带令牌；已有服务在跑时只接管显示、**不会重复启动**。
+- **本地 Docker 资产**：新增 `Dockerfile` 与 `compose.yaml`（glibc 基础镜像、非 root 运行、卷持久化、健康检查），以及一份 Docker 专门文档（容器内路径、卷与备份、局域网访问、令牌与轮换、glibc-only 的原因、安全边界）。
+  实测覆盖：容器内起服务、鉴权 401/200、`/ws` 拒绝、**容器内终端可用**、卷持久化、优雅停止。本版**不发布预构建镜像**，请自行 `docker build`。
 - **浏览器会话的断线恢复与版本配套校验**：浏览器客户端连服务端进程这条链路补齐了**断线恢复**与**版本配套校验** —— 手机窄屏下不再"一连就断、断了只能重开"。
 - **工作区列表不再由客户端设置决定**：可见工作区改由**服务端注册表**作为唯一真相源，客户端只做派生视图；未启动的工作区有**诚实的"未启动"状态**，不再假装已就绪。
 - **PDF 制作能力**：随包 Node 载荷（PDFKit + FontKit，MIT），**零外部依赖**，可生成中文正文、表格与页码。
@@ -51,6 +55,9 @@
 - **Alpine / musl 不在支持范围**；实测行为是：服务与面板**可以运行**（npm 形态，需自带 **Node ≥24** 的 musl 构建；Alpine 3.24 的 `apk add nodejs` 实测 24.18.1 即满足），**终端功能不可用** —— 会在创建终端时给出明确提示，而不是崩溃。
 - **第三方许可材料：随包通知里仍有部分组件的出版方材料不全** —— 我们按「**发布者声明 + 标准条款 + 已记录的出处**」逐条登记，未闭环的条目在随包的 `THIRD-PARTY-NOTICES.md` 与 `third-party/README.md` 里如实列出（**登记了不等于材料齐全**）。
   顺带修正一处署名：`brotli` 内嵌的 `google/brotli` 解码器是 **Apache-2.0**，此前被我们记为 MIT；本版已补上其版权与许可声明。
+- **远程控制（桌面端）本次只到「开服务 + 连接信息」**：已连设备列表与逐设备断开、端口与监听范围选择、令牌轮换入口**尚未提供**（排后续批次）。
+- **桌面端安装包因此增大约 66 MB**（服务端入口 7.2 MB + Web 界面资源 59 MB，已排除 source map）—— 手机扫码打开的就是这份 Web 界面，必须随包。
+- **容器形态只能管理挂载进去的目录**（这是容器边界本身，不是缺陷）：需要主机全盘访问时，用 npm 形态直接在主机上运行。
 - 与上一版相同（Windows 构建未签名、Windows / macOS 未在真机做完整功能回归、Linux 桌面自动化为实验性等），本批**未新增**其他长期限制。
 
 ## 本版尚未验证
@@ -88,6 +95,10 @@
   Run `zcode --web` on a machine **without a desktop environment** and a phone or another computer on the same LAN can drive that workbench in a browser (narrow-screen phones included); after unpacking, `node bin/zcode.mjs --web` starts the service directly.
   Frequently used options can be written to the config file `~/.zcode/cli/server.json` (command line > environment variables > config file > built-in defaults), and `--web --help` now lists every default and knob.
   It listens on loopback by default; a **non-loopback bind without a token refuses to start**.
+- **Remote control entry point on the desktop**: a new entry in the account area starts/stops a **service that browsers can reach**, and hands out the address, QR code and link to a phone or another computer — which then drives **the workbench on that machine** in a browser.
+  It does **not** take over sessions that are already open on the desktop, and remote SSH / Docker targets connected from the desktop are **not** shared with the browser. It listens on loopback by default; opening it to the LAN requires an explicit choice and a token. If a service is already running, the panel adopts it for display and does **not** start a second one.
+- **Local Docker assets**: a `Dockerfile` and `compose.yaml` (glibc base image, non-root, volume persistence, health check) plus a dedicated Docker document (paths inside the container, volumes and backup, LAN access, tokens and rotation, why glibc-only, security boundary).
+  Measured: service inside the container, auth 401/200, `/ws` rejection, **terminal usable inside the container**, volume persistence, graceful stop. This release **does not publish a prebuilt image** — build it yourself with `docker build`.
 - **Disconnect recovery and version compatibility checks for browser sessions**: the browser-client → server path gained **disconnect recovery** and **version compatibility checks** — on narrow screens it no longer "connects once, then dies and has to be reopened".
 - **The workspace list no longer depends on client settings**: visible workspaces now come from a **server-side registry** as the single source of truth, with the client as a derived view; a workspace that is not running shows an honest **"not started"** state instead of pretending to be ready.
 - **PDF generation**: bundled Node payload (PDFKit + FontKit, MIT), **zero external dependencies** — CJK body text, tables, page numbers.
@@ -131,6 +142,9 @@
 - **Alpine / musl is outside the supported set.** Measured behaviour: the service and the panel do run (npm form, with a musl build of **Node >= 24** — on Alpine 3.24 `apk add nodejs` yields 24.18.1, which satisfies it), while the **terminal is unavailable** and is refused with an actionable message instead of crashing.
 - **Third-party licence material: some bundled components still lack publisher material** — every such entry is recorded against "**publisher declaration + standard terms + recorded provenance**", and the ones that are not closed are listed honestly in the shipped `THIRD-PARTY-NOTICES.md` and `third-party/README.md` (**being recorded is not a claim that the material is complete**).
   One attribution fix in the same pass: the `google/brotli` decoder vendored inside `brotli` is **Apache-2.0** and had been recorded as MIT; its copyright and licence notice are now included.
+- **Remote control (desktop) stops at "start the service + connection info" in this release**: the connected-device list with per-device disconnect, port/listen-scope selection and a token-rotation entry point are **not provided yet** (later batches).
+- **The desktop installer therefore grows by about 66 MB** (7.2 MB server entry + 59 MB web UI assets, source maps excluded) — the web UI is what a phone opens after scanning, so it has to ship inside the app.
+- **In container form only mounted directories can be managed** (that is the container boundary itself, not a defect): for full host-disk access, run the npm form directly on the host.
 - Unchanged from the previous version (unsigned Windows build, no full on-device regression on Windows/macOS, experimental Linux desktop automation, …); this batch adds **no** other long-term limitations.
 
 ## Not verified in this release
