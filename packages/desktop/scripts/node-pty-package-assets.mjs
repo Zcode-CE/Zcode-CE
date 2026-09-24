@@ -77,10 +77,23 @@ const NODE_PTY_FORBIDDEN_BUILD_DIRS = ["build/Release", "build/Debug"];
  */
 export function assertPackagedNodePtyPayloadVerified({
   resourcesDir,
+  nodePtyPackageRoot,
   platformKey,
   sourcePackageName,
 }) {
-  const packageRoot = resolve(resourcesDir, "app.asar.unpacked", "node_modules", "node-pty");
+  // 两种产物形态共用同一实现（禁止复制第二套判断）：
+  //  - 桌面端：<resourcesDir>/app.asar.unpacked/node_modules/node-pty
+  //  - CLI 发行包：<dist-release>/<产物名>/runtime/node_modules/node-pty（没有 app.asar.unpacked 层级）
+  const packageRoot = nodePtyPackageRoot
+    ? resolve(nodePtyPackageRoot)
+    : resourcesDir
+      ? resolve(resourcesDir, "app.asar.unpacked", "node_modules", "node-pty")
+      : undefined;
+  if (!packageRoot) {
+    throw new Error(
+      "assertPackagedNodePtyPayloadVerified 需要 resourcesDir 或 nodePtyPackageRoot 之一",
+    );
+  }
   if (!existsSync(packageRoot)) {
     // 产物内根本没有 node-pty（例如不含桌面终端的形态）：不适用，交给调用方决定是否视为失败。
     return { checked: false, reason: `产物内没有 node-pty: ${packageRoot}` };

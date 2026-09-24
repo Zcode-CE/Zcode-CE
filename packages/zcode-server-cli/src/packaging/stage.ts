@@ -5,6 +5,7 @@ import { access, chmod, cp, mkdir, readFile, realpath, rm, writeFile } from "nod
 import { builtinModules } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { createRuntimeManifest, type ServerTarget } from "../runtime/manifest.js";
+import { assertPackagedNodePtyPayloadVerified } from "../../../../packages/desktop/scripts/node-pty-package-assets.mjs";
 import { isTarCommand, resolveHostTarCommand } from "./tarCommand.js";
 
 const NODE_BUILTIN_MODULES = new Set(builtinModules);
@@ -463,6 +464,8 @@ export async function stageRelease(options: StageOptions): Promise<StagedRelease
 
   if (closure.has("node-pty")) {
     await ensureNodePtyPrebuild(options, nodeModulesTargetDir);
+    // 发布产物校验（task-74）：stage 白名单今天已剔除 build/，但白名单被改宽时会静默带上宿主编译产物。
+    assertStagedNodePtyPayload({ nodeModulesTargetDir, target: options.target });
   }
 
   const tools = await copyNativeTools(
@@ -611,6 +614,25 @@ async function pruneKoffiRuntime(
  * darwin/win32 prebuilds，linux 平台从 workspace 的 `@lydell/node-pty-<target>`
  * 补齐（与老远端资产链同一来源）；缺失时直接报错，避免发行包的终端能力必然损坏。
  */
+/**
+ * 发布产物里的 node-pty 载荷必须只有我们验证过的那一份（task-74）。
+ *
+ * 为什么必须：stage 白名单**今天**已剔除 build/（见 isNodePtyRuntimePath 的注释），但白名单一旦被改宽，
+ * 产物就会带上宿主平台编出来的 build/Release/pty.node —— node-pty 的加载顺序是
+ * [build/Release, build/Debug, prebuilds/<platform>-<arch>]（node-pty/lib/utils.js:19），
+ * build/Release 优先于 prebuilds ⇒ 目标机会**静默加载未经我们验证的原生模块**。
+ * 断言实现与原因注释与桌面端共用同一份（单一实现，不复制判断）。
+ */
+export function assertStagedNodePtyPayload(params: {
+  nodeModulesTargetDir: string;
+  target: string;
+}): void {
+  assertPackagedNodePtyPayloadVerified({
+    nodePtyPackageRoot: join(params.nodeModulesTargetDir, "node-pty"),
+    platformKey: params.target,
+  });
+}
+
 async function ensureNodePtyPrebuild(
   options: StageOptions,
   nodeModulesTargetDir: string,
