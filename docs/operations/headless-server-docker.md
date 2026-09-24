@@ -53,21 +53,107 @@ docker run -d --name zcode \
 | `/workspace`               | 工作区（默认工作目录，**挂进来**）                             |
 | `/data`                    | 数据目录（= 容器内的 `~/.zcode`：设置、provider 凭据、任务库） |
 
-镜像以 **非 root** 用户（uid 10001）运行；`ENTRYPOINT` 是 `node /opt/zcode/bin/zcode.mjs`，
-`CMD` 默认 `--web --host 0.0.0.0 --no-open --workspace /workspace`。
+### 3.1 镜像体积（本机实测）
+
+本版镜像**不发布到任何 registry**，需要你自己 `docker build`。构建前先知道它有多大：
+
+| 项                                                       | 实测值                                      |
+| -------------------------------------------------------- | ------------------------------------------- |
+| **最终镜像** `zcode-headless:local`                      | **801 MB**（精确 800,941,581 B）            |
+| 其中：基础镜像 `node:24-slim`                            | 330 MB                                      |
+| 其中：分发包层（`ADD` 自动解包的 tar.gz，解包后 391 MB） | 391 MB（tar.gz 本身 78,754,447 B ≈ 76 MiB） |
+| 其中：非 root 用户与目录初始化                           | 61.4 kB                                     |
+
+**怎么自己量**：
+
+```bash
+docker build -f Dockerfile -t zcode-headless:local --build-arg ZCODE_RELEASE=<版本> dist/zcode
+docker images zcode-headless:local                      # 看 SIZE 列
+docker history zcode-headless:local --format "{{.Size}}\t{{.CreatedBy}}"   # 看逐层构成
+```
+
+**为什么这么大**：镜像里装的是**自包含分发包**（Node 运行时依赖 + agent bundle + web 面板资源 + glibc 版 `node-pty`），
+不是一份薄薄的胶水层 —— 这是"解包即用、不依赖宿主环境"换来的体积。若在意体积，走 npm 形态（不产生镜像层）。
+
+> 数字是**本机实测快照**（`node:24-slim` + `zcode-3.14.3-ce.2.tar.gz`，Linux x64）。
+> 换基础镜像或换分发包版本都会变 —— 按上面的命令自己量，不要把这个数当常量。
+> 镜像以 **非 root** 用户（uid 10001）运行；`ENTRYPOINT` 是 `node /opt/zcode/bin/zcode.mjs`，
+> `CMD` 默认 `--web --host 0.0.0.0 --no-open --workspace /workspace`。
 
 ## 4. 数据在哪（卷）
 
 - **`/data`（named volume `zcode-data`）**：设置、provider 凭据、任务库。**删卷 = 丢配置**。
 - **`/workspace`**：你自己的工作区（bind mount 到你机器上的目录）。
 
-```bash
-docker volume inspect zcode-ce_zcode-data      # 卷的实际位置（用于备份）
-docker run --rm -v zcode-ce_zcode-data:/data -v "$PWD:/backup" alpine \
-  tar czf /backup/zcode-data.tgz -C /data .    # 备份
+容器内的数据根是 **`ZCODE_DATA_BASE_DIR=/data`**（`Dockerfile` 里写死，并带 `VOLUME ["/data"]`）⇒ 业务数据落在 **`/data/.zcode/v2`**。实测的目录形态：
+
+```text
+/data/.zcode/v2/tasks-index.sqlite          # 任务索引（会话列表）
+/data/.zcode/v2/provider_config.json       # provider 配置与凭据
+/data/.zcode/v2/certs/                     # 自签 CA
+/data/.zcode/v2/runtime/                   # 运行时状态
 ```
 
 **不要**把宿主机的 `~/.zcode` 直接挂进 `/data`：那会把宿主的凭据交给容器（见 §8）。
+
+### 4.1 备份与恢复（可照做）
+
+**备份**（先停容器 —— 任务库跑在 WAL 模式，运行中复制会得到撕裂的快照）：
+
+```bash
+docker compose stop                      # ① 先停，保证 WAL 已落盘
+docker volume inspect zcode-ce_zcode-data   # ② 看卷的实际挂载点（可选，用于核对）
+mkdir -p backup
+docker run --rm -v zcode-ce_zcode-data:/data -v "$PWD/backup:/backup" alpine \
+  tar czf /backup/zcode-data.tgz -C /data .  # ③ 打包整个卷
+docker compose start                     # ④ 起回来
+```
+
+> 卷名是 `<compose 项目名>_zcode-data`。本项目目录名不是 `zcode-ce` 时卷名会不同 ——
+> 用 `docker volume ls` 或 `docker compose config --volumes` 确认，别照抄。
+
+**恢复**（三步，顺序不能反）：
+
+```bash
+docker compose down                      # ① 停掉并移除容器（**不要加 -v**，那会删卷）
+docker volume rm zcode-ce_zcode-data     # ② 删掉旧卷（或先改名留底）
+docker volume create zcode-ce_zcode-data
+docker run --rm -v zcode-ce_zcode-data:/data -v "$PWD/backup:/backup" alpine \
+  tar xzf /backup/zcode-data.tgz -C /data   # ③ 还原
+docker compose up -d
+```
+
+**实测**：备份产出 `zcode-data.tgz`（空部署约 24 KB），还原后 `/data/.zcode/v2` 目录结构与权限位完整，服务照常启动、令牌仍有效。
+
+### 4.2 ⚠️ 备份**不可移植到另一台机器**（真实的坑）
+
+**会话与工作区记录里存的是绝对路径。** 任务索引库的 `tasks` / `workspace_registry` 表都有 `workspace_path` 列
+（`packages/services/src/session/tasksDatabase/schema-v1.ts`），存的是**当时那台机器上的绝对路径**，例如：
+
+```text
+/home/alice/projects/api
+/home/alice/.zcode/workspace/default
+```
+
+把这些记录还原到**另一台机器**上时：
+
+- 路径**可能根本不存在**（用户名不同、目录布局不同、容器里的 `/workspace` 与宿主路径不同）；
+- 即使路径存在，也**不保证是同一个项目** —— 服务会把它当成同一个工作区（`workspace_key` 就是路径本身，除非有 `workspaceIdentity`）；
+- 表现是：**列表里出现点不开的工作区**，或**打开后看到的不是原来那个项目**。
+
+⇒ **正确用法**：把备份当作**同一台机器上的灾难恢复**手段（换盘、重装容器、回滚误操作），
+而**不是**迁移工具。跨机器搬数据请连同工作区目录一起搬，并在目标机上用**同样的绝对路径**挂载。
+
+### 4.3 我们**不提供**什么（如实声明）
+
+| 不提供                                  | 说明                                                                                                                                                                                                                                                                                 |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **导出 / 导入**（把数据在机器之间搬运） | 没有这样的命令或界面。备份就是"打包卷"，见 §4.1；跨机搬运的坑见 §4.2                                                                                                                                                                                                                 |
+| **服务端同步 / 多实例共享数据**         | 没有。一个数据目录对应**一个**服务实例；两个实例同时写同一份任务库会互相破坏（WAL 依赖本机文件锁，见 [数据与配置](data-layout.md)）                                                                                                                                                  |
+| **跨版本迁移**                          | 没有迁移工具，也没有降级路径。数据库迁移是**单向**的（`packages/services/src/session/tasksDatabase/migrations.ts` 按 id 显式分派，未知 id 直接抛错），**升级后不要再用旧版本打开同一个数据目录**。跨版本的协议兼容性也未测（见 [网页远控](../development/web-remote-control.md) §8） |
+
+> 与 [数据与配置](data-layout.md) 的口径一致：那里说的"**无需任何迁移**"指的是**改产品身份（ZCode → ZCode-CE）不影响数据路径**，
+> 不是说我们提供跨版本/跨机器的迁移能力。两件事不要混读。
 
 ## 5. 从局域网 / 其它机器访问
 
@@ -136,6 +222,24 @@ docker inspect -f "{{.State.Health.Status}}" zcode-ce-zcode-1   # healthy
 4. 因此 **`-v $HOME:/workspace` 这类整盘挂载会把"边界"直接抹掉** —— 只挂你愿意让 agent 改的那一个目录。
 
 推荐做法：一个项目一个工作区目录；需要更大权限时显式再加一个挂载，而不是整盘挂家目录。
+
+### 8.1 ⚠️ 容器**管不了没挂进去的目录** —— 这是容器边界本身，不是缺陷
+
+最常见的困惑是："agent 在容器里看不到我机器上的某个目录。" 这是**容器的定义**：容器只能看到
+**显式挂进去**的路径。不是配置漏了，也不是 bug —— 换成 Docker 就必然如此。
+
+两条替代路径，按需求选：
+
+| 你的需求                      | 该用哪条                                    | 怎么做                                                                                                                                                                                                                |
+| ----------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 让 agent 管**几个**特定目录   | **① 显式多挂目录**（仍是容器形态）          | 在 `compose.yaml` 的 `volumes:` 下逐条加 `- /宿主机/路径:/workspace/名字`，然后 `docker compose up -d`。一个项目挂一个目录，保持"写范围 = 挂载"这条可审计的边界                                                       |
+| 让 agent 管**主机上任意路径** | **② 用 npm 形态直接在主机上跑**（不要容器） | `npx zcode-ce --web …`（或解包后 `node bin/zcode.mjs --web`，见 [无头服务器](headless-server.md) §3）。它跑在主机上，因此能访问主机的文件系统 —— **代价是失去了容器这层边界**，agent 的写入范围变成服务进程的权限范围 |
+
+**取舍说清**：容器给你的是**可审计的写范围**（= 挂载清单），代价是"没挂的看不见"。
+主机形态给你的是**全盘可达**，代价是 agent 与你的其它进程同权限。**不要**为了图方便用 `-v /:/workspace` 把边界抹掉 ——
+那等于用容器的复杂度换了一个没有边界的运行环境。
+
+> 这条边界与本版已知限制一致（发版说明里也写了同一句）：**容器形态只能管理挂载进去的目录**。
 
 ## 9. 为什么基础镜像必须是 glibc（不能用 Alpine）
 
