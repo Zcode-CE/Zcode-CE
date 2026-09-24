@@ -454,6 +454,10 @@ export function WorkspaceHeaderTitleSection({
             variant="ghost"
             size={compact ? "icon-sm" : "icon-md"}
             data-testid={TID_WORKSPACE_PATH}
+            // 窄屏（手机）收起这个工作区/分支图标：标题簇 [文件夹 28][标题][⋯ 28] 在 360 宽下
+            // 只能把标题压到 58px（阶段 2 §9.3 的遗留项）。工作区名在侧栏、分支名在草稿态
+            // 上下文行都有等价展示；桌面（≥768）逐项不变。
+            className="max-md:hidden"
             aria-label={[workspaceContextLabel, workspaceBranchLabel].filter(Boolean).join(" · ")}
             onClick={() => setWorkspaceContextOpen(true)}
           >
