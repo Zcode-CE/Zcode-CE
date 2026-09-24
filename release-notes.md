@@ -2,6 +2,22 @@
 
 > 本次更新按"你能感知到的变化"组织。
 
+## 同步上游
+
+**本版同步的上游版本**：`v3.14.3`（来源：**开源仓库**；依据：**源码比对**）。
+
+| 条目                                                    | 同步情况                                                                             |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 工作流引擎：续跑确定性修复（重放次序）                  | **已跟进** —— 不修则确定性脚本在续跑后会**静默失败**                                 |
+| 工作流卡片：性能与稳定性建模                            | **已跟进**                                                                           |
+| 工作流失败语义：内容拒收可诊断                          | **已跟进** —— 否则跨版本时会把「版本不匹配」表现成一片网络抖动 + 反复重订阅          |
+| 协议 v4：workflowRuns 扩张（op 5→7、实例上限 256→1024） | **未跟进（有意）** —— 必须整体搬运；当前跨版本互连会表现为内容拒收，见「已知限制」   |
+| IM 机器人（上游称 Bot Channel）                         | **部分跟进** —— 入口与启用流程已提供且**默认关闭**；服务端能力待接入，见「已知限制」 |
+| 云端 relay / 配对服务器 / 移动壳                        | **不适用** —— 实测上游开源版**也不提供**（全仓检索 0 命中）；本项目同样不引入中继    |
+
+**一处与上游不同的选择（有意偏离）**：飞书 SDK 我们钉 **1.74.0**，上游钉 **1.64.0**。
+理由：1.64.0 的两个缺陷正好落在飞书**唯一使用的那条长连接路径**上 —— 一个会**杀掉宿主进程**，一个会**静默丢事件**；两者在 1.74.0 均已修复。
+
 ## 新增功能
 
 - **无头服务器 + 浏览器界面**：自包含发行包（服务端入口 + Agent 运行时 + Web 静态资源 + 启动器）。
@@ -54,29 +70,9 @@
   本项目**不引入中继**：这两条都不依赖任何 ZCode 云服务。
 - **手机窄屏上部分入口换了位置**（例如"切换终端"进入 ⋯ 菜单）——不是功能删除，是为触屏可达。
 
-## 同步上游
-
-> 上游有时只发闭源包、有时更新开源仓库；两者的**确认方式不同**，故逐条标出依据。
-> 本节说明本版**同步了什么**与**有意未同步什么** —— 「未跟进」不等于漏了。
-
-**本版同步的上游版本**：`v3.14.3`（来源：**开源仓库**；依据：**源码比对**）。
-
-| 条目                                                    | 同步情况                                                                             |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| 工作流引擎：续跑确定性修复（重放次序）                  | **已跟进** —— 不修则确定性脚本在续跑后会**静默失败**                                 |
-| 工作流卡片：性能与稳定性建模                            | **已跟进**                                                                           |
-| 工作流失败语义：内容拒收可诊断                          | **已跟进** —— 否则跨版本时会把「版本不匹配」表现成一片网络抖动 + 反复重订阅          |
-| 协议 v4：workflowRuns 扩张（op 5→7、实例上限 256→1024） | **未跟进（有意）** —— 必须整体搬运；当前跨版本互连会表现为内容拒收，见「已知限制」   |
-| IM 机器人（上游称 Bot Channel）                         | **部分跟进** —— 入口与启用流程已提供且**默认关闭**；服务端能力待接入，见「已知限制」 |
-| 云端 relay / 配对服务器 / 移动壳                        | **不适用** —— 实测上游开源版**也不提供**（全仓检索 0 命中）；本项目同样不引入中继    |
-
-**一处与上游不同的选择（有意偏离）**：飞书 SDK 我们钉 **1.74.0**，上游钉 **1.64.0**。
-理由：1.64.0 的两个缺陷正好落在飞书**唯一使用的那条长连接路径**上 —— 一个会**杀掉宿主进程**，一个会**静默丢事件**；两者在 1.74.0 均已修复。
-
 ## 已知限制
 
-- **平台支持（指无头服务器发行包：服务端 + 内置 Agent 运行时 + Web 静态资源）：正式支持 Linux-x64（glibc）**。
-  该发行包的 macOS / Windows 构建未实测，且包内原生载荷只含 Linux ⇒ **不承诺可用**；**桌面客户端与浏览器界面不在这条平台口径内** —— 浏览器界面只需要浏览器，手机与其它系统的浏览器同样可用。
+- **CLI 独立发行包平台支持：正式支持 Linux-x64（glibc）**。该发行包的 macOS / Windows 构建未实测，且包内原生载荷只含 Linux ⇒ **不承诺可用**。
 - **Alpine / musl 不在支持范围**；实测行为是：服务与面板**可以运行**（npm 形态，需自带 **Node ≥24** 的 musl 构建；Alpine 3.24 的 `apk add nodejs` 实测 24.18.1 即满足），**终端功能不可用** —— 会在创建终端时给出明确提示，而不是崩溃。
 - **第三方许可材料：随包通知里仍有部分组件的出版方材料不全** —— 我们按「**发布者声明 + 标准条款 + 已记录的出处**」逐条登记，未闭环的条目在随包的 `THIRD-PARTY-NOTICES.md` 与 `third-party/README.md` 里如实列出（**登记了不等于材料齐全**）。
   顺带修正一处署名：`brotli` 内嵌的 `google/brotli` 解码器是 **Apache-2.0**，此前被我们记为 MIT；本版已补上其版权与许可声明。
@@ -117,6 +113,22 @@
 <!-- Draft: not released — delete this line before tagging. -->
 
 > This release is organised by the changes you can perceive.
+
+## Upstream sync
+
+**Upstream version synced in this release**: `v3.14.3` (source: **open-source repo**; basis: **source comparison**).
+
+| Item                                                                 | Status                                                                                                                                               |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workflow engine: resume determinism fix (replay order)               | **Synced** — without it, deterministic scripts **fail silently** after a resume                                                                      |
+| Workflow cards: performance/stability modelling                      | **Synced**                                                                                                                                           |
+| Workflow failure semantics: diagnosable content rejection            | **Synced** — otherwise a version mismatch surfaces as a burst of network flakiness plus repeated resubscribes                                        |
+| Protocol v4: workflowRuns expansion (5→7 ops, instance cap 256→1024) | **Not synced (deliberate)** — must move as a whole; cross-version interop currently surfaces as content rejection, see Known limitations             |
+| IM bots (upstream calls it Bot Channel)                              | **Partially synced** — entry point and enable flow shipped and **off by default**; server-side capability pending, see Known limitations             |
+| Cloud relay / pairing server / mobile shell                          | **Not applicable** — measured: the upstream open-source repo **does not provide it either** (exhaustive search, 0 hits); this project ships no relay |
+
+**One deliberate divergence from upstream**: we pin the Feishu SDK at **1.74.0** while upstream pins **1.64.0**.
+Reason: two defects in 1.64.0 sit exactly on the **only long-connection path** Feishu uses — one **kills the host process**, one **silently drops events**; both are fixed in 1.74.0.
 
 ## New features
 
@@ -170,29 +182,9 @@
   This project ships **no relay**: neither path depends on any ZCode cloud service.
 - **Some entries moved on narrow screens** (e.g. "switch terminal" into the ⋯ menu) — not a removal, but touch reachability.
 
-## Upstream sync
-
-> Upstream sometimes ships only a closed-source package and sometimes updates the open-source repo; the two require **different levels of confirmation**, so each row states its basis.
-> This section says what was **synced** and what was **deliberately not synced** — "not synced" does not mean "missed".
-
-**Upstream version synced in this release**: `v3.14.3` (source: **open-source repo**; basis: **source comparison**).
-
-| Item                                                                 | Status                                                                                                                                               |
-| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workflow engine: resume determinism fix (replay order)               | **Synced** — without it, deterministic scripts **fail silently** after a resume                                                                      |
-| Workflow cards: performance/stability modelling                      | **Synced**                                                                                                                                           |
-| Workflow failure semantics: diagnosable content rejection            | **Synced** — otherwise a version mismatch surfaces as a burst of network flakiness plus repeated resubscribes                                        |
-| Protocol v4: workflowRuns expansion (5→7 ops, instance cap 256→1024) | **Not synced (deliberate)** — must move as a whole; cross-version interop currently surfaces as content rejection, see Known limitations             |
-| IM bots (upstream calls it Bot Channel)                              | **Partially synced** — entry point and enable flow shipped and **off by default**; server-side capability pending, see Known limitations             |
-| Cloud relay / pairing server / mobile shell                          | **Not applicable** — measured: the upstream open-source repo **does not provide it either** (exhaustive search, 0 hits); this project ships no relay |
-
-**One deliberate divergence from upstream**: we pin the Feishu SDK at **1.74.0** while upstream pins **1.64.0**.
-Reason: two defects in 1.64.0 sit exactly on the **only long-connection path** Feishu uses — one **kills the host process**, one **silently drops events**; both are fixed in 1.74.0.
-
 ## Known limitations
 
-- **Platform support (for the headless server distribution: server + bundled Agent runtime + Web static assets): Linux-x64 (glibc) is the supported one.**
-  macOS / Windows builds of that distribution are untested and its native payloads are Linux-only, so they are **not promised to work**. The **desktop client and the browser UI are not covered by this platform statement** — the browser UI only needs a browser, so phones and browsers on other systems work too.
+- **Platform support for the standalone CLI distribution: Linux-x64 (glibc).** macOS / Windows builds of that distribution are untested and its native payloads are Linux-only, so they are **not promised to work**.
 - **Alpine / musl is outside the supported set.** Measured behaviour: the service and the panel do run (npm form, with a musl build of **Node >= 24** — on Alpine 3.24 `apk add nodejs` yields 24.18.1, which satisfies it), while the **terminal is unavailable** and is refused with an actionable message instead of crashing.
 - **Third-party licence material: some bundled components still lack publisher material** — every such entry is recorded against "**publisher declaration + standard terms + recorded provenance**", and the ones that are not closed are listed honestly in the shipped `THIRD-PARTY-NOTICES.md` and `third-party/README.md` (**being recorded is not a claim that the material is complete**).
   One attribution fix in the same pass: the `google/brotli` decoder vendored inside `brotli` is **Apache-2.0** and had been recorded as MIT; its copyright and licence notice are now included.
