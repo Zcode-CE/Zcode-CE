@@ -44,6 +44,9 @@
 - **鉴权失败开始限流**：同一来源连续 10 次鉴权失败 ⇒ 封禁 15 分钟（返回 403，不是 429）。判断来源时只采信已登记可信代理送来的 `X-Forwarded-For`，未登记 `ZCODE_SERVER_TRUSTED_PROXIES` 时一律按连接来源地址计。
 - **新增审计日志**：连接建立/断开、鉴权失败、Host 与来源拒绝、令牌重载、并发超限都会写一行结构化日志（`audit:` 前缀）。日志不写令牌、cookie、完整查询串与请求体。
 - **并发连接有上限**：同时活跃的 WebSocket 连接最多 32 条，超限时**拒绝新连接**（已有连接不受影响）。
+- **回环绑定不再等于可以关令牌**：以前只有绑非回环才强制令牌；现在只要给出"**会被外部访问**"的信号 —— 登记了可信代理 `ZCODE_SERVER_TRUSTED_PROXIES`，或登记了默认集合之外的主机名 `ZCODE_SERVER_TRUSTED_HOSTS` —— **回环绑定下未配令牌也会拒绝启动**。
+  原因：把回环端口放到同机反向代理或隧道后面时，请求看起来来自本机，令牌关卡会被绕过。只登记跨源来源 `ZCODE_SERVER_TRUSTED_ORIGINS` 时**只告警、不拒绝启动**。判据读**解析后的生效项**：写错的非法值会被丢弃，不算信号（打错字不该让服务起不来）。
+- **分发入口的同一组合在起进程之前就被拒绝**：`zcode --web` 以前会先打印启动横幅、再由服务端报错；现在这类组合在**启动前**就拦下，不会再出现"先看到 running、再被二段错误打断"。
 - **"缺 Origin 就放行"是有意的取舍**：非浏览器客户端（curl、脚本、CLI）不带 `Origin`，一律放行。因此来源校验**不覆盖非浏览器客户端**；DNS 重绑定由 Host 白名单单独挡（见上一条）。反过来，**用 HTTP/1.1 但完全不发 `Host` 的手工探针会被拒绝**（curl 默认会带，不受影响）。
 - **远控面板不是官方那套 relay / Bot Channel**：本项目**不引入中继**，也不做 IM 机器人；面板只提供"扫码 / 在手机浏览器打开链接"这一条**自托管**路径。
 - **手机窄屏上部分入口换了位置**（例如"切换终端"进入 ⋯ 菜单）——不是功能删除，是为触屏可达。
@@ -58,6 +61,7 @@
 - **远程控制（桌面端）本次只到「开服务 + 连接信息」**：已连设备列表与逐设备断开、端口与监听范围选择、令牌轮换入口**尚未提供**（排后续批次）。
 - **桌面端安装包因此增大约 66 MB**（服务端入口 7.2 MB + Web 界面资源 59 MB，已排除 source map）—— 手机扫码打开的就是这份 Web 界面，必须随包。
 - **容器形态只能管理挂载进去的目录**（这是容器边界本身，不是缺陷）：需要主机全盘访问时，用 npm 形态直接在主机上运行。
+- **Docker 镜像约 801 MB**（基础镜像 `node:24-slim` 330 MB + 分发包 391 MB；换 Node 版本或分发内容会变）。
 - 与上一版相同（Windows 构建未签名、Windows / macOS 未在真机做完整功能回归、Linux 桌面自动化为实验性等），本批**未新增**其他长期限制。
 
 ## 本版尚未验证
@@ -131,6 +135,9 @@
 - **Failed authentication is now rate limited**: 10 failed attempts in a row from one source ⇒ a 15-minute ban (returns 403, not 429). The client address is taken from `X-Forwarded-For` only when the request comes from a declared trusted proxy (`ZCODE_SERVER_TRUSTED_PROXIES`); otherwise the connection's own address is used.
 - **New audit log**: connection open/close, failed authentication, Host and origin rejections, token reloads, and connection-limit rejections each write one structured line (prefix `audit:`). Tokens, cookies, full query strings, and request bodies are never written.
 - **Concurrent connections are capped**: at most 32 WebSocket connections can be active at once; beyond that **new connections are rejected** (existing ones are unaffected).
+- **A loopback bind no longer means you can turn the token off**: previously only a non-loopback bind forced a token; now, as soon as you give a "this will be reachable from outside" signal — a registered trusted proxy (`ZCODE_SERVER_TRUSTED_PROXIES`) or a registered hostname outside the default set (`ZCODE_SERVER_TRUSTED_HOSTS`) — a **loopback bind without a token also refuses to start**.
+  Reason: when a loopback port is put behind an on-host reverse proxy or tunnel, requests look local and the token gate is bypassed. Registering only cross-origin sources (`ZCODE_SERVER_TRUSTED_ORIGINS`) **warns but does not refuse to start**. The judgement reads **effective entries after parsing**: malformed values are dropped and do not count as a signal (a typo should not stop the service from starting).
+- **The distribution entry point refuses the same combinations before starting the process**: `zcode --web` used to print the startup banner first and let the server report the error afterwards; these combinations are now rejected **before startup**, so you no longer see "running" followed by a second-stage failure.
 - **"No Origin ⇒ allow" is a deliberate trade-off**: non-browser clients (curl, scripts, CLI) send no `Origin` and are always allowed. The origin check therefore **does not cover non-browser clients**; DNS rebinding is blocked separately by the Host allowlist (previous item). Conversely, **a manual probe that uses HTTP/1.1 but sends no `Host` at all is rejected** (curl sends one by default, so it is unaffected).
 - **The remote-control panel is not the official relay / Bot Channel**: this project ships **no relay** and **no IM bots**; the panel offers only the **self-hosted** "scan the code / open the link on your phone" path.
 - **Some entries moved on narrow screens** (e.g. "switch terminal" into the ⋯ menu) — not a removal, but touch reachability.
@@ -145,6 +152,7 @@
 - **Remote control (desktop) stops at "start the service + connection info" in this release**: the connected-device list with per-device disconnect, port/listen-scope selection and a token-rotation entry point are **not provided yet** (later batches).
 - **The desktop installer therefore grows by about 66 MB** (7.2 MB server entry + 59 MB web UI assets, source maps excluded) — the web UI is what a phone opens after scanning, so it has to ship inside the app.
 - **In container form only mounted directories can be managed** (that is the container boundary itself, not a defect): for full host-disk access, run the npm form directly on the host.
+- **The Docker image is about 801 MB** (base image `node:24-slim` 330 MB + distribution 391 MB; it changes with the Node version or distribution contents).
 - Unchanged from the previous version (unsigned Windows build, no full on-device regression on Windows/macOS, experimental Linux desktop automation, …); this batch adds **no** other long-term limitations.
 
 ## Not verified in this release
