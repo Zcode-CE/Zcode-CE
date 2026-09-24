@@ -17,6 +17,7 @@ import {
   type StepRunStatus,
   type WorkflowCausalityGraphData,
 } from "@/components/workflow-graph/types.js";
+import { sharedTimelineModel } from "./timeline-cache.js";
 import {
   assignAirLanes,
   bandOf,
@@ -251,7 +252,18 @@ function siteIdsOf(steps: readonly WorkflowCausalityGraphData["steps"][number][]
   return new Set(steps.map((step) => step.source ?? step.id));
 }
 
-export function buildWorkflowTimeline(
+/**
+ * 一个模型，三处消费（不变式 1）：卡、详情页与侧栏清单在同一帧里拿到**同一个**模型对象，
+ * 按 (graph, run) 的对象身份记忆——为什么身份是正确的键见 `timeline-cache.ts`。模型是只读的，
+ * 没有消费者改它，所以共享顺带也是引用稳定性的来源。
+ */
+export const buildWorkflowTimeline = (
+  input: WorkflowCausalityGraphData,
+  run: WorkflowRunState | undefined,
+): WorkflowTimelineModel =>
+  sharedTimelineModel(input, run, () => computeWorkflowTimeline(input, run));
+
+function computeWorkflowTimeline(
   input: WorkflowCausalityGraphData,
   run: WorkflowRunState | undefined,
 ): WorkflowTimelineModel {
