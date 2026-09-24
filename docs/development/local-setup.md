@@ -122,6 +122,9 @@ curl -s -o /dev/null -w 'api-token %{http_code}\n'    "http://<HOST>:3030/api/se
 - 令牌是**静态共享密钥**：更换令牌会让所有已配对设备失效，且当前没有按设备吊销、没有配对二维码、没有会话列表。需要的场景请参考 `.reverse/40-remote-control/SECURITY-SERVER-DEFAULTS.md` 与 `REMOTE-CONTROL-REVIVAL.md` 里的分档方案。
 - 静态资源不受令牌保护（浏览器要先拿到 SPA 才能进入鉴权流程）；未授权者能读到前端代码与版本信息，但读不到会话数据（会话数据全部经 `/api` 与 `/ws`）。
 - 反代场景依赖 `X-Forwarded-Proto`：该头可被伪造，但伪造只会让 cookie 多一个 `Secure`（明文 http 下不会被回发），不会造成提权。
+- **`X-Forwarded-For` 目前也被无条件信任**（用作对端地址的日志与告警；取首跳）：因此**不要**把 XFF 当准入或限流判据。
+  反代应**覆写**该头（nginx 用 `$remote_addr`），不要用追加形式。细节与"可信代理"改造计划见
+  [headless-server-reverse-proxy.md](../../docs/operations/headless-server-reverse-proxy.md) §3。
 
 ### 暴露面告警（非回环监听 / 明文 http）
 

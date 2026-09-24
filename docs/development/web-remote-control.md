@@ -183,11 +183,12 @@ cd packages/server && node --import tsx --test test/webOriginGuard.test.ts
 1. **非回环必须令牌**：服务端对「非回环 + 无 token」拒绝启动（`packages/server/src/http.ts` 的 `assertListenSecurity`）；分发 runner 在参数解析阶段就拒绝该组合。**不要**用「反正内网」当理由关掉令牌。
 2. **不要在明文 http 上跨不可信网络暴露**：令牌走查询串（会进浏览器历史）、cookie 默认没有 `Secure`（除非是 https/反代）。跨公网必须 **TLS 终结在隧道或反代**（`X-Forwarded-Proto: https` 会让 cookie 带 `Secure`）。
 3. **推荐的三条路**（与 `docs/development/local-setup.md` 同口径）：① 只在本机（127.0.0.1）；② 私网/SSH 隧道（`ssh -N -L 3030:127.0.0.1:3030 <主机>`）—— 无需证书；③ TLS 反代（Caddy 两行）后仅让反代监听对外。
-4. **本仓库不托管任何中继/云服务**：没有配对服务器、没有二维码分发服务、没有官方 relay（0 命中）。网络可达性完全由用户自己的私网/隧道/反代提供。
-5. **跨站面已加固**：来源校验与安全响应头见 §4 —— 它不是可选项。公网暴露时**必须**同时满足
+4. **反代部署细节**（Host 白名单现状与缺口、只支持挂在域名根、WebSocket 升级转发、`X-Forwarded-Proto`/`X-Forwarded-For` 的真实语义、Caddy/nginx 最小配置）见 [headless-server-reverse-proxy.md](../../docs/operations/headless-server-reverse-proxy.md)。
+5. **本仓库不托管任何中继/云服务**：没有配对服务器、没有二维码分发服务、没有官方 relay（0 命中）。网络可达性完全由用户自己的私网/隧道/反代提供。
+6. **跨站面已加固**：来源校验与安全响应头见 §4 —— 它不是可选项。公网暴露时**必须**同时满足
    「非回环 + 令牌」（第 1 条）与「来源校验未被绕过」（§4；反代放在另一个域名时用
    `ZCODE_SERVER_TRUSTED_ORIGINS` 显式登记），两者是并列的两道闸。
-6. **公网暴露风险自担**：令牌截至目前仍是静态共享密钥、无设备级吊销、**无速率限制**
+7. **公网暴露风险自担**：令牌截至目前仍是静态共享密钥、无设备级吊销、**无速率限制**
    （限流与令牌轮换是下一批 A-2 的任务，尚未落地）；暴露到公网等于把「执行命令的能力」挂在一个单密钥上。
 
 ---

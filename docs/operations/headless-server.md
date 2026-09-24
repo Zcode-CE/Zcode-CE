@@ -83,6 +83,8 @@ node bin/zcode.mjs --web [--host <host>] [--port <port>] [--workspace <path>] \
 | SSH 隧道 | `ssh -N -L 3030:127.0.0.1:3030 <主机>` 后本地浏览器访问 | 跨机使用，无需证书 |
 | TLS 反代 | Caddy/nginx 终结 TLS，只让反代对外                      | 手机/团队长期使用  |
 
+> **放到反代 / TLS 之后的具体做法（Host 白名单现状、只支持挂域名根、可信代理与 `X-Forwarded-*` 的真实语义、Caddy/nginx 最小配置）见 [headless-server-reverse-proxy.md](./headless-server-reverse-proxy.md)。**
+
 ---
 
 ## 5. 凭据与数据目录
