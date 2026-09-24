@@ -60,7 +60,7 @@ ZCode-CE 基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0�
 
 其余未提供的能力及其原因见[与官方发行版的差异](docs/development/official-diff.md)。
 
-**CLI/Web 发行包目前支持 Linux-x64（glibc）**：Alpine / musl 不在本版范围（实测：glibc 载荷在纯 Alpine 上启动失败，即使换成 musl 版 Node，终端功能也会让进程崩溃）；Windows / macOS 需按目标平台构建并补齐原生载荷与终端后端（conpty），另需为 Windows 提供令牌轮换的替代通道（Windows 没有 `SIGHUP`）。支持边界见[无头服务器文档](docs/operations/headless-server.md)（跨平台与 libc 都不在本版范围）。
+**CLI/Web 发行包目前支持 Linux-x64（glibc）**：Alpine / musl **不在正式支持范围**；实测在 Alpine 上装满足 `engines` 的 musl 版 **Node ≥24** 后，**服务与面板可用**，**终端功能不可用**（会给出明确提示，而不是崩溃）。Windows / macOS 需按目标平台构建并补齐原生载荷与终端后端（conpty），另需为 Windows 提供令牌轮换的替代通道（Windows 没有 `SIGHUP`）。支持边界见[无头服务器文档](docs/operations/headless-server.md)。
 
 ## 安装
 

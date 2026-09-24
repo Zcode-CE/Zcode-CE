@@ -60,7 +60,7 @@ The official distribution ships the following capabilities without their source.
 
 For every capability this build does not provide, and why, see [Differences from the official distribution](docs/development/official-diff.md).
 
-**The CLI/Web distribution currently supports Linux-x64 (glibc)**: Alpine / musl is out of scope for this release (measured: the glibc payload fails to start on plain Alpine, and even with a musl Node the terminal feature crashes the process). Windows / macOS need a per-target build plus that platform's native payloads and a terminal backend (conpty), and Windows needs an alternative to `SIGHUP` for token rotation. See the [headless server docs](docs/operations/headless-server.md) for the support boundary (neither cross-platform nor non-glibc libc is in scope for this release).
+**The CLI/Web distribution currently supports Linux-x64 (glibc)**: Alpine / musl is **not in the supported set**. Measured: with a musl build of **Node ≥24** (our `engines` floor) the **service and panel work**, while the **terminal feature is unavailable** — it reports a clear message instead of crashing. Windows / macOS need a per-target build plus that platform's native payloads and a terminal backend (conpty), and Windows needs an alternative to `SIGHUP` for token rotation. See the [headless server docs](docs/operations/headless-server.md) for the support boundary.
 
 ## Install
 
