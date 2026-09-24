@@ -172,11 +172,20 @@ electron-builder 会为每个平台生成更新清单与差分块，**必须一�
 
 ### 1. 确认版本号
 
-版本号只有一个权威来源 —— 根 `package.json` 的 `version`。改这一处即可，
-其余位置在构建期自动同步（见上文「版本号的来源与传播」）。
+版本号只有一个权威来源 —— 根 `package.json` 的 `version`。其余位置在构建期自动同步
+（见上文「版本号的来源与传播」），但有**一处例外必须同批提交**：根 `package.json` 同时是
+随包许可声明（`THIRD-PARTY-NOTICES.md` 与 `third-party/inventory.json`）的**注册输入**之一，
+改版本号会让许可门禁立刻失败：
+
+```text
+Error: Third-party input changed: package.json. Run node scripts/licenses.mjs notices
+```
+
+⇒ 版本号变更必须与重生成通知放进**同一个提交**，否则 CI 会在 tag 上红在这一步：
 
 ```bash
-node -e "console.log(require('./package.json').version)"
+node -e "console.log(require('./package.json').version)"  # 确认改完之后的版本号
+pnpm licenses:notices   # 重新生成 THIRD-PARTY-NOTICES.md 与 third-party/inventory.json，随版本号一并提交
 ```
 
 ### 2. 本地预检
@@ -188,6 +197,7 @@ pnpm fmt:check
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm licenses:check
 ```
 
 > `pnpm licenses:check` 的 `--strict` 模式**当前不通过**，基础检查通过不代表合规完成。
