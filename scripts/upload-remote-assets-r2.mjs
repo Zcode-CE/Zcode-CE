@@ -86,13 +86,38 @@ function contentTypeFor(key) {
   return "application/octet-stream";
 }
 
+const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
+
+/**
+ * 带重试的 fetch：**网络异常**（DNS/TCP/TLS 抖动、代理瞬断）重试，HTTP 状态不重试。
+ *
+ * 为什么必须有：2026-09-24 实测一次完整上传里，72 个对象的自检有 2 个抛 `fetch failed`，
+ * 而这两个对象用 curl 与 Node fetch 各复测都是 200 —— 是**瞬时网络抖动**。当时自检把它当硬失败，
+ * 于是「上传全部成功」被报成 `exit 1`，正是最难排查的那类假信号。
+ */
+const FETCH_RETRY_DELAYS_MS = [1000, 3000];
+async function fetchWithRetry(url, init) {
+  let lastError;
+  for (let attempt = 0; attempt <= FETCH_RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await fetch(url, init);
+    } catch (error) {
+      lastError = error;
+      if (attempt < FETCH_RETRY_DELAYS_MS.length) await sleep(FETCH_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+  throw lastError;
+}
+
 /** 远端是否已有该 key（只读，Class B）。没有 --public-base-url 时无从判断，返回 false。 */
 async function remoteExists(key) {
   if (!publicBaseUrl) return false;
   try {
-    const response = await fetch(`${publicBaseUrl}/${key}`, { method: "HEAD" });
+    const response = await fetchWithRetry(`${publicBaseUrl}/${key}`, { method: "HEAD" });
     return response.status === 200;
   } catch {
+    // 重试后仍不可达：当作「未确认」并继续上传 —— 内容寻址的同名对象内容一致，重传是幂等的，
+    // 比因为网络抖动而跳过更安全。
     return false;
   }
 }
@@ -200,20 +225,32 @@ async function main() {
   // 上传后自检：给 --public-base-url 时逐个 HEAD，确保「上传成功」与「CDN 可取」一致。
   if (publicBaseUrl) {
     let bad = 0;
+    let unverifiable = 0;
     for (const key of keys) {
       try {
-        const response = await fetch(`${publicBaseUrl}/${key}`, { method: "HEAD" });
+        const response = await fetchWithRetry(`${publicBaseUrl}/${key}`, { method: "HEAD" });
         if (response.status !== 200) {
           bad += 1;
           console.error(`  BAD ${response.status} ${key}`);
         }
       } catch (error) {
-        bad += 1;
-        console.error(`  BAD fetch ${key}: ${error.message}`);
+        // **网络错误 ≠ 对象不可取**：重试后仍不可达只能记「未确认」，不能当硬失败 —— 否则一次网络抖动
+        // 就会把「上传全部成功」报成失败（2026-09-24 实测踩到）。如实报出来，让人重跑一次确认。
+        unverifiable += 1;
+        console.warn(
+          `  UNVERIFIED ${key}: ${error.message}（已重试 ${FETCH_RETRY_DELAYS_MS.length + 1} 次仍不可达）`,
+        );
       }
     }
+    if (unverifiable > 0) {
+      console.error(
+        `[r2] ⚠️ ${unverifiable}/${keys.length} 个对象因**网络错误未能确认**（不是 404，不代表对象缺失）—— 请重跑一次自检确认`,
+      );
+    }
     if (bad > 0) {
-      console.error(`[r2] 自检失败：${bad}/${keys.length} 个对象在 ${publicBaseUrl} 上不可取`);
+      console.error(
+        `[r2] 自检失败：${bad}/${keys.length} 个对象在 ${publicBaseUrl} 上确实不可取（HTTP 非 200）`,
+      );
       process.exit(1);
     }
     console.log(`[r2] 自检通过：${keys.length} 个对象在 ${publicBaseUrl} 上全部 200`);
