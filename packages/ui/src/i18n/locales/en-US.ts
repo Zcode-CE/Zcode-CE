@@ -1372,11 +1372,78 @@ const enUS: Record<string, string> = {
   "workspaceSidebar.showSidebar": "Toggle sidebar",
   "workspaceSidebar.hideSidebar": "Toggle sidebar",
   "workspaceSidebar.toggleSidebar": "Toggle sidebar",
-  // Remote-control entry (ce.3 · slice 1): entry-status keys only; panel keys come later.
+  // Remote control (ce.3 · slice 1 entry / slice 3 panel). Copy follows spec §3.6.1: short phrases.
+  // Wording red line: this opens a browser-reachable workbench **on this machine**; it is NOT
+  // "control the desktop app / take over the desktop session" — remote SSH/Docker targets the
+  // desktop already has are not shared with the browser, so the UI must not promise them.
   "remotePanel.entry.title": "Remote control",
   "remotePanel.entry.status.off": "Off",
   "remotePanel.entry.status.running": "Running",
   "remotePanel.entry.status.waiting": "Waiting for connection",
+  "remotePanel.title": "Remote control",
+  "remotePanel.subtitle": "Scan or open the link to use the workbench on this machine",
+  "remotePanel.badge.stopped": "Off",
+  "remotePanel.badge.stale": "Stopped",
+  "remotePanel.badge.starting": "Starting",
+  "remotePanel.badge.running": "Running",
+  "remotePanel.badge.stopping": "Stopping",
+  "remotePanel.badge.untrusted": "Not adopted",
+  "remotePanel.badge.failed": "Failed to start",
+  "remotePanel.advice.stopped":
+    "Turn it on and other devices can reach this machine's workbench in a browser.",
+  "remotePanel.advice.stale": "The previous service is gone. You can turn it on again.",
+  "remotePanel.advice.stale.pidDead":
+    "The previous service process exited. You can turn it on again.",
+  "remotePanel.advice.stale.portClosed": "The previous service is gone. You can turn it on again.",
+  "remotePanel.advice.stale.probeTimeout":
+    "Something is on that port but not responding. Turn it on again, or check the port first.",
+  "remotePanel.advice.starting": "Starting…",
+  "remotePanel.advice.stopping": "Stopping…",
+  "remotePanel.advice.running": "Open the link in a browser to use this machine's workbench.",
+  "remotePanel.advice.running.adopted":
+    "A workbench is already running on this machine; showing it here.",
+  "remotePanel.advice.untrusted":
+    "Another service owns that port, so it was not adopted. Try another port.",
+  "remotePanel.advice.failed": "Failed to start. Retry, or check the logs.",
+  "remotePanel.advice.failed.portTaken": "That port is already in use. Try another port.",
+  "remotePanel.advice.failed.spawnFailed":
+    "The service process could not start. Check the logs and retry.",
+  "remotePanel.advice.failed.probeTimeout":
+    "The service was not ready in time. Retry, or check the logs.",
+  "remotePanel.advice.failed.tokenUnreadable":
+    "The token file could not be read. Check its permissions and retry.",
+  // Wording fix after this batch's server hardening: do NOT offer "this machine only" as the
+  // no-token fallback — with trusted-proxy/registered-host signals present, loopback binding is
+  // refused too (packages/server/src/exposureGate.ts), so that would promise a way out that
+  // does not exist.
+  "remotePanel.advice.failed.nonLoopbackWithoutToken":
+    "Without a usable token it cannot listen beyond this machine. Restore the token file, or find out why it is empty.",
+  "remotePanel.action.none": "Unavailable",
+  "remotePanel.action.start": "Turn on",
+  "remotePanel.action.stop": "Stop",
+  "remotePanel.action.retry": "Retry",
+  "remotePanel.action.retryOtherPort": "Retry on another port",
+  "remotePanel.action.copyLink": "Copy link",
+  "remotePanel.action.copied": "Copied",
+  "remotePanel.action.copyFailed": "Copy failed",
+  "remotePanel.connection.title": "How to connect",
+  "remotePanel.connection.audience": "Phones and computers",
+  "remotePanel.connection.linkPending": "Preparing the link…",
+  "remotePanel.qr.alt": "Remote control QR code",
+  "remotePanel.qr.fallback": "Can't scan? Use the link",
+  "remotePanel.safety.title": "Safety",
+  "remotePanel.safety.lanExposure":
+    "Listening on the local network: anyone on the same network can try to connect. The token is the only barrier.",
+  "remotePanel.safety.tokenIsTheOnlyBarrier":
+    "The token is agent-level access: it can run commands and read or write files on this machine.",
+  "remotePanel.safety.linkIsCredential":
+    "The link and QR code are credentials themselves. Do not share them publicly or send screenshots.",
+  "remotePanel.safety.plainHttp":
+    "Plain http is for trusted local networks only; put TLS or a tunnel in front for anything wider.",
+  "remotePanel.confirm.startLan.title": "Listen on the local network?",
+  "remotePanel.confirm.startLan.body":
+    "Once on, anyone on the same network can try to connect to the workbench on this machine.\nThe token is the only barrier: whoever has it can run commands and read or write files on this machine.",
+  "remotePanel.confirm.startLan.continue": "Continue",
   "workspaceSidebar.resizeSidebar": "Resize sidebar",
   "workspaceSidebar.toggleArchivedTasks": "Archived",
   "workspaceSidebar.showFileTree": "Show files",

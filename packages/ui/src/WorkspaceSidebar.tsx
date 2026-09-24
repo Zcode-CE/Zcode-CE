@@ -114,6 +114,7 @@ import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import { WorkspaceFileTree } from "@/WorkspaceFileTree.js";
 import { WorkspaceArchivedTasksFlatSection } from "@/WorkspaceArchivedTasksFlatSection.js";
 import { WorkspaceSidebarFooter } from "@/WorkspaceSidebarFooter.js";
+import { canRenderRemoteControlPanel } from "@/remoteControlPanelModel.js";
 import { WorkspacePinnedTasksSection } from "@/WorkspacePinnedTasksSection.js";
 import { WorkspaceTimelineTasksSection } from "@/WorkspaceTimelineTasksSection.js";
 import { WorkspaceGroupedTasksSection } from "@/WorkspaceGroupedTasksSection.js";
@@ -1803,9 +1804,16 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
           </div>
 
           <WorkspaceSidebarFooter
-            // 远控入口（ce.3 · 切片 1）：状态由 props 注入。当前还没有状态源（后端契约接线在切片 4），
-            // 因此这里固定传 off、onOpen 先留空动作 —— 切片 4 会换成 webService:status 与打开面板。
-            remoteControlEntry={{ status: "off", onOpen: () => {} }}
+            // 远控入口（ce.3 · 切片 1 入口 / 切片 3 能力门）：状态由 props 注入。
+            // **能力缺失 ⇒ 不渲染**（spec §3.2 规则②）：Web 客户端没有 webService:start|stop
+            // 这条服务面通道（契约 §5），所以整个入口在 DOM 里**不存在**，而不是渲染成禁用按钮。
+            // 判定所有者是 model 的 canRenderRemoteControlPanel，此处只提供能力事实。
+            // 状态源与「打开面板」留给切片 4 接线（当前仍是 off + 空动作）。
+            remoteControlEntry={
+              canRenderRemoteControlPanel({ servicePlane: isDesktop === true })
+                ? { status: "off", onOpen: () => {} }
+                : undefined
+            }
             className="pr-3"
             theme={theme}
             localeMenuValue={localeMenuValue}
