@@ -160,7 +160,7 @@ node bin/zcode.mjs --web [--host <host>] [--port <port>] [--workspace <path>] \
 ### 7.2 Docker
 
 1. **确定镜像名**：建议 `ghcr.io/<你的 org>/zcode-ce-server`（走 GitHub Container Registry 可复用 `GITHUB_TOKEN`，无需额外账号）。
-2. **镜像构建**：以 `dist/zcode/` 为上下文的多阶段 Dockerfile：基础镜像 `node:24-slim`（或 `node:22-slim`），
+2. **镜像构建**：以 `dist/zcode/` 为上下文的多阶段 Dockerfile：基础镜像 `node:24-slim`（或 `node:22-slim`）—— 这两个都是 Debian/glibc；**不要**换成 `alpine` 基础镜像（会掉进同一条：包内原生载荷无 musl 变体，实测进程起不来 / 终端段错误，见 §10），
    `COPY . /opt/zcode`，`ENV ZCODE_DATA_BASE_DIR=/data`，`VOLUME /data`，`EXPOSE 3030`，
    `ENTRYPOINT ["node","/opt/zcode/bin/zcode.mjs"]`，默认 `CMD ["--web","--host","0.0.0.0","--no-open","--token",""]`（令牌必须由运行方通过 env/参数注入，**不要**打进镜像）。
 3. **凭据**：ghcr 用内置 `GITHUB_TOKEN`（需 `packages: write` 权限）；若推别的 registry，加 `REGISTRY_USERNAME`/`REGISTRY_TOKEN` secrets。
@@ -186,7 +186,7 @@ node scripts/zcode-distribution-smoke.mjs dist/zcode/releases/*.tar.gz
 **发布前最低判据**：`node bin/zcode.mjs --help` 与 `node bin/zcode.mjs --version` 都必须**退出码 0**（用户形态的第一步；比 smoke 更快）。
 
 smoke 在**隔离目录**里解包并驱动这个包：TUI 导入、`--web` 起服务、`/` 壳、`/api/server-info`、
-WebSocket、优雅退出；失败即非零退出。本版实测（3.14.3-ce.2，Linux x64）：
+WebSocket、优雅退出；失败即非零退出。本版实测（3.14.3-ce.2，Linux x64，**glibc 发行版**）：
 
 ```text
 {"version":"3.14.3-ce.2","platform":"linux","arch":"x64",
@@ -219,6 +219,7 @@ smoke-exit=0
 
 - **未对外发布**：本仓库的发布流水线目前只**构建 + 冒烟 + 挂 workflow artifact**，不发布到 npm/Docker（§7 是已批准但未执行的清单）。
 - **依赖载荷托管位置未定**：`--base-url` 指向的依赖由部署方决定；本仓库不提供默认值。
+- **本机路径没有 libc 运行时守卫**：本版**只支持 glibc 发行版**（见 §10 的 `Alpine / musl` 一行）。远端工作区在连接时会先判 libc 并拦断；**本机**（CLI / 无头 server）目前没有这条检查，在 musl 上会以 loader 报错或段错误的形式失败。
 - **Docker / WSL 作为承载环境未实测**；只在 Linux 上验证。
 - **令牌无吊销/无速率限制**：公网暴露风险自担（§4）。
 - **手机 + 桌面同时连同一会话的并发语义未测**（见 [web-remote-control.md](../development/web-remote-control.md) §8）。
@@ -229,12 +230,19 @@ smoke-exit=0
 
 | 平台                    | 能构建                                                   | 能启动 `--web`            | 能连面板  | 终端功能                                             | 令牌轮换（`SIGHUP`）      |
 | ----------------------- | -------------------------------------------------------- | ------------------------- | --------- | ---------------------------------------------------- | ------------------------- |
-| **Linux-x64**           | ✅ 已实测                                                | ✅ 已实测                 | ✅ 已实测 | ✅ 已实测                                            | ✅ 已实测                 |
+| **Linux-x64（glibc）**  | ✅ 已实测                                                | ✅ 已实测                 | ✅ 已实测 | ✅ 已实测                                            | ✅ 已实测                 |
+| **Alpine / musl**       | ❌ **不成立**（实测）                                    | ❌ **不成立**（实测）     | —         | ❌ **不成立**（实测）                                | ❌ **不成立**（实测）     |
 | Linux-arm64             | 推断                                                     | 推断                      | 推断      | 推断                                                 | 推断                      |
 | macOS-x64 / arm64       | **未知**（未在 mac 上构建过）                            | 推断（`node-pty` 懒加载） | 推断      | **需改**：包内没有 darwin 原生载荷                   | 推断可用（mac 有 SIGHUP） |
 | **Windows-x64 / arm64** | **未知**（`install.sh` 是 POSIX 脚本 ⇒ 只能走 npm 形态） | 推断                      | 推断      | **需改**：无 win32 原生载荷 + 服务端终端是 Unix 形态 | ❌ **不成立**（见下）     |
 
-证据：`node-pty` 上游发 5 个平台的预编译，而**我们的包内只保留 Linux**（构建按当前平台裁剪）；远程工作区组件清单也只有 `linux-x64/arm64` + `darwin-x64/arm64` —— 那属于**远程工作区运行时**，与本机 CLI 的原生依赖是两件事。核实方式：看构建期裁剪原生载荷的脚本 `packages/desktop/scripts/node-pty-package-assets.mjs`（它按当前平台拷贝预编译产物），以及本页 §10 的支持矩阵。
+证据：`node-pty` 上游发 5 个平台的预编译，而**我们的包内只保留 Linux（glibc）**（构建按当前平台裁剪）；远程工作区组件清单也只有 `linux-x64/arm64` + `darwin-x64/arm64` —— 那属于**远程工作区运行时**，与本机 CLI 的原生依赖是两件事。
+
+**musl 为什么不在范围（三条上游事实，不是我们的取舍）**：① 上游 `node-pty` 的预编译**没有 musl 变体**（只有 glibc 的 `linux-x64`/`linux-arm64` 等）；② 官方发行版的资产集同样只有 `platformArch` 维度、**没有 `-musl` 平台类**，其 Linux 侧原生载荷是单份 glibc 二进制；③ 官方对「没有该平台预编译」的处置只是终端不可用，用户看不到 libc 层面的说明。⇒ 因此本版把 `Alpine / musl` 明确列为**不成立**，而不是「未实测」。
+
+**实测现象（在 `alpine:3.20` 容器里跑本仓载荷，2026-09-24）**：直接执行 glibc 的 `node` 载荷 → `sh: …: not found`（缺 `/lib64/ld-linux-x86-64.so.2`）；装 `gcompat`+`libstdc++` 后 → `Error relocating … fcntl64: symbol not found`，退出码 **127**；改用 Alpine 自带的 **musl node** 启动，`pty.node` 能被装载，但**建终端时进程段错误**（`Segmentation fault`，退出码 **139**）。所以这两条路径都不是「功能少一点」，而是**用不了**。
+
+**远端工作区另有一套守卫**：远端必须是 glibc，连接时在部署资产之前就拦断 —— 口径见 [remote-workspace.md §7](../development/remote-workspace.md) 第 8 条；本页讲的是**本机**（CLI / 无头 server）这条路径，今天没有运行时守卫，只能靠本文档说清。核实方式：看构建期裁剪原生载荷的脚本 `packages/desktop/scripts/node-pty-package-assets.mjs`（它按当前平台拷贝预编译产物），以及本页 §10 的支持矩阵。
 
 ### 10.1 ⚠️ Windows 上没有 SIGHUP（**照抄 `kill -HUP` 会打死服务**）
 
