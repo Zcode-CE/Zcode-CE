@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -30,9 +31,32 @@ const runnerSource = join(repoRoot, "scripts/zcode-distribution/runner.mjs");
  * 它们必须和 runner 一起进入 `bin/`：runner 现在 `import "./runner-*.mjs"`，漏拷任何一个都会让
  * 入口启动即 `ERR_MODULE_NOT_FOUND` —— 这正是分发打包必须同步修改的那一处
  * （`scripts/build-zcode.mjs` 里逐个 cp）。夹具按**发行布局**复制，所以这里也必须跟。
- * 若新增旁路模块：改 build-zcode.mjs 与这里两处，否则本文件会以"缺模块"的形式立刻变红。
+ *
+ * **task-61 F2：清单不再在这里手写第三份，而是从 `build-zcode.mjs` 的拷贝循环现读**（单一真相源）。
+ * 起因：此前打包清单与这里的清单各写一份、无交叉校验 ⇒ 只改 runner 的 import 而漏改拷贝清单时
+ * PR 仍然全绿，包却缺文件。现在打包清单是唯一真相源，另有一条断言把「拷贝清单 ↔ runner 的真实 import」
+ * 钉成集合相等（见文件末尾的用例）。
  */
-const RUNNER_SIDECAR_MODULES = ["runner-usage.mjs", "runner-config.mjs", "runner-web.mjs"];
+function readPackagingSidecarModules() {
+  const buildScriptPath = join(repoRoot, "scripts/build-zcode.mjs");
+  const source = readFileSync(buildScriptPath, "utf8");
+  const arrayLiteral = source.match(/for \(const sidecar of \[([^\]]*)\]/u);
+  assert.ok(
+    arrayLiteral,
+    `${buildScriptPath} 里找不到旁路模块拷贝循环（for (const sidecar of [...])）：` +
+      "要么循环被改写，要么打包清单被挪走；本护栏无法确认清单，必须人工修好",
+  );
+  const names = [...arrayLiteral[1].matchAll(/["'](runner-[a-z-]+\.mjs)["']/gu)].map(
+    (match) => match[1],
+  );
+  assert.ok(
+    names.length > 0,
+    `${buildScriptPath} 的旁路模块拷贝清单解析为空：解析器失效时不能让下面的集合相等断言空转`,
+  );
+  return names;
+}
+
+const RUNNER_SIDECAR_MODULES = readPackagingSidecarModules();
 
 async function createDistributionFixture() {
   const directory = await mkdtemp(join(tmpdir(), "zcode-runner-guard-"));
@@ -123,6 +147,33 @@ test("分发 runner：非回环 + 显式 token 仍然合法", async () => {
     assert.match(output, PASSED_VALIDATION);
   } finally {
     await rm(directory, { recursive: true, force: true });
+  }
+});
+
+/**
+ * task-61 F2：把「打包拷贝清单」与「runner 的真实 import」钉成集合相等。
+ * 反向验证过：从 build-zcode.mjs 的拷贝清单里删掉任一项，这条用例立刻变红（其余 5 条仍绿）。
+ */
+test("分发 runner：打包拷贝清单与 runner 的真实 import 集合一致（漏拷必须在 PR 上变红）", () => {
+  const runnerSourceText = readFileSync(runnerSource, "utf8");
+  const imported = [...runnerSourceText.matchAll(/from\s+["'](\.\/runner-[a-z-]+\.mjs)["']/gu)].map(
+    (match) => match[1].replace("./", ""),
+  );
+  assert.ok(
+    imported.length > 0,
+    "未能从 runner.mjs 解析出任何 ./runner-*.mjs import：解析器失效时必须显式失败，不能空转通过",
+  );
+  assert.deepEqual(
+    [...imported].sort(),
+    [...RUNNER_SIDECAR_MODULES].sort(),
+    "runner.mjs 的 ./runner-*.mjs import 必须与 build-zcode.mjs 的拷贝清单集合相等：" +
+      "漏拷任何一项，分发包启动即 ERR_MODULE_NOT_FOUND（只在 release 打包时才会暴露）",
+  );
+  for (const name of RUNNER_SIDECAR_MODULES) {
+    assert.ok(
+      existsSync(join(repoRoot, "scripts/zcode-distribution", name)),
+      `${name} 被列进打包清单但文件不存在于 scripts/zcode-distribution/`,
+    );
   }
 });
 

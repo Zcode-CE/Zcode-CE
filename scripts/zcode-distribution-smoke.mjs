@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -27,7 +27,26 @@ const env = {
 let web;
 let terminal;
 try {
+  // 解包（非 root）会按 umask 抹掉包内记录的权限位（实测 umask 077 ⇒ bin/zcode.mjs 700、旁路 600）。
+  // 这里要判的是**构建期 chmod 记录的**权限，而不是评审人机器的 umask，所以先固定成 CI 的 022。
+  process.umask(0o022);
   await exec("tar", ["-xzf", resolve(archive), "-C", directory]);
+  // 权限位断言（task-61 F1）：必须在**解包产物**上判。
+  // 为什么重要：`cp` 会用进程 umask（task-49 实测抽出过 600）；600 在单用户机器上跑得动，
+  // 但 root 安装后普通用户 import 不了 ⇒ 启动即崩。而本脚本下面用 `process.execPath` 启动入口，
+  // 并不需要执行位、Node 以属主身份读 600 也照样成功 ⇒ 少了这层断言就抓不到这类回归。
+  // 名单从包里 `bin/runner-*.mjs` 现读（不写死），新增旁路模块时不会留下过期的断言清单。
+  const binDir = join(root, "bin");
+  const runnerEntryMode = await assertMode(join(binDir, "zcode.mjs"), 0o755);
+  const sidecarNames = (await readdir(binDir)).filter((name) => /^runner-.+\.mjs$/u.test(name));
+  assert.ok(
+    sidecarNames.length > 0,
+    "bin/ 下没有 runner-*.mjs 旁路模块：runner.mjs 拆分后的结构依赖缺失（打包拷贝清单漏了？）",
+  );
+  for (const name of sidecarNames) await assertMode(join(binDir, name), 0o644);
+  console.log(
+    `permissions: zcode.mjs=${runnerEntryMode.toString(8)}, sidecars=${sidecarNames.length}x644`,
+  );
   await mkdir(workspace);
   await exec(process.execPath, [runner, "--help"], { cwd: workspace, env });
   // --version 的首行必须是**纯版本号**且等于分发包 package.json 的版本（第二行是身份标注，不参与比较）。
@@ -195,6 +214,21 @@ try {
   terminal?.kill();
   web?.kill();
   await rm(directory, { recursive: true, force: true });
+}
+
+/**
+ * 断言文件权限位等于期望值，失败时给出「期望/实际 mode + 文件 + 为什么重要」。
+ * 权限位错在单用户机器上不可见，只会在「root 安装、普通用户运行」时以启动失败的形式暴露 ⇒ 必须钉住。
+ */
+async function assertMode(file, expectedMode) {
+  const actualMode = (await stat(file)).mode & 0o777;
+  assert.equal(
+    actualMode,
+    expectedMode,
+    `${file} 的权限位应为 ${expectedMode.toString(8)}，实际 ${actualMode.toString(8)}` +
+      "（包内入口需可执行、旁路模块需普通用户可读：root 安装后非 root 用户 import 失败会表现为启动即崩）",
+  );
+  return actualMode;
 }
 
 /** 跑一个必然退出的子进程并回收输出（用于断言"拒绝启动"这类 fail-closed 行为）。 */
