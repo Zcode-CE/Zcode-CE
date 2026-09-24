@@ -76,10 +76,20 @@ export function WebAppRoot({
 
   const supervisor = useMemo(() => {
     const created = createConnectionSupervisor<WebServices>({
-      connect: () =>
-        connectViaWebSocket(bootstrap.wsUrl, {
+      connect: async () => {
+        const services = await connectViaWebSocket(bootstrap.wsUrl, {
           onClose: () => supervisorRef.current?.notifyClosed(),
-        }),
+        });
+        // 普通 Web 客户端没有 window host：`window-controller` 只由桌面 Host 注册
+        // （packages/desktop/src/host/index.ts 的 services.register(IWindowControllerService, …)），
+        // 服务端入口 entry-http → createLocalServices 不注册它。而 SDK 的 RemoteServiceAccess 会
+        // **无条件**为每个 channel 建 proxy（packages/client/src/remoteServiceAccess.ts），于是共享 UI
+        // 的 `useGlobalTaskList` 会把 `controller ? …` 判成 truthy，向不存在的通道发 RPC，服务端只打
+        // `Unknown channel: window-controller`（实测每次页面加载 5 行），污染真实排障信号。
+        // 这里如实声明「本宿主没有该能力」：IServiceAccessor 本来就把 windowControllerService 标为可选，
+        // 消费方已有 fallback（useGlobalTaskList 的 controller ? … : subscribeToNothing）。这不是吞错。
+        return { ...services, windowControllerService: undefined };
+      },
       onSession: (services) => {
         generationRef.current += 1;
         setSession({ services, generation: generationRef.current });
