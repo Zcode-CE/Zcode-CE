@@ -139,7 +139,7 @@ pnpm exec tsx scripts/verify-remote-assets.mjs --root ./publish-root
 
 | 模式                   | 谁去下载资产                                | 前置条件                                                                                                                 |
 | ---------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 本地下载后上传（默认） | 你的电脑下载，再通过 SSH 上传到远端         | 无（远端只要能跑 POSIX shell）                                                                                           |
+| 本地下载后上传（默认） | 你的电脑下载，再通过 SSH 上传到远端         | 远端只要能跑 POSIX shell，**且必须是 glibc 发行版**（musl/Alpine 会被拦断，见 §7.8）                                     |
 | 远端服务器下载         | 远端自己用 `curl`/`wget` 下载（省上传时间） | 远端必须能访问发布根，且有 `curl` 或 `wget` + `tar` + `sha256sum`/`shasum`/`openssl`；缺失时会明确报错并提示切回默认模式 |
 
 > 「资源下载方式」由桌面端按目标类型提供：`packages/desktop/src/host/index.ts` 只在 `target.kind === "ssh"` 时传入
@@ -149,6 +149,7 @@ pnpm exec tsx scripts/verify-remote-assets.mjs --root ./publish-root
 
 | 现象                                            | 原因                                                                                                                                                                                                                                                           | 处理                                                                                                                                                                                                                                                                            |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `远端使用 musl libc（证据：…）`                 | 远端是 Alpine 系（musl），本版载荷是 glibc 构建 ⇒ **连接在部署资产之前就被拦断**                                                                                                                                                                               | 见 §7.8：换 glibc 发行版的远端（`ubuntu` / `debian` 默认 tag）；确认命令同 §7.8                                                                                                                                                                                                 |
 | `[remote-assets] manifest not found for <平台>` | **两种原因**：(a) 发布根里没有该版本的 `manifest-<平台>.json`（路径不对、版本没发布、或基址带了多余层级）；(b) **该平台不在发布范围内**（当前只发布 darwin 与 linux 上的 x64/arm64；`linux-armv7l`、`linux-ppc64le`、`linux-s390x`、`freebsd-*` 等都没有资产） | 先在**远端**跑 `uname -s -m`：若结果落在 Linux 或 Darwin、且是 x86_64/aarch64 ⇒ 是 (a)，用 `curl -I <发布根>/<版本>/manifest-<平台>.json` 验证、基址要指向**发布根**；若不在这几类里 ⇒ 是 (b)，换一台 x64/arm64 的 Linux/macOS 远端，或自行按该平台构建资产（本项目不发布该类） |
 | `manifest appVersion mismatch …`                | 清单的 `appVersion` 与客户端版本不一致（常见于托管的资产是旧版本）                                                                                                                                                                                             | 为当前客户端版本生成并发布资产                                                                                                                                                                                                                                                  |
 | 组件 404（下载中途失败）                        | `components/` 不在发布根下（被塞进版本目录），或上传时漏了 `components/**`                                                                                                                                                                                     | 按 §4 的布局重新托管                                                                                                                                                                                                                                                            |
@@ -202,11 +203,29 @@ pnpm exec tsx scripts/verify-remote-assets.mjs --root ./publish-root
    静态核查结论（供参考，不等于验证）：WSL 的 Windows 专属假设（`wsl.exe` 调用、UTF-16LE 输出解码、
    `wsl.exe -- bash -lc` 的参数重组）**全部落在 WSL 后端内部**，不扩散到资产层；WSL 内的远端是 Linux，
    需要的是已发布的 `linux-x64/arm64`，因此**缺少 win32 平台类不影响 WSL 远端**。
-8. **Alpine(musl)：实测不可用**（2026-09-24 实测，不再是预期）。自托管资产里的
-   `components/linux-x64/node-runtime` 解出的 `node` 是 **glibc 动态链接**（`ldd` 依赖 `libdl.so.2` /
-   `libstdc++.so.6` / `libm.so.6`，解释器 `/lib64/ld-linux-x86-64.so.2`），而 Alpine 用 musl、没有该解释器。
-   实测对照（同一份载荷、同一台机器）：**Debian 系容器**（`kalilinux/kali-rolling`）里
-   `/root/.zcode/server/node --version` ⇒ `v22.16.0`；**Alpine 容器**（`postgres:16-alpine`）里执行同一文件 ⇒
-   `/payload/node: cannot execute: required file not found`，**退出码 127**。
-   ⇒ 结论：**Alpine 系远端当前不可用**；远端请用 glibc 发行版（Debian / Ubuntu / RHEL 系等）。
+8. **远端必须是 glibc（musl 不可用）**：连接时**在部署资产之前就拦断**，不是「连上再报错」。
+
+   **先确认你的远端**（在远端上跑，任一条即可）：
+
+   ```bash
+   cat /etc/os-release          # Alpine 会显示 ID=alpine
+   ls /lib/ld-musl-*.so.1       # 有输出 ⇒ 这是 musl（Alpine 系）
+   ls -l /lib64/ld-linux-x86-64.so.2   # 有输出 ⇒ 这是 glibc（Debian/Ubuntu/RHEL 系）
+   ```
+
+   **为什么整块不可用（2026-09-24 实测，不是预期）**：自托管资产里的 `node` 是 **glibc 动态链接**
+   （解释器 `/lib64/ld-linux-x86-64.so.2`），Alpine 没有该解释器 ⇒ 直接
+   `cannot execute: required file not found`（退出码 127）。
+   即使**换上 musl 版 Node** 能起来、能握手，也仍然不可用：`pty.node` 是 glibc 构建，在 musl 上**能加载**，
+   但建终端时原生 `fork()` 会**段错误**（实测 exit 139 / core dumped）—— 该崩溃**不可捕获**，
+   会把整个远端 `zcode-server` 进程一起带走；另有 `bfs`/`ugrep` 两个搜索工具是 glibc 二进制、在 musl 上无法执行。
+   （详见 `.reverse/47-remote-providers/MUSL-COST-VERIFICATION.md` 的组件表与运行时判定。）
+
+   **替代做法**（任选其一）：把远端换成 glibc 发行版的默认 tag（`ubuntu:24.04`、`debian:bookworm`、
+   `rockylinux:9` 等），或换一台 glibc 远端机器；不要在 Alpine 上继续排障。
+
+   判定方式（供自建者核对）：连接时按**文件系统标记**判 libc（`detect()` 的同款风格）—— 命中 glibc loader/
+   `libc.so.6` 即放行；只有 glibc 未命中**且**命中 musl loader 或 `/etc/alpine-release` 时才拦断；
+   判据不足时放行并留日志（fail-open，不误伤未知发行版）。
+
 9. 桌面端以外的客户端（Web）**没有**远程工作区入口。

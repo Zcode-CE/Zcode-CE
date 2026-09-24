@@ -16,6 +16,7 @@ import { wrapStdioStream } from "./stdio-socket.js";
 import { performHandshake } from "./handshake.js";
 import { deployServer } from "./deploy.js";
 import type { DeployOptions } from "./deploy.js";
+import { assertSupportedRemoteLibc } from "@zcode/server/remote/remoteLibcSupport.js";
 import { assertSupportedRemoteEnvironment } from "@zcode/server/remote/remotePlatformSupport.js";
 import { quotePosixShellArg } from "./posixShell.js";
 import { formatWslProxyForLog } from "./wslProxy.js";
@@ -173,6 +174,9 @@ async function connectRemoteUnchecked(
   throwIfRemoteConnectAborted(options?.signal);
   log("detected:", env);
   assertSupportedRemoteEnvironment(env);
+  // libc 能力边界：musl 上的失败是**不可捕获的段错误**（建终端时原生 fork），
+  // 所以必须在部署资产之前 fail-closed，避免「部署成功 → 建终端 → 远端 server 进程被杀」。
+  await assertSupportedRemoteLibc(backend, env, log);
 
   const remoteRuntimeNetwork = await resolveRemoteRuntimeNetwork(
     backend,
