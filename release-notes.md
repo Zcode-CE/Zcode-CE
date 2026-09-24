@@ -47,7 +47,10 @@
 
 ## 已知限制
 
-- **平台支持：正式支持 Linux-x64**。macOS / Windows 未实测且当前包内原生载荷只含 Linux ⇒ **不承诺可用**（细节见上一节）。
+- **平台支持：正式支持 Linux-x64（glibc）**。macOS / Windows 未实测且当前包内原生载荷只含 Linux ⇒ **不承诺可用**。
+- **Alpine / musl 不在支持范围**；实测行为是：服务与面板**可以运行**（npm 形态，需自带 **Node ≥24** 的 musl 构建；Alpine 3.24 的 `apk add nodejs` 实测 24.18.1 即满足），**终端功能不可用** —— 会在创建终端时给出明确提示，而不是崩溃。
+- **第三方许可材料：随包通知里仍有部分组件的出版方材料不全** —— 我们按「**发布者声明 + 标准条款 + 已记录的出处**」逐条登记，未闭环的条目在随包的 `THIRD-PARTY-NOTICES.md` 与 `third-party/README.md` 里如实列出（**登记了不等于材料齐全**）。
+  顺带修正一处署名：`brotli` 内嵌的 `google/brotli` 解码器是 **Apache-2.0**，此前被我们记为 MIT；本版已补上其版权与许可声明。
 - 与上一版相同（Windows 构建未签名、Windows / macOS 未在真机做完整功能回归、Linux 桌面自动化为实验性等），本批**未新增**其他长期限制。
 
 ## 本版尚未验证
@@ -63,7 +66,13 @@
 - **"先被扫描、再被封"的过程未复现**：限流在受控条件下验证过，但没有在真实公网扫描下跑过。
 - **CI 新增的两个 job 未在真实 runner 上跑过**：无头服务器发行包的构建/挂载 job、远程资产上传 job 都只在本地核对（release 流水线**其余** job 长期在真实 runner 上运行，不受这条影响）。
 - **WSL 作为远程工作区承载未实测**：需要 Windows 客户端或 `windows-latest` CI，且需启用 WSL2；**Docker 承载已实测通过**（真实 Docker 29.8.0、rootless、cgroup v2，容器用默认参数，含在容器内启动服务并完成握手）。
-- **远程工作区的载荷是 glibc 动态链接，Alpine(musl) 容器实测不可用**（`node` 报 `cannot execute: required file not found`，缺 `/lib64/ld-linux-x86-64.so.2`）⇒ 远端请用 glibc 发行版。
+- **musl 主机（如 Alpine）上的本机运行：终端不可用，服务与面板可用（实测）**：
+  起服务、连面板、`/api/server-info` 鉴权、`/ws` 无令牌拒绝都已实测通过；**创建终端会被拦断并给出可操作提示**。
+  拦断取代了此前的**进程级崩溃**：在 musl 上原生 `fork()` 会 **Segmentation fault（exit 139）并杀掉整个进程**，该崩溃不可捕获 —— 这也是为什么拦断发生在**装载原生模块之前**，而不是"装不上再说"。
+- **远程工作区在 musl 远端上不可用（实测）**：载荷是 glibc 构建（`node` 报 `cannot execute: required file not found`，缺 `/lib64/ld-linux-x86-64.so.2`），
+  因此连接时会**在部署资产之前拦断**并给可操作原因；改用 glibc 发行版的远端镜像即可。
+- **上游同样不支持 musl**（不是本版独有的取舍）：上游 `node-pty` 没有 musl 预编译，官方发行版的资产集也只有 `platformArch` 维度、没有 `-musl` 平台类。
+- **npm 形态的 Node 下限是 `>=24`**：低于下限时可能在打印启动横幅后才失败（实测 Node 20 在导入期即失败），请先用 `node --version` 确认。
 - **本说明不含任何性能数字**：没有实测的性能结论一律不写。
 - **⚠️ Windows 上不要用 kill -HUP**：令牌轮换依赖 SIGHUP，而 Windows 没有这个信号、**对进程发 SIGHUP 会终止进程** ⇒ 那不是重载令牌，是**把服务杀掉**。Windows 下改完令牌文件请**重启服务**。
 - **手机 + 桌面同时操作同一会话的并发写语义没有任何实测**：CommandInbox 的串行 admission 是**设计约定**，不是并发写的验收结论；连接数上限（默认 32）只防资源耗尽，**不要读作「并发写已被保护」**。
@@ -120,7 +129,10 @@
 
 ## Known limitations
 
-- **Platform support: Linux-x64 is the supported one.** macOS / Windows are untested and the native payloads in the bundle are Linux-only, so they are **not promised to work** (details in the next section).
+- **Platform support: Linux-x64 (glibc) is the supported one.** macOS / Windows are untested and the native payloads in the bundle are Linux-only, so they are **not promised to work** (details in the previous section).
+- **Alpine / musl is outside the supported set.** Measured behaviour: the service and the panel do run (npm form, with a musl build of **Node >= 24** — on Alpine 3.24 `apk add nodejs` yields 24.18.1, which satisfies it), while the **terminal is unavailable** and is refused with an actionable message instead of crashing.
+- **Third-party licence material: some bundled components still lack publisher material** — every such entry is recorded against "**publisher declaration + standard terms + recorded provenance**", and the ones that are not closed are listed honestly in the shipped `THIRD-PARTY-NOTICES.md` and `third-party/README.md` (**being recorded is not a claim that the material is complete**).
+  One attribution fix in the same pass: the `google/brotli` decoder vendored inside `brotli` is **Apache-2.0** and had been recorded as MIT; its copyright and licence notice are now included.
 - Unchanged from the previous version (unsigned Windows build, no full on-device regression on Windows/macOS, experimental Linux desktop automation, …); this batch adds **no** other long-term limitations.
 
 ## Not verified in this release
@@ -136,7 +148,11 @@
 - **"Scanned first, then banned" was not reproduced**: the rate limit was verified under controlled conditions, not against a real internet scan.
 - **The two new CI jobs have not run on a real runner**: the headless-server package build/attach job and the remote-asset upload job were verified locally only (the **rest** of the release workflow runs on real runners and is unaffected).
 - **WSL as a remote-workspace host is untested**: it needs a Windows client or a `windows-latest` CI runner with WSL2 enabled. **Docker as a host was measured working** (real Docker 29.8.0, rootless, cgroup v2, default container flags, including starting the server inside the container and completing the handshake).
-- **The remote-workspace payload is glibc-linked, so Alpine (musl) containers are measured unusable** (`node` fails with `cannot execute: required file not found`, missing `/lib64/ld-linux-x86-64.so.2`) — use a glibc distribution as the remote host.
+- **On a musl host (e.g. Alpine) the local service works but the terminal does not (measured)**: starting the service, connecting the panel, `/api/server-info` auth and the unauthenticated `/ws` refusal were all measured working; **creating a terminal is refused with an actionable message**.
+  That refusal replaces a **process-killing crash**: on musl the native `fork()` segfaults (**exit 139**) and takes the whole process down, and the crash is not catchable — which is why the check runs **before the native module is loaded**, not after the failure.
+- **Remote workspaces on a musl target are not usable (measured)**: the payload is a glibc build (`node` fails with `cannot execute: required file not found`, missing `/lib64/ld-linux-x86-64.so.2`), so a connection is **refused before assets are deployed**, with an actionable reason; use a glibc-based image as the remote host.
+- **Upstream does not support musl either** (so this is not a choice unique to this build): upstream `node-pty` ships no musl prebuilds, and the official distribution asset set has only a `platformArch` dimension with no `-musl` platform class.
+- **The npm form requires Node >= 24**: below that, startup can fail _after_ the banner is printed (Node 20 was measured failing at import time) — check `node --version` first.
 - **No performance numbers are quoted**: nothing without a measurement is written here.
 - **On Windows, do not use kill -HUP**: token rotation relies on SIGHUP, which Windows does not have — and sending SIGHUP **terminates the process**, so it is not a reload, it is killing your server. On Windows, restart the service after editing the token file.
 - **Concurrent writes to one session from a phone and a desktop at the same time have no measurements at all**: the CommandInbox serial admission is a **design convention**, not a verification result for concurrent writes; the connection cap (default 32) only prevents resource exhaustion and must **not** be read as "concurrent writes are protected".
