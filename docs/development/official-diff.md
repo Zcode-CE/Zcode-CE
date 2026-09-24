@@ -42,7 +42,7 @@
 > `.zcode-plugin/plugin.json`），由运行时按 `source:"bundled"` + `scope:"system"` 的 skill root 原地发现；
 > `dynamic-workflows` 自 3.14.3 起住在这里，`/workflow` 同时变成内置命令。本仓库已照搬
 > （`apps/zcode-cli/packages/bundled-skills`），详见 `docs/development/architecture.md` 与
-> `.reverse/25-v3143/BUNDLED-SKILLS.md`。`zcode-guide` 因此同步到官方 0.3.0：只剩 6 份自诊断/配置正文。
+> 本文档的结论。`zcode-guide` 因此同步到官方 0.3.0：只剩 6 份自诊断/配置正文。
 
 ### 能力对照
 
@@ -277,7 +277,7 @@ MCP server、没有 hooks、没有编译产物，全部是技能文档（Markdow
 > 与官方的一处**已知差异**：官方另有 SEA 发行态的资产内嵌（`sea-bundled-skill-assets.mjs`
 >
 > - `~/.zcode/cli/bundled-skills/<hash>/` 物化）。本仓库的发布形态是 Electron 桌面 + AUR，
->   不走 SEA，故未实现该分支。详见 `.reverse/25-v3143/V3143-CLOSEOUT.md`。
+>   不走 SEA，故未实现该分支。
 
 ### Office 三件套：MIT 独立实现
 
@@ -513,7 +513,7 @@ ZCODE_REMOTE_ASSET_CDN_BASE_URL=<发布根> pnpm dev:desktop      # 指向它
 
 **Docker / WSL 与 SSH 共用同一套部署与资源代码**（`deploy.ts` / `remoteAssetCache.ts`），因此同样
 受这条缺口影响；但**未对 Docker / WSL 实测**，此处不作结论。修复路径（自建资源发布点 / 资源随包
-分发 / 对齐官方多区域 CDN）与验收命令见 `.reverse/36-ssh/SSH-FEASIBILITY.md` §5。
+分发 / 对齐官方多区域 CDN）与验收命令见 [无头服务器发行包](../operations/headless-server.md) 与 [远程资产 CDN](../operations/remote-assets-cdn.md)。
 
 **另一处差异**：官方主进程还带一条 SSH 专用资源服务器常量
 （`QE="http://studio.zcode-ai.com:12345/ssh-remote-assets"`，官方在 `env==="test"` 时直接使用

@@ -1,193 +1,142 @@
-# 工作区注册表与「能全看、不默认全看」的加载策略（spec，未实施）
+# 工作区可见性：服务端注册表与「能全看、不默认全看」的加载策略
 
-> 状态（2026-09-24，task-28 后）：**M1.1 / M1.2 / M1.3 / M1.4 / §3.2 已实施并有证据**（见 §9.10-§9.14）；
-> **M2（打得开）、工作区「置顶」显示偏好、两条手机 E2E 未做**。目标读者：手机批次（M1/M2）的实施者与产品决策者。
-> 相关证据：`.reverse/40-remote-control/MOBILE-ACCESS-AUDIT.md`（可见集合的定位）、`PUBLISHER-SCALE-MEASUREMENT.md`（task-23 实测数字）、`WEB-REMOTE-CONTROL-M1.md`（断线自愈与版本配套）、`docs/development/web-remote-control.md`（网页远控 M1 的既有 spec）。
+> 面向**使用者与开发者**：说明「界面上能看到哪些工作区」由谁决定、未启动的工作区长什么样，以及为什么多个客户端看到的是同一份集合。
+> 状态：**注册表与只读列表已实施**（服务端枚举 + 持久化 + RPC + 列表来源切换 + 未启动态）；未实施项见文末。
 
-## 0. 读了什么，结论与它们一致还是不一致
+## 1. 这个能力解决什么问题
 
-读了：`packages/services/src/session/taskIndexRepo.ts`（`queryGroupedTaskView` / `queryGroupedTaskViewStructure`）、`packages/services/src/zcode-agent/zcodeAgent.ts` 与 `zcodeAgentService.ts`（`subscribeSessionsIndexV4` 与 `runtimePolicy`）、`packages/services/src/zcode-agent/zcodeAgentConnectionScope.ts`、`apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/{v4-gateway,sessions-index-publisher,sessions-index-publisher-registry}.ts` 与 `zcode-protocol/{server-operations,v4-bridge}.ts`、`packages/ui/src/hooks/{useGroupedTaskView,useWorkspaceTaskLists}.ts`、`packages/ui/src/WorkspaceSidebarItem.tsx`、`packages/web/src/main.tsx`、`packages/server/src/http.ts`、`AGENTS.md`（进程/协议/远程控制 + Workspace Identity）、`NOTICE.md:37,43`。三份既有报告（见上）与本文一致；**不一致处**见 §1 引用的实测：既有文档从未写明「可见工作区集合由客户端设置决定」，这正是本轮要改成服务端持有的原因。
+此前，「可见工作区」由**每个客户端自己的设置**决定：侧栏列的就是该客户端设置里记过的目录。服务端只在被请求的工作区上懒建索引发布器（publisher），不做全量枚举。后果是三条同时出现：
 
-## 1. 问题定义（实测）
+| 现象                                         | 原因                                       |
+| -------------------------------------------- | ------------------------------------------ |
+| 换一个浏览器或新设备打开，看到的是**空列表** | 新客户端没有那份本机设置                   |
+| 同一台服务器在两个客户端上可见集合不同       | 两个客户端各自的设置不同，而数据侧是同一份 |
+| 「我的会话是不是丢了」无法判断               | 客户端无从知道服务端的真实范围             |
 
-| 事实                           | 数字                                                                                                             | 证据                                                                                                                                            |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| 手机侧栏显示的 workspace       | **22**（= 设置里 22 条 `workspacePurpose: project`）                                                             | DOM 计数 22 组 / 23 行；设置文件 `~/.zcode/v2/setting.json` 的 `lastWorkspaceSession` 23 条（22 project + 1 conversation）                      |
-| 服务端任务索引库里的 workspace | **52**（其中 28 个有未归档任务行）                                                                               | `~/.zcode/v2/tasks-index.sqlite`：`tasks` 117 行 / distinct `workspace_path` 52 / 未归档行落在 28 个                                            |
-| 会话库里的 workspace           | **53** 个目录、119 条任务列表可见会话                                                                            | `~/.zcode/cli/db/db.sqlite`（`task_type in (interactive, fork, workflow_parent)`）                                                              |
-| 可见集合由谁决定               | **客户端**：侧栏列表来自传入的 workspace tabs；服务端只在被请求的 workspace 上懒建 publisher                     | `useGroupedTaskView.ts:586,620-625,757`；`v4-gateway.ts:1148-1169`（从 client 的 topic 里 `parseSessionsIndexTopic` 再 `ensureIndexPublisher`） |
-| 全量枚举能力                   | **今天不存在**：`includeAllWorkspaces` 全仓零调用方；侧栏走的 `queryGroupedTaskViewStructure` 签名里没有这个参数 | `zcodeTaskListTypes.ts:77`；`taskIndexRepo.ts:2075-2152` 与 `:2264-2266`                                                                        |
+实测（单机 50 个左右工作区的规模）：客户端设置里只有 23 条目录，而服务端任务索引库里有 **52** 个不同工作区（其中 28 个有未归档任务行），会话库里有 **53** 个目录。也就是说，**大部分工作区从来没有出现在界面上**，而它们的数据一直都在。
 
-⇒ 「会话看起来丢了」与「多客户端不一致」是同一个根因：**可见范围由每个客户端自己的设置决定**，而服务端的真实数据范围更大且对所有客户端相同。
+⇒ 因此本能力的目标是：**枚举由服务端唯一持有**，客户端设置降级为显示偏好。
 
-## 2. 唯一真相源：**服务端持有工作区注册表**（客户端设置降级为显示偏好）
+## 2. 唯一真相源：服务端持有工作区注册表
 
 ### 2.1 所有者与读写面
 
-| 项                                                          | 决定                                                                                                                                                                                                                                                                                |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **所有者**                                                  | 服务端（服务进程内的 workspace registry；持久化到服务端数据目录，与任务索引库同域）                                                                                                                                                                                                 |
-| **枚举来源（两源合并）**                                    | ① 任务索引库的 distinct `workspace_path` + `workspace_identity`（含无未归档行的 workspace）；② 会话库会话的可列举目录（`session.directory`，任务列表可见类型）。合并键 = `workspaceIdentity?.trim() \|\| workspacePath`（与本仓库既有身份口径一致，`AGENTS.md` Workspace Identity） |
-| **写入方**                                                  | 服务端自己：新会话/新任务落库时 upsert 一行（记录 `workspacePath`、`workspaceIdentity?`、`firstSeenAt`、`lastActivityAt`、`sources`），并提供一次性回填（迁移）从两源枚举现有数据                                                                                                   |
-| **读取方**                                                  | ① 新 RPC（如 `listWorkspaceRegistry`）供侧栏使用；② `/api/server-info.workspaces` 改为返回注册表（或其中的默认可见子集）；③ 桌面端沿用同一注册表（它本来就能看到更多，不应因此变少）                                                                                                |
-| **客户端设置（`lastWorkspaceSession` / `recentProjects`）** | 降级为**显示偏好**：排序权重、置顶、默认是否展开、以及「本客户端上次打开的是哪个」；**不再**充当枚举来源，也不参与过滤                                                                                                                                                              |
+| 项                       | 决定                                                                                                                                                           |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------------------------------------- |
+| **所有者**               | 服务端（服务进程内的注册表；持久化到服务端数据目录，与任务索引库同域）                                                                                         |
+| **枚举来源（两源合并）** | ① 任务索引库的 distinct `workspace_path` + `workspace_identity`（含没有未归档行的）；② 会话库中任务列表可见会话的目录。合并键 = `workspaceIdentity?.trim()     |     | workspacePath`（沿用仓库既有的身份口径） |
+| **写入方**               | 服务端自己：新会话/新任务落库时 upsert 一行（`workspacePath`、`workspaceIdentity?`、`firstSeenAt`、`lastActivityAt`、`sources`），并在注册表为空时做一次性回填 |
+| **读取方**               | 客户端通过 `workspace-registry` 服务频道读出；`/api/server-info.workspaces` 由注册表默认视图驱动                                                               |
+| **客户端设置**           | 降级为**显示偏好**（排序、展开、本客户端上次打开的是哪个）；**不再**充当枚举来源，也不参与过滤                                                                 |
 
 ### 2.2 迁移与兼容
 
-1. **一次性回填**：注册表为空时，从两源枚举并写入；随后每次会话/任务落库时 upsert（幂等键 = workspaceKey）。
-2. **老设置并入**：把 `lastWorkspaceSession` 里的路径并入注册表（`sources` 标记 `settings-migrated`），并保留其顺序作为该客户端的显示偏好；不删除老设置字段（向后兼容旧客户端）。
-3. **身份缺失的兼容**：只有路径、没有 identity 的条目按本地工作区处理（`workspaceKey = path`），与既有 `resolveWorkspaceKey` 口径一致；远端条目必须带 identity，否则**不合并**（避免同路径不同 authority 互相认领 —— 这正是 `server-operations.ts:1640-1648` 与 `v4-bridge.ts:1358-1400` 已经处理的语义）。
+1. **一次性回填**：注册表为空时从两源枚举写入；随后每次会话/任务落库时按幂等键 upsert。
+2. **老设置并入**：把设置里的路径并入注册表（`sources` 标记为来源于设置），其顺序保留为该客户端的显示偏好；老字段**不删除**，向后兼容旧客户端。
+3. **身份缺失的兼容**：只有路径、没有 identity 的条目按本地工作区处理（`workspaceKey = path`）；远端条目必须带 identity，否则**不合并**，避免同路径不同 authority 互相认领。
 
-### 2.3 边界：为什么**不做**两条真相源
+### 2.3 为什么不做两条真相源
 
-- 若客户端设置继续参与枚举，则：① 新浏览器/新设备看到的是「空列表」而不是真实集合（实测：设置只有 23 条，而数据侧有 52/53）；② 同一服务器在两个客户端上可见集合不同，用户无法判断「是数据丢了还是客户端没同步」；③ 服务端无法据此做（后续可能需要的）分页/懒订阅决策，因为它不知道全集。
-- 因此：**枚举只有一处**（服务端注册表）；客户端设置只影响「怎么显示」。
-
-### 2.4 可行性与替代方案
-
-- **可行**：服务端已能读两个库（任务索引由本进程维护；会话库读取已有 `listSessions` 路径）。缺口只有「按 distinct 目录枚举」这条查询（新增，代价小）与「identity 推导」（本地 = 路径；远端由会话/任务行自带）。
-- **替代方案（若坚持客户端持有）**：把设置的作用域从「本机」改为「服务器侧存储 + 每客户端 ID 维度」，即设置本身也做服务端共享/分用户。它仍无法解决「新客户端看到空列表」，且引入第二份可变状态；**不推荐**。
+如果客户端设置继续参与枚举：① 新客户端看到空列表；② 同一服务器的两个客户端集合不一致，用户无法判断是数据丢了还是客户端没同步；③ 服务端无法据此做分页/懒订阅决策，因为它不知道全集。因此**枚举只有一处**（服务端注册表），客户端设置只影响「怎么显示」。
 
 ## 3. 加载策略：「能全看、不默认全看」
 
-| 档                    | 默认显示什么                                                                                             | 其余如何进入视野                                        | 订阅                                           | task-23 实测代价                                                                                                             |
-| --------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **默认视图**          | 注册表里「最近活跃窗口内」的 workspace（建议 30 天，或 `pinned` 显式置顶）**∪ 本客户端设置里明确列出的** | —                                                       | 只订阅**默认视图内**的 workspace               | 22-28 个订阅 = 服务端 +0.3-0.4 MB、0 子进程、RPC 合计十几 ms；线上字节 ≈1.37 KB/个（无 runtime 时是错误信封，不是 snapshot） |
-| **展开/搜索进入视野** | —                                                                                                        | 点「显示全部」后分页列出注册表全集；搜索按路径/标题过滤 | 订阅**可见或已展开**的 workspace（懒订阅）     | 50 个订阅（不懒）= 服务端 +0.7 MB、RPC 26 ms；懒订阅可把首屏订阅数压到可见数（个位数-几十）                                  |
-| **打开工作区（M2）**  | —                                                                                                        | 从列表或「打开路径」入口选中即成为当前 scope            | 该 workspace 的 runtime 被拉起（**仅此一个**） | **单个 live runtime = +20 MB RSS（峰值 +25 MB）+ 1 个子进程**                                                                |
+| 档                    | 默认显示什么                                                               | 其余如何进入视野                         | 订阅                                      | 实测代价                                                                           |
+| --------------------- | -------------------------------------------------------------------------- | ---------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------- |
+| **默认视图**          | 注册表里「最近活跃窗口内」的工作区（当前为 30 天）**∪ 本客户端显式列出的** | —                                        | 只订阅默认视图内的工作区                  | 22–28 个订阅 ≈ 服务端 +0.3–0.4 MB、0 子进程、RPC 合计十几 ms；线上字节 ≈1.37 KB/个 |
+| **展开/搜索进入视野** | —                                                                          | 「显示全部（还有 N 个）」列出注册表全集  | 订阅可见或已展开的工作区（懒订阅）        | 50 个订阅 ≈ 服务端 +0.7 MB、RPC 26 ms                                              |
+| **打开工作区**        | —                                                                          | 从列表或「打开路径」选中即成为当前 scope | 该工作区的 runtime 被拉起（**仅此一个**） | 单个 live runtime = +20 MB RSS（峰值 +25 MB）+ 1 个子进程                          |
 
-**publisher 护栏（必须做的一件事）**：被动订阅（侧栏/首屏）**必须**使用 `runtimePolicy: 'existing-only'`。实测：默认策略（`start-if-needed`）会为被订阅的 workspace 拉起 Agent runtime（1 个 workspace = +20 MB + 1 进程；50 个外推 ≈1 GB + 50 进程）；代码注释已有这条规矩（`zcodeAgent.ts:522-525`），但**没有测试钉住**。
-**LRU / 空闲驱逐**：本轮**不要求**。理由是任务的真正增长维度是 **live workspace 数**（用户实际打开的工作区，通常 1-2 个），而不是列表长度；`SessionsIndexPublisherRegistry` 的无上限 Map（`sessions-index-publisher-registry.ts:9-21`）只有在「同时打开很多工作区」的产品形态下才需要 LRU。若 M2 之后要支持这种形态，再按 §6 的 ④ 排期。**deltaLog 512 帧的实际占用未实测**（合成数据产生不了真实 delta），按未验证对待。
-
-### 3.1 架构不变式（硬约束，不是优化建议）
+### 3.1 架构不变式（硬约束）
 
 > **列表 = `existing-only`；打开 = 按需 `start-if-needed`。**
 
-- **列出全部工作区绝不能顺带拉起 Agent runtime**：侧栏/首屏等被动订阅一律 `runtimePolicy: 'existing-only'`；runtime 不存在时返回稳定错误 `ZCode Agent runtime is not running.`（实测 50/50），**不得**改用默认策略「顺手启动」。
-- **只有用户主动打开某个 workspace 才允许启动 runtime**：即 M2 的打开动作（以及显式会话入口）走默认策略；这是一条**架构边界**，因为它决定成本模型（列表 ≈14 KB/workspace；每个 live runtime ≈+20 MB 与 1 个子进程，见 `PUBLISHER-SCALE-MEASUREMENT.md` §2）。
-- 代码注释里已经有这条规矩（`packages/services/src/zcode-agent/zcodeAgent.ts:522-525`：「task-list 等被动观察者必须使用 existing-only；runtime 不存在时返回稳定 unavailable，禁止为了建立列表订阅而启动 Agent」），但**没有任何测试钉住它** —— 这正是 §6 M1 的护栏项（⑤）要补的。
+- **列出全部工作区不得顺带拉起 Agent runtime**：侧栏/首屏等被动订阅一律 `runtimePolicy: 'existing-only'`；runtime 不存在时返回稳定错误 `ZCode Agent runtime is not running.`。
+- **只有用户主动打开某个工作区才允许启动 runtime**。这条是成本模型的一部分：列表 ≈14 KB/工作区，而每个 live runtime ≈+20 MB 与 1 个子进程（外推 50 个 ≈1 GB + 50 进程）。
+- 该规矩由自动化护栏钉住（见 §5），不是注释级约定。
 
-### 3.2 列出来但没启动 runtime 的 workspace，用户看到什么（UX 定清）
+### 3.2 列出来但没启动 runtime 的工作区，用户看到什么
 
-> **实施状态（task-28）**：本节四种状态已按此表实现，落点 `packages/ui/src/WorkspaceRuntimeNotice.tsx`（渲染）+
-> `packages/ui/src/hooks/useWorkspaceRuntimeStates.ts`（状态来源）+ `packages/ui/src/TaskList.tsx`（未启动态先于「暂无任务」分支）。
-> 三条禁止项由 `packages/ui/test/workspaceRegistryWiring.test.ts` 钉住；**真浏览器证据未做**（§9.14 末条）。
+被列出来但没有 live runtime 的工作区，其索引订阅会返回稳定错误（不是空列表、不是崩溃）。对这种情况必须给出诚实且可操作的展示：
 
-实测背景：非 live workspace 的 sessions-index 订阅会返回稳定错误 `ZCode Agent runtime is not running.`（不是空列表、不是崩溃）。M1 把 28/50 个 workspace 列出来后，**必须**对这种状态给出诚实且可操作的展示：
+| 状态                       | 列表项怎么显示                                                             | 点开时                                                               |
+| -------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| 有已存会话、runtime 未启动 | 用**持久数据**渲染列表项（标题、最近活动时间、会话条数），并标注「未启动」 | 显示加载态 → 启动 runtime → 载入该工作区的会话；失败给出可重试的错误 |
+| 无任何会话、runtime 未启动 | 显示「暂无任务」并标注「未启动」                                           | 同上（启动后为空列表态，可新建任务）                                 |
+| runtime 启动中             | 骨架/加载态（不得误报为「暂无任务」）                                      | —                                                                    |
+| runtime 启动失败           | 明确的失败态 + 重试入口 + 原因                                             | —                                                                    |
 
-| 状态                       | 列表项怎么显示                                                                                                      | 点开时                                                                                    |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| 有已存会话、runtime 未启动 | 用**服务端注册表/会话库的持久数据**渲染列表项（标题、最近活动时间、会话条数），并标注「未启动」徽标（可点开才启动） | 显示加载态 → 启动 runtime → 载入该 workspace 的会话；加载失败给出可重试的错误，而不是空白 |
-| 无任何会话、runtime 未启动 | 显示「暂无任务」并标注「未启动」                                                                                    | 同上（启动后即为空列表态，可新建任务）                                                    |
-| runtime 启动中             | 骨架/加载态（不可误报为「暂无任务」）                                                                               | —                                                                                         |
-| runtime 启动失败           | 明确的失败态 + 重试入口 + 原因（例如 runtime 不可用/版本不匹配）                                                    | —                                                                                         |
-
-**禁止**：① 「点开是死路」（点了没有任何反应或不给原因）；② 「假装有内容」（用错误信封/占位当会话渲染）；③ 「把未启动当成空列表」而让用户以为会话丢了 —— 这正是本任务要修掉的用户观感。
-**据此**，注册表条目要能返回**持久层的**会话计数与最近活动时间（来自会话库/索引库，不依赖 runtime），列表才能在 runtime 未启动时依然如实显示「有什么」。
+**禁止**：① 点开没有任何反应或不给原因；② 把错误信封/占位当会话渲染；③ 把「未启动」当成「空列表」而让用户以为会话丢了。
 
 ## 4. 多客户端一致性
 
-| 问题                            | 结论                                                                                                                                                                                                        | 证据 / 未测项                                                                                                   |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 两个浏览器今天为什么不同步      | 因为**各自设置决定可见集合**；数据侧其实一致（同一服务端、同一索引/会话库）                                                                                                                                 | §1；实测同一服务端下「新 origin 无 cookie」与「有 cookie」看到的是同一数据，差异只在授权                        |
-| 改成服务端注册表后              | 可见集合对所有客户端**逐条一致**（同一 RPC、同一注册表）；设置只影响排序/置顶/默认展开                                                                                                                      | 设计结论，实施后有验收判据 ④                                                                                    |
-| publisher 是否按 workspace 复用 | **是**：按 `workspaceId` 在 CLI runtime 内建一次并复用（`SessionsIndexPublisherRegistry` 的 `publishers` Map）；同一 topic 的多次订阅由 `(connectionId, topic)` 决定是否替换代际（`zcodeAgent.ts:515-520`） | `v4-gateway.ts:1189-1241`、`sessions-index-publisher-registry.ts:9-21`                                          |
-| 每连接是否独立                  | **是**：每个 WS 连接在服务端拿到独立 `createZCodeAgentConnectionScope(connectionId: server-ws-<uuid>, role: terminal-client)`；订阅/退订按连接记账                                                          | `packages/server/src/http.ts:91-101`                                                                            |
-| owner/lease 与 scope            | web 恒为 **terminal-client**，**不持 lease**；lease 属于桌面 host 路径（`desktop-continuous`）。web 只消费快照/流，不参与 owner 裁决                                                                        | `packages/server/src/http.ts:96-101`、`packages/desktop/src/host/index.ts:1277-1300`、`AGENTS.md` 进程/协议一节 |
-| 用户会看到什么                  | 两个浏览器/手机与桌面打开**同一个** workspace 时，列表与流内容一致；**并发写入**的行为由 runtime 的 `CommandInbox` 串行 admission 决定，**本轮未测**（不要在文案里承诺）                                    | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/command-inbox.ts`                                      |
-| 未测项                          | ① 多客户端同 workspace 并发写的实际表现；② 两个客户端订阅同一 workspace 时的帧扇出开销；③ 注册表在多进程（桌面 + 服务端同时写）下的并发写语义（需要选一个写者，见 §6 依赖顺序）                             | —                                                                                                               |
+| 问题                       | 结论                                                                                                             | 依据 / 未测项                                          |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| 为什么两个浏览器此前不同步 | 各自设置决定可见集合；数据侧一致（同一服务端、同一索引库与会话库）                                               | §1 的实测                                              |
+| 改成注册表之后             | 可见集合对所有客户端**逐条一致**                                                                                 | 有自动化断言（§5）；**真浏览器逐条比对未做**           |
+| publisher 是否按工作区复用 | 是：按 `workspaceId` 在 runtime 内建一次并复用                                                                   | `SessionsIndexPublisherRegistry`                       |
+| 每连接是否独立             | 是：每个 WebSocket 连接拿到独立 scope，订阅/退订按连接记账                                                       | `packages/server/src/http.ts`                          |
+| owner/lease 与 scope       | web 恒为 terminal-client、**不持 lease**；lease 属于桌面 host 路径                                               | `AGENTS.md` 的进程/协议一节                            |
+| 用户会看到什么             | 两个客户端打开**同一个**工作区时，列表与流内容一致；**并发写行为未测**，文案不得承诺                             | 并发写由 runtime 的 `CommandInbox` 串行 admission 决定 |
+| 未测项                     | ① 多客户端同工作区并发写的实际表现；② 同一工作区双订阅的帧扇出开销；③ 注册表在桌面与服务端同时运行时的并发写语义 | —                                                      |
 
-## 5. 能力对齐边界（产品口径基线）
+## 5. 实现落点与护栏
 
-**web 与桌面应保持一致（对齐清单）**：workspace 枚举与选择；会话列表语义（`taskTypes` 白名单、归档过滤、分页/上限口径）；打开/继续会话与流式更新（`web-remote-replayable` 恢复语义）；终端；设置（模型/权限/工具与权限页）；插件与 MCP 的启停；Git/文件操作（通过服务）；搜索；分享落地页。
+| 环节                   | 落点                                                                                                                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 枚举与回填             | `packages/services/src/session/workspaceRegistryRepo.ts`；迁移表定义 `packages/services/src/session/tasksDatabase/workspace-registry-v1.ts`                             |
+| 默认视图规则（纯函数） | `packages/shared/src/workspace-registry.ts`（30 天窗口 ∪ 置顶）                                                                                                         |
+| 服务与频道             | `packages/services/src/session/workspaceRegistry.ts`（`workspace-registry`）                                                                                            |
+| `/api/server-info`     | `packages/server/src/http.ts`（显式 `workspaces` 仍优先；注册表读失败回落当前目录并告警，不返回 500）                                                                   |
+| 客户端列表             | `packages/ui/src/hooks/useWorkspaceRegistry.ts`、`workspaceSidebarRows.ts`、`packages/ui/src/WorkspaceSidebar.tsx`（注册表补列行**不物化成 tab、不写回设置**）          |
+| 未启动态               | `packages/ui/src/hooks/useWorkspaceRuntimeStates.ts`、`packages/ui/src/WorkspaceRuntimeNotice.tsx`、`packages/ui/src/TaskList.tsx`                                      |
+| **护栏**               | ① 「列出 50 个工作区不产生任何子进程」；② 被动订阅必须显式携带 `runtimePolicy: "existing-only"`；③ 未启动态必须先于「暂无任务」分支；④ 补列行不得改变设置里的工作区列表 |
 
-**桌面壳专有、web 不承诺（明确排除）**：系统托盘与开机自启；原生窗口/多窗口与 macOS 交通灯区；原生文件对话框与「在编辑器打开」（`getInstalledEditors`/`openInEditor` 在 web 是空实现）；窗口截图与日志导出（`captureWindowScreenshot`/`exportLogs` 在 web 返回不支持）；Chrome 数据导入；Computer Use（`node_repl`/CUA，`NOTICE.md:37` 明确「远端工作区与 Web 不承载该能力」）；嵌入式浏览器（`supportsEmbeddedBrowser={false}`）；自动更新与代码签名；SSH/Docker/WSL 远程工作区（`allowRemoteWorkspace={false}` 且 `connectRemote` 在 web 暂不支持）。
+护栏测试：`packages/services/test/workspaceRegistryService.test.ts`、`packages/server/test/serverInfoRegistry.test.ts`、`packages/ui/test/workspaceRegistryWiring.test.ts`、`packages/shared/test/workspaceRegistry.test.ts`、`packages/services/test/workspaceRegistryRepo.test.ts`。
 
-> 依据：`packages/web/src/main.tsx` 的平台实现（多处显式 no-op）与 `NOTICE.md:37,43`。**这份清单即手机批次的验收基线**：清单内的项要一致，清单外的项不得在文案里暗示「和桌面一样」。
+**为什么注册表补列行不写回设置**：物化就等于造出第二份真相源。补列行不可拖拽、不可移除，按最近活动降序追加在现有 tab 之后，既有排序与拖拽语义不变。
 
-## 6. M1 / M2 落地拆解（文件级 + 代价 + 依赖顺序）
+**为什么补列行排除远端工作区**：远端工作区要能点开，需要带远端目标信息的 tab；注册表只记 key 与路径，补出来的远端行会落到「未连接」分支且无处可「重新连接」，正是 §3.2 禁止的「点开是死路」。远端工作区仍由客户端自己的 tab 承载。
 
-**M1：看得到（≥ 注册表默认视图）** —— 1/2 项由 task-25（M1.1/M1.2）完成，3/4/5 项由 task-28 完成；本节的其余文字仍是设计原文，实施落点见 §9.10-§9.12。
+## 6. 未实施项与未测项（如实声明）
 
-1. 服务端枚举查询：在任务索引侧新增「distinct workspace（含无未归档行）+ 会话库 distinct directory」的合并查询（`packages/services/src/session/taskIndexRepo.ts` 或新的 registry 模块）。
-2. 持久化注册表：在**任务索引库既有迁移机制内**加表（见下方修正），列 `workspace_registry(workspace_key, workspace_path, workspace_identity, first_seen_at, last_activity_at, session_count, sources, pinned)`；幂等 upsert + 一次性回填。
-   - **修正（本轮落实）**：表必须作为 `packages/services/src/session/tasksDatabase/migrations.ts` 的**新迁移定义**加入（`id` 形如 `0004_workspace_registry`、`checksumInput: [WORKSPACE_REGISTRY_MIGRATION_SQL]`，DDL 常量放新的 `workspace-registry-v1.ts`，与 `schema-v1.ts` 同构），由 `runTasksDatabaseMigrations` 统一执行与校验 —— **不要**在注册表模块里自创第二套 schema 版本策略或裸 `CREATE TABLE IF NOT EXISTS`（既有机制带 id + checksum + 升级判定）。
-   - 理由：`packages/services/src/session/tasksDatabase/migrations.ts:46-68` 的 `definitions` 是任务索引库唯一的 schema 演进入口（`tasks_schema_migration` 表 + checksum 校验，`:86-115`）。
-3. RPC 与 server-info：`listWorkspaceRegistry`（`packages/services` + `packages/shared` 的协议类型）；`/api/server-info.workspaces` 改由注册表驱动（`packages/server/src/http.ts:158-180`）。
-4. 客户端列表来源切换：`packages/ui/src/hooks/{useGroupedTaskView,useWorkspaceTaskLists}.ts` 的 scopes 从「设置」改为「注册表默认视图 ∪ 设置置顶」；设置降级为显示偏好（排序/置顶/默认展开）。
-5. **护栏（纳入 M1 范围，0.5-1 天）**：一条自动化断言 —— 「列出 N 个（含 50 个）列表项**不产生任何子进程**」，并断言被动订阅调用携带 `runtimePolicy: 'existing-only'`。它防的是「有人把被动订阅改成默认 `start-if-needed`」这种灾难式回归（外推 50 个 live runtime ≈1 GB + 50 进程）。建议放在已有测试入口（例如 `packages/server/test/` 的 HTTP/鉴权覆盖面附近，或 `packages/web/test/`），断言方式：以隔离 HOME 起服务端 → 订阅 N 个 workspace → 断言服务端进程**子进程数恒为 0**（task-23 的测量脚本可直接改造成断言）。
-6. 懒订阅与分页：**可选（不阻塞 M1）**。task-23 实测表明「列出 50 个」本身极便宜（服务端 +0.7 MB、0 子进程、50 次 RPC 26 ms），因此懒订阅（只订阅可见/展开项）与列表分页/首屏延后都**不是必须**；只有在实测到首屏耗时或错误信封流量成为问题（例如列表长到数百项）时再做（各 1-3 天）。
+**未实施**：
 
-代价：**3-5 天**（服务端枚举+持久化+RPC 约 2 天；客户端列表来源与懒订阅 1.5-2 天；测试与文档 0.5 天）。风险：中（改的是列表口径，需要与桌面端同时验证；桌面端读取同一注册表时不得变少）。
+1. 工作区「置顶」显示偏好（设置项；服务端已支持 `pinnedKeys`，尚未暴露为设置）。
+2. web 端的「打开工作区」入口（`activateOrSetWorkspace` 真正切换当前 scope）。
+3. 只有会话、没有任务行的工作区尚不在册 —— 枚举目前以任务索引为主源。
 
-**M2：打得开（含 web 侧入口与写回设置）**
+**未测**：
 
-1. web 平台实现：`activateOrSetWorkspace` 真正切换当前 scope、`onOpenWorkspace` 打开目录选择（`preferDirectoryBrowser` 已为 true，`packages/web/src/main.tsx:204,295,385-465`）。
-2. 打开后写回：把新工作区并入注册表（服务端）+ 写回本客户端显示偏好（设置）。
-3. 身份与路由：打开远端/同名路径工作区时按 `workspaceIdentity` 分组与传递（`zcodeAgentConnectionScope.ts:112-121`）。
+1. 手机尺寸下「未启动 → 点开 → 加载 → 载入」与「启动失败 → 原因 + 重试」两条端到端路径（现有护栏是进程内/源码级断言，不等价于真浏览器证据）。
+2. 多客户端同时操作同一工作区的并发写行为。
+3. 同一工作区被两个客户端订阅时的帧扇出开销。
+4. 注册表在桌面与服务端**同时运行**时的并发写语义（需要选定唯一写者）。
+5. live 工作区的真实快照字节数与增量帧（deltaLog 512 帧）的实际占用。
 
-代价：**3-5 天**（依赖 M1 的注册表与列表来源）。风险：中高（引入跨 workspace 切换的 UI 分叉；必须保证「点开即为该 scope」）。
+**待产品决定**：默认视图「最近活跃窗口」的取值（当前 30 天）与「显示全部」的交互形态（分页 vs 滚动加载）；桌面端是否也切到同一注册表口径（若不切，两端口径会不同，需要在文档中写明）。
 
-**依赖顺序**：M1.1 → M1.2 → M1.3 → M1.5（护栏）→ M1.4（列表来源）→ M2。注册表的**写者唯一性**必须先定：建议服务端（服务进程）为唯一写者，桌面端只读；否则要引入版本/冲突规则（未测项 ③）。
-
-## 7. 验收判据（手机批次）
-
-> **task-28 后的逐条状态（如实）**：① 判据 1、5、6 有自动化断言（见 §9.14），其中「显示全部后列到全集」是单元级断言、不是浏览器证据；
-> ② 判据 2（打开不在设置列表里的 workspace 并核对会话条数）**未验证** —— 需要真浏览器 + 真实数据，属下一轮 E2E；
-> ③ 判据 3（断线重连后列表仍在）**没有新增证据** —— 设计上靠 `useWorkspaceRegistry` 的模块级缓存成立，但未实测；
-> ④ 判据 4（两个客户端逐条一致）**未验证**（同一 RPC + 同一注册表是设计前提，缺实测）。
+## 8. 验收判据
 
 1. **侧栏项数 ≥ 当次「注册表默认视图」**：默认视图 = 最近活跃窗口 ∪ 置顶；「显示全部」后能列到注册表全集（≥ 当次数据里「设置列表 ∪ 索引未归档」的并集数）。
 2. **能打开一个不在设置列表里的 workspace 并看到会话**，且会话条数与 `~/.zcode/cli/db/db.sqlite` 中该目录的可见会话数一致。
-3. **断线重连后列表仍在**：复用 `web-remote-replayable` 的恢复语义（`docs/development/web-remote-control.md` §4）。
+3. **断线重连后列表仍在**：复用 `web-remote-replayable` 的恢复语义（见 [网页远控 §7 断线恢复](web-remote-control.md)）。
 4. **多客户端一致**：两个独立浏览器（不同 cookie/设备）对同一服务器看到的**可见集合**与各 workspace 的**会话数**逐条一致；设置差异只影响排序/置顶/默认展开，不影响集合。
-5. **架构不变式（护栏）**：列出 N 个（含 50 个）列表项**不产生任何子进程**；被动订阅全部走 `existing-only`；只有「打开工作区」这一步才允许出现该 workspace 的 runtime 子进程（断言方式见 §6 M1 第 5 项）。
+5. **架构不变式（护栏）**：列出 N 个（含 50 个）列表项**不产生任何子进程**；被动订阅全部走 `existing-only`；只有「打开工作区」这一步才允许出现该 workspace 的 runtime 子进程（护栏见 §5）。
 6. **诚实的未启动态**：非 live workspace 的列表项显示持久层的会话计数/最近活动 + 「未启动」标识；点开显示加载态并启动 runtime；失败有原因与重试。**不得**出现「点开无反应」或「把错误当内容渲染」（§3.2）。
 
-## 8. 未验证 / 需人工决定
+## 9. 工程约束与状态（开发者）
 
-1. **未测**：多客户端同 workspace 并发写；同 workspace 双订阅的帧扇出；注册表双写者的冲突语义；live workspace 的真实 snapshot 字节与 deltaLog 512 帧占用（见 task-23 §5）。
-2. **需产品决定**：默认视图的「最近活跃窗口」取值（建议 30 天）与「显示全部」的交互（分页 vs 滚动加载）；桌面端是否也切到同一注册表口径（若不切，两端口径仍会不同，需要写明）。
+**分层与所有者**（硬约束）：
 
-## 9. 实施约束（架构治理，2026-09-24 追加）
+1. **注册表所有者是服务端**；`domain` 层保持纯（不做 IO、不 await），落库与网络走 `adapters`。UI 不得直接调用 Repo/Service 实现 —— 列表来源必须经服务频道与公开类型。
+   - 现状说明：服务端 RPC 契约类型放在 `packages/shared`（如 `packages/shared/src/workspace-registry.ts`）与 `packages/services`；官方 CLI 的 `@zcode/contracts` **不是** `packages/shared`/`packages/services`/`packages/ui` 的依赖，未被本能力使用。
+2. **不做第二条写入路径**：注册表只由服务端写，桌面端只读；回填只做一次性幂等迁移；**不得**在客户端补写兜底。
+3. **迁移走既有机制**：注册表表结构必须作为任务索引库既有迁移定义加入（`packages/services/src/session/tasksDatabase/migrations.ts` 的 `definitions`，DDL 常量独立成文件），由统一的迁移执行器负责 id + checksum 校验 —— **不要**自创第二套 schema 版本策略或裸 `CREATE TABLE IF NOT EXISTS`。
+   - 该路径上一轮做过一处**硬化**（与数据安全相关，如实记录）：迁移分派原本形如「`if 0001 / else if 0002 / else 执行 0003`」，任何新增 id 都会被**静默执行成官方迁移**。现已改为按 id 显式分派，未知 id 显式抛错（fail-closed）。
+4. **跨包访问的公共入口**：`@zcode/services` 的出口是 `packages/services/package.json` 的 `exports` 子路径；本能力新增 `./workspace-registry`（指向注册表仓储）。服务端与 RPC 层应从该子路径导入。
+5. **路径展示口径（产品选择）**：注册表会出现用户从未在本机打开过的目录名，路径可能含敏感信息。当前口径是**原样展示**，不做自创脱敏或隐藏；是否在手机上隐藏/脱敏属产品决定。若实现中发现它牵动其它界面（分享页、日志），需单独提出。
 
-以下四条是**硬约束**（Lead 拍定），实施时必须逐条满足；Unit 1 的状态见 §9.5。
+**已确认的配置漂移（记录，未改）**：`architecture-policy.yaml` 里 `session` 声明 `publicEntrypoints: [packages/services/src/session/contract.ts]`，但该文件**不存在**；且 `session` 为 `managed: false`，这条边界今天既无从落地也未被强制。修法二选一：删掉该声明，或补出 `contract.ts` 并把 `session` 转为 `managed: true`。
 
-1. **开工前读受控上下文**：先跑 `pnpm architecture:check --changed` 定位模块，再 `pnpm architecture:context <module-id>` 读目标契约与相邻契约。**本轮记录**：`architecture:check --changed` → `architecture: OK（violations 0 / baseline 0 / new 0）`；`architecture:context` 需要 module-id，我用 `node scripts/architecture/architecture-check.mjs context` 与 `scripts/architecture/policy.mjs` 都未列出可用的 id 清单，**尚未读到 context package** —— 这一点按未完成记录，下一个单元开工前先补（不得假装已读）。
-2. **分层边界**：注册表所有者是服务端；`domain` 保持纯（不 IO、不 await 世界），落库与网络走 `adapters`；UI 不得直接调用 Repo/Service 实现，列表来源必须经新 RPC + 公开类型。
-   - **与本 spec 的偏差（需 Lead 裁定）**：约束原文提到「经 `@zcode/contracts` 的公开类型」，但 `@zcode/contracts` 实际在 `apps/zcode-cli/packages/contracts`，且**不是** `packages/shared` / `packages/services` / `packages/ui` 的依赖（`grep @zcode/contracts` 于三者 package.json → 0 命中）。本仓库既有的服务端 RPC 契约类型放在 `packages/shared`（如 `server-remote.ts` 的 `ServerRemoteInfo`）与 `packages/services`（如 `session/zcodeTaskListTypes.ts`），故 M1.1 的纯类型与规则先落在 `packages/shared/src/workspace-registry.ts`。若必须走 `@zcode/contracts`，需要新增跨包依赖，请确认。
-3. **不做第二条写入路径**：注册表只由服务端写，桌面只读；回填只做一次性幂等迁移；**不得**在客户端补写兜底。
-4. **交互改动要 E2E 证据**：M1.4（列表来源切换）与 §3.2（诚实未启动态）除单测外必须有真浏览器/真机场景证据（可用 task-23 的隔离 HOME + 真实客户端，或手机尺寸 Playwright），覆盖「runtime 未启动 → 点开 → 加载 → 载入」与「启动失败 → 原因 + 重试」两条路径。
-5. **Unit 1 状态（如实）**：M1.1 的**纯契约与默认视图规则**已落地并验证 —— `packages/shared/src/workspace-registry.ts`（`workspaceRegistryEntrySchema`、`resolveWorkspaceRegistryKey`、`WORKSPACE_REGISTRY_DEFAULT_VIEW_WINDOW_DAYS = 30`、`selectWorkspaceRegistryDefaultView`）+ `packages/shared/test/workspaceRegistry.test.ts`（4 条断言，含身份键回落、30 天窗口 ∪ 置顶、窗口可调且不改入参、schema 拒绝空 key/空来源），**反向验证**：去掉置顶分支 → 默认视图断言变红；恢复后 4/4 绿。门禁：typecheck exit 0、lint exit 0（71 既有 warning）、suite 52 文件 0 包失败、architecture OK。**M1.1（两源枚举）与 M1.2（迁移加表 + 回填 + upsert）已完成并验证**；**M1.3（RPC / server-info 惰性接线）尚未实现**，第 2 单元（M1.4 列表来源切换 + §3.2 诚实未启动态 + E2E）尚未开工。
-   - M1.2 落点：迁移 `packages/services/src/session/tasksDatabase/workspace-registry-v1.ts`（`WORKSPACE_REGISTRY_MIGRATION_SQL`）+ 在 `migrations.ts` 的 `definitions` 注册 `0004_workspace_registry`；仓储与回填 `packages/services/src/session/workspaceRegistryRepo.ts`（`createWorkspaceRegistryRepo` / `enumerateTaskIndexWorkspaceEntries` / `mergeWorkspaceRegistryEntries` / `backfillWorkspaceRegistry`）。
-   - **顺带硬化（需 Lead 知悉，属共享关键路径）**：迁移分派原本是 `if 0001 / else if 0002 / else 执行 0003 SQL` —— 任何新增 id（包括本次 0004）都会被静默执行成官方 GLM 迁移。现已改为按 id 显式分派，未知 id 显式抛错（fail-closed）。这不是「只增不改」，而是修掉一条静默数据污染路径。
-   - 反向验证（护栏确实咬得住）：① 给枚举加 `archived = 0` → 「归档-only 的 workspace 必须在册」断言变红（3 pass / 1 fail），恢复后 4/4 绿；② 去掉 0004 的显式分派（改回兜底 else）→ 3 条变红（迁移建表、回填、真实库副本），恢复后 4/4 绿，且两文件与备份逐字节一致。
-   - 真实库接触声明：未对 `~/.zcode/v2/tasks-index.sqlite` 执行任何写操作；测试只把它（含 -wal/-shm）copyFile 到 /tmp 后打开副本跑迁移与回填，断言既有任务行数不变、checksum 不冲突。
-6. **路径展示**：注册表会出现用户从未在本机打开过的目录名（可能含敏感信息）—— 按 Lead 决定**先原样展示、不自创脱敏或隐藏**；若实现中发现牵动其它界面（分享页、日志），记入报告不动手。
-
-7. **需人工判断**：把枚举真相源搬到服务端后，注册表里会出现用户从未在本机打开过的目录名（路径可能包含敏感信息），是否需要在手机上做隐藏/脱敏由用户决定 —— 这是产品选择，不是技术限制。
-
-8. **配置漂移（本轮只记录，不改 policy）**：`architecture-policy.yaml` 里 `session` 声明 `publicEntrypoints: [packages/services/src/session/contract.ts]`，但该文件**不存在**；且 `session` 为 `managed: false`，policy 的 `global.managedOnly: true` 使这条边界今天既无从落地也未被强制。证据：`pnpm architecture:context session` 输出 `public: packages/services/src/session/contract.ts`（另有 `module.ts: missing`），而该路径在仓库里不存在。一句话修法建议（二选一，由 Lead 统一决定）：① 删掉这条 `publicEntrypoints`（文件本就不存在）；② 补 `session/contract.ts` 作为真正的公共入口，再把 `session` 转为 `managed: true`。**本轮不改 policy**，也不自创新 contract 文件。
-9. **services 侧公共入口的落地方式（Lead 决定，已实施）**：跨包访问 `@zcode/services` 的真实出口是 `packages/services/package.json` 的 `exports` 子路径（既有：`.`, `./node`, `./storage-startup`, `./process/processTreeTerminator`, `./cua-permission-broker`）。本轮新增子路径 `./workspace-registry`（指向 `./src/session/workspaceRegistryRepo.ts`）；已验证可解析 —— 用 `@zcode/services/workspace-registry` 导入成功，导出 `createWorkspaceRegistryRepo` 与 `backfillWorkspaceRegistry`。后续 `packages/server` 与 RPC 层应从该子路径导入。
-10. **交接状态（Unit 1 收尾，一句话版：已完成 M1.1+M1.2，未完成 M1.3 与第 2 单元，证据在测试文件，下一步先做 task-27）**：
-    - 已完成：M1.1 两源枚举、M1.2 迁移/回填/幂等 upsert、迁移分派 fail-closed 硬化（含「未知 id 必须抛错」断言）。
-    - 证据：`packages/services/test/workspaceRegistryRepo.test.ts`（5 条）与 `packages/shared/test/workspaceRegistry.test.ts`（4 条）；门禁 = typecheck 0 error / lint 0 error（71 条基线 warning）/ `fmt:check` exit 0 / `architecture:check --changed` OK。
-    - 反向验证：① 给枚举加 `archived = 0` → 归档-only 断言变红；② 去掉 `0004` 显式分派 → 3 条变红；③ 未知 id 退回兜底执行 `0003` → 1 条变红；三次均从备份恢复且逐字节一致。
-    - 未完成：M1.3（RPC + `server-info` 惰性接线）、M1.4（web 与桌面列表来源切换 + §3.2 诚实未启动态）、E2E 两条路径（未启动→点开→加载→载入；启动失败→原因+重试）。
-    - 下一步：先 task-27（暴露检查：启动期与运行期告警，只动 `packages/server/src`），再做第 2 单元；第 2 单元里 M1.3/M1.4/§3.2 必须同批交付（只切列表来源而不给未启动态，会比现状更糟），E2E 可溢出到下一轮但必须在报告里显式声明未做。
-
-11. **task-27 已完成（暴露检查）**：启动期 + 运行期各一次 `warn`，只告警不拒绝、未新增环境变量、未改既有拒绝规则。证据 = `packages/server/test/httpExposureWarning.test.ts`（7 条）+ 反向验证（删启动期/运行期告警各让 1 条变红）；门禁 = typecheck 0 error / lint 0 error（71 基线 warning）/ fmt:check exit 0 / architecture OK / `packages/server` 21/21 pass；文档 = `docs/development/local-setup.md` 的「暴露面告警」小节 + `.reverse/40-remote-control/SECURITY-SERVER-DEFAULTS.md` §9。
-12. **交接状态（截至本轮结束）**：已完成 M1.1 + M1.2（含迁移分派 fail-closed 硬化的测试）与 task-27；**未完成 M1.3 / M1.4 / §3.2 与两条 E2E**（本会话预算已尽，按 Lead 的预算纪律在此停，不留半成品）。下一次开工的入口顺序：M1.3（RPC + `server-info` 惰性接线，服务端侧，从 `@zcode/services/workspace-registry` 导入）→ M1.4（`packages/ui/src/hooks/**` 列表来源切换，web 与桌面同批）→ §3.2 诚实未启动态（持久层会话计数/最近活动 + 「未启动」标识，点开才启动 runtime）→ E2E 两条路径（未启动→点开→加载→载入；启动失败→原因+重试）。**M1.3/M1.4/§3.2 必须同批**；E2E 可溢出但必须显式声明未做。
-
-13. **第 2 单元交付（task-28，M1.3 + M1.4 + §3.2 + 护栏，已完成）**：
-    - **M1.3**：`IWorkspaceRegistryService`（`packages/services/src/session/workspaceRegistry.ts`，频道 `ServiceChannels.WorkspaceRegistry = "workspace-registry"`）；条目来源复用宿主既有的 tasks-index 连接（`TaskIndexRepo.listWorkspaceRegistryEntries()`，**不新开 sqlite 句柄**，关闭链沿用 `sqliteReposToClose`）；接线点 = `packages/services/src/node.ts`、`packages/services/src/accessor.ts`、`packages/client/src/remoteServiceAccess.ts`；`/api/server-info.workspaces` 改由注册表默认视图驱动（`packages/server/src/http.ts`；显式 `options.workspaces` 仍优先，读失败回落 cwd 并告警、不 500）。
-    - **M1.4**：侧栏枚举来源 = **派生列表**（本客户端显式 tab ∪ 服务端注册表默认视图），落点 `packages/ui/src/hooks/useWorkspaceRegistry.ts` + `packages/ui/src/hooks/workspaceSidebarRows.ts` + `packages/ui/src/WorkspaceSidebar.tsx`；**注册表补列行不物化成 tab、不写回 `lastWorkspaceSession`**（Lead 拍定：物化 = 自己造第二份真相源）；补列行不可拖拽、不可移除，按最近活动降序追加在 tab 行之后，既有排序/拖拽语义不变。另有「显示全部（还有 N 个）」入口列出注册表全集（§7 判据 1 的「能全看」）。
-    - **§3.2 诚实未启动态**：新增 `useWorkspaceRuntimeStates`（runtime 状态的唯一来源 = sessions-index store 的 `status`：`dormant`→未启动、`connecting/idle`→启动中、`live`→正常、`error`→失败）与 `WorkspaceRuntimeNotice`/`WorkspaceRuntimeBadge`；`TaskList` 的未启动态**先于**「暂无任务」分支渲染，显示持久层会话数与最近活动 + 「打开并启动」；失败态给原因与重试；行上的「未启动」徽标与远端「未连接」分开表达。**未启动时绝不落到「暂无任务」**。
-    - **设置的角色**：仍是 `lastWorkspaceSession`（本客户端显式列出的 tab）与排序/展开偏好；**不再充当枚举来源**；注册表补列行不写回设置。**「工作区置顶」这一显示偏好本轮未实现**（`pinnedKeys` 在 RPC 与服务端规则里已支持，但没有新增设置项 —— 避免新增设置键与第二份真相源）。
-14. **护栏与反向验证（task-28 实测）**：
-    - 断言文件：`packages/services/test/workspaceRegistryService.test.ts`（5 条，含「真实 tasks-index 上列出 50 个 workspace 前后子进程数相等」「注册表枚举/回填不改动 `tasks` 表」）、`packages/server/test/serverInfoRegistry.test.ts`（3 条，含「server-info 列 50 个前后子进程数相等」「注册表故障不 500 且回落告警」「显式 workspaces 仍优先」）、`packages/ui/test/workspaceRegistryWiring.test.ts`（7 条，含「补列行不得带 tab ⟹ 列出注册表不改变设置里的工作区列表」「sessions-index 传输面三处调用必须显式带 `runtimePolicy: "existing-only"`」「未启动态必须先于『暂无任务』分支，且 `unknown`/`live` 必须落回原文案」「远端（带 identity）条目不得由注册表补列」）。
-    - **反向验证（三次，均从备份逐字节恢复）**：① 把 `agentSessionsIndexTransport.ts` 的 `existing-only` 改回默认策略 ⇒ UI 护栏变红（5 pass / 1 fail）；② 把补列行物化成 tab ⇒ 「不物化／不改变设置」两条变红（4 pass / 2 fail）；③ 注册表服务忽略 `pinnedKeys` ⇒ 默认视图断言变红（4 pass / 1 fail）。恢复后 5/3/7 全绿，三处文件 md5 与备份一致。
-    - **门禁**：`pnpm typecheck` exit 0；`pnpm lint` 0 error（71 条基线 warning，无新增）；`pnpm fmt:check` exit 0；`pnpm test` 59 个测试文件 / 0 个包失败；`pnpm architecture:check --changed` = `architecture: OK（violations 0 / baseline 0 / new 0）`。
-    - **未做的验证（如实声明）**：§9.4 要求的**两条手机尺寸 E2E（未启动→点开→加载→载入；启动失败→原因+重试）本轮未做** —— 现有 `packages/web/dist` 与 `packages/server/dist` 都是本轮改动之前的产物，跑 E2E 必须先重建这两个包；预算不足，按 Lead 的预算纪律溢出到下一轮。上面三条护栏是**进程内/源码级**断言，不等价于真浏览器证据。
-15. **一处实现取舍（需 Lead 知悉）**：注册表补列行**排除带 `workspaceIdentity` 的远端条目**（`workspaceSidebarRows.ts` 的 `isLocallyOpenableRegistryEntry`）。理由：远端工作区在本客户端要能点开，需要带 `remoteTarget`/`remoteSessionId` 的 tab；注册表只记 key 与路径，补出来的远端行会落到既有的「远端未连接」分支且无处可「重新连接」，正好是 §3.2 禁止的「点开是死路」。远端工作区仍由本客户端自己的 tab 承载，**因此不违反「桌面不得变少」**。
-16. **未做的实现项（下一轮入口，按依赖顺序）**：① 两条手机尺寸 E2E；② 工作区「置顶」显示偏好（设置项 + 传给 RPC 的 `pinnedKeys`）；③ 会话库源（`~/.zcode/cli/db/db.sqlite` 的 distinct 目录）并入注册表 —— 本轮注册表的 `sessionCount` 只来自任务索引表（`tasks`），即「有任务行的 workspace」；只有会话、没有任务行的 workspace 仍不在册（M1.1 的 `extraEntries` 钩子已备好）；④ M2 的 web 打开入口（`activateOrSetWorkspace` 真切换 scope）。
+**验证现状（如实）**：枚举、回填、幂等 upsert、迁移分派 fail-closed 硬化、服务频道、列表来源切换、未启动态与四条护栏均有自动化断言（清单见 §5），并确认过这些断言确实会拦住回归（临时改坏守卫后对应用例会变红）；**两条手机尺寸端到端路径仍未做**（见 §6）。

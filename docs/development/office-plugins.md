@@ -11,7 +11,7 @@
 | DSH 派生（逐字节）     | ——                                                                                                 | 本地改动会被上游更新静默覆盖                             |
 | DSH 派生（**已分叉**） | `scripts/check_office.py`                                                                          | 最危险：上游更新与本地修复冲突，且冲突点在「安全边界」上 |
 | 本项目自研             | `agents/visual-judge.md`、`test/checkOffice.test.mjs`、`scripts/check_office.mjs`（+ `lib/*.mjs`） | 被误当成上游文件而不敢改，或反向被上游覆盖               |
-| 即将新增的 Node 自研   | 混合方案的 Node 部分                                                                               | 落地时无对号入座的位置（OFFICE-5 起已落地，见 §7bis）    |
+| Node 自研（已落地）    | 混合方案的 Node 部分                                                                               | 落地时无对号入座的位置（见 §7bis）                       |
 
 ## 2. 来源分类与对应义务（规范）
 
@@ -102,9 +102,9 @@ diff "$UPSTREAM/check_office.py" apps/zcode-cli/packages/documents-plugin/script
 
 ## 4bis. 资源预算类加固的判据：**常量 ≠ 内存有界**
 
-对任何「读不可信文件」的校验器，只把 `MAX_*` 常量写对**不足以**让峰值内存受约束。这条判据来自 OFFICE-5 的实测：第一版 JS 重写**完整保留**了 4 个 `MAX_*` 与分块解析，峰值 RSS 仍是 Python 版的数倍。
+对任何「读不可信文件」的校验器，只把 `MAX_*` 常量写对**不足以**让峰值内存受约束。这条判据来自实测：第一版 JS 重写**完整保留**了 4 个 `MAX_*` 与分块解析，峰值 RSS 仍是 Python 版的数倍。
 
-**可复现的实测数字**（`/usr/bin/time` 口径的峰值 RSS；测量方法见 `.reverse/28-office-provenance/OFFICE-CHECKER-JS.md` §5.2）：
+**可复现的实测数字**（`/usr/bin/time` 口径的峰值 RSS；测量方法：把同一份构造文档分别喂给载荷与 Python 版，用 `/usr/bin/time -v` 取峰值 RSS）：
 
 | 夹具                                         |     .py |    正确实现 |   还原根因后 |
 | -------------------------------------------- | ------: | ----------: | -----------: |
@@ -121,23 +121,23 @@ diff "$UPSTREAM/check_office.py" apps/zcode-cli/packages/documents-plugin/script
 
 **验收要求（两条都要有，缺一不可）**：
 
-1. **峰值内存回归测试**：对元素密集夹具断言峰值 RSS 上限。OFFICE-5 的写法见 `documents-plugin/test/checkOffice.test.mjs` 的「元素密集输入的峰值内存受元素预算约束」用例（阈值 `MAX_DENSE_PEAK_MIB = 500`；正确实现实测 281~285 MiB，还原根因后 713~717 MiB）。
-   **阈值必须对着可复现的回归值标定，并做变异验证**：OFFICE-5 最初把阈值写成 900 MiB，而还原根因后只到 713~717 MiB —— 该回归能**蒙混过关**，断言等于没有。改到 500 后，把还原版装回去跑测试会**真的失败**（`实际 714 MiB`），这才算有效断言。
+1. **峰值内存回归测试**：对元素密集夹具断言峰值 RSS 上限。写法见 `documents-plugin/test/checkOffice.test.mjs` 的「元素密集输入的峰值内存受元素预算约束」用例（阈值 `MAX_DENSE_PEAK_MIB = 500`；正确实现实测 281~285 MiB，还原根因后 713~717 MiB）。
+   **阈值必须对着可复现的回归值标定，并做变异验证**：最初把阈值写成 900 MiB，而还原根因后只到 713~717 MiB —— 该回归能**蒙混过关**，断言等于没有。改到 500 后，把还原版装回去跑测试会**真的失败**（`实际 714 MiB`），这才算有效断言。
    **注意 Node 不能套用 `RLIMIT_AS`**：V8 启动即预留大段虚拟地址空间，`RLIMIT_AS=512 MiB` 下连 `node --version` 都跑不起来（`rc=-5`，`Fatal process out of memory: SegmentedTable::InitializeTable`；实测 2 GiB 才够）。Python 侧用 `RLIMIT_AS` 硬上限，Node 侧用 `--max-old-space-size` 限堆 **+ 断言「进程活着且给出结构化输出」**。
 2. **与基准实现的峰值对比**：保留一份基准（本目录就是 `.py`）并实测同一夹具的峰值 RSS，量级差距要能解释。**注意把运行时基线单列**：Node 空进程本身约 46 MiB（V8 堆 + 运行时），所以「JS 比 .py 高几十 MiB」在正确实现上是正常的；要盯的是**随输入规模放大的那部分**（上表里 dense 从 240 → 332 MiB 属正常，到 1160 MiB 就是失控）。
 
-**为什么单独立这条判据**：`task-58`/`task-60` 的判据只写到「保留 4 个 `MAX_*` + 分块解析」，照着做**会**得到一个内存不受约束的实现 —— 判据不足会让后人做出错误决定，与代码缺陷同级。
+**为什么单独立这条判据**：只写到「保留 4 个 `MAX_*` + 分块解析」的规范，照着做**会**得到一个内存不受约束的实现 —— 判据不足会让后人做出错误决定，与代码缺陷同级。
 
-## 5. 与许可门禁的对齐：`modifiedFiles` 与 `locallyModifiedFiles`
+## 5. 与许可检查的对齐：`modifiedFiles` 与 `locallyModifiedFiles`
 
 改完目录内任何文件后**必须**：
 
 ```bash
 node scripts/licenses.mjs notices   # 重新生成 THIRD-PARTY-NOTICES.md 与 third-party/inventory.json
-node scripts/licenses.mjs check      # 门禁：输入哈希 + 许可分桶
+node scripts/licenses.mjs check      # 检查：输入哈希 + 许可分桶
 ```
 
-不重跑就会看到 `Third-party input changed: <file>. Run node scripts/licenses.mjs notices` —— 这是**输入新鲜度**门禁，不是错误配置。
+不重跑就会看到 `Third-party input changed: <file>. Run node scripts/licenses.mjs notices` —— 这是**输入新鲜度**检查，不是错误配置。
 
 两个字段的判据（选错会直接抛错）：
 
@@ -146,7 +146,7 @@ node scripts/licenses.mjs check      # 门禁：输入哈希 + 许可分桶
 | `modifiedFiles`        | `scripts/generate-third-party-notices.mjs` 要求**每个文件正文内**含字面量 `Modified by ZCode:`，否则抛 `Missing file-local modification notice`；还会校验文件必须在 `roots` 内 | **Apache-2.0** 路径（4(b) 要求文件内变更声明）   |
 | `locallyModifiedFiles` | 自定义字段，随记录写入 `third-party/inventory.json`，**不读文件正文、不要求标记**                                                                                              | **MIT / BSD / ISC** 等不要求文件内变更声明的材料 |
 
-**结论**：办公三件套与 CUA 插件壳都是 MIT ⇒ 用 `locallyModifiedFiles`，**不要**为了过门禁往 MIT 正文里塞 `Modified by ZCode:` 标记（既无义务，也会污染技能正文）。反过来，Apache-2.0 派生文件**必须**用 `modifiedFiles` 并在文件内加标记。
+**结论**：办公三件套与 CUA 插件壳都是 MIT ⇒ 用 `locallyModifiedFiles`，**不要**为了通过检查往 MIT 正文里塞 `Modified by ZCode:` 标记（既无义务，也会污染技能正文）。反过来，Apache-2.0 派生文件**必须**用 `modifiedFiles` 并在文件内加标记。
 
 ## 6. 逐文件清单（三件套，快照：2026-09-23）
 
@@ -157,8 +157,8 @@ node scripts/licenses.mjs check      # 门禁：输入哈希 + 许可分桶
 | `skills/{docx,pptx,xlsx}/SKILL.md`               | `derived-from-dsh`               | MIT                    | frontmatter `metadata.modified`：工具链由**系统 Python(python-docx) 改为随包 Node 库**（docx 9.7.1 / pptxgenjs 4.0.1 / exceljs 4.4.0）；校验器相对路径修正为 `../../scripts/`；补充降级边界；**提权安装场景给出确切命令并声明所需权限**（引导式授权，task-71，见 §7ter） | 上游同名文件每次发版都 diff；**不能整体覆盖**（我们已改口径） |
 | `agents/visual-judge.md`                         | `self`                           | 随本仓库               | 本项目独立实现（**四份逐字节相同**：documents / presentations / spreadsheets / **pdf**）                                                                                                                                                                                 | 不跟上游                                                      |
 | `scripts/check_office.py`                        | `derived-from-dsh`（**已分叉**） | MIT                    | 追加式安全修复：成员白名单、4 个 `MAX_*` 预算、`PackageBudget`、分块解析、`except` 补 `LookupError`（见 §7）                                                                                                                                                             | 上游更新需按 §4 手工合并；改一处同步三处                      |
-| `scripts/check_office.mjs` + `scripts/lib/*.mjs` | `self`                           | 随本仓库               | OFFICE-5 的 Node 重写（主路径）：契约与 .py 逐项一致；按 `apps/zcode-cli/AGENTS.md` 的 400 行上限拆成 10 个文件（见 §7bis）                                                                                                                                              | 不跟上游；但**必须与 .py 保持契约一致**，改一边核对另一边     |
-| `test/checkOffice.test.mjs`（仅 documents）      | `self`                           | 随本仓库               | 上述安全修复的回归测试；OFFICE-5 起**两条实现路径同型断言**（4 条预算用例 × 2 路径）                                                                                                                                                                                     | 不跟上游；改动脚本行为时要同步                                |
+| `scripts/check_office.mjs` + `scripts/lib/*.mjs` | `self`                           | 随本仓库               | 本轮 Node 重写 的 Node 重写（主路径）：契约与 .py 逐项一致；按 `apps/zcode-cli/AGENTS.md` 的 400 行上限拆成 10 个文件（见 §7bis）                                                                                                                                        | 不跟上游；但**必须与 .py 保持契约一致**，改一边核对另一边     |
+| `test/checkOffice.test.mjs`（仅 documents）      | `self`                           | 随本仓库               | 上述安全修复的回归测试；本轮 Node 重写 起**两条实现路径同型断言**（4 条预算用例 × 2 路径）                                                                                                                                                                               | 不跟上游；改动脚本行为时要同步                                |
 | `.zcode-plugin/plugin.json`、`package.json`      | `self`                           | 随本仓库               | ZCode 插件清单与包元数据（本仓库布局，非上游布局）                                                                                                                                                                                                                       | 不跟上游                                                      |
 | `LICENSE.dsh`                                    | `upstream-dsh` 的许可文本副本    | MIT（© 2026 DeepSeek） | 无                                                                                                                                                                                                                                                                       | 上游许可变更时同步                                            |
 
@@ -166,17 +166,17 @@ node scripts/licenses.mjs check      # 门禁：输入哈希 + 许可分桶
 
 ## 7. `scripts/check_office.py` 的分叉记录
 
-| 项                      | 值                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 上游                    | `@deepseek-ai/dsh-skill-office` (MIT)，`packages/skill/skill-office/assets/scripts/check_office.py`                                                                                                                                                                                                                                                                                                                          |
-| 基线（快照 2026-09-23） | **13,217 字节**，sha256 `d94afa67593a284751e0f2dc000877e836f885d39954a882033cf22a13278f66`（deepseek-harness `0.1.7-alpha.2`；`0.1.6` 起该文件未变）                                                                                                                                                                                                                                                                         |
-| 本地（三份逐字节相同）  | **22,082 字节**，sha256 `e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358`（含来源标注头与 2026-09-23 的 `LookupError` 修复）                                                                                                                                                                                                                                                                                |
-| 改动性质                | **追加式**：上游的 `def`/`class` 清单是本地清单的子集，未改上游函数签名与语义 ⇒ 上游更新可手工合并                                                                                                                                                                                                                                                                                                                           |
-| 改动内容                | ⓪ 2026-09-23：文件头加入来源/基线/分叉标注（纯注释，不改行为，四份字段见 §3.2）；① 成员白名单 `XML_MEMBER_SUFFIXES` + `is_xml_member()`；② 资源预算 `MAX_MEMBER_BYTES`(64 MiB)、`MAX_TOTAL_BYTES`(256 MiB)、`MAX_MEMBER_ELEMENTS`(2,000,000)、`MAX_TOTAL_ELEMENTS`(4,000,000) 与 `class PackageBudget`；③ 分块解析 `PARSE_CHUNK_BYTES`(1 MiB)，失败也输出结构化错误；④ **2026-09-23：`except` 列表补 `LookupError`**（见下） |
-| ④ 的动因                | 成员声明未知编码（`encoding="NO-SUCH-ENCODING"`）时 ET 抛 `LookupError`，它既不是 `ValueError` 也不是 `OSError`，**不在原 except 列表里** ⇒ 实测「退出码 1 + 空 stdout + 裸 traceback」，正是 ③ 要消灭的形态。`IndexError` 同为 `LookupError` 子类，一并覆盖。JS 版无此洞（一律结构化 fail），详见 `.reverse/28-office-provenance/OFFICE-CHECKER-JS.md` §5.4                                                                 |
-| **本文件的状态**        | **保留实现，不是主路径**：技能正文只引用 `check_office.mjs`。保留两个理由：① 作为 JS 重写的**行为基准**（OFFICE-5 的 455 例契约对比与多轮 fuzz 都以它为准）；② §8 把 Python 定位为「按需增强」路径。**因此它必须与 .mjs 保持契约一致**，不是「没人用的死文件」                                                                                                                                                               |
-| 动因                    | `check_office.py` 的调用方是模型，输入来自用户文件或网络下载，属不可信输入。修复前对解压体积**没有任何上限**：实测 2.09 MB 的 ZIP 可解出 2 GiB、子进程峰值 RSS 4,116 MiB；且大夹具上 `OverflowError` 逃逸导致「退出码 1 但 stdout 为空」，调用方无法区分「文档不合法」与「检查器崩了」                                                                                                                                       |
-| 回归测试                | `apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs`                                                                                                                                                                                                                                                                                                                                                         |
+| 项                      | 值                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 上游                    | `@deepseek-ai/dsh-skill-office` (MIT)，`packages/skill/skill-office/assets/scripts/check_office.py`                                                                                                                                                                                                                                                                                                              |
+| 基线（快照 2026-09-23） | **13,217 字节**，sha256 `d94afa67593a284751e0f2dc000877e836f885d39954a882033cf22a13278f66`（deepseek-harness `0.1.7-alpha.2`；`0.1.6` 起该文件未变）                                                                                                                                                                                                                                                             |
+| 本地（三份逐字节相同）  | **22,082 字节**，sha256 `e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358`（含来源标注头与 2026-09-23 的 `LookupError` 修复）                                                                                                                                                                                                                                                                    |
+| 改动性质                | **追加式**：上游的 `def`/`class` 清单是本地清单的子集，未改上游函数签名与语义 ⇒ 上游更新可手工合并                                                                                                                                                                                                                                                                                                               |
+| 改动内容                | ⓪ 2026-09-23：文件头加入来源/基线/分叉标注（纯注释，不改行为，四份字段见 §3.2）；① 成员白名单 `XML_MEMBER_SUFFIXES` + `is_xml_member()`；② 资源预算 `MAX_MEMBER_BYTES`(64 MiB)、`MAX_TOTAL_BYTES`(256 MiB)、`MAX_MEMBER_ELEMENTS`(2,000,000)、`MAX_TOTAL_ELEMENTS`(4,000,000) 与 `class PackageBudget`；③ 分块解析 `PARSE_CHUNK_BYTES`(1 MiB)，失败也输出结构化错误；④ **`except` 列表补 `LookupError`**（见下） |
+| ④ 的动因                | 成员声明未知编码（`encoding="NO-SUCH-ENCODING"`）时 ET 抛 `LookupError`，它既不是 `ValueError` 也不是 `OSError`，**不在原 except 列表里** ⇒ 实测「退出码 1 + 空 stdout + 裸 traceback」，正是 ③ 要消灭的形态。`IndexError` 同为 `LookupError` 子类，一并覆盖。JS 版无此洞（一律结构化 fail），对照用例在 `test/checkOffice.test.mjs`                                                                             |
+| **本文件的状态**        | **保留实现，不是主路径**：技能正文只引用 `check_office.mjs`。保留两个理由：① 作为 JS 重写的**行为基准**（455 例契约对比与多轮 fuzz 都以它为准）；② §8 把 Python 定位为「按需增强」路径。**因此它必须与 .mjs 保持契约一致**，不是「没人用的死文件」                                                                                                                                                               |
+| 动因                    | `check_office.py` 的调用方是模型，输入来自用户文件或网络下载，属不可信输入。修复前对解压体积**没有任何上限**：实测 2.09 MB 的 ZIP 可解出 2 GiB、子进程峰值 RSS 4,116 MiB；且大夹具上 `OverflowError` 逃逸导致「退出码 1 但 stdout 为空」，调用方无法区分「文档不合法」与「检查器崩了」                                                                                                                           |
+| 回归测试                | `apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs`                                                                                                                                                                                                                                                                                                                                             |
 
 ## 7bis. `scripts/check_office.mjs`（+ `lib/*.mjs`）的记录
 
@@ -187,15 +187,15 @@ node scripts/licenses.mjs check      # 门禁：输入哈希 + 许可分桶
 | 落点                                 | `scripts/check_office.mjs` + `scripts/lib/*.mjs`（三插件各一份，逐字节相同，见 §4.5）                                                                                                                                                                                         |
 | 规模（快照 2026-09-23，含 FIX-DOCX） | **10 个文件 / 86,312 字节 / 2,083 行**；对照 `.py` 的 1 个文件 / 22,082 字节 / 418 行（FIX-DOCX 前的旧值是 81,694 B / 2,012 行 —— 此处更正 §1 表与本节早先的 80,058 B / 1,986 行）                                                                                            |
 | 依赖                                 | **零第三方依赖**，只用 `node:fs` / `node:path` / `node:process` / `node:zlib`（理由同 `.py` 只用标准库：插件随包分发，多一个依赖就多一份体积与许可负担）                                                                                                                      |
-| 对外契约                             | 与 `.py` **逐项一致**：输出 `{format, verdict, checks, summary}`、退出码 0/1/2、4 个 `MAX_*` 常量、媒体不计入读内存预算、失败必带非空 `detail`。逐项对照表见 `.reverse/28-office-provenance/OFFICE-CHECKER-JS.md` §2                                                          |
+| 对外契约                             | 与 `.py` **逐项一致**：输出 `{format, verdict, checks, summary}`、退出码 0/1/2、4 个 `MAX_*` 常量、媒体不计入读内存预算、失败必带非空 `detail`。逐项对照表见本节与 §7bis 的契约表                                                                                             |
 | 为什么拆 10 个文件                   | `apps/zcode-cli/AGENTS.md` 规定单文件不超过 400 行；单文件版 1,673 行是上限的 4 倍。按**依赖方向单向**拆：`spec → xml-lex → xml-decl → xml-tree → xml-scan → zip → parts → cli → main`，**无循环依赖**。唯一共享可变状态是元素预算对象 `PackageBudget`（main 创建、逐层传入） |
 | 安全加固                             | 与 `.py` 同批：成员白名单、4 个 `MAX_*`、`PackageBudget`、分块解析。**额外要求见 §4bis**（常量 ≠ 内存有界）                                                                                                                                                                   |
 | 与 `.py` 的已知差异                  | ① `.py` 的 `except` 漏 `LookupError`（已补，见 §7）；② 少数畸形输入上 `detail` 文案不同（两边都结构化 fail、verdict 与 rc 一致）；③ JS 侧一律结构化 fail（比 `.py` 更严，不会更松）                                                                                           |
 | 命名空间声明顺序                     | 对齐 expat：`xmlns:*` 在**同一元素内**对该元素**全部属性**生效，与属性文档序无关（Namespaces in XML 1.0 §6.2）。`readAttributes()` 因此分两遍 —— 先收集本元素声明，再解析其余属性。**FIX-DOCX 修复的真实缺陷**，详见 §7quater                                                 |
 | 回归测试                             | `apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs`（两条实现路径同型断言 + 峰值内存用例 + 三插件逐字节一致用例）；`test/checkOfficePrefix.test.mjs`（真实库产物往返 + `mc:Ignorable` 顺序 + 反向用例，见 §7quater）                                         |
-| 行为基准                             | 保留 `.py` 作为基准：OFFICE-5 用 **455 例契约对比（stdout/rc/`--out` 逐字节 0 差异）**、**800 例包级模糊对比（rc 差异 0、verdict 翻转 0）**、**3,900 例 XML 层差分（0 差异）** 验证                                                                                           |
+| 行为基准                             | 保留 `.py` 作为基准：本轮 Node 重写 用 **455 例契约对比（stdout/rc/`--out` 逐字节 0 差异）**、**800 例包级模糊对比（rc 差异 0、verdict 翻转 0）**、**3,900 例 XML 层差分（0 差异）** 验证                                                                                     |
 
-## 7quater. FIX-DOCX：命名空间声明与属性顺序无关（task-76）
+## 7quater. FIX-DOCX：命名空间声明与属性顺序无关
 
 **缺陷**：`check_office.mjs` 把 **docx 库自己产出的 `.docx` 判为 fail**，而 `.py`（expat）判 pass。
 根因是 `readAttributes()` **按属性文档序逐个解析前缀**，而 docx@9.7.1 的根标签顺序是
@@ -215,7 +215,7 @@ node scripts/licenses.mjs check      # 门禁：输入哈希 + 许可分桶
 | 顺带补的两条既有缺口 | ① 同一元素内**重复声明同一前缀**（expat 报 `duplicate attribute`）；② 保留前缀 `xmlns` 被声明（expat 报 `reserved prefix (xmlns)…`）。两条原先都**静默放行非法输入** —— 因为单遍解析下「后声明覆盖前声明」，缺陷被掩盖；改两遍后若不补，反而会变成真的放行 |
 | 回归测试             | `test/checkOfficePrefix.test.mjs`：真实 docx 库产物往返 + `mc:Ignorable` 顺序夹具 + 7 条反向用例（真非法仍须 fail）                                                                                                                                        |
 | 验证口径             | 两轮差分语料（3,668 + 5,844 例，含保留前缀/保留 URI/undeclared 形状）对 expat **verdict 翻转 0**；真实三格式往返 stdout 与 `.py` **逐字节一致**                                                                                                            |
-| 变异验证             | 还原单遍实现 → 主用例与顺序夹具变红；去掉前缀解析 → 3 条反向用例变红（断言有牙齿）                                                                                                                                                                         |
+| 护栏有效性验证       | 还原单遍实现 → 主用例与顺序夹具变红；去掉前缀解析 → 3 条反向用例变红（断言有牙齿）                                                                                                                                                                         |
 
 **为什么既有测试没抓到**（与 `AGENTS.md`「验证必须打到最终消费点」同型）：
 `checkOffice.test.mjs` 的 13 个夹具**全是 Python `zipfile` 手写的小 XML**，
@@ -240,18 +240,17 @@ node scripts/licenses.mjs check      # 门禁：输入哈希 + 许可分桶
 | `scripts/check_office.py`                                        | `derived-from-dsh`                                                       | 我们的安全加固必须保留；上游若也做了资源限制，合并时对齐语义而不是覆盖        |
 | `scripts/check_office.mjs`（+ `lib/*.mjs`）                      | `self`                                                                   | **技能正文调用的主路径**（见 §7bis）；与 `.py` 保持契约一致，改一边核对另一边 |
 
-### 7ter. 提权安装的引导方式（task-71）
+### 7ter. 提权安装的引导方式
 
 三个 SKILL.md 里「用户想要渲染但 `soffice` 缺失」这一段，原先只说「给出命令让用户自己跑」，
-没说这条命令**需要什么权限**、也没说界面提供了投递入口。task-71 补上这两点：
+没说这条命令**需要什么权限**、也没说界面提供了投递入口。本轮补上这两点：
 
 - 明确这条命令**需要管理员权限**（给出 `sudo` 形式，并说明会询问账户密码）；
 - 明确界面在 shell 代码块上提供 **"send to terminal"**，它**只把命令粘进集成终端、不执行**，
   由用户自己按回车；
 - 明确**不要**让用户把密码贴进对话。
 
-**为什么是「给出命令 + 用户自己回车」而不是「agent 代跑」**：`.reverse/30-sudo-auth/SUDO-AUTH-EVAL.md`
-（task-67）评估后**否决**了给 agent 一条可交互提权通道（PTY 透传 / 自建 askpass / 密码框）。
+**为什么是「给出命令 + 用户自己回车」而不是「agent 代跑」**：评估后**否决**了给 agent 一条可交互提权通道（PTY 透传 / 自建 askpass / 密码框），理由是那等于把提权凭据的输入权交给模型；现在的形态让用户自己看到命令、自己按回车。
 理由中最硬的一条是 **TOCTOU 从结构上不可能发生** —— 用户按下的回车**就是**执行，
 不存在「批准的是 A、执行的是 B」的窗口。本节的写法是那份评估结论的落地，两者一致。
 
@@ -262,7 +261,7 @@ node scripts/licenses.mjs check      # 门禁：输入哈希 + 许可分桶
 1. **取上游**：拿新版 DSH 的 `packages/skill/skill-office/`。
 2. **按表分流**（§6）：`upstream-dsh` 的文件可直接比对；`derived-from-dsh` 的**先看 §4 的结构 diff**，判断是否追加式。
 3. **`check_office.py` 专项**：用 §4 的命令比 `def`/`class`/`MAX_*` 清单。若上游也加了资源预算，逐项对齐语义（别直接覆盖我们的 4 个预算常量）；两边都加了同类逻辑时，取更严格的一侧并在 `Local changes` 记录取舍。
-   **改完 `.py` 后必须同步 `.mjs`**（反之亦然）：两者是同一契约的两份实现（见 §7bis）。改完跑 `test/checkOffice.test.mjs`，其中的「三份逐字节一致」用例会抓住漏同步；契约层面的回归用差分对比（`.reverse/28-office-provenance/OFFICE-CHECKER-JS.md` §4 给了脚本口径）。
+   **改完 `.py` 后必须同步 `.mjs`**（反之亦然）：两者是同一契约的两份实现（见 §7bis）。改完跑 `test/checkOffice.test.mjs`，其中的「三份逐字节一致」用例会抓住漏同步；契约层面的回归用差分对比（拿同一份输入分别跑两份实现，逐项比对输出与退出码）。
 4. **技能文本**：只在「载荷已就位」或「确认上游改动与载荷无关」时才改；改完同步 frontmatter 的 `modified` 描述。
 5. **收尾**：`node scripts/licenses.mjs notices` → `node scripts/licenses.mjs check`；跑 `apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs`；更新本文档 §6/§7 的**哈希与字节数**（它们都是快照值）。
 6. **不要**把本仓库的自研文件（`visual-judge.md`、Node 工具、测试）当成上游文件覆盖。

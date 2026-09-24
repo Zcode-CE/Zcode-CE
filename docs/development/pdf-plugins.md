@@ -1,6 +1,6 @@
 # PDF 插件：来源、载荷、校验器与降级边界
 
-本文规定 `apps/zcode-cli/packages/pdf-plugin` 这个**自研**插件的载荷构成、注册闸门、校验器契约与降级边界，以及它引用的第三方材料如何登记。配套：[PDF 制作可行性](../.reverse/38-pdf/PDF-FEASIBILITY.md)（选型与实测数据）、[PDF 规格](../.reverse/38-pdf/PDF-SPEC.md)、[提交形态](../.reverse/38-pdf/COMMIT-SHAPE.md)、[task-9 报告](../.reverse/38-pdf/TASK9-REPORT.md)。
+本文规定 `apps/zcode-cli/packages/pdf-plugin` 这个**自研**插件的载荷构成、注册闸门、校验器契约与降级边界，以及它引用的第三方材料如何登记。选型依据与实测数据见 §1（来源与归属）；校验器的契约与内部检查见 §4；字体策略与降级边界见 §6；载荷、注册与校验的验证命令见 §7。
 
 ## 1. 来源与归属（逐文件）
 
@@ -31,7 +31,7 @@
 
 `bootstrap/src/app/official-plugin-definitions.ts` 的 `OFFICIAL_PDF_EXTRA_REQUIRED_SEED_PATHS` 把**两个载荷 + 三个入口**（`pdf-build.mjs`、`check_pdf.mjs`、`pdf-fonts.mjs`）钉进 `requiredSeedPaths`：缺任何一项，seed 拒绝写缓存并记 `ZCODE_PLUGIN_SEED_INCOMPLETE`（`bundled-plugins.ts`），用户看不到插件。**不钉 `lib/*.mjs` 内部实现文件** —— 入口缺文件会以可读错误暴露，而多钉一层会把"重命名内部文件"变成"插件静默不出现"的新失效形态。
 
-为什么需要这条闸门：实测（[`COMMIT-SHAPE.md`](../.reverse/38-pdf/COMMIT-SHAPE.md)）只提交目录与清单就能让插件显示为 `[enabled]`，而首次调用必然 `MODULE_NOT_FOUND`。
+为什么需要这条闸门：只提交目录与清单就能让插件显示为 `[enabled]`，而首次调用必然 `MODULE_NOT_FOUND`（回归用例在 `apps/zcode-cli/packages/pdf-plugin/test/`）。
 
 ## 4. 校验器契约（`check_pdf.mjs`）
 
@@ -45,7 +45,7 @@
 - `pdfkit`（MIT）、`fontkit`（MIT）作为 `pdf-plugin/package.json` 的**构建期依赖**进仓库安装树；随包分发的是 bundle。
 - `scripts/licenses.mjs` 的 `MANUAL_LICENSE` 登记 `png-js: "MIT"`（包内 LICENSE 为 MIT 全文；package.json 无 license 字段）。
 - `third-party/npm-overrides.json` 新增四条：`fontkit@2.0.4`、`brotli@1.3.3`、`dfa@1.2.0`（npm 包内与上游仓库均无独立 LICENSE ⇒ 按既有 `publisher-license-identifier-and-standard-terms` 约定登记标准 MIT 全文 + npm tarball sha256）、`png-js@1.1.0`（包内 LICENSE 即上游文本，登记 `packaged-license-file`）。
-- 生成物：`node scripts/licenses.mjs notices` → `THIRD-PARTY-NOTICES.md`；门禁 `node scripts/licenses.mjs check`（本仓当前绿）。
+- 生成物：`node scripts/licenses.mjs notices` → `THIRD-PARTY-NOTICES.md`；检查 `node scripts/licenses.mjs check`（本仓当前绿）。
 - **未引入随包字体**，因此**没有 OFL 与 Reserved Font Name 义务**。若将来随包 OFL 子集字体：必须改字体名（Noto 是 RFN）+ 附 OFL 全文与版权声明，并同步登记。
 
 ## 6. 字体策略与降级边界

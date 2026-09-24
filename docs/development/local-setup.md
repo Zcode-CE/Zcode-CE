@@ -119,11 +119,11 @@ curl -s -o /dev/null -w 'api-token %{http_code}\n'    "http://<HOST>:3030/api/se
 
 ### 现状边界（如实说明）
 
-- 令牌是**静态共享密钥**：更换令牌会让所有已配对设备失效，且当前没有按设备吊销、没有配对二维码、没有会话列表。需要的场景请参考 `.reverse/40-remote-control/SECURITY-SERVER-DEFAULTS.md` 与 `REMOTE-CONTROL-REVIVAL.md` 里的分档方案。
+- 令牌是**静态共享密钥**：更换令牌会让所有已配对设备失效，且当前没有按设备吊销、没有配对二维码、没有会话列表。它的风险面按 agent 级访问对待，见 [无头服务器的安全边界](../../docs/operations/headless-server.md) §4 与 [反代部署](../../docs/operations/headless-server-reverse-proxy.md)。
 - 静态资源不受令牌保护（浏览器要先拿到 SPA 才能进入鉴权流程）；未授权者能读到前端代码与版本信息，但读不到会话数据（会话数据全部经 `/api` 与 `/ws`）。
 - 反代场景依赖 `X-Forwarded-Proto`：该头可被伪造，但伪造只会让 cookie 多一个 `Secure`（明文 http 下不会被回发），不会造成提权。
-- **`X-Forwarded-For` 目前也被无条件信任**（用作对端地址的日志与告警；取首跳）：因此**不要**把 XFF 当准入或限流判据。
-  反代应**覆写**该头（nginx 用 `$remote_addr`），不要用追加形式。细节与"可信代理"改造计划见
+- **`X-Forwarded-For` 只在声明了可信代理时才被采信**：配置 `ZCODE_SERVER_TRUSTED_PROXIES`（IP 或 CIDR）后，按「从右往左第一个不在可信列表里的地址」判定客户端；**未配置时一律用连接来源地址**，XFF 不参与。因此**不要**把 XFF 当准入判据 —— 它只用于限流计数与审计日志的对端地址。
+  反代应**覆写**该头（nginx 用 `$remote_addr`），不要用追加形式。细节见
   [headless-server-reverse-proxy.md](../../docs/operations/headless-server-reverse-proxy.md) §3。
 
 ### 暴露面告警（非回环监听 / 明文 http）
@@ -135,4 +135,4 @@ curl -s -o /dev/null -w 'api-token %{http_code}\n'    "http://<HOST>:3030/api/se
 
 **明文 http 的合法用法限于可信局域网**：手机在自家局域网里用 `http://<私网IP>:<端口>/?token=...` 访问是本项目支持的用法，服务端不会因此拒绝请求；但不要把该端口暴露到公网 —— 需要跨网络访问时，请走 TLS 终结的反向代理或隧道（此时请求带 `X-Forwarded-Proto: https`，cookie 才会带 `Secure`，运行期告警也不再出现）。
 
-护栏与反向验证见 `packages/server/test/httpExposureWarning.test.ts`（非回环无 token 仍拒绝启动；非回环 + token 启动且出现含关键指引的告警；回环 127.x / ::1 / [::1] / localhost / ::ffff:127.x **不得**出现告警；运行期告警只出现一次；声明 https 时不告警）。
+护栏与「改坏即变红」的确认见 `packages/server/test/httpExposureWarning.test.ts`（非回环无 token 仍拒绝启动；非回环 + token 启动且出现含关键指引的告警；回环 127.x / ::1 / [::1] / localhost / ::ffff:127.x **不得**出现告警；运行期告警只出现一次；声明 https 时不告警）。

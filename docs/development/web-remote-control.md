@@ -1,7 +1,7 @@
 # 网页远控（M1）：局域网/私网的手机或另一台电脑操作同一个工作台
 
 > 定位：**自托管**的网页远控 —— 用户在装有 ZCode 的机器上起一个服务，同一局域网/私网内的手机或另一台电脑用浏览器打开就能操作这个工作台。
-> **不是**官方产品的「扫码 + 云 relay + 移动壳」那套（官方那套在开源前已被整块移除：本仓库 0 命中，云 relay 与官方托管的手机页面均不可复制，见 [.reverse/40-remote-control/REMOTE-CONTROL-REVIVAL.md](../../.reverse/40-remote-control/REMOTE-CONTROL-REVIVAL.md)）。
+> **不是**官方产品的「扫码 + 云 relay + 移动壳」那套（官方那套在开源前已被整块移除：本仓库 0 命中，云 relay 与官方托管的手机页面均不可复制）。
 > 本仓库**不托管任何中继**：服务跑在你自己的机器上，网络可达性由你的局域网/私网/隧道负责。
 
 ---
@@ -13,7 +13,7 @@
 - `scripts/zcode-distribution/runner.mjs` 解析参数（`:34-104`），启动 `<安装目录>/server/entry-http.js`，并把 `<安装目录>/web` 作为静态根传给它（`:12-14`、`:180-190`）。
 - 静态资产来自一次构建的 stage：`scripts/build-zcode.mjs:158-181` 分别构建 `@zcode/server` 与 `@zcode/web`，然后把 `packages/web/dist` 复制到 `<包根>/web`、`packages/server/dist` 复制到 `<包根>/server`。**web 资产随包分发**是既有机制，不是本轮新增。
 - 服务进程是 **`packages/server` 的 http 入口**（`packages/server/src/entry-http.ts` + `src/http.ts`）。**不是** `packages/zcode-server-cli`：后者是远端工作区运行时（server-core），它的源码里**没有任何静态托管能力**（`grep -rn 'staticRoot|webRoot|spaFallback' packages/zcode-server-cli/src` → 0 命中），且对非回环监听 fail-closed（`src/server-core/http.ts:136-142`）。
-- **两者的安全默认值差异**：server-core 只允许回环；`packages/server` 在 3.14.3-ce.2 这轮之前是 fail-open（不设 host 绑所有网卡、无 token 全开放），现已修为**默认回环**、**非回环 + 无 token 拒绝启动**（`packages/server/src/http.ts` 的 `DEFAULT_HTTP_LISTEN_HOST`/`assertListenSecurity`；前后对照见 [SECURITY-SERVER-DEFAULTS.md](../../.reverse/40-remote-control/SECURITY-SERVER-DEFAULTS.md)）。**本能力的暴露方式必须建立在这条默认值之上，不得为了「好连」放松。**
+- **两者的安全默认值差异**：server-core 只允许回环；`packages/server` 在 3.14.3-ce.2 这轮之前是 fail-open（不设 host 绑所有网卡、无 token 全开放），现已修为**默认回环**、**非回环 + 无 token 拒绝启动**（`packages/server/src/http.ts` 的 `DEFAULT_HTTP_LISTEN_HOST`/`assertListenSecurity`；回归用例见 `packages/server/test/` 下的监听与鉴权用例）。**本能力的暴露方式必须建立在这条默认值之上，不得为了「好连」放松。**
 
 **起服务（安装后）**：
 
@@ -69,14 +69,14 @@ zcode --web                         # 只在 127.0.0.1（默认；不对外）
 
 ---
 
-## 4. 跨站请求防护与安全响应头（task-34）
+## 4. 跨站请求防护与安全响应头
 
 > 为什么必须有这一节：这条链路暴露的是 **agent 级 RPC**，而它的凭据是 cookie（浏览器会自动附带）。
 > 在**没有任何来源校验**的情况下，攻击者只需要让已授权用户打开一个恶意页面，就能：
 > ① 跨站 `fetch` 拿不到数据（浏览器同源策略挡着），但 **WebSocket 握手不受同源策略约束**；
 > ② 跨站表单即可 `POST /api/rpc-host-capability`，拿到 trusted-host ticket 再走 `/ws/host`，
 > 而那一路拿到的是 `desktop-continuous`（trusted-host-relay）角色 —— **比普通终端客户端权限更高**。
-> 结论：**不做来源校验就不能谈公网暴露**（对照调研见 [.reverse/43-web-security/SURVEY.md](../../.reverse/43-web-security/SURVEY.md) 的 G1/G2/G5）。
+> 结论：**不做来源校验就不能谈公网暴露**（跨站与 rebinding 两条链的防护见本页 §4–§6）。
 
 ### 4.1 同源判定口径（唯一实现：`packages/server/src/webExposureGuard.ts`）
 
@@ -137,17 +137,17 @@ zcode --web                         # 只在 127.0.0.1（默认；不对外）
 # 五档 × 逐端点矩阵 + 真实服务端集成（含「HTTP 层 WS 拒绝」的响应体与响应头断言）
 cd packages/server && node --import tsx --test test/webOriginGuard.test.ts
 
-# 反向验证（证明测试有牙齿）：临时做两处改动后，3 条集成用例必须变红
+# 怎样才能相信这些断言：临时做两处改动后，3 条集成用例必须变红
 #   ① 删掉 app.use("*", createCrossSiteGuard(...))
 #   ② 让 server.on("upgrade") 的来源 gate 直接 return
 ```
 
-**反向验证实测（本轮）**：按上述两处临时改动后，8 条里 **5 pass / 3 fail**（正是三条集成用例）；
+**实测结果**：按上述两处临时改动后，8 条里 **5 pass / 3 fail**（正是三条集成用例）；
 恢复后 8/8 绿，且恢复前后 `sha256sum` 与改动前副本**逐字节一致**。
 
 ---
 
-## 5. 鉴权失败限流、可信代理与令牌轮换（task-35）
+## 5. 鉴权失败限流、可信代理与令牌轮换
 
 > 这一节把三条**规则**从代码注释搬进 spec（注释仍然保留，但规则必须以文档为准）：
 > 限流阈值与封禁语义、`X-Forwarded-For` 的信任口径、令牌文件的格式与热重载语义、
@@ -224,7 +224,7 @@ node --import tsx --test test/authThrottle.test.ts       # 可信代理解析 + 
 node --import tsx --test test/authThrottleHttp.test.ts   # 真实服务端：伪造 XFF 攻击 / 反代误伤 / 多令牌
 ```
 
-**反向验证（实测）**：把 `resolveClientAddress` 改回「无条件取 XFF 首跳」**且**去掉限流闸门后，
+**实测结果**：把 `resolveClientAddress` 改回「无条件取 XFF 首跳」**且**去掉限流闸门后，
 16 条里 **9 pass / 7 fail**（含「对端地址默认不采信 XFF」「伪造 XFF 不能绕过」「封禁也覆盖 WS 升级」）；
 恢复后 16/16 绿，且 `sha256sum` 与改动前副本逐字节一致。
 
@@ -233,7 +233,7 @@ node --import tsx --test test/authThrottleHttp.test.ts   # 真实服务端：伪
 SIGHUP 轮换后旧令牌立即 401、未撤销令牌与 env 令牌仍 200；文件写坏后重载保持上一份集合并留告警；
 非回环 + 空令牌文件 ⇒ 拒绝启动。
 
-## 6. Host 白名单（task-39 / G6）——关掉 DNS rebinding 那条链
+## 6. Host 白名单——关掉 DNS rebinding 那条链
 
 > **为什么 §4 的来源校验挡不住它**（必须先理解这一点，否则会以为"已经防住了"）：
 > DNS rebinding 攻击里，攻击者页面 `http://evil.com` 解析到受害者的 LAN 地址，浏览器发出的请求
@@ -293,7 +293,7 @@ cd packages/server
 node --import tsx --test test/hostAllowlist.test.ts   # 解析/判定矩阵 + 真实服务端（含伪 Host 与 WS 升级）
 ```
 
-**反向验证（实测）**：把中间件的 Host 校验与 upgrade gate 的 Host 分支都关掉后，12 条里
+**实测结果**：把中间件的 Host 校验与 upgrade gate 的 Host 分支都关掉后，12 条里
 **9 pass / 3 fail**（「伪 Host 必须 403」「WS 升级的 Host 也必须校验」「登记域名后必须放行」）；
 恢复后 12/12 绿，且 `sha256sum` 与改动前副本逐字节一致。
 
@@ -334,7 +334,7 @@ WebSocket 用真实 socket 发 `Host: evil.com` ⇒ **HTTP 403**（不是握手�
 
 ---
 
-## 9. 审计日志与并发上限（task-46）
+## 9. 审计日志与并发上限
 
 > 批次 A 让「被拒」**看得见**（401/403 + 告警），但**没有账本**：出事后无法回答「谁在何时连过、
 > 谁被拒了几次、谁被撤销、令牌什么时候重载过」，于是处置只剩「全量轮换 + 重启」这一档。
@@ -408,7 +408,7 @@ node --import tsx --test test/auditLog.test.ts    # 结构/等级/合并计数/�
 node --import tsx --test test/auditHttp.test.ts   # 真实链路：连接/失败/封禁/两类拒绝/上限 + 路由标注
 ```
 
-**反向验证**：去掉 `http.ts` 里任一 `audit.record` 调用 ⇒ 对应事件断言变红；
+**实测结果**：去掉 `http.ts` 里任一 `audit.record` 调用 ⇒ 对应事件断言变红；
 把合并策略改成"超限即丢" ⇒ 「事件计数不丢」变红；把 `ROUTE_POLICY` 的一条受保护路由改成不被
 `isTokenProtectedPath` 覆盖 ⇒ `assertRoutePolicyEnforced` 抛错（该用例已单独钉住）。
 
@@ -466,7 +466,7 @@ curl -s -o /dev/null -w 'with-token %{http_code}\n' "http://<主机>:3030/api/se
 # 5) 断线恢复：杀掉进程后页面应出现「连接中断/正在重连」，重启同端口服务后覆盖层消失、应用恢复可用
 ```
 
-**原始观测（本轮实跑）**：见 [.reverse/40-remote-control/WEB-REMOTE-CONTROL-M1.md](../../.reverse/40-remote-control/WEB-REMOTE-CONTROL-M1.md)（含断线前后页面状态、重连次数与时间戳）。
+**原始观测（本轮实跑）**：断线重连前后的页面状态、重连次数与时间戳记录在本页 §8 的验收证据里；自动化覆盖见 `packages/web/test/` 与 `packages/ui/test/` 的重连用例。
 
 ---
 
