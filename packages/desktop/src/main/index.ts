@@ -70,6 +70,8 @@ import {
   HostMessageTypes,
 } from "@zcode/shared";
 import { logger } from "./logger.js";
+import { registerWebServiceIpc } from "./web-service/ipc.js";
+import { createWebServiceRuntime } from "./web-service/runtime.js";
 import { markMainLaunchAppReady } from "./desktopLaunchMarks.js";
 import { createCuaPipFocusRouter, resolveCuaPipWindowKey } from "./cuaPipFocusRouter.js";
 import {
@@ -2004,6 +2006,31 @@ app.whenReady().then(async () => {
   // 主窗口 renderer 的 60 秒 heap 读数入口；随 App 生命周期常驻，只注册一次。
   // 它保留的是 renderer → main 的本地诊断 IPC 通道，不是上报链路。
   registerRendererHeapSampleIpc();
+
+  // ── 本地 Web 服务（远程控制 Slice 1）─────────────────────────────────────────
+  // 生产者（随包 .cjs / 静态根 / pty.node + spawn / 探活 / 选端口 / 停 pid）全在
+  // web-service/runtime.ts；这里只做**接线与注册**：状态由编排器持有，main 不承载业务状态。
+  // 令牌只经 connectionInfo 的 linkWithToken 交付渲染进程；status/changed 的载荷不含令牌。
+  const webServiceRuntime = createWebServiceRuntime({
+    resourceRoot: process.resourcesPath,
+    ...(app.isPackaged ? {} : { fallbackRoot: app.getAppPath() }),
+    nodeExecPath: process.execPath,
+    childEnv: { ELECTRON_RUN_AS_NODE: "1" },
+    onChildOutput: (chunk, stream) => logger.info(`[web-service:${stream}] ${chunk.trimEnd()}`),
+  });
+  registerWebServiceIpc({
+    ipcMain,
+    controller: webServiceRuntime.controller,
+    broadcast: (channel, payload) => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send(channel, payload);
+        }
+      }
+    },
+    onError: (error, channel) => logger.error(`[web-service] ${channel} 失败`, error),
+  });
+
   // main 进程自身的 60 秒内存诊断：门控后写一行 `[memory] role=main`，计数器取自
   // mainMemoryDiagnosticsRegistry。遥测移除前它寄生在 10 秒资源采样节拍里（每 6 个 tick
   // ≈60 秒读一次 main 内存），现在由本模块自持唯一的 unref 定时器。
