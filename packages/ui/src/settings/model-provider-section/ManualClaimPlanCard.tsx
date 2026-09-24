@@ -3,8 +3,11 @@
  *
  * ## 产品规则
  *
- * - 只在**服务端返回了可领取套餐**时渲染（`plans.length > 0`）；无活动时完全不出现，
+ * - 只在服务端返回了可领取套餐时渲染（`plans.length > 0`）；无活动时完全不出现，
  *   不占位、不显示空态 —— 「当前没有可领的活动」不是用户需要处理的信息。
+ *   这条只覆盖「查完了、服务端没有活动」；它不覆盖「我们自己没查到」。
+ * - 读取可领取套餐失败时必须给失败态与重试入口：那是我们自己的错误，
+ *   不能和「服务端没有活动」长得一样（两者都不显示就等于静默降级）。
  * - 领取必须由**用户点击**触发，不做任何后台自动领取或轮询。
  * - 活动要求验证码时，点击「领取」先打开验证码对话框，求解成功后再带 `verifyParam` 提交。
  * - 领取失败按 `failureKind` 给可读文案，不透传服务端原文。
@@ -16,11 +19,12 @@
  *
  * ## 验收场景
  *
- * 1. 无活动 → 不渲染任何内容；
- * 2. 有活动 → 展示名称、描述、权益条目与「领取」按钮；
- * 3. 活动不需要验证码（`captchaConfig.enabled === false`）→ 点击直接 claim；
- * 4. 活动需要验证码 → 先开对话框，求解成功后再 claim，求解失败则不开 claim；
- * 5. 领取成功 → 展示生效窗口；失败 → 展示对应失败文案。
+ * 1. 无活动（查完为空且无 error）→ 不渲染任何内容；
+ * 2. 读取失败 → 展示失败文案与「重试」，点重试重新拉取；
+ * 3. 有活动 → 展示名称、描述、权益条目与「领取」按钮；
+ * 4. 活动不需要验证码（`captchaConfig.enabled === false`）→ 点击直接 claim；
+ * 5. 活动需要验证码 → 先开对话框，求解成功后再 claim，求解失败则不开 claim；
+ * 6. 领取成功 → 展示生效窗口；失败 → 展示对应失败文案。
  */
 import { useState } from "react";
 import {
@@ -38,17 +42,41 @@ import { ManualClaimCaptchaDialog } from "@/settings/ManualClaimCaptchaDialog.js
 
 export function ManualClaimPlanCard({ providerId }: { providerId: string }) {
   const { intl, locale } = useZCodeIntl();
-  const { plans, captchaConfig, loading, claiming, error, outcome, claim } = useManualClaimPlan();
+  const { plans, captchaConfig, loaded, claiming, error, outcome, claim, refresh } =
+    useManualClaimPlan();
   const [captchaTarget, setCaptchaTarget] = useState<ManualClaimPlanPreview | null>(null);
   // 宿主没有 <webview> 时（手机 Web / 普通 Web）无法完成验证码求解。
   // 这里提前拦住，避免把用户送进一个必然失败的对话框。
   const [captchaUnsupported, setCaptchaUnsupported] = useState(false);
 
   // 未登录/无 provider 时服务层会返回稳定失败码，不需要在这里额外判断账号状态。
-  if (loading && plans.length === 0) {
-    return null;
+  const view = resolveManualClaimPlanCardView({ plans, loaded, error });
+  if (view === "load-failed") {
+    return (
+      <div className="space-y-2" data-testid="manual-claim-plan-card">
+        <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 max-sm:flex-col max-sm:items-stretch">
+          <p className="text-ui-sm text-destructive">
+            {intl.formatMessage({ id: "settings.modelProvider.manualClaim.loadFailed" })}
+          </p>
+          <div className="shrink-0 max-sm:[&>button]:w-full">
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              data-testid="manual-claim-plan-retry"
+              onClick={() => void refresh()}
+            >
+              {intl.formatMessage({ id: "common.retry" })}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
-  if (plans.length === 0) {
+
+  // 首屏还没查完，或查完确认没有活动：都不占位、不显示空态。
+  // 「有没有可领取的额度」由官方展示额度的地址回答，这里只是一个方便领取的入口。
+  if (view === "hidden") {
     return null;
   }
 
@@ -115,6 +143,7 @@ export function ManualClaimPlanCard({ providerId }: { providerId: string }) {
           </p>
         ) : null}
         {error ? (
+          // 走到这里只剩「列表已拿到、但领取请求本身异常」这一种：读取失败在函数开头就返回了。
           <p className="mt-2 text-ui-sm text-destructive">
             {intl.formatMessage({ id: "settings.modelProvider.manualClaim.loadFailed" })}
           </p>
@@ -176,6 +205,30 @@ export function ManualClaimOutcomeNotice({
       {intl.formatMessage({ id: key ?? "manual_claim_failure_unknown" })}
     </p>
   );
+}
+
+/**
+ * 卡片该渲染成哪一态。抽成纯函数是为了让 CI 能直接钉住三态的分界 ——
+ * 这三种状态在界面上分别是「占位失败态 + 重试」「完全不出现」「套餐卡片」，
+ * 判错的后果是静默（用户什么都看不到），只能靠测试守住。
+ *
+ * 判据为什么用 loaded 而不是 loading：INITIAL_STATE.loading 的初值是 false，
+ * 首帧渲染时 `loading && plans.length === 0` 就不成立 —— 单看 loading 与 plans
+ * 分不出「首屏还没查」与「查完确实没有活动」。loaded 由 hook 在成功与失败时置位。
+ *
+ * 为什么失败态还要求 plans.length === 0：hook 只在读取失败时清空 plans，
+ * 而领取请求本身异常时不动 plans —— 后者应保持套餐卡片（行内给失败提示），
+ * 不能因为一次领取失败就把已经拿到的套餐与「领取」按钮从界面上撤掉。
+ */
+export function resolveManualClaimPlanCardView(state: {
+  plans: ManualClaimPlanPreview[];
+  loaded: boolean;
+  error: string | null;
+}): "hidden" | "load-failed" | "plan" {
+  if (state.plans.length === 0) {
+    return state.loaded && state.error ? "load-failed" : "hidden";
+  }
+  return "plan";
 }
 
 /** 供测试断言「活动需要验证码」的判据，与组件内保持一致。 */
