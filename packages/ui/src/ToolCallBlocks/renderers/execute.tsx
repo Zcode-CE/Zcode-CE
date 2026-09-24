@@ -300,7 +300,11 @@ export function ExecuteToolCallBlock(context: ToolCallBlockRenderContext) {
         <div className="space-y-1">
           <div className="flex items-start gap-2 font-sans text-ui-base text-foreground">
             <span className="shrink-0 text-foreground-subtle">$</span>
-            <pre className="min-w-0 flex-1 block max-h-15 overflow-over truncate whitespace-pre-wrap break-words">
+            {/* 展开体的职责就是「看全这条命令」（见上方注释：保留 font-mono 便于阅读与复制），
+                但原来的 max-h-15（60px ≈ 3 行）+ truncate 会把长命令再截一次（阶段 1 实测：摘要
+                容器 272px 塞 1789px 内容，溢出量 1517px）。改成可读高度 + 内部滚动，并去掉与
+                whitespace-pre-wrap 冲突的 truncate。 */}
+            <pre className="min-w-0 flex-1 block max-h-[40vh] overflow-y-auto whitespace-pre-wrap break-words">
               {contentParts.executionCommand}
             </pre>
           </div>

@@ -213,7 +213,9 @@ export function ToolSummaryRow(props: ToolSummaryRowProps) {
           <ChevronRightIcon
             aria-hidden
             className={cn(
-              "size-4 text-foreground-subtlest opacity-0 transition-transform transition-opacity duration-200 ease-out will-change-transform group-hover/tool-summary:opacity-100 shrink-0",
+              // 触屏（hover:none）上让「可展开」的提示常显：手机没有 hover，
+              // 否则这一行看不出能点开（task-22 审计 §2.11；与 PR #1 给消息操作栏补的类一致）。
+              "size-4 text-foreground-subtlest opacity-0 transition-transform transition-opacity duration-200 ease-out will-change-transform group-hover/tool-summary:opacity-100 [@media(hover:none)]:opacity-100 shrink-0",
               isExpanded ? "rotate-90 opacity-100" : "rotate-0",
               forceOpen && "opacity-100",
             )}
