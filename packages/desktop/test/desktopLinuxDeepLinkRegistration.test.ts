@@ -11,7 +11,7 @@ import { registerLinuxDeepLinkProtocol } from "../src/main/desktopLinuxDeepLinkR
  * Linux zcode:// deep link 注册的身份对齐契约。
  *
  * 为什么必须钉住：fork 把产品身份从 zcode 改成 zcode-ce，但注册代码里写死了官方 ZCode 的桌面条目名
- * \`zcode.desktop\`。在同时装了官方版的机器上（官方包占用 /usr/share/applications/zcode.desktop），
+ * zcode.desktop。在同时装了官方版的机器上（官方包占用 /usr/share/applications/zcode.desktop），
  * 这段代码会命中"系统级条目已存在"分支：删掉自己的用户级条目、却仍把 xdg-mime default 指向
  * zcode.desktop —— 于是 zcode:// 的默认 handler 归官方版，用户点登录后回调被官方版接管。
  * 这条回归是用户可见且静默的（日志还报"注册成功"），只能靠测试钉住。

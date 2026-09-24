@@ -1,5 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { ZCODE_PRODUCT_FLAVOR } from "@zcode/shared";
+import { resolveLinuxDesktopFileNameForFlavor } from "../../scripts/desktop-product-identity.mjs";
 import { installLinuxAppImageDesktopIconBestEffort } from "./desktopLinuxAppImageIcon.js";
 import {
   runXdgCommand,
@@ -8,10 +10,22 @@ import {
   type LinuxDeepLinkRegistrationLogger,
 } from "./desktopLinuxXdg.js";
 
-const LINUX_DEEP_LINK_DESKTOP_FILE = "zcode.desktop";
+// 桌面条目文件名必须与安装包身份一致。electron-builder 按 linux.executableName 命名这个文件：
+// app-builder-lib 的 fpm target 写 /usr/share/applications/<executableName>.desktop，AppImage target
+// 写 <productFilename>.desktop，而 productFilename 就是 sanitize 过的 executableName。
+// 这里曾经写死 "zcode.desktop"：fork 前产品身份就是 zcode，所以那时是对的；CE 改名成 zcode-ce 之后，
+// 这段代码会去操作官方 ZCode 的桌面条目，在同时装了官方版的机器上把 zcode:// 的默认 handler 让给
+// 官方版，用户点登录后由官方版接管回调。协议名仍是 zcode://（官网中转页回传的就是它），改的是文件名。
+const LINUX_DEEP_LINK_DESKTOP_FILE = resolveLinuxDesktopFileNameForFlavor(ZCODE_PRODUCT_FLAVOR);
 const LINUX_DEEP_LINK_MIME_TYPE = "x-scheme-handler/zcode";
-// 归属标记：用于识别用户级 zcode.desktop 是否由本应用写入（历史所有版本都带这行 Comment）。
-const LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER = "Comment=ZCode Desktop App";
+const LINUX_DESKTOP_ENTRY_DEFAULT_PRODUCT_NAME = "ZCode";
+// 归属标记：用于识别用户级桌面条目是否由本应用写入，只有带标记的条目才允许清理。
+// 标记跟随产品身份，与 electron-builder 按 description 写进系统级条目的 Comment 同源，
+// 这样运行时写的用户级条目与安装包写的系统级条目自我描述一致，也不会自称官方 ZCode。
+// 只在本应用身份名的文件路径上比对标记，因此不会误判或清理官方 ZCode 的 zcode.desktop。
+function resolveLinuxDesktopEntryOwnershipMarker(productName: string): string {
+  return `Comment=${productName} Desktop App`;
+}
 
 type LinuxDesktopEnv = {
   APPIMAGE?: string;
@@ -29,6 +43,8 @@ interface RegisterLinuxDeepLinkProtocolOptions {
   logger: LinuxDeepLinkRegistrationLogger;
   runCommand?: LinuxDesktopCommandRunner;
   systemApplicationDirs?: string[];
+  /** 桌面条目文件名（含 .desktop 后缀）。缺省按编译期产品身份取；显式传入只用于测试。 */
+  desktopFileName?: string;
 }
 
 interface LinuxDeepLinkCommand {
@@ -108,8 +124,9 @@ function createLinuxDeepLinkDesktopEntry(params: {
   args?: string[];
   productName?: string;
   iconName?: string;
+  ownershipMarker: string;
 }): string {
-  const productName = params.productName ?? "ZCode";
+  const productName = params.productName ?? LINUX_DESKTOP_ENTRY_DEFAULT_PRODUCT_NAME;
   const iconName = params.iconName ?? "zcode";
   const command = {
     executablePath: params.executablePath,
@@ -118,7 +135,7 @@ function createLinuxDeepLinkDesktopEntry(params: {
   return [
     "[Desktop Entry]",
     `Name=${productName}`,
-    LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER,
+    params.ownershipMarker,
     `Exec=${formatDesktopExec(command)}`,
     "Terminal=false",
     "Type=Application",
@@ -151,9 +168,14 @@ function resolveLinuxSystemApplicationDirs(env?: { XDG_DATA_DIRS?: string }): st
   return dataDirs.map((dir) => join(dir, "applications"));
 }
 
-function findSystemLevelDesktopEntryPath(systemApplicationDirs: string[]): string | undefined {
+function findSystemLevelDesktopEntryPath(
+  systemApplicationDirs: string[],
+  desktopFileName: string,
+): string | undefined {
   for (const dir of systemApplicationDirs) {
-    const candidate = join(dir, LINUX_DEEP_LINK_DESKTOP_FILE);
+    // 只找本应用身份名的系统级条目：官方 ZCode 的 zcode.desktop 属于另一个应用，
+    // 既不构成遮蔽，也不会被下面的清理逻辑删除。
+    const candidate = join(dir, desktopFileName);
     // 边界：目录或损坏的路径不应被当成有效系统级条目，否则纯 AppImage 用户
     // 的用户级注册会被病态路径误抑制。只有普通文件才参与遮蔽判断。
     try {
@@ -167,14 +189,12 @@ function findSystemLevelDesktopEntryPath(systemApplicationDirs: string[]): strin
   return undefined;
 }
 
-function isOwnedDesktopEntry(path: string): boolean {
+function isOwnedDesktopEntry(path: string, ownershipMarker: string): boolean {
   try {
     const content = readFileSync(path, "utf8");
     // 去掉 \r 与行首尾空白，兼容 CRLF 行尾或手工编辑器引入的额外空白，
     // 避免可清理的遗留条目被误判为用户自定义条目而永久残留。
-    return content
-      .split("\n")
-      .some((line) => line.replaceAll("\r", "").trim() === LINUX_DESKTOP_ENTRY_OWNERSHIP_MARKER);
+    return content.split("\n").some((line) => line.replaceAll("\r", "").trim() === ownershipMarker);
   } catch {
     return false;
   }
@@ -182,29 +202,30 @@ function isOwnedDesktopEntry(path: string): boolean {
 
 function removeOwnedUserDesktopEntry(
   desktopFilePath: string,
+  ownershipMarker: string,
   logger: LinuxDeepLinkRegistrationLogger,
 ): void {
   if (!existsSync(desktopFilePath)) {
     return;
   }
-  if (!isOwnedDesktopEntry(desktopFilePath)) {
-    logger.warn("[deep-link] Linux 用户级 zcode.desktop 非本应用写入，保留不清理", {
+  if (!isOwnedDesktopEntry(desktopFilePath, ownershipMarker)) {
+    logger.warn("[deep-link] Linux 用户级桌面条目非本应用写入，保留不清理", {
       desktopFilePath,
     });
     return;
   }
   try {
     rmSync(desktopFilePath);
-    logger.info("[deep-link] 已清理遗留的用户级 zcode.desktop，恢复系统级条目", {
+    logger.info("[deep-link] 已清理遗留的用户级桌面条目，恢复系统级条目", {
       desktopFilePath,
     });
   } catch (error) {
-    logger.warn("[deep-link] 清理遗留用户级 zcode.desktop 失败", { desktopFilePath, error });
+    logger.warn("[deep-link] 清理遗留用户级桌面条目失败", { desktopFilePath, error });
   }
 }
 
-function resolveLinuxDeepLinkDesktopFilePath(dataDir: string): string {
-  return join(dataDir, "applications", LINUX_DEEP_LINK_DESKTOP_FILE);
+function resolveLinuxDeepLinkDesktopFilePath(dataDir: string, desktopFileName: string): string {
+  return join(dataDir, "applications", desktopFileName);
 }
 
 function writeFileIfChanged(path: string, content: string): boolean {
@@ -224,25 +245,32 @@ export function registerLinuxDeepLinkProtocol(options: RegisterLinuxDeepLinkProt
     argv: options.argv,
   });
   const dataDir = resolveLinuxUserDataDir({ env: options.env, homeDir: options.homeDir });
-  const desktopFilePath = resolveLinuxDeepLinkDesktopFilePath(dataDir);
+  const desktopFileName = options.desktopFileName ?? LINUX_DEEP_LINK_DESKTOP_FILE;
+  const desktopFilePath = resolveLinuxDeepLinkDesktopFilePath(dataDir, desktopFileName);
   const applicationsDir = dirname(desktopFilePath);
+  const ownershipMarker = resolveLinuxDesktopEntryOwnershipMarker(
+    options.productName ?? LINUX_DESKTOP_ENTRY_DEFAULT_PRODUCT_NAME,
+  );
   const desktopEntry = createLinuxDeepLinkDesktopEntry({
     ...command,
     productName: options.productName,
+    ownershipMarker,
   });
   let protocolRegistered = false;
   const runCommand = options.runCommand ?? runXdgCommand;
 
-  // 用户级 zcode.desktop 在 XDG
-  // 解析中永远优先于系统级同名条目。rpm/deb 安装后，旧 AppImage 写入的用户级条目会把
-  // /usr/share/applications/zcode.desktop 持续遮蔽，快捷方式和 zcode:// deep link 一直
-  // 指向旧 AppImage（文件还在时）或直接失效（文件被删后），只有手动跑一次新版才会被覆盖。
+  // 用户级桌面条目在 XDG 解析中永远优先于系统级同名条目。rpm/deb 安装后，旧 AppImage 写入的
+  // 用户级条目会把 /usr/share/applications/<身份名>.desktop 持续遮蔽，快捷方式和 zcode:// deep link
+  // 一直指向旧 AppImage（文件还在时）或直接失效（文件被删后），只有手动跑一次新版才会被覆盖。
   // 现在只要检测到系统级同 ID 条目：
   // - 系统安装形态（rpm/deb）运行时：清掉本应用写入的遗留用户级条目，且不再写用户级；
   // - AppImage 运行时：不再写用户级条目和用户级图标，避免旧 AppImage 再度遮蔽系统安装。
-  // 用户手写的自定义 zcode.desktop（无归属标记）不受影响，保留不清理。
+  // 用户手写的自定义同名条目（无归属标记）不受影响，保留不清理。
+  // 同 ID 只按本应用身份名（zcode-ce / zcode-ce-preview）比对：官方 ZCode 的 zcode.desktop 是
+  // 另一个应用的文件，既不构成遮蔽也不会被清理，CE 也不再把自己的 handler 让给官方条目。
   const systemDesktopEntryPath = findSystemLevelDesktopEntryPath(
     options.systemApplicationDirs ?? resolveLinuxSystemApplicationDirs(options.env),
+    desktopFileName,
   );
 
   try {
@@ -252,7 +280,7 @@ export function registerLinuxDeepLinkProtocol(options: RegisterLinuxDeepLinkProt
         systemDesktopEntryPath,
         desktopFilePath,
       });
-      removeOwnedUserDesktopEntry(desktopFilePath, options.logger);
+      removeOwnedUserDesktopEntry(desktopFilePath, ownershipMarker, options.logger);
     } else {
       changed = writeFileIfChanged(desktopFilePath, desktopEntry);
     }
@@ -262,21 +290,33 @@ export function registerLinuxDeepLinkProtocol(options: RegisterLinuxDeepLinkProt
     const updateResult = runCommand("update-desktop-database", [applicationsDir]);
     const defaultResult = runCommand("xdg-mime", [
       "default",
-      LINUX_DEEP_LINK_DESKTOP_FILE,
+      desktopFileName,
       LINUX_DEEP_LINK_MIME_TYPE,
     ]);
 
     if (defaultResult.status === 0) {
       protocolRegistered = true;
-      options.logger.info("[deep-link] Linux 用户级协议注册成功", {
+      const registeredFields = {
+        desktopFileName,
         desktopFilePath,
         executablePath: command.executablePath,
         args: command.args,
         changed,
         systemDesktopEntryPath,
-      });
+      };
+      // 日志要如实说明 handler 由哪个条目提供：命中系统级条目时我们根本没写用户级文件，
+      // 此时报"用户级协议注册成功"会让排障者去找一个不存在的文件 —— 本缺陷正是这样被掩盖的。
+      if (systemDesktopEntryPath) {
+        options.logger.info(
+          "[deep-link] Linux 协议 handler 已指向系统级 desktop entry",
+          registeredFields,
+        );
+      } else {
+        options.logger.info("[deep-link] Linux 用户级协议注册成功", registeredFields);
+      }
     } else {
       options.logger.warn("[deep-link] Linux 用户级协议注册失败", {
+        desktopFileName,
         desktopFilePath,
         executablePath: command.executablePath,
         args: command.args,
@@ -308,6 +348,7 @@ export function registerLinuxDeepLinkProtocol(options: RegisterLinuxDeepLinkProt
     }
   } catch (error) {
     options.logger.warn("[deep-link] Linux 用户级协议注册异常", {
+      desktopFileName,
       desktopFilePath,
       executablePath: command.executablePath,
       args: command.args,

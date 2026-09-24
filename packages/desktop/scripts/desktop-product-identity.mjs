@@ -98,3 +98,17 @@ export function resolveWindowsAppUserModelIdForFlavor(flavor, runtime = { isPack
 export function resolveWindowsAppUserModelId(env = process.env, runtime = { isPackaged: true }) {
   return resolveWindowsAppUserModelIdForFlavor(resolveDesktopProductFlavor(env), runtime);
 }
+
+/**
+ * Linux 桌面条目文件名（`/usr/share/applications/<name>.desktop` 的 `<name>` 部分）。
+ *
+ * electron-builder 用 `linux.executableName` 命名这个文件：app-builder-lib 的 fpm target 写
+ * `/usr/share/applications/${executableName}.desktop`，AppImage target 写
+ * `${productFilename}.desktop`，而 productFilename 就是 sanitize 过的 executableName。
+ * 运行时注册 deep link 必须用同一个名字 —— 写死成官方 ZCode 的 `zcode.desktop` 会让 CE
+ * 去操作另一个应用的条目，并在装了官方版的机器上把 `zcode://` 的默认 handler 让给官方版。
+ */
+export function resolveLinuxDesktopFileNameForFlavor(flavor) {
+  const identity = desktopProductIdentities[flavor === "preview" ? "preview" : "production"];
+  return `${identity.linuxExecutableName}.desktop`;
+}
