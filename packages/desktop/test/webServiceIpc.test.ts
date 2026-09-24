@@ -147,6 +147,49 @@ test("探活结论变化才广播：同样的 status 读两次只推一次，状
   assert.equal(broadcasts[1].payload.loopback, false, "非回环要让面板能显示安全提示");
 });
 
+test("staleReason 变化也要广播（state 仍是 stopped，但结论确实变了）", async () => {
+  // task-83：两种 stopped（从未开启 / 陈旧条目）必须可区分，且**变化时要推**。
+  // 若指纹漏掉 staleReason，用户会停在上一个原因上（"服务进程已退出" 之后
+  // 实际已变成 "端口已关闭"，面板却不再更新）—— 这类漏推在 UI 上表现为"文案不对"，
+  // 很难归因，所以用断言钉住。
+  const { handlers, controller, broadcasts } = setup({
+    state: "stopped",
+    adopted: false,
+    loopback: true,
+  });
+  const status = handlers.get(WEB_SERVICE_CHANNELS.status);
+  assert.ok(status);
+  await status({});
+  assert.equal(broadcasts.length, 1, "首次读 → 广播一次");
+  assert.equal(broadcasts[0].payload.staleReason, undefined, "从未开启不得带 staleReason");
+
+  // state 仍是 stopped，只有 staleReason 变了 ⇒ 必须再推一次。
+  controller.setState({
+    state: "stopped",
+    adopted: false,
+    loopback: true,
+    staleReason: "pid-dead",
+  });
+  await status({});
+  assert.equal(broadcasts.length, 2, "staleReason 变了 ⇒ 必须广播（state 相同也不行）");
+  assert.equal(broadcasts[1].payload.staleReason, "pid-dead");
+
+  // 原因从 pid-dead 变成 port-closed 也要推。
+  controller.setState({
+    state: "stopped",
+    adopted: false,
+    loopback: true,
+    staleReason: "port-closed",
+  });
+  await status({});
+  assert.equal(broadcasts.length, 3, "staleReason 的具体值变了 ⇒ 必须广播");
+  assert.equal(broadcasts[2].payload.staleReason, "port-closed");
+
+  // 同样结论再读一次：不重复刷。
+  await status({});
+  assert.equal(broadcasts.length, 3, "结论没变 ⇒ 不重复广播");
+});
+
 test("stop 之后也广播（状态回到 stopped）", async () => {
   const { handlers, broadcasts } = setup({ state: "stopped", adopted: false, loopback: true });
   const start = handlers.get(WEB_SERVICE_CHANNELS.start);

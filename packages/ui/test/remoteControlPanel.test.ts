@@ -12,6 +12,7 @@ import {
   resolveRemoteControlPanelView,
   shouldConfirmBeforeStart,
   shouldRenderQrCode,
+  withRemoteControlInFlight,
   type RemoteControlPanelStatus,
 } from "../src/remoteControlPanelModel.js";
 
@@ -149,8 +150,52 @@ test("stale 的三个 reason 给不同的下一步", () => {
   assert.equal(new Set(ids).size, 3, "三个 stale reason 应给三条不同文案");
 });
 
+test("不存在永不触发的分支：starting/stopping 既不是协议状态、也不是面板档位", () => {
+  // task-83 同批发现：主进程的 statusFromProbe **从不产出** starting/stopping
+  // （start/stop 同步等到最终态才返回，IPC 也只在动作之后广播一次）⇒ 为它们写分支就是死分支。
+  const modelSource = readSource("src/remoteControlPanelModel.ts");
+  const branchUnion =
+    modelSource.match(/export type RemoteControlPanelBranch =([^;]+);/)?.[1] ?? "";
+  assert.equal(/starting|stopping/.test(branchUnion), false, "面板档位不得含永不产出的取值");
+  // 协议状态里同样不得有它们（UI 侧镜像的类型）。
+  const stateUnion =
+    modelSource.match(/export type RemoteControlServiceState =([^;]+);/)?.[1] ?? "";
+  assert.equal(
+    /"starting"|"stopping"/.test(stateUnion),
+    false,
+    "协议状态不得含永不产出的取值（主进程已删）",
+  );
+  // 主进程侧：状态类型必须与"真正会被产出"的取值一致。
+  const serviceSource = readSource("../desktop/src/main/web-service/service.ts");
+  const serviceState = serviceSource.match(/export type WebServiceState =([^;]+);/)?.[1] ?? "";
+  assert.equal(/"starting"|"stopping"/.test(serviceState), false, "主进程不得声明永不产出的状态");
+});
+
+test("在途反馈由渲染进程本地承载（不是伪造的协议状态）", () => {
+  const stopped = resolveRemoteControlPanelView(status({ state: "stopped" }));
+  assert.equal(stopped.inFlight, null, "空闲时无在途标记");
+
+  // 点开启后的 15 秒：徽标必须变成"开启中"，且主操作不可点（避免连点第二次 start）。
+  const starting = withRemoteControlInFlight(stopped, "starting");
+  assert.equal(starting.badgeMessageId, "remotePanel.badge.starting");
+  assert.equal(starting.primaryAction, "none", "在途期间不得留下可点的主操作");
+  assert.equal(typeof zhCN[starting.badgeMessageId], "string", "zh-CN 缺在途徽标文案");
+  assert.equal(typeof enUS[starting.badgeMessageId], "string", "en-US 缺在途徽标文案");
+
+  const running = resolveRemoteControlPanelView(status({ state: "running" }));
+  const stopping = withRemoteControlInFlight(running, "stopping");
+  assert.equal(stopping.badgeMessageId, "remotePanel.badge.stopping");
+  assert.equal(stopping.primaryAction, "none");
+  // 在途**不改分支**：连接面/二维码仍由真实状态决定（否则会短暂隐藏链接）。
+  assert.equal(stopping.branch, "running");
+  assert.equal(stopping.showConnection, true);
+
+  // 空闲时叠加是恒等的。
+  assert.equal(withRemoteControlInFlight(running, null), running);
+});
+
 test("只有 running 档展示连接面（地址/链接/二维码）", () => {
-  for (const state of ["stopped", "starting", "stopping", "running-untrusted", "failed"] as const) {
+  for (const state of ["stopped", "running-untrusted", "failed"] as const) {
     const view = resolveRemoteControlPanelView(
       status({
         state,

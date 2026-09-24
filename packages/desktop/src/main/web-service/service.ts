@@ -27,13 +27,19 @@ export const WEB_SERVICE_DEFAULT_PORT = 3030;
 export const WEB_SERVICE_READY_TIMEOUT_MS = 15_000;
 export const WEB_SERVICE_STOP_GRACE_MS = 5_000;
 
-export type WebServiceState =
-  | "stopped"
-  | "starting"
-  | "running"
-  | "running-untrusted"
-  | "stopping"
-  | "failed";
+/**
+ * 对外状态。**只列真正会被产出的取值**（穷尽核对过 `statusFromProbe` 与 `start/stop` 的所有 return 点）。
+ *
+ * 原先这里还有 `"starting"` 与 `"stopping"`，但**全仓没有任何地方产出它们**
+ * （task-83 同批发现：这是与 `stale` 同一类的死分支）。原因：`start`/`stop` 是
+ * **同步等待到最终态**才返回的，IPC 也只在动作**之后**广播一次 ⇒ 中间态根本没有出口。
+ * 保留它们会让每个 `switch (state)` 都得为不可达取值写分支，而"永不触发的分支"
+ * 正是本轮反复抓到的缺陷类型（AGENTS.md：否定式断言必须穷尽验证）。
+ *
+ * 过渡态的**用户可见反馈由渲染进程自己做**（面板的 `pendingAction` 禁用按钮 +
+ * `starting`/`stopping` 文案由 UI 的本地 in-flight 状态承载），不需要主进程伪造一个状态。
+ */
+export type WebServiceState = "stopped" | "running" | "running-untrusted" | "failed";
 
 export type WebServiceErrorCode =
   | "spawn-failed"
@@ -41,6 +47,9 @@ export type WebServiceErrorCode =
   | "probe-timeout"
   | "token-unreadable"
   | "non-loopback-without-token";
+
+/** 契约 §4 的 `stale` 细分原因（探活层已经算出来了，这里如实上抛，不再丢掉）。 */
+export type WebServiceStaleReason = "pid-dead" | "port-closed" | "probe-timeout";
 
 export interface WebServiceStatus {
   state: WebServiceState;
@@ -51,6 +60,17 @@ export interface WebServiceStatus {
   url?: string;
   startedAt?: number;
   error?: { code: WebServiceErrorCode; message: string };
+  /**
+   * **仅在 `state === "stopped"` 且这是"陈旧条目"时出现**：上一次的服务已不在
+   * （pid 已死 / 端口已关 / 探活超时），但状态文件仍留着（契约 §3 规则 2）。
+   *
+   * 为什么用可选字段而不是给 `state` 加一个 `"stale"` 取值：
+   * `stopped` 必须继续是"服务没在跑"的**唯一**取值，否则每一处 `state === "stopped"` 的读法
+   * 都要改成两值判断，漏一处就会把陈旧条目当成"从没开过"或反过来当成在跑。
+   * `stale` 描述的是**我们留下的记录**陈旧，不是服务处于第二个状态 ——
+   * 它是"为什么没在跑"的注解。
+   */
+  staleReason?: WebServiceStaleReason;
 }
 
 export interface WebServiceChildHandle {
@@ -117,7 +137,16 @@ function statusFromProbe(probe: WebServiceProbeResult): WebServiceStatus {
     case "stopped":
       return { state: "stopped", adopted: false, loopback: true };
     case "stale":
-      return { state: "stopped", adopted: false, loopback: true };
+      // 契约 §3 的文案表给了 stale 一行（"上一次的服务已不在，可重新开启"），而对外状态
+      // 原本无法表达它 ⇒ 面板那条文案**不可达**（task-83）。这里把探活已经算出来的 reason
+      // 如实带出去，让"从未开启"与"上次异常退出、记录还在"可区分。
+      // loopback 仍为 true：进程已死 ⇒ 没有任何监听面暴露，不该触发局域网告警。
+      return {
+        state: "stopped",
+        adopted: false,
+        loopback: true,
+        staleReason: probe.reason,
+      };
     case "running":
       return {
         state: "running",

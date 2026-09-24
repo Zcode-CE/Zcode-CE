@@ -128,6 +128,13 @@ test("★stale 判定：kill -9（异常退出）后判 stale/pid-dead，状态�
 
     const staleStatus = await controller.status();
     assert.equal(staleStatus.state, "stopped", "pid 已死时对外表现为可重新开启");
+    // task-83：探活已经算出 reason，对外必须**如实带出**（否则面板的 stale 文案不可达，
+    // 用户看到的是"未开启"，与"上次异常退出、记录还在"无法区分）。
+    assert.equal(
+      staleStatus.staleReason,
+      "pid-dead",
+      "kill -9 后对外状态必须带 staleReason=pid-dead（契约 §3 的 stale 一行才可达）",
+    );
     assert.ok(
       await readWebServiceState(harness.statePath),
       "异常退出必须**保留**状态文件（契约 §3 规则 2：留着让探活判 stale）",
@@ -164,6 +171,50 @@ test("stop 在没有状态文件时是幂等的（返回当前探活结果，不
     const stopped = await controller.stop();
     assert.equal(stopped.state, "stopped");
     assert.equal(harness.spawnCount(), 0);
+    // 从来没有状态文件 ⇒ 是"从未开启"，**不是**陈旧条目：不得带 staleReason。
+    // 这条与上面 kill -9 那条合起来才证明 staleReason 真的在区分两种 stopped。
+    assert.equal(stopped.staleReason, undefined, "无状态文件时必须不带 staleReason");
+  });
+});
+
+test("★stale 的区分度：'从未开启' 与 '陈旧条目' 对外可区分（task-83 的核心判据）", async () => {
+  await withHarness(async (harness) => {
+    const port = await pickFreePort();
+    const controller = createWebServiceController(harness.deps);
+
+    // ① 从未开启：stopped 且无 staleReason。
+    const neverStarted = await controller.status();
+    assert.equal(neverStarted.state, "stopped");
+    assert.equal(neverStarted.staleReason, undefined, "从未开启不得被说成陈旧条目");
+
+    // ② 起来 → 主动 stop：正常收尾 ⇒ 状态文件被删 ⇒ 回到"从未开启"的形态。
+    await controller.start({ scope: "loopback", port });
+    await controller.stop();
+    const afterCleanStop = await controller.status();
+    assert.equal(afterCleanStop.state, "stopped");
+    assert.equal(
+      afterCleanStop.staleReason,
+      undefined,
+      "正常停止后状态文件已删 ⇒ 不得残留 staleReason",
+    );
+
+    // ③ 再起来 → kill -9：异常退出 ⇒ 状态文件保留 ⇒ 必须报 stale/pid-dead。
+    await controller.start({ scope: "loopback", port });
+    const record = await readWebServiceState(harness.statePath);
+    assert.ok(record);
+    process.kill(record.pid, "SIGKILL");
+    for (let i = 0; i < 60 && (await isPortOpen("127.0.0.1", port)); i += 1) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    const afterCrash = await controller.status();
+    assert.equal(afterCrash.state, "stopped");
+    assert.equal(afterCrash.staleReason, "pid-dead", "异常退出必须被标成陈旧条目");
+    // 两种 stopped 的 state 相同、staleReason 不同 ⇒ 面板才可能给出不同文案。
+    assert.notEqual(
+      afterCrash.staleReason,
+      neverStarted.staleReason,
+      "陈旧条目与从未开启必须可区分（否则面板那条文案是死分支）",
+    );
   });
 });
 

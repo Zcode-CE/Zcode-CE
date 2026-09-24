@@ -31,9 +31,21 @@ export interface WebServiceIpcDeps {
   onError?: (error: unknown, channel: string) => void;
 }
 
-/** 判定"探活结论是否变了"的稳定子集：state 或对外暴露的端点变了才广播，避免每次都刷 UI。 */
+/**
+ * 判定"探活结论是否变了"的稳定子集：state 或对外暴露的端点变了才广播，避免每次都刷 UI。
+ *
+ * `staleReason` 必须在里面：它变了而 state 仍是 `stopped`（例如 `pid-dead` → `port-closed`）
+ * 时结论**确实变了**，不进指纹就会漏推，面板会停在上一个原因上。
+ */
 function statusFingerprint(status: WebServiceStatus): string {
-  return JSON.stringify([status.state, status.adopted, status.loopback, status.host, status.port]);
+  return JSON.stringify([
+    status.state,
+    status.adopted,
+    status.loopback,
+    status.host,
+    status.port,
+    status.staleReason,
+  ]);
 }
 
 export function registerWebServiceIpc(deps: WebServiceIpcDeps): void {

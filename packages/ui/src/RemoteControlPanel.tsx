@@ -33,6 +33,7 @@ import {
   resolveRemoteControlPanelView,
   shouldConfirmBeforeStart,
   shouldRenderQrCode,
+  withRemoteControlInFlight,
   type RemoteControlConnectionInfo,
   type RemoteControlPanelBranch,
   type RemoteControlPanelStatus,
@@ -83,11 +84,15 @@ export function RemoteControlPanel({
 }: RemoteControlPanelProps) {
   const { intl } = useZCodeIntl();
   const t = useCallback((id: string) => intl.formatMessage({ id }), [intl]);
-  const view = useMemo(() => resolveRemoteControlPanelView(status), [status]);
-
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingAction, setPendingAction] = useState(false);
+  // 在途标记是**渲染进程本地**状态：start 最长可等 15s（WEB_SERVICE_READY_TIMEOUT_MS），
+  // 期间必须让用户看出"正在开启"，而不是停在一个禁用的"开启"按钮上。
+  const [inFlight, setInFlight] = useState<"starting" | "stopping" | null>(null);
+  const view = useMemo(
+    () => withRemoteControlInFlight(resolveRemoteControlPanelView(status), inFlight),
+    [inFlight, status],
+  );
 
   // 链接变化后重置复制反馈：否则用户会看到上一个链接的「已复制」留在新链接上。
   const link = connection?.linkWithToken ?? "";
@@ -98,21 +103,21 @@ export function RemoteControlPanel({
   }, [link]);
 
   const startService = useCallback(async () => {
-    setPendingAction(true);
+    setInFlight("starting");
     try {
       await onStart({ scope: DEFAULT_REMOTE_CONTROL_START_SCOPE });
     } finally {
-      setPendingAction(false);
+      setInFlight(null);
     }
   }, [onStart]);
 
   const runPrimaryAction = useCallback(async () => {
     if (view.primaryAction === "stop") {
-      setPendingAction(true);
+      setInFlight("stopping");
       try {
         await onStop();
       } finally {
-        setPendingAction(false);
+        setInFlight(null);
       }
       return;
     }
@@ -181,7 +186,6 @@ export function RemoteControlPanel({
         </p>
         <PrimaryActionButton
           view={view}
-          pending={pendingAction}
           label={t(view.primaryActionMessageId)}
           onClick={() => void runPrimaryAction()}
         />
@@ -307,12 +311,10 @@ function badgeVariant(branch: RemoteControlPanelBranch) {
 
 function PrimaryActionButton({
   view,
-  pending,
   label,
   onClick,
 }: {
   view: ReturnType<typeof resolveRemoteControlPanelView>;
-  pending: boolean;
   label: string;
   onClick: () => void;
 }) {
@@ -325,7 +327,8 @@ function PrimaryActionButton({
       size="lg"
       data-testid={isStop ? REMOTE_CONTROL_PANEL_STOP_TEST_ID : REMOTE_CONTROL_PANEL_START_TEST_ID}
       data-remote-control-primary-action={view.primaryAction}
-      disabled={pending}
+      // 在途期间禁用：避免连点触发第二次 start/stop（阶段一不做取消）。
+      disabled={view.inFlight !== null}
       // 粗指针（手机/平板）命中区 ≥44：与切片 1 入口同一机制。
       className="[@media(pointer:coarse)]:min-h-11"
       onClick={onClick}

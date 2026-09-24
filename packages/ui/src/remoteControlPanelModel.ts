@@ -9,22 +9,26 @@
  *    契约 §4 的五条失败分支在这里各有一条**可操作**出口（不是只显示错误码）。
  */
 
-/** 契约 §5 的 `WebServiceState`（五分支 + 两个过渡态）。 */
-export type RemoteControlServiceState =
-  | "stopped"
-  | "starting"
-  | "running"
-  | "running-untrusted"
-  | "stopping"
-  | "failed";
+/**
+ * 契约 §5 的 `WebServiceState`（镜像主进程 `packages/desktop/src/main/web-service/service.ts`）。
+ *
+ * **只有真正会被产出的四个取值**（task-83 穷尽核对 `statusFromProbe` 与 `start/stop` 的
+ * 所有 return 点）：`start`/`stop` 是同步等到最终态才返回的，IPC 也只在动作之后广播一次，
+ * 所以 `starting`/`stopping` **没有任何出口** —— 声明它们就会在每个 `switch` 里留下死分支。
+ * 那 15 秒的在途反馈由 {@link RemoteControlPanelInFlight} 在渲染进程本地承载。
+ */
+export type RemoteControlServiceState = "stopped" | "running" | "running-untrusted" | "failed";
 
 /**
  * 契约 §4 的 `stale` 细分原因。
  *
- * ⚠️ 实测事实（不是推测）：后端 `packages/desktop/src/main/web-service/service.ts` 的
- * `statusFromProbe` 目前把 `stale` **折叠成 `stopped`**（该文件 :119-120），
- * 因此**今天这条字段拿不到值**。面板按契约 §4 支持它（拿到了就显示原因），
- * 但「后端会上抛 reason」这一条**未验证** —— 见交付回传的未验证项。
+ * **已由后端如实上抛**（task-83 落定）：`service.ts` 的 `statusFromProbe` 把探活判出的
+ * `stale` 折叠成 `state:"stopped" + staleReason`，不再是"丢掉 reason"。
+ * 折叠的依据：`stopped` 是"服务没在跑"的唯一取值，`staleReason` 只回答"为什么没在跑"。
+ *
+ * 两种 `stopped` 因此可区分：`staleReason === undefined` = 从未开启；
+ * 有值 = 上一次的服务已不在（状态文件还留着，重新开启会覆盖它）。
+ * 区分能力由 `packages/desktop/test/webServiceAdoption.test.ts` 的真实子进程用例钉住。
  */
 export type RemoteControlStaleReason = "pid-dead" | "port-closed" | "probe-timeout";
 
@@ -48,7 +52,10 @@ export interface RemoteControlPanelStatus {
   url?: string;
   startedAt?: number;
   error?: { code: RemoteControlErrorCode; message: string };
-  /** 见 {@link RemoteControlStaleReason}：契约 §4 有、后端当前不上抛。 */
+  /**
+   * 见 {@link RemoteControlStaleReason}：**仅在 `state === "stopped"` 且是陈旧条目时出现**。
+   * 缺省（undefined）= 从未开启过 —— 面板据此区分"未开启"与"上一次的服务已不在"。
+   */
   staleReason?: RemoteControlStaleReason;
 }
 
@@ -96,17 +103,23 @@ export const REMOTE_CONTROL_PANEL_STOP_TEST_ID = "remote-control-stop";
 export const REMOTE_CONTROL_PANEL_FAILURE_TEST_ID = "remote-control-failure";
 export const REMOTE_CONTROL_FIRST_RUN_CONFIRM_TEST_ID = "remote-control-first-run-confirm";
 
-/** 面板对外的一档显示形态（= 契约 §4 的失败分支 + 过渡态）。 */
-export type RemoteControlPanelBranch =
-  | "stopped"
-  | "stale"
-  | "starting"
-  | "running"
-  | "stopping"
-  | "untrusted"
-  | "failed";
+/**
+ * 面板对外的一档显示形态（= 契约 §4 的失败分支）。
+ *
+ * **不含 `starting`/`stopping`**：这两个取值在实现里从未被产出（task-83 穷尽核对：
+ * `service.ts` 的所有 return 点只产出 stopped/running/running-untrusted/failed），
+ * 因此为它们写分支就是"永不触发的分支"。
+ *
+ * 那"点了开启之后那 15 秒"的用户反馈怎么办：由 {@link RemoteControlPanelView.inFlight}
+ * 承载 —— 它是**渲染进程自己的**在途标记（点下去到 promise 结算之间），
+ * 不是主进程伪造的状态。这样过渡反馈依然存在，而协议里不留死取值。
+ */
+export type RemoteControlPanelBranch = "stopped" | "stale" | "running" | "untrusted" | "failed";
 
 export type RemoteControlPanelPrimaryAction = "start" | "stop" | "retry" | "none";
+
+/** 在途动作（渲染进程本地状态，不是协议状态）。 */
+export type RemoteControlPanelInFlight = "starting" | "stopping" | null;
 
 export interface RemoteControlPanelView {
   branch: RemoteControlPanelBranch;
@@ -120,16 +133,27 @@ export interface RemoteControlPanelView {
   showConnection: boolean;
   /** 非回环运行 ⇒ 安全提示里额外点明「同网段可尝试连接」。 */
   emphasizeLanExposure: boolean;
+  /** 在途动作；由调用方（面板组件）用本地状态传入，缺省 = 空闲。 */
+  inFlight: RemoteControlPanelInFlight;
 }
 
 const BADGE_BY_BRANCH: Record<RemoteControlPanelBranch, string> = {
   stopped: "remotePanel.badge.stopped",
   stale: "remotePanel.badge.stale",
-  starting: "remotePanel.badge.starting",
   running: "remotePanel.badge.running",
-  stopping: "remotePanel.badge.stopping",
   untrusted: "remotePanel.badge.untrusted",
   failed: "remotePanel.badge.failed",
+};
+
+/**
+ * 在途时徽标改用哪个文案。
+ *
+ * 这是在**渲染进程**里把"点了开启、还没回来"表达出来（start 最长可等 15s），
+ * 而不是让主进程伪造一个 `starting` 状态 —— 后者会成为永不触发的死取值。
+ */
+const IN_FLIGHT_BADGE: Record<Exclude<RemoteControlPanelInFlight, null>, string> = {
+  starting: "remotePanel.badge.starting",
+  stopping: "remotePanel.badge.stopping",
 };
 
 /** `failed` 分支按 `error.code` 给**可操作**的原因，而不是把错误码丢给用户。 */
@@ -149,6 +173,27 @@ const STALE_ADVICE_BY_REASON: Record<RemoteControlStaleReason, string> = {
 };
 
 /**
+ * 在途动作叠加到已解析的视图上（**唯一的叠加点**）。
+ *
+ * 面板组件不再自己写"如果在途就换文案"的分支：那样文案与判据会分家。
+ * `inFlight` 只影响徽标与主操作可用性，**不改分支**（连接面/二维码仍由真实状态决定）。
+ */
+export function withRemoteControlInFlight(
+  view: RemoteControlPanelView,
+  inFlight: RemoteControlPanelInFlight,
+): RemoteControlPanelView {
+  if (!inFlight) return view;
+  return {
+    ...view,
+    inFlight,
+    badgeMessageId: IN_FLIGHT_BADGE[inFlight],
+    // 在途期间不给可点的主操作：避免连点造成第二次 start/stop（阶段一不做取消）。
+    primaryAction: "none",
+    primaryActionMessageId: "remotePanel.action.none",
+  };
+}
+
+/**
  * 把后端状态折叠成面板的一档。**分支判定的唯一所有者**（面板组件不再自己 switch）。
  */
 export function resolveRemoteControlPanelView(
@@ -162,6 +207,7 @@ export function resolveRemoteControlPanelView(
     primaryActionMessageId: "remotePanel.action.none",
     showConnection: false,
     emphasizeLanExposure: false,
+    inFlight: null,
   });
 
   switch (status.state) {
@@ -182,19 +228,6 @@ export function resolveRemoteControlPanelView(
         primaryActionMessageId: "remotePanel.action.start",
       };
     }
-    case "starting":
-      // 过渡态：不给可点的主操作（阶段一不做取消），但仍保留一行说明，避免"卡住"的观感。
-      return {
-        ...base("starting"),
-        primaryAction: "none",
-        primaryActionMessageId: "remotePanel.action.none",
-      };
-    case "stopping":
-      return {
-        ...base("stopping"),
-        primaryAction: "none",
-        primaryActionMessageId: "remotePanel.action.none",
-      };
     case "running":
       return {
         ...base("running"),
