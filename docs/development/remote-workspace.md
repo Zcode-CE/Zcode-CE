@@ -128,22 +128,25 @@ pnpm exec tsx scripts/verify-remote-assets.mjs --root ./publish-root
 3. 连接日志期望看到：`deploy complete` → `handshake done, server version: …`。
 4. 远端 `~/.zcode/server/` 下会出现 `node`、`zcode-server.cjs`、`agents/`、`tools/`（约 155 MB）。
 
-两种「资源下载方式」：
+两种「资源下载方式」（**当前只有 SSH 目标能选**：Docker / WSL 恒用默认的「本地下载后上传」）：
 
 | 模式                   | 谁去下载资产                                | 前置条件                                                                                                                 |
 | ---------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | 本地下载后上传（默认） | 你的电脑下载，再通过 SSH 上传到远端         | 无（远端只要能跑 POSIX shell）                                                                                           |
 | 远端服务器下载         | 远端自己用 `curl`/`wget` 下载（省上传时间） | 远端必须能访问发布根，且有 `curl` 或 `wget` + `tar` + `sha256sum`/`shasum`/`openssl`；缺失时会明确报错并提示切回默认模式 |
 
+> 「资源下载方式」由桌面端按目标类型提供：`packages/desktop/src/host/index.ts` 只在 `target.kind === "ssh"` 时传入
+> `assetInstallMode`，所以 **Docker / WSL 一律走默认的本地下载后上传**（对它们的远端不要求能访问发布根）。
+
 ### 5.3 常见报错对照
 
-| 现象                                            | 原因                                                                                    | 处理                                                                         |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `[remote-assets] manifest not found for <平台>` | 发布根里没有该版本的 `manifest-<平台>.json`（路径不对、版本没发布、或基址带了多余层级） | 用 `curl -I <发布根>/<版本>/manifest-<平台>.json` 验证；基址要指向**发布根** |
-| `manifest appVersion mismatch …`                | 清单的 `appVersion` 与客户端版本不一致（常见于托管的资产是旧版本）                      | 为当前客户端版本生成并发布资产                                               |
-| 组件 404（下载中途失败）                        | `components/` 不在发布根下（被塞进版本目录），或上传时漏了 `components/**`              | 按 §4 的布局重新托管                                                         |
-| 每次连接先出现一批 404 再成功                   | 布局只满足"版本化路径"那条候选                                                          | 把 `components/` 移到发布根                                                  |
-| 失败但日志像网络问题                            | 打不开发布根（DNS/证书/防火墙）                                                         | 先在本机 `curl` 发布根确认可达                                               |
+| 现象                                            | 原因                                                                                                                                                                                                                                                           | 处理                                                                                                                                                                                                                                                                            |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `[remote-assets] manifest not found for <平台>` | **两种原因**：(a) 发布根里没有该版本的 `manifest-<平台>.json`（路径不对、版本没发布、或基址带了多余层级）；(b) **该平台不在发布范围内**（当前只发布 darwin 与 linux 上的 x64/arm64；`linux-armv7l`、`linux-ppc64le`、`linux-s390x`、`freebsd-*` 等都没有资产） | 先在**远端**跑 `uname -s -m`：若结果落在 Linux 或 Darwin、且是 x86_64/aarch64 ⇒ 是 (a)，用 `curl -I <发布根>/<版本>/manifest-<平台>.json` 验证、基址要指向**发布根**；若不在这几类里 ⇒ 是 (b)，换一台 x64/arm64 的 Linux/macOS 远端，或自行按该平台构建资产（本项目不发布该类） |
+| `manifest appVersion mismatch …`                | 清单的 `appVersion` 与客户端版本不一致（常见于托管的资产是旧版本）                                                                                                                                                                                             | 为当前客户端版本生成并发布资产                                                                                                                                                                                                                                                  |
+| 组件 404（下载中途失败）                        | `components/` 不在发布根下（被塞进版本目录），或上传时漏了 `components/**`                                                                                                                                                                                     | 按 §4 的布局重新托管                                                                                                                                                                                                                                                            |
+| 每次连接先出现一批 404 再成功                   | 布局只满足"版本化路径"那条候选                                                                                                                                                                                                                                 | 把 `components/` 移到发布根                                                                                                                                                                                                                                                     |
+| 失败但日志像网络问题                            | 打不开发布根（DNS/证书/防火墙）                                                                                                                                                                                                                                | 先在本机 `curl` 发布根确认可达                                                                                                                                                                                                                                                  |
 
 ---
 
@@ -171,6 +174,23 @@ pnpm exec tsx scripts/verify-remote-assets.mjs --root ./publish-root
 4. 生成过程没有事务性：中途失败会留下"半个 release 目录"，重跑会复用已存在文件；怀疑产物陈旧时删掉
    `packages/desktop/mock-cdn/releases/<版本>` 重跑。
 5. 远程工作区当前**不承载** Browser Use / Computer Use（远端插件合同只声明 browser-use 所需资产）。
-6. **Docker / WSL 未实测**：它们与 SSH 共用同一套部署与资源代码，因此同样受"必须能取到资产"的约束，
-   但本文的实测证据全部来自 SSH + 本机 POSIX 假后端，Docker / WSL 不作结论。
-7. 桌面端以外的客户端（Web）**没有**远程工作区入口。
+6. **Docker：已实测通过**（2026-09-24）。三者共用同一套部署与资源代码（`connectRemote` →
+   `deployServer(backend, {platform, arch})`，资产层无 provider 分支），这次的实测把 Docker 从"理论上同样受益"变成"真的走通"：
+   `detect() = {platform: linux, arch: x64}` → 自托管发布根 **8 个请求全部 200、零 404**（manifest + node-runtime /
+   server-bundle / node-pty / glm / bfs / ripgrep / ugrep）→ 资产上传进容器（在容器内取到
+   `/root/.zcode/server/{zcode-server.cjs, agents/glm/…, tools/…}`）→ **容器内起 server 并握手成功**
+   （`handshake done, server version: 3.14.3-ce.2`）→ 干净退出。
+   **口径说明（重要）**：这次是在 **podman 的 docker 兼容套接字上**实测通过的 —— 该机器装有 docker CLI 29.8.0，
+   但**没有 docker 守护进程/套接字**（`/var/run/docker.sock` 不存在），因此不能表述为"在 Docker 上实测"。
+   另外该环境是 rootless podman，容器在默认参数下**无法 fork**（`sh: 4: Cannot fork`，会直接卡在 `detect()`），
+   需要 `--pids-limit -1`；这是该测试环境的约束，不是你本地 docker 的问题。
+7. **WSL：未实测**。`packages/server/src/remote/wsl-backend.ts:504` 与 `wsl-detect.ts:148/166` 硬性要求
+   `process.platform === "win32"`（要调 `wsl.exe`）⇒ 只能在 **Windows 客户端**上验证，Linux/macOS 主机无法实测。
+   验证条件：一台 Windows 客户端，或 CI 的 `windows-latest` runner 并且已启用 WSL2 且有发行版。
+   静态核查结论（供参考，不等于验证）：WSL 的 Windows 专属假设（`wsl.exe` 调用、UTF-16LE 输出解码、
+   `wsl.exe -- bash -lc` 的参数重组）**全部落在 WSL 后端内部**，不扩散到资产层；WSL 内的远端是 Linux，
+   需要的是已发布的 `linux-x64/arm64`，因此**缺少 win32 平台类不影响 WSL 远端**。
+8. **Alpine(musl) 预期不可用（未实测）**：自托管资产里的 `components/linux-x64/node-runtime` 解出的 `node` 是
+   **glibc 动态链接**（`ldd` 依赖 `libdl.so.2` / `libstdc++.so.6` / `libm.so.6`，解释器 `/lib64/ld-linux-x86-64.so.2`），
+   而 Alpine 用 musl 且没有该解释器 ⇒ 预期起不来。**本文未在 Alpine 容器里实测**，所以这是"有证据的预期"，不是结论。
+9. 桌面端以外的客户端（Web）**没有**远程工作区入口。
