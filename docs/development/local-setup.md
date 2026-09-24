@@ -39,6 +39,28 @@ cd packages/ui && node --import tsx --test test/*.test.ts   # 单包
 
 **注意**：`packages/ui` 使用 tsconfig paths 的 `@/*` 别名，**必须从包目录内执行**，从仓库根跑会 `ERR_MODULE_NOT_FOUND`。`scripts/run-tests.mjs` 已处理这个差异。
 
+### `apps/zcode-cli` 的测试不依赖构建产物
+
+`apps/zcode-cli` 下各包的 `exports` 指向 `./dist/*.js`，而 `pnpm typecheck` 的工程列表
+**不含 `apps/zcode-cli`** ⇒ 该目录下的 `dist` 在 CI 上**从不存在**。因此这些包的测试若 import
+`@zcode/contracts` 之类的 workspace 包，在 fresh clone 上必然 `ERR_MODULE_NOT_FOUND`。
+
+`scripts/run-tests.mjs` 对 `apps/zcode-cli/**` 的测试包追加
+`--import packages/services/test/support/zcodeSourceResolver.mjs`，把 `@zcode/*` 解析到**源码**，
+从而不需要任何构建前提。根 `packages/*` **刻意不加**：它们的 `dist` 由 `pnpm typecheck` 真产出，
+按 `exports` 解析才是它们的发布形态。
+
+**单跑这些包的测试时要自己装钩子**，否则本机「构建过」与 CI「没构建」结果不一致：
+
+```bash
+cd apps/zcode-cli/packages/core
+node --import tsx --import ../../../../packages/services/test/support/zcodeSourceResolver.mjs \
+  --test test/mcpToolEnablement.test.ts
+```
+
+钩子必须装在**进程启动时**（`--import`）：ESM 先 link 后 evaluate，在测试文件里 import 它来不及
+（实测仍报 `ERR_MODULE_NOT_FOUND`）。
+
 ## 类型检查的覆盖范围
 
 `pnpm typecheck` 的工程列表**不含** `packages/desktop/tsconfig.main.json` 与 `tsconfig.renderer.json`。改动 desktop main/renderer 时需额外跑：

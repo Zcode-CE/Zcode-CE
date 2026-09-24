@@ -14,6 +14,8 @@ import { buildDisabledMcpToolsByServer } from "../src/mcp/tool-disabled.js";
  * 产品规则见 `docs/development/tool-policy.md`。
  *
  * 运行：cd apps/zcode-cli/packages/core && node --import tsx --test test/mcpToolEnablement.test.ts
+ * 注意：本地直接跑要装源码解析钩子（CI 上由 pnpm test 统一装），否则**无构建产物时会 ERR_MODULE_NOT_FOUND**：
+ *   node --import tsx --import ../../../../packages/services/test/support/zcodeSourceResolver.mjs --test <file>
  */
 
 const SERVER = "github";

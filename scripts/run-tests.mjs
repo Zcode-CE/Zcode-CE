@@ -14,7 +14,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /**
@@ -73,6 +73,35 @@ const TEST_PACKAGES = [
 /** 允许的测试文件后缀：packages 下用 TS（走 tsx），apps 下的脚本测试用 .mjs。 */
 const TEST_FILE_SUFFIXES = [".test.ts", ".test.mjs"];
 
+/**
+ * 把 `@zcode/*` 从「构建产物 dist/」重定向到「源码 src/」的模块解析钩子（既有文件，勿另造）。
+ *
+ * 为什么只有 `apps/zcode-cli` 需要它（CI run 35990943160 的根因）：
+ * CI 的 Test 步骤之前**只有** `pnpm typecheck`，而根 package.json 的 typecheck 是
+ * `tsc -b packages/...` —— 工程列表**不含 apps/zcode-cli** ⇒ 该目录下的 dist 在 CI 上
+ * **从不存在**（实测：无产物的树上跑完 typecheck 只新增根 packages 下的 dist）。
+ * 而 apps/zcode-cli 的包（contracts / adapters / core / bootstrap …）exports 指向
+ * `./dist/index.js` ⇒ 任何 import `@zcode/contracts` 的测试在 fresh clone 下必然
+ * `ERR_MODULE_NOT_FOUND`。根 packages/* 不需要它：它们的 dist 由 typecheck 真产出，
+ * 保持按 exports 解析（那才是它们的发布形态）。
+ *
+ * 为什么挂在**进程启动时**（--import）而不是测试文件里 import：
+ * ESM 先 link 后 evaluate —— 测试文件顶部的 import 要到 link 阶段之后才执行，
+ * 那时同文件的 `@zcode/*` 已经解析失败。实测：在测试文件里静态 import 本钩子，
+ * 无 dist 下**仍然红**；只有 --import（或动态 import + 动态 import 被测模块）才生效。
+ *
+ * 与 packages/services/test/devChainAgentPayloads.test.ts 同源：那处是**子进程**需要它，
+ * 这里是**测试进程自身**需要它。见 7f65e92 的注释「子进程同样要装」。
+ */
+const ZCODE_SOURCE_RESOLVER_URL = pathToFileURL(
+  resolve(repoRoot, "packages/services/test/support/zcodeSourceResolver.mjs"),
+).href;
+
+/** 该包的测试是否需要「按源码解析 @zcode/*」（即它的 dist 在 CI 上不存在）。 */
+function needsZcodeSourceResolver(packageDir) {
+  return packageDir.startsWith("apps/zcode-cli/");
+}
+
 function collectTests(packageDir) {
   const testDir = join(repoRoot, packageDir, "test");
   if (!existsSync(testDir)) return [];
@@ -92,7 +121,13 @@ for (const packageDir of TEST_PACKAGES) {
   }
   console.log(`[test] ${packageDir}: ${files.length} 个测试文件`);
   // cwd 必须是包目录：ui 的 @/* 别名依赖 tsconfig paths，node 直跑不认。
-  const result = spawnSync(process.execPath, ["--import", "tsx", "--test", ...files], {
+  const nodeArgs = ["--import", "tsx"];
+  if (needsZcodeSourceResolver(packageDir)) {
+    // 排在 tsx 之后：本钩子只做 specifier→源码路径，转译仍由 tsx 承担。
+    nodeArgs.push("--import", ZCODE_SOURCE_RESOLVER_URL);
+  }
+  nodeArgs.push("--test", ...files);
+  const result = spawnSync(process.execPath, nodeArgs, {
     cwd: join(repoRoot, packageDir),
     stdio: "inherit",
   });

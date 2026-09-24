@@ -15,6 +15,8 @@ import { resolvePluginMcpServers } from "../src/plugins/mcp.js";
  * 所以断言必须打在「解析结果 + 诊断」上，而不是 schema 定义上。
  *
  * 运行：cd apps/zcode-cli/packages/adapters && node --import tsx --test test/mcpDisabledToolsConfig.test.ts
+ * 注意：本地直接跑要装源码解析钩子（CI 上由 pnpm test 统一装），否则**无构建产物时会 ERR_MODULE_NOT_FOUND**：
+ *   node --import tsx --import ../../../../packages/services/test/support/zcodeSourceResolver.mjs --test <file>
  */
 
 function parse(server: Record<string, unknown>) {

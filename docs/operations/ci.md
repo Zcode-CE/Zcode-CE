@@ -25,6 +25,14 @@
 用 `fetch-depth: 0` 做完整克隆，因为 `architecture:check --changed` 需要与基线比较变更集，
 浅克隆会让它算错改动范围。
 
+**`pnpm test` 在 CI 上跑的是「无构建产物」形态**：它前面只有 `pnpm typecheck`，而该工程列表
+（根 `package.json` 的 `typecheck`）**不含 `apps/zcode-cli`** ⇒ `apps/zcode-cli/packages/*/dist`
+在 runner 上从不存在。因此 `scripts/run-tests.mjs` 对 `apps/zcode-cli/**` 的测试包追加
+`--import packages/services/test/support/zcodeSourceResolver.mjs`，把 `@zcode/*` 解析到源码；
+根 `packages/*` 的 `dist` 由 typecheck 真产出，保持按 `exports` 解析。
+**本地复刻 CI 时必须先移走这些 dist**，否则「本机构建过」会掩盖这条链路的失败
+（`ERR_MODULE_NOT_FOUND`）—— 见 `docs/development/local-setup.md`。
+
 **刻意不跑 `pnpm licenses:check`**：它比对的平台包集合与 runner 平台相关，
 在 CI 环境会因平台差异产生与改动无关的失败。
 

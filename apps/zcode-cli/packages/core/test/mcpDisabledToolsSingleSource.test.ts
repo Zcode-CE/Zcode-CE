@@ -19,6 +19,8 @@ import { zcodeProtocolMcpServerSchema } from "@zcode/shared";
  * 只断言值相等会漏掉「两份实现恰好同值」的情形。
  *
  * 运行：cd apps/zcode-cli/packages/core && node --import tsx --test test/mcpDisabledToolsSingleSource.test.ts
+ * 注意：本地直接跑要装源码解析钩子（CI 上由 pnpm test 统一装），否则**无构建产物时会 ERR_MODULE_NOT_FOUND**：
+ *   node --import tsx --import ../../../../packages/services/test/support/zcodeSourceResolver.mjs --test <file>
  */
 
 test("contracts 与 shared 重新导出的是同一个实现（不是两份同值副本）", () => {
