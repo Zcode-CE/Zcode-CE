@@ -48,7 +48,7 @@ node bin/zcode.mjs --web [--host <host>] [--port <port>] [--workspace <path>] \
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--web`                | 起 Web 面板（不进入 TUI）                                                                                                                                                  |
 | `--host`               | 监听地址。**默认 `127.0.0.1`（仅本机）**；`0.0.0.0`/本机私网 IP 才会对局域网开放。为 `0.0.0.0`/`::` 时 runner 会**逐个打印网卡可达地址并带上令牌**，方便你复制到手机浏览器 |
-| `--port`               | 端口，默认见 runner 帮助                                                                                                                                                   |
+| `--port` | 端口。**默认 `3030`**；被占用时**自动回退到空闲端口**并在启动日志写明；启动日志**始终打印实际地址** |
 | `--workspace`          | 工作区根目录（Agent 的文件/命令作用域）                                                                                                                                    |
 | `--open` / `--no-open` | 是否自动打开本机浏览器（无头环境用 `--no-open`）                                                                                                                           |
 | `--token <token>`      | 访问令牌；**非回环监听必须提供**                                                                                                                                           |
@@ -96,15 +96,35 @@ node bin/zcode.mjs --web [--host <host>] [--port <port>] [--workspace <path>] \
   （`ZCODE_BASE_URL`、`ZCODE_ENDPOINT_ORIGIN` 等，见仓库根 `.env.example`）。
 - **不要**把 provider secret 写进命令行或镜像层；用环境变量或数据目录里的凭据。
 
+### 5.1 服务端旋钮一览（环境变量）
+
+| 旋钮                            | 作用                                                                                                           | 默认                | 备注                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ZCODE_SERVER_AUTH_TOKEN`       | 显式单令牌（等价于 `--token`）                                                                                 | 空                  | 与令牌文件**取并集**（不是覆盖）：它是"运维手上那把钥匙"                                                                                                                                                                                                                                                                                                                        |
+| `ZCODE_SERVER_AUTH_TOKENS_FILE` | 令牌文件（每行一条，便于轮换/多设备）；`kill -HUP` 重载                                                        | 空                  | 重载**整体替换文件那一部分** ⇒ 删掉一行即刻失效；文件空/坏 ⇒ **拒绝启动**（不静默降级）                                                                                                                                                                                                                                                                                         |
+| `ZCODE_SERVER_TRUSTED_HOSTS`    | Host 白名单（**挡 DNS rebinding**）：`host` / `host:port` / `[IPv6]` / `[IPv6]:port`，**追加**在默认白名单之后 | 空 = 只用默认白名单 | 默认 = 回环 + 本机网卡 + 实际监听地址；**未配域名时不放行任意 Host**；**缺失/畸形 `Host` ⇒ 拒绝**（HTTP/1.1 不带 Host 由 Node 解析器先判 400）；登记项不写端口 = 该主机任意端口，写了则必须相等；拒绝时 403 + `X-ZCode-Host-Rejected: 1`。**反代域名必须登记**，否则你自己的域名也 403（有意行为）。完整口径见 [web-remote-control.md](../development/web-remote-control.md) §6 |
+| `ZCODE_SERVER_TRUSTED_ORIGINS`  | 跨源白名单（**挡跨站请求**；前端与后端不同源时）                                                               | 空（= 只允许同源）  | 同源判定**恒优先**；空项/非法项被丢弃。**与上一条是两道不同防线，不要互相替代**                                                                                                                                                                                                                                                                                                 |
+| `ZCODE_SERVER_TRUSTED_PROXIES`  | 可信代理（IP/CIDR），只有它们给的 `X-Forwarded-For` 才被采信                                                   | 空 = **谁都不信**   | 反代不配它 ⇒ 所有客户端共用一个计数桶，一个人的连续失败会连带拒绝**所有人**（服务会告警）                                                                                                                                                                                                                                                                                       |
+| `ZCODE_SERVER_CSP`              | CSP 强度：`off` / `enforce`                                                                                    | report-only         | 拼错的值**回落 report-only** 并在启动日志说明                                                                                                                                                                                                                                                                                                                                   |
+| `ZCODE_SERVER_HSTS`             | 是否随 https 下发 HSTS                                                                                         | 关                  | 只在 **https 且显式开启** 时发；**一旦下发无法撤回**                                                                                                                                                                                                                                                                                                                            |
+
+**这一版的边界（分四道闸，公网暴露前逐条自查）**：非回环必须令牌 · Host 白名单（挡 rebinding）·
+来源校验（挡跨站）· 鉴权失败限流（挡暴力破解，默认 10 次/5 分钟 ⇒ 封 15 分钟）。
+完整口径见 [web-remote-control.md](../development/web-remote-control.md) §4–§6 与
+[反代部署](headless-server-reverse-proxy.md)。
+
+**默认监听口径**：不传任何参数时 `--web` 绑定 **`127.0.0.1:3030`**（端口被占用则回退到空闲端口，日志会写明），且**回环默认不启用令牌**；
+要对外（局域网/反代）必须显式 `--host`，此时**必须**带令牌（非回环 + 无令牌会**拒绝启动**）。
+
 ---
 
 ## 6. 交付渠道取舍（**本轮不发布任何 registry**）
 
-| 渠道                            | 用户门槛           | 维护成本                                    | 命名风险                      | 外部副作用               |
-| ------------------------------- | ------------------ | ------------------------------------------- | ----------------------------- | ------------------------ |
-| **tarball 挂 Release / 自托管** | 低（下载解包）     | 低                                          | 无                            | 无                       |
-| **Docker 镜像**                 | 中（要会 docker）  | 中（镜像体积、tag 策略、基础镜像更新）      | 需要 image 名与 registry 归属 | 需要 registry 账号与权限 |
-| **npm 包**                      | 最低（`npx` 即用） | 中（版本/更新通道、`file:` 依赖与体积限制） | **最高**（见下）              | 需要 npm 账号与 token    |
+| 渠道                            | 用户门槛           | 维护成本                               | 命名风险                      | 外部副作用                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------- | ------------------ | -------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **tarball 挂 Release / 自托管** | 低（下载解包）     | 低                                     | 无                            | 无                                                                                                                                                                                                                                                                                                                                                                   |
+| **Docker 镜像**                 | 中（要会 docker）  | 中（镜像体积、tag 策略、基础镜像更新） | 需要 image 名与 registry 归属 | 需要 registry 账号与权限                                                                                                                                                                                                                                                                                                                                             |
+| **npm 包**                      | 最低（`npx` 即用） | 中（版本/更新通道、体积限制）          | **最高**（见下）              | 需要 npm 账号与 token。**发布内容 = 分发包根**（`pnpm build:zcode` 的 `dist/zcode/`，`bin` 映射 `bin/zcode.mjs`）；包名统一用 **`zcode-ce`**。**不要发布 `@zcode/server-cli`**：它 `private: true`、占用官方 scope，且其 `bin` 指向的 bundle 直接执行会抛 `Dynamic require of "fs" is not supported`（复现见 `.reverse/36-ssh/HEADLESS-CLI-PACKAGE-RUNNABILITY.md`） |
 
 **命名硬约束（不得违反）**：
 
@@ -126,15 +146,16 @@ node bin/zcode.mjs --web [--host <host>] [--port <port>] [--workspace <path>] \
 
 ### 7.1 npm
 
-1. **确定名字**：`npm view <候选名> version` 返回 404 才可用；scope 需你已创建并登录。**不得用 `@zcode/*`**。
-2. **准备包描述**：在 staging 目录（`dist/zcode/`）生成 `package.json`：
-   `{ "name": "<名字>", "version": "<与 tag 一致的版本>", "bin": { "zcode": "bin/zcode.mjs" }, "files": ["bin", "server", "agent", "web"], "engines": { "node": ">=22" }, "license": "Apache-2.0", "repository": "Zcode-CE/Zcode-CE", "description": "社区版（非官方）无头服务器 + Web 面板" }`。
+1. **包名固定用 `zcode-ce`**（只读核对：`npm view zcode-ce version` 目前返回 E404 = 尚无同名已发布包；**E404 不等于保证能注册**，最终以首次 publish 结果为准）。**不得用 `@zcode/*`**（官方 scope）。
+2. **打包来源 = 分发包根**：先 `pnpm build:zcode`，再对 `dist/zcode/` 生成 `package.json`；`bin` 必须映射到 **`bin/zcode.mjs`**（与 `install.sh` 用的同一个入口），不要指向任何 `packages/**/dist/*.js`。
+3. **准备包描述**：在 staging 目录（`dist/zcode/`）生成 `package.json`：
+   `{ "name": "zcode-ce", "version": "<与 tag 一致的版本>", "bin": { "zcode": "bin/zcode.mjs" }, "files": ["bin", "server", "agent", "web"], "engines": { "node": ">=22" }, "license": "Apache-2.0", "repository": "Zcode-CE/Zcode-CE", "description": "社区版（非官方）无头服务器 + Web 面板" }`。
    注意：`bin/zcode.mjs` 首行要有 shebang（`#!/usr/bin/env node`）并保持可执行位。
-3. **凭据**：在仓库 secrets 里加 `NPM_TOKEN`（npm Access Token，**Automation** 类型；权限只需 publish 该包）。
-4. **CI job 形态**：新 job `publish-npm-headless`，`if: startsWith(github.ref, 'refs/tags/') && inputs.publish_registry == true`（或独立的 `workflow_dispatch`）；
+4. **凭据**：在仓库 secrets 里加 `NPM_TOKEN`（npm Access Token，**Automation** 类型；权限只需 publish 该包）。
+5. **CI job 形态**：新 job `publish-npm-headless`，`if: startsWith(github.ref, 'refs/tags/') && inputs.publish_registry == true`（或独立的 `workflow_dispatch`）；
    步骤：checkout → pnpm install → `pnpm build:zcode --base-url <依赖托管基址>` → 生成 `package.json` → `npm publish --access public`。**`continue-on-error: true`**。
-5. **发布后验证**：`npm view <名字>@<版本> dist.shasum` 有值；另起干净容器 `npx -y <名字>@<版本> --web --no-open --port 3030` 后 `curl -sI localhost:3030/` 应为 200。
-6. **回滚**：72 小时内可 `npm unpublish <名字>@<版本>`；之后只能 `npm deprecate <名字>@<版本> "原因"` 并发布修复版本。
+6. **发布后验证**：`npm view <名字>@<版本> dist.shasum` 有值；另起干净容器 `npx -y <名字>@<版本> --web --no-open --port 3030` 后 `curl -sI localhost:3030/` 应为 200。
+7. **回滚**：72 小时内可 `npm unpublish <名字>@<版本>`；之后只能 `npm deprecate <名字>@<版本> "原因"` 并发布修复版本。
 
 ### 7.2 Docker
 
@@ -161,6 +182,8 @@ node bin/zcode.mjs --web [--host <host>] [--port <port>] [--workspace <path>] \
 pnpm build:zcode --base-url <依赖托管基址>            # 1) 构建
 node scripts/zcode-distribution-smoke.mjs dist/zcode/releases/*.tar.gz
 ```
+
+**发布前最低判据**：`node bin/zcode.mjs --help` 与 `node bin/zcode.mjs --version` 都必须**退出码 0**（用户形态的第一步；比 smoke 更快）。
 
 smoke 在**隔离目录**里解包并驱动这个包：TUI 导入、`--web` 起服务、`/` 壳、`/api/server-info`、
 WebSocket、优雅退出；失败即非零退出。本版实测（3.14.3-ce.2，Linux x64）：
