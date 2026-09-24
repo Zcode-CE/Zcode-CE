@@ -3,7 +3,13 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "lib": ["ES2022"]
+    "lib": ["ES2022"],
+    // 只产声明（.d.ts）。原因：`dist/` 同时是 tsup 打包可运行 bundle 的目标目录 ——
+    // 若 tsc 也在这里产 JS，`pnpm typecheck`（tsc -b）会**覆盖** tsup 的 `dist/entry-http.js`，
+    // 而 tsc 产出的那份在 `node` 下跑不起来（workspace 包的 exports 指向 `src/*.ts`，
+    // 其内部相对 `.js` 引用在 emit 形态下解析不到）⇒ 表现是「构建后可启动、跑一次 typecheck 后
+    // ERR_MODULE_NOT_FOUND」。2026-09-24 一天内被这个坑绊了三次，故在配置层修掉。
+    "emitDeclarationOnly": true
   },
   "include": ["src"],
   // server 同时直接 import 了 shared / services / client / rpc。

@@ -4,7 +4,11 @@
     "rootDir": "src",
     "outDir": "dist",
     "lib": ["ES2022", "DOM"],
-    "types": ["node"]
+    "types": ["node"],
+    // 只产声明（.d.ts）：`dist/` 同时是 tsup 打包可运行 `server-cli.js` 的目标目录，
+    // 若 tsc 也在这里产 JS，`pnpm typecheck`（tsc -b）会覆盖 tsup 的产物 ⇒ 表现是
+    // 「构建后可跑、跑一次 typecheck 后 ERR_MODULE_NOT_FOUND」。与 packages/server 同一处修复。
+    "emitDeclarationOnly": true
   },
   "include": ["src"],
   "references": [{ "path": "../shared" }, { "path": "../rpc" }, { "path": "../services" }]
