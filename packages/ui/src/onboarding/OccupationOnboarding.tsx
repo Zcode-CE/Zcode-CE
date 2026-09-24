@@ -84,7 +84,14 @@ export function OccupationOnboarding({
     setStep(0);
     setDismissed(true);
     setRequested(false);
-  }, [intl, setRequested]);
+    // 关闭必须落盘：只改组件 state 时重启后引导会再次弹出（8225921 声称修过、实际未接通）。
+    // deviceMid 由 host 侧服务自己解析（记录文件的所有者），UI 不传也不生成身份。
+    if (onboardingRecord) {
+      void onboardingRecord.dismissOnboarding().catch((cause: unknown) => {
+        logger.warn("[occupation-onboarding] 写入关闭决策失败", { error: String(cause) });
+      });
+    }
+  }, [onboardingRecord, setRequested]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (

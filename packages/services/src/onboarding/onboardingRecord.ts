@@ -15,6 +15,18 @@ export interface OnboardingSettingsSyncPatch {
 
 type AppSettingsPatchOccupation = NonNullable<AppSettings["onboardingOccupation"]>;
 
+/**
+ * deviceMid 的状态所有者与接口契约（记录文件是设备级数据，新文件必须固化一个非空 deviceMid）：
+ *
+ * - 形状要求：schema 要求 min(1)（@zcode/shared 的 onboardingRecordFileV1Schema / V2Schema）。
+ *   写进空串不是"少一个字段"，而是整份文件下次读取必然解析失败 ⇒ readRecordFile 返回 null
+ *   ⇒ 整份记录（含刚落的决策）被当成"从未记录"，用户的关闭动作静默丢失。
+ * - 已有文件：以文件内 deviceMid 为权威，调用方传入不同值只 warn 并沿用旧值（设备关联的前提）。
+ * - 文件不存在：由服务侧解析，默认走设备身份唯一入口 ensureDeviceMid（telemetry-state.json，
+ *   与 X-Device-Mid / 反馈 / claim 同一个字段），装配可用 resolveDeviceMid 覆盖。
+ *   解析不到非空值时跳过本次写入并明确告警，绝不写出必然读不回来的文件。
+ * - 并发：同一进程内写操作走同一条串行队列（enqueueWrite），不会交错出半截文件。
+ */
 export interface IOnboardingRecordService {
   /**
    * 追加一条引导完成记录。文件不存在时创建并固化 deviceMid（之后以文件内值为权威）；
@@ -25,10 +37,16 @@ export interface IOnboardingRecordService {
    * 触发判定。返回 true 表示应当弹出引导。
    *
    * 判定顺序（与官方 3.14.1 一致，不可调换）：
-   * 1. 当前用户已有 `dismissed` 决策 → false（用户关闭过，重启不再弹）
+   * 1. 当前用户在 entries 或 decisions 里已有任意一条记录 → false。
+   *    判定面是两者的并集（判据见 `@zcode/shared` 的 `onboardingDecisionSchema` 注释），
+   *    不按 status 过滤：`dismissed`（用户关闭过）与 `existing_local_user`（老用户短路）
+   *    都表示"已经处理过了"，重启后都不该再弹。
    * 2. 本机已有任务（`hasExistingLocalTask`）→ 落一条 `existing_local_user` 决策后返回 false
    *    （老用户不该被当成新用户引导）
-   * 3. 当前用户没有对应条目或文件不存在 → true
+   * 3. 文件不存在，或当前用户两侧都没有记录 → true
+   *
+   * 为什么第 1 步必须认整个 decisions 集合：只认 `dismissed` 时，老用户短路写下的
+   * `existing_local_user` 决策会在本机任务被删空后失效，同一个人被再弹一次。
    */
   shouldOnboard(): Promise<boolean>;
   /**
@@ -78,6 +96,17 @@ export interface CreateOnboardingRecordServiceOptions {
    * `node.ts` 用 `taskIndexRepo.listTaskMetas({})` 非空实现，与官方 `hasExistingLocalTask` 同义。
    */
   hasExistingLocalTask?: () => Promise<boolean>;
+  /**
+   * 记录文件不存在时，新建文件要固化的 deviceMid 从哪里来。
+   *
+   * 不传时走设备身份唯一入口 ensureDeviceMid（telemetry-state.json，与 X-Device-Mid /
+   * 反馈 / claim 同一个字段与锁），生产装配无需显式传。测试注入桩以避免读写真实设备文件，
+   * 与 bigmodelCodingPlanSubscriptionProvider 的 resolveDeviceMid 同一套路。
+   *
+   * 返回值必须是 trim 后非空的字符串；空值会被当作解析失败（跳过写入并 warn），
+   * 不允许写进记录文件——schema 的 min(1) 会让那份文件下次读取整份失效。
+   */
+  resolveDeviceMid?: () => Promise<string>;
 }
 
 export type OnboardingRecordServiceFactory = (
