@@ -3415,7 +3415,7 @@ function getSnapshotGoalActiveIterationCount(snapshot: ZCodeSessionStateSnapshot
 }
 
 function toZCodeDeliveryKind(
-  deliveryKind: "continuous" | "replayable" | "mixed" | undefined,
+  deliveryKind: "continuous" | "bot-channel-continuous" | "replayable" | "mixed" | undefined,
 ): ZCodeDeliveryKind {
   return deliveryKind === "replayable" ? "web-remote-replayable" : "desktop-continuous";
 }

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "8158bbc68ba807f2edef0d49b2fc9eeeafd8fb90e110a39089b86faedcd8c830",
+  "noticesSha256": "e0782ce0c7554b8b87bc17d755e778ef9d81e125a2443716c5773923597ac823",
   "inputs": {
     ".agents/skills/agent-browser/references/authentication.md": "e2c3b0f4a1dc1368dee821f03c000d818a48421d09f3872525dddffe73f2112b",
     ".agents/skills/agent-browser/references/commands.md": "17522fc56d742663f47231ff06c4811abc87e12c7f78e11f94d253ddd540a909",
@@ -1501,8 +1501,38 @@
     "packages/rpc/src/remote.ts": "a11e072d5df7e1c1ce64814a68f72afc081246b364f0da409b5c9d22bc815957",
     "packages/rpc/src/serialization.ts": "e949418e1cd17cc863c147fc8d1ff15237e1b5f0cb8e3344fd2a9ccfae9d54e7",
     "packages/server/package.json": "0a6119239c88af79bc766e3c023eb4437105a0d35b03ecca1137d1e688e60a90",
-    "packages/services/package.json": "07b8fa3e6b8120fe341d9d98921a3ecb951ec92e9cb7add226c5f71debfdc68f",
+    "packages/services/package.json": "34a8d00b4b0e4874c1427cdde4ab0c3d21be955750661dbb19f5241a53a3cb9f",
+    "packages/services/src/bots/attachmentPathGuard.ts": "7db16b5bbd951690ae4d92f811a7176451059554ce048ce5229891b27204c687",
+    "packages/services/src/bots/attachmentUrlGuard.ts": "33ca4093099dc3c245f96ec93388857e10978e9132b12ea3414d439f70d2effa",
+    "packages/services/src/bots/botConfigHelpers.ts": "f4d5e4d3a6141d44a5d99418417c1d4eed80321084b671ae07d1ea86726abe9a",
+    "packages/services/src/bots/botRemoteRuntimeServices.ts": "74bfcb89b3ddb3f8c1ffa30f3a17d12cc542ecc0b52673ff793900e82260fe59",
+    "packages/services/src/bots/botRemoteWorkspaceBridge.ts": "740b0cf99acc93d3d901919d4ef2652ebf06279ae445d2476c88a106286a1ae7",
+    "packages/services/src/bots/bots.ts": "01764678a4aff2c3fcc8732ae7cf4fa945ea639cf5cd23c331a4d0ac08750fcc",
+    "packages/services/src/bots/botsService.ts": "bba32766630ddf8cdf9bf17f4b411c16e5c48407cb5ead75d4588fba9b53bcbc",
+    "packages/services/src/bots/channelRuntime.ts": "1e2f5b1f3c86e223f039a91bab01121dbc263ce93724438c13b2249e1b147f74",
+    "packages/services/src/bots/commandOrder.ts": "5bd3200e30f1458351b355d97328763496c798f4959326c27e581b7fba5f0a72",
+    "packages/services/src/bots/commandParser.ts": "bc592f34c14b6f73d5b1ab2c913c0c77c99138f1e043cdb18187143fd069b8ff",
+    "packages/services/src/bots/config.ts": "be93598984c0e73e129a0f1135d9baf490d6207ffa91dd804df58d6afa3fc542",
+    "packages/services/src/bots/feishuChannelRuntime.ts": "aab47c1a41c7e2e921cc6d5374ac56bdac2ef2d1d989710b7ed00fd3fd9bd111",
+    "packages/services/src/bots/messages.ts": "08a7922b317e877b02032f8c525af75df9bbe8c803ad5534b3c200060a1881f3",
+    "packages/services/src/bots/modelSelectionHelpers.ts": "1b8279ecc7e2ee11980346cadc088eaa3f38d2ac3b51c283bb9a709dbe70b051",
+    "packages/services/src/bots/providers/feishuAppRegistration.ts": "7a6a1919de4d0f9f862e4755f25a9383f4f3e73b80d0e86f1727930b77486978",
+    "packages/services/src/bots/providers/feishuProvider.ts": "d7e23cb0afe57b6d6630770b5c2f54a15e176725720afba42e2bfaa0c1c7c2d4",
+    "packages/services/src/bots/providers/providerRequest.ts": "8412040408c61525b4e1291e1721556febdcf80b5b39584f06b9eae47b8d314b",
+    "packages/services/src/bots/providers/telegramProvider.ts": "19e64d9c9042329564d8045fb5e96a90a6a65d5f71b14559b963274bb24b7ff7",
+    "packages/services/src/bots/providers/types.ts": "92dee8cc703901971d854f0a9c81b19e673d5fb323a2fa181b6b69a96442b07a",
+    "packages/services/src/bots/providers/webhookProvider.ts": "53bcb8e9787097a46ce4e5ff780a45a77170926231a4afe4803446897c24008a",
+    "packages/services/src/bots/providers/weixinProvider.ts": "23efde62108421eeece783d33549a3b3e5173d7cc68071714b3f3628964cc1e9",
+    "packages/services/src/bots/providers/weixinRegistration.ts": "290ff395a2ca6c0ca9d185dae0af029b0f2589d639c0b20edb9d37bf7ed0f276",
+    "packages/services/src/bots/replyFormatter.ts": "ab4910698d8beaf273e1fbe7c680a97409a7aa2d8391832172f762ac90f1ffed",
+    "packages/services/src/bots/repo.ts": "0e1489d2c452d4c4463f155823dcffb9a445ab74122a3e8d977124fe0a37f9b1",
+    "packages/services/src/bots/statusFormatting.ts": "f645bb81625ab71504cffa14438b153ed6d3f13fcdcfbd584e653e9513d01369",
+    "packages/services/src/bots/storageMigration.ts": "d6b806bd77f4f3ba070559c6bc48bd64e20848c14a0639fefb95c3d1bf96baf6",
+    "packages/services/src/bots/telegramChannelRuntime.ts": "92936b803880362960acbfbcc78b3bed8e85dee7c6a95ef49a49a306c7075028",
+    "packages/services/src/bots/weixinChannelRuntime.ts": "701c2482365fabb20503a4681dd7cfa560b9137e7f8678077cc0e4b6516cd876",
+    "packages/services/src/bots/workspaceHelpers.ts": "2681a2c8cb2a7c11d44920060bb60af3d45a1fb28389bf5079940898fade0871",
     "packages/shared/package.json": "27426dda8fb05376acfef8bf004d86522c1e555213f01fed19f5397d30a2c84e",
+    "packages/shared/src/bots.ts": "1474521b9d3afdf9ba5802cfe09c97b8770f9c78914e85d349c833fcc7131cf4",
     "packages/shared/src/zcode-protocol-v4/wire-codec.ts": "ac2494a3acc795c809c94ee9393f50271a9c2a0fd33813459e5ab93842ceef75",
     "packages/ui/package.json": "220e916077604008bb6ffea19d6bdf7148c4b09472bea251248a230ba3c69bf5",
     "packages/ui/src/components/ai-elements/agent.tsx": "830e7ea9e927de1524851337f1d35bda0e5690e3e4fa307fff854b60006b16c7",
@@ -2749,12 +2779,12 @@
     "packages/zcode-server-cli/package.json": "6e294c4409cb90863d85b2e3d60f92766b156ccee577ebfeaffcb85e94194004",
     "patches/@ai-sdk__anthropic@3.0.81.patch": "d3a7c381eba7f5157f765a0528003af17cf84544911dfb7412c7800168e01c18",
     "patches/@ai-sdk__openai-compatible@2.0.60.patch": "9632fe9d821b3dc20939ae509cc35b968d90d018bbd1d812390718898182a38b",
-    "pnpm-lock.yaml": "90b3221bfd49f6cc07fc330d44106626f7651a57893289a434c23f5d437aae74",
+    "pnpm-lock.yaml": "fd7f0b85bf33e46eba0f184b3d5592c12d1690275b853a2256901c0de7116e21",
     "pnpm-workspace.yaml": "f18a18233e82cda1dc40be61bf2ad1bc99de25de63ad0be64bc652761a638372",
     "scripts/license-texts/Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
     "scripts/remote-native-search-tools-config.mjs": "472322a66f84c7452f96aa9e16e9c4e0600f7c2588a03dc6bc869229161b1cb2",
-    "third-party/copied-components.json": "4aa5977f93478687e7f16d1a15b853b0c9113eab6dd29542b4db049d01d8c18d",
+    "third-party/copied-components.json": "9c30e9cdc483253ca2585ee8e25aef022dbab9ef8a76c9595f38e4033c5c623c",
     "third-party/embedded-components.json": "1160d4b37e297584099e640998b75599a9ac237dc39dc29d49f2a538e514bb4e",
     "third-party/native-search/licenses/00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce.txt": "00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce",
     "third-party/native-search/licenses/01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f.txt": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
@@ -2871,7 +2901,7 @@
     "third-party/native-search/licenses/f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af.txt": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
     "third-party/native-search/licenses/f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505.txt": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505",
     "third-party/native-search/sources.json": "5a7b2d7abf5bd5f310712710cbbd0ca70dc9491e723cbf070b5c696fe155a962",
-    "third-party/npm-overrides.json": "d4d1130bd01d375c4e809c9adf7a1c5cf8d4a0e0ab00ed43a49de4f8f899df55",
+    "third-party/npm-overrides.json": "89265200d7a2c2a96c1e7ca67beff094720f3ec149cb5801467df4ccbf7ee61d",
     "third-party/runtime/node-22.16.0-LICENSE.txt": "1ae62e2015784ba438db7b04ebd33f3c4ff3efdb824c111c4ececd99945fd52d",
     "third-party/runtime/node-24.14.0-LICENSE.txt": "4573185d56580da2b890ba34a85a409257640f1c5632eade4300137266194d18",
     "third-party/runtime/sources.json": "b27bc8d81aeb71108e523602364ffbb6a1b19c2d5d47733fd43094b769006741",
@@ -2895,6 +2925,7 @@
     "third-party/upstream/2d2349188616c4b64ceeae33e1386bb546b0658864b4f7f8c9785757cb065b5d.txt": "2d2349188616c4b64ceeae33e1386bb546b0658864b4f7f8c9785757cb065b5d",
     "third-party/upstream/3007cd45c9afdf93812c0c8a7643ea32a7db0b24e495dc0f2312c8a43990b0dd.txt": "3007cd45c9afdf93812c0c8a7643ea32a7db0b24e495dc0f2312c8a43990b0dd",
     "third-party/upstream/31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87.txt": "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87",
+    "third-party/upstream/32d9310abf9099556ff17b83c09d7b5a91646825580de5a397e5b150a0d737bb.txt": "32d9310abf9099556ff17b83c09d7b5a91646825580de5a397e5b150a0d737bb",
     "third-party/upstream/34dee5fd5e5cc756efb5ad4d64652bce719bdf5e900ca5d7538253e737930bc4.txt": "34dee5fd5e5cc756efb5ad4d64652bce719bdf5e900ca5d7538253e737930bc4",
     "third-party/upstream/37398454f23ddeb02f0b81113fef9ebdc4571b7297cb6e18376c1ccb9bb1453e.txt": "37398454f23ddeb02f0b81113fef9ebdc4571b7297cb6e18376c1ccb9bb1453e",
     "third-party/upstream/3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94.txt": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94",
@@ -2913,6 +2944,7 @@
     "third-party/upstream/5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf.txt": "5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf",
     "third-party/upstream/5f745b8244890bde0a2258fe32342d60c577fad043e8601d923690a5bfe1b54f.txt": "5f745b8244890bde0a2258fe32342d60c577fad043e8601d923690a5bfe1b54f",
     "third-party/upstream/5f787c1dee3c56547f09ccc2906ab5f5293c4d8dd6c8654e573216c38e908dbd.txt": "5f787c1dee3c56547f09ccc2906ab5f5293c4d8dd6c8654e573216c38e908dbd",
+    "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "third-party/upstream/66aa9feab8bb39aceebd69f2a357015d57ceab486d3c7a19ff8d3d4110a6d101.txt": "66aa9feab8bb39aceebd69f2a357015d57ceab486d3c7a19ff8d3d4110a6d101",
     "third-party/upstream/6ae13df543a24b3fb18c25182cf4f084132f799ea9225410f7037888401b7469.txt": "6ae13df543a24b3fb18c25182cf4f084132f799ea9225410f7037888401b7469",
     "third-party/upstream/7261b3ab93df04c6d8f3398f87275d28f0e87d88cbd0033b788fb50402de03c5.txt": "7261b3ab93df04c6d8f3398f87275d28f0e87d88cbd0033b788fb50402de03c5",
@@ -2928,6 +2960,7 @@
     "third-party/upstream/992490064b90ec94c302fe5f29dcc14cb44145857064e46f9ffe6c8f511c1093.txt": "992490064b90ec94c302fe5f29dcc14cb44145857064e46f9ffe6c8f511c1093",
     "third-party/upstream/9b405ef4c89342f5eae1dd828882f931747f71001cfba7d114801039b52ad09b.txt": "9b405ef4c89342f5eae1dd828882f931747f71001cfba7d114801039b52ad09b",
     "third-party/upstream/9b7a157a0079ef346f3215b964071fa460d0dd251ca93cbf581bcc91595066ca.txt": "9b7a157a0079ef346f3215b964071fa460d0dd251ca93cbf581bcc91595066ca",
+    "third-party/upstream/a371115904e82924a6c4e6884b9fa9080e35809e8c04cbc98adbec8551341b7f.txt": "a371115904e82924a6c4e6884b9fa9080e35809e8c04cbc98adbec8551341b7f",
     "third-party/upstream/a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400.txt": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
     "third-party/upstream/a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2.txt": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
     "third-party/upstream/af0d7d2cef91fc243cf4ad98570b03d1f26f5e0227cad0f5f4a7376e2feb3160.txt": "af0d7d2cef91fc243cf4ad98570b03d1f26f5e0227cad0f5f4a7376e2feb3160",
@@ -4454,6 +4487,22 @@
       ]
     },
     {
+      "name": "@larksuiteoapi/node-sdk",
+      "version": "1.74.0",
+      "license": "MIT",
+      "repository": "https://github.com/larksuite/node-sdk.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "f9bfd5e309b1523a2dd3937b44f516e6018605eb05b35336485b0a34cbd9f373"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "d0de7064760700e47a0fdedd12ae4e027146e16e9cec0233505fe7c4ed5b3344"
+        }
+      ]
+    },
+    {
       "name": "@lexical/clipboard",
       "version": "0.42.0",
       "license": "MIT",
@@ -5205,6 +5254,114 @@
         {
           "member": "README.md (license section)",
           "sha256": "1a70b7436b85394d20ba1a0b5574002fc33b4619b9d1b62388ef74d79f9cf0de"
+        }
+      ]
+    },
+    {
+      "name": "@protobufjs/aspromise",
+      "version": "1.1.2",
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/dcodeIO/protobuf.js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"
+        }
+      ]
+    },
+    {
+      "name": "@protobufjs/base64",
+      "version": "1.1.2",
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/dcodeIO/protobuf.js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"
+        }
+      ]
+    },
+    {
+      "name": "@protobufjs/codegen",
+      "version": "2.0.5",
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/dcodeIO/protobuf.js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"
+        }
+      ]
+    },
+    {
+      "name": "@protobufjs/eventemitter",
+      "version": "1.1.1",
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/dcodeIO/protobuf.js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"
+        }
+      ]
+    },
+    {
+      "name": "@protobufjs/fetch",
+      "version": "1.1.1",
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/dcodeIO/protobuf.js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"
+        }
+      ]
+    },
+    {
+      "name": "@protobufjs/float",
+      "version": "1.0.2",
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/dcodeIO/protobuf.js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"
+        }
+      ]
+    },
+    {
+      "name": "@protobufjs/path",
+      "version": "1.1.2",
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/dcodeIO/protobuf.js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"
+        }
+      ]
+    },
+    {
+      "name": "@protobufjs/pool",
+      "version": "1.1.0",
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/dcodeIO/protobuf.js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"
+        }
+      ]
+    },
+    {
+      "name": "@protobufjs/utf8",
+      "version": "1.1.2",
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/protobufjs/protobuf.js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"
         }
       ]
     },
@@ -7598,6 +7755,22 @@
     },
     {
       "name": "agent-base",
+      "version": "6.0.2",
+      "license": "MIT",
+      "repository": "git://github.com/TooTallNate/node-agent-base.git",
+      "notices": [
+        {
+          "member": "README.md (license section)",
+          "sha256": "9392da8d1d2ccb224d60025fee4d6223ae0b863469fcd8c6b9461145723cf1c4"
+        },
+        {
+          "member": "https://registry.npmjs.org/agent-base/6.0.2",
+          "sha256": "a371115904e82924a6c4e6884b9fa9080e35809e8c04cbc98adbec8551341b7f"
+        }
+      ]
+    },
+    {
+      "name": "agent-base",
       "version": "7.1.4",
       "license": "MIT",
       "repository": "https://github.com/TooTallNate/proxy-agents.git",
@@ -7903,6 +8076,22 @@
     {
       "name": "axios",
       "version": "1.13.6",
+      "license": "MIT",
+      "repository": "https://github.com/axios/axios.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "82761059eaedacb3356803aea8a170d8298609f91b14fc32ee1bfb40d690183c"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "8473eb9be53be85369a78427af60d82922bf44da8c3a16d6ebe643badd150f31"
+        }
+      ]
+    },
+    {
+      "name": "axios",
+      "version": "1.20.0",
       "license": "MIT",
       "repository": "https://github.com/axios/axios.git",
       "notices": [
@@ -10997,6 +11186,22 @@
       ]
     },
     {
+      "name": "form-data",
+      "version": "4.0.6",
+      "license": "MIT",
+      "repository": "git://github.com/form-data/form-data.git",
+      "notices": [
+        {
+          "member": "License",
+          "sha256": "e5b780d4f38d1d3328e3e53186c4e62d3fa149ea6f2bacd5de5ad0c30ac85343"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "8d4313d2ec98dee47b0c630ccfe5ca0b6e7c60e8d74cf460db5bcb271f908c14"
+        }
+      ]
+    },
+    {
       "name": "formdata-polyfill",
       "version": "4.0.10",
       "license": "MIT",
@@ -11429,6 +11634,18 @@
       ]
     },
     {
+      "name": "hasown",
+      "version": "2.0.4",
+      "license": "MIT",
+      "repository": "git+https://github.com/inspect-js/hasOwn.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "bf9b0d665be2a689851eea667ca9f42066ea1d903b38349c51e6a44b2577680a"
+        }
+      ]
+    },
+    {
       "name": "hast-util-from-dom",
       "version": "5.0.1",
       "license": "ISC",
@@ -11781,6 +11998,22 @@
         {
           "member": "LICENSE",
           "sha256": "71368fd0f5b4129191e9afcd1e1ef2dc89a9090d3e4d80bbab92dafd032b3bef"
+        }
+      ]
+    },
+    {
+      "name": "https-proxy-agent",
+      "version": "5.0.1",
+      "license": "MIT",
+      "repository": "git://github.com/TooTallNate/node-https-proxy-agent.git",
+      "notices": [
+        {
+          "member": "README.md (license section)",
+          "sha256": "58f4074efa400c8397add18c6561d0a17e4721e24bfd1b4d1e8ca764a8cb3eca"
+        },
+        {
+          "member": "https://registry.npmjs.org/https-proxy-agent/5.0.1",
+          "sha256": "32d9310abf9099556ff17b83c09d7b5a91646825580de5a397e5b150a0d737bb"
         }
       ]
     },
@@ -13016,6 +13249,18 @@
       ]
     },
     {
+      "name": "lodash.identity",
+      "version": "3.0.0",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE.txt",
+          "sha256": "2b61a34ef17beffb1e555efa8b46110d25398d47f2e88b2cacc46f8bd382c639"
+        }
+      ]
+    },
+    {
       "name": "lodash.isboolean",
       "version": "3.0.3",
       "license": "MIT",
@@ -13088,6 +13333,30 @@
       ]
     },
     {
+      "name": "lodash.merge",
+      "version": "4.6.2",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "f71e8ed126b46346494aad5486874cd8f0aafe95092ed67d2e3cb6110f939abc"
+        }
+      ]
+    },
+    {
+      "name": "lodash.pickby",
+      "version": "4.6.0",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "ffd8b33b354585f4ce119f19c53728281e48a97b074491eb6bf6d5c5ff305272"
+        }
+      ]
+    },
+    {
       "name": "lodash.union",
       "version": "4.6.0",
       "license": "MIT",
@@ -13120,6 +13389,18 @@
         {
           "member": "license",
           "sha256": "5c932d88256b4ab958f64a856fa48e8bd1f55bc1d96b8149c65689e0c61789d3"
+        }
+      ]
+    },
+    {
+      "name": "long",
+      "version": "5.3.2",
+      "license": "Apache-2.0",
+      "repository": "https://github.com/dcodeIO/long.js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
         }
       ]
     },
@@ -15744,6 +16025,22 @@
         {
           "member": "readme.md (license section)",
           "sha256": "c4cb93eae39264b5b3cf06e4e497e5c42349c8dd2d59e99b50f2307f15fdaed6"
+        }
+      ]
+    },
+    {
+      "name": "protobufjs",
+      "version": "7.6.6",
+      "license": "BSD-3-Clause",
+      "repository": "protobufjs/protobuf.js",
+      "notices": [
+        {
+          "member": "google/LICENSE",
+          "sha256": "4ab87e6e3c0c0b78e47c77d49ec10c048f8a519fb8062e6e3217e3e6e9b0c6e9"
+        },
+        {
+          "member": "LICENSE",
+          "sha256": "49d6a1c9a623784c61c6cb70f773f3457faceb1914a13c8560a9823b7631950c"
         }
       ]
     },
@@ -30681,6 +30978,149 @@
           "sha256": "91e6c48a3b1e5891e0965134247d2c55f6a47e4b8e9751dcc290a1b4d58d2f5d"
         }
       ]
+    },
+    {
+      "id": "ZCode Bot Channel (Z.ai)",
+      "referenceRevision": "29628c9acdb81b703bbd4080c207a0e7ce5e276e",
+      "source": "https://raw.githubusercontent.com/zai-org/ZCode/29628c9acdb81b703bbd4080c207a0e7ce5e276e/LICENSE",
+      "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
+      "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
+      "importRevision": "29628c9acdb81b703bbd4080c207a0e7ce5e276e",
+      "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision 29628c9 (feat: update v3.14.3), which is the commit that introduced the Bot Channel block. The upstream repository declares license Apache-2.0 in package.json; the LICENSE snapshot pinned here is that repository's Apache-2.0 text (sha256 verified byte-for-byte). 21 of the 27 copied files are byte-identical to upstream; the remaining 6 are listed in modifiedFiles. Upstream records no per-file copyright header, so no upstream-supplied notice line exists to reproduce. Formatting note: the copied sources were additionally run through this repository's oxfmt (0.41.0) because pnpm fmt:check covers packages/services. Upstream does NOT keep this block oxfmt-clean (measured: 18 of 27 upstream files fail our oxfmt), so 19 files are no longer byte-identical to upstream for formatting reasons alone. That formatting-only set was verified by formatting a pristine upstream copy with the same formatter and comparing byte-for-byte: 23 files match the formatted upstream exactly, and only the 4 files in locallyModifiedFiles carry substantive local edits. All copied files were copied verbatim first; no semantic change was introduced by formatting.",
+      "roots": [
+        "packages/services/src/bots",
+        "packages/shared/src/bots.ts"
+      ],
+      "scope": "Bot Channel (IM bot) subsystem: packages/services/src/bots/** (27 files, 13830 lines at upstream) plus packages/shared/src/bots.ts (558 lines) — the shared schema/type contract for that subsystem. The Apache-2.0 basis covers these copied sources. The Feishu channel lazily imports @larksuiteoapi/node-sdk, which is a separately registered npm dependency (MIT), not part of this copy. Two files in this directory (attachmentPathGuard.ts, attachmentUrlGuard.ts) are ZCode-CE originals added for SSRF and path-traversal hardening, not upstream copies.",
+      "license": "Apache-2.0",
+      "modifiedFiles": [
+        "packages/services/src/bots/botsService.ts",
+        "packages/services/src/bots/feishuChannelRuntime.ts",
+        "packages/services/src/bots/providers/feishuProvider.ts",
+        "packages/services/src/bots/telegramChannelRuntime.ts"
+      ],
+      "files": [
+        {
+          "file": "packages/services/src/bots/attachmentPathGuard.ts",
+          "sha256": "7db16b5bbd951690ae4d92f811a7176451059554ce048ce5229891b27204c687"
+        },
+        {
+          "file": "packages/services/src/bots/attachmentUrlGuard.ts",
+          "sha256": "33ca4093099dc3c245f96ec93388857e10978e9132b12ea3414d439f70d2effa"
+        },
+        {
+          "file": "packages/services/src/bots/botConfigHelpers.ts",
+          "sha256": "f4d5e4d3a6141d44a5d99418417c1d4eed80321084b671ae07d1ea86726abe9a"
+        },
+        {
+          "file": "packages/services/src/bots/botRemoteRuntimeServices.ts",
+          "sha256": "74bfcb89b3ddb3f8c1ffa30f3a17d12cc542ecc0b52673ff793900e82260fe59"
+        },
+        {
+          "file": "packages/services/src/bots/botRemoteWorkspaceBridge.ts",
+          "sha256": "740b0cf99acc93d3d901919d4ef2652ebf06279ae445d2476c88a106286a1ae7"
+        },
+        {
+          "file": "packages/services/src/bots/bots.ts",
+          "sha256": "01764678a4aff2c3fcc8732ae7cf4fa945ea639cf5cd23c331a4d0ac08750fcc"
+        },
+        {
+          "file": "packages/services/src/bots/botsService.ts",
+          "sha256": "bba32766630ddf8cdf9bf17f4b411c16e5c48407cb5ead75d4588fba9b53bcbc"
+        },
+        {
+          "file": "packages/services/src/bots/channelRuntime.ts",
+          "sha256": "1e2f5b1f3c86e223f039a91bab01121dbc263ce93724438c13b2249e1b147f74"
+        },
+        {
+          "file": "packages/services/src/bots/commandOrder.ts",
+          "sha256": "5bd3200e30f1458351b355d97328763496c798f4959326c27e581b7fba5f0a72"
+        },
+        {
+          "file": "packages/services/src/bots/commandParser.ts",
+          "sha256": "bc592f34c14b6f73d5b1ab2c913c0c77c99138f1e043cdb18187143fd069b8ff"
+        },
+        {
+          "file": "packages/services/src/bots/config.ts",
+          "sha256": "be93598984c0e73e129a0f1135d9baf490d6207ffa91dd804df58d6afa3fc542"
+        },
+        {
+          "file": "packages/services/src/bots/feishuChannelRuntime.ts",
+          "sha256": "aab47c1a41c7e2e921cc6d5374ac56bdac2ef2d1d989710b7ed00fd3fd9bd111"
+        },
+        {
+          "file": "packages/services/src/bots/messages.ts",
+          "sha256": "08a7922b317e877b02032f8c525af75df9bbe8c803ad5534b3c200060a1881f3"
+        },
+        {
+          "file": "packages/services/src/bots/modelSelectionHelpers.ts",
+          "sha256": "1b8279ecc7e2ee11980346cadc088eaa3f38d2ac3b51c283bb9a709dbe70b051"
+        },
+        {
+          "file": "packages/services/src/bots/providers/feishuAppRegistration.ts",
+          "sha256": "7a6a1919de4d0f9f862e4755f25a9383f4f3e73b80d0e86f1727930b77486978"
+        },
+        {
+          "file": "packages/services/src/bots/providers/feishuProvider.ts",
+          "sha256": "d7e23cb0afe57b6d6630770b5c2f54a15e176725720afba42e2bfaa0c1c7c2d4"
+        },
+        {
+          "file": "packages/services/src/bots/providers/providerRequest.ts",
+          "sha256": "8412040408c61525b4e1291e1721556febdcf80b5b39584f06b9eae47b8d314b"
+        },
+        {
+          "file": "packages/services/src/bots/providers/telegramProvider.ts",
+          "sha256": "19e64d9c9042329564d8045fb5e96a90a6a65d5f71b14559b963274bb24b7ff7"
+        },
+        {
+          "file": "packages/services/src/bots/providers/types.ts",
+          "sha256": "92dee8cc703901971d854f0a9c81b19e673d5fb323a2fa181b6b69a96442b07a"
+        },
+        {
+          "file": "packages/services/src/bots/providers/webhookProvider.ts",
+          "sha256": "53bcb8e9787097a46ce4e5ff780a45a77170926231a4afe4803446897c24008a"
+        },
+        {
+          "file": "packages/services/src/bots/providers/weixinProvider.ts",
+          "sha256": "23efde62108421eeece783d33549a3b3e5173d7cc68071714b3f3628964cc1e9"
+        },
+        {
+          "file": "packages/services/src/bots/providers/weixinRegistration.ts",
+          "sha256": "290ff395a2ca6c0ca9d185dae0af029b0f2589d639c0b20edb9d37bf7ed0f276"
+        },
+        {
+          "file": "packages/services/src/bots/replyFormatter.ts",
+          "sha256": "ab4910698d8beaf273e1fbe7c680a97409a7aa2d8391832172f762ac90f1ffed"
+        },
+        {
+          "file": "packages/services/src/bots/repo.ts",
+          "sha256": "0e1489d2c452d4c4463f155823dcffb9a445ab74122a3e8d977124fe0a37f9b1"
+        },
+        {
+          "file": "packages/services/src/bots/statusFormatting.ts",
+          "sha256": "f645bb81625ab71504cffa14438b153ed6d3f13fcdcfbd584e653e9513d01369"
+        },
+        {
+          "file": "packages/services/src/bots/storageMigration.ts",
+          "sha256": "d6b806bd77f4f3ba070559c6bc48bd64e20848c14a0639fefb95c3d1bf96baf6"
+        },
+        {
+          "file": "packages/services/src/bots/telegramChannelRuntime.ts",
+          "sha256": "92936b803880362960acbfbcc78b3bed8e85dee7c6a95ef49a49a306c7075028"
+        },
+        {
+          "file": "packages/services/src/bots/weixinChannelRuntime.ts",
+          "sha256": "701c2482365fabb20503a4681dd7cfa560b9137e7f8678077cc0e4b6516cd876"
+        },
+        {
+          "file": "packages/services/src/bots/workspaceHelpers.ts",
+          "sha256": "2681a2c8cb2a7c11d44920060bb60af3d45a1fb28389bf5079940898fade0871"
+        },
+        {
+          "file": "packages/shared/src/bots.ts",
+          "sha256": "1474521b9d3afdf9ba5802cfe09c97b8770f9c78914e85d349c833fcc7131cf4"
+        }
+      ]
     }
   ],
   "patches": [
@@ -31272,6 +31712,46 @@
         "registryPublisherIdentity": "npm 1.2.0 metadata: author, maintainers and _npmUser are all devongovett (devongovett@gmail.com); dist.integrity sha512-ED3jP8saaweFTjeGX8HQPjeC1YYyZs98jGNZx6IiBvxW7JG5v492kamAQB3m2wop07CvU/RQmzcKr6bgcC5D/Q==",
         "npmArchiveSha256": "d781eb3a307ab6aa2d97028f695b17dbeadf6fd27788c333b1fb96d18d2a23ad"
       }
+    },
+    {
+      "package": "agent-base@6.0.2",
+      "repo": "TooTallNate/node-agent-base",
+      "refs": [
+        "6.0.2"
+      ],
+      "file": "third-party/upstream/a371115904e82924a6c4e6884b9fa9080e35809e8c04cbc98adbec8551341b7f.txt",
+      "sha256": "a371115904e82924a6c4e6884b9fa9080e35809e8c04cbc98adbec8551341b7f",
+      "source": "https://registry.npmjs.org/agent-base/6.0.2",
+      "evidenceKind": "publisher-declared-standard-terms",
+      "license": "MIT",
+      "reviewEvidence": {
+        "checkedOn": "2026-09-24",
+        "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
+        "npmArchiveSha256": "bc6da06f2a2e6bc80fa5878bd7227bd0318812976d45f47f17e1aafcec2be831",
+        "sourceRevision": "c4b8ea2e1a11bae023bb09b708050a50418204e9",
+        "sourceTreeUrl": "https://api.github.com/repos/TooTallNate/node-agent-base/git/trees/c4b8ea2e1a11bae023bb09b708050a50418204e9?recursive=1",
+        "upstreamLicenseFiles": []
+      }
+    },
+    {
+      "package": "https-proxy-agent@5.0.1",
+      "repo": "TooTallNate/node-https-proxy-agent",
+      "refs": [
+        "5.0.1"
+      ],
+      "file": "third-party/upstream/32d9310abf9099556ff17b83c09d7b5a91646825580de5a397e5b150a0d737bb.txt",
+      "sha256": "32d9310abf9099556ff17b83c09d7b5a91646825580de5a397e5b150a0d737bb",
+      "source": "https://registry.npmjs.org/https-proxy-agent/5.0.1",
+      "evidenceKind": "publisher-declared-standard-terms",
+      "license": "MIT",
+      "reviewEvidence": {
+        "checkedOn": "2026-09-24",
+        "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
+        "npmArchiveSha256": "6da16fb44331f2e5d30bd21bf880aa934c1ad4fe7da7187910ef2b2509712019",
+        "sourceRevision": "d0d80cc0482f20495aa8595f802e1a9f3b1b3409",
+        "sourceTreeUrl": "https://api.github.com/repos/TooTallNate/node-https-proxy-agent/git/trees/d0d80cc0482f20495aa8595f802e1a9f3b1b3409?recursive=1",
+        "upstreamLicenseFiles": []
+      }
     }
   ],
   "documentedLimitations": [
@@ -31287,6 +31767,22 @@
         "declaredLicense": "MIT",
         "declarationLocation": [
           "package.json license field"
+        ]
+      }
+    },
+    {
+      "id": "agent-base@6.0.2",
+      "tier": "publisher-declared-standard-terms",
+      "reason": "Recorded limitation, not blocking: the published artifact declares the license identifier and ships the standard terms; the upstream never published a copyright or license file of its own.",
+      "evidence": {
+        "source": "https://registry.npmjs.org/agent-base/6.0.2",
+        "noticeFile": "third-party/upstream/a371115904e82924a6c4e6884b9fa9080e35809e8c04cbc98adbec8551341b7f.txt",
+        "noticeSha256": "a371115904e82924a6c4e6884b9fa9080e35809e8c04cbc98adbec8551341b7f",
+        "archiveSha256": "bc6da06f2a2e6bc80fa5878bd7227bd0318812976d45f47f17e1aafcec2be831",
+        "declaredLicense": "MIT",
+        "declarationLocation": [
+          "package.json license field",
+          "published notice members: README.md (license section)"
         ]
       }
     },
@@ -31362,6 +31858,22 @@
         "noticeFile": "third-party/upstream/47a5b3dace9cce679dff68809f563a5e254152807e19d2b415e9a90d30407153.txt",
         "noticeSha256": "47a5b3dace9cce679dff68809f563a5e254152807e19d2b415e9a90d30407153",
         "archiveSha256": "f686a9515af33fce16ab4bffe50570728197e53165068548c6f75a1793797a08",
+        "declaredLicense": "MIT",
+        "declarationLocation": [
+          "package.json license field",
+          "published notice members: README.md (license section)"
+        ]
+      }
+    },
+    {
+      "id": "https-proxy-agent@5.0.1",
+      "tier": "publisher-declared-standard-terms",
+      "reason": "Recorded limitation, not blocking: the published artifact declares the license identifier and ships the standard terms; the upstream never published a copyright or license file of its own.",
+      "evidence": {
+        "source": "https://registry.npmjs.org/https-proxy-agent/5.0.1",
+        "noticeFile": "third-party/upstream/32d9310abf9099556ff17b83c09d7b5a91646825580de5a397e5b150a0d737bb.txt",
+        "noticeSha256": "32d9310abf9099556ff17b83c09d7b5a91646825580de5a397e5b150a0d737bb",
+        "archiveSha256": "6da16fb44331f2e5d30bd21bf880aa934c1ad4fe7da7187910ef2b2509712019",
         "declaredLicense": "MIT",
         "declarationLocation": [
           "package.json license field",

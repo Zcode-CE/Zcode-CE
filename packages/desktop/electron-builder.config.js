@@ -141,6 +141,12 @@ const REQUIRED_ASAR_RUNTIME_MODULES = [
   // 已在线上触发安装包启动即报 Cannot find module 'ms'（Require stack: debug/src/common.js），
   // 自动更新链路直接崩。ms 是叶子包，显式注入即可让 debug 在 app.asar 内稳定解析。
   "ms",
+  // Bot Channel 的飞书渠道在 host 进程里惰性 import 该 SDK（feishuProvider.ts:1514），
+  // 它在 tsup 里是外部依赖，因此 app.asar 必须真的带上它。这里以它为闭包根注入，
+  // 让递归依赖收集把 ws/axios/protobufjs 等传递依赖一起补齐；漏掉的话用户启用
+  // 飞书渠道时才会在 host 里抛 ERR_MODULE_NOT_FOUND。与上游 v3.14.3 的
+  // desktop/electron-builder.config.js:143 同一处置。
+  "@larksuiteoapi/node-sdk",
 ];
 // pacman 依赖必须使用 Arch 官方仓库中的包名。electron-builder 的历史默认集合包含
 // 已移除的 libappindicator-gtk3/http-parser，且缺少 Electron 实际需要的运行库；显式

@@ -274,6 +274,9 @@ export * from "./hooks.js";
 export * from "./openrouter-attribution.js";
 export * from "./workspaceSessionRestore.js";
 export * from "./skill-scan-policy.js";
+// Bot Channel（IM 机器人）共享合约。搬运自官方 v3.14.3（MIT），见
+// docs/development/official-diff.md 与 third-party/copied-components.json。
+export * from "./bots.js";
 export * from "./browser-use/index.js";
 
 export * from "./coding-plan-reset.js";

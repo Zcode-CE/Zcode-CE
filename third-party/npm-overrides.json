@@ -764,5 +764,41 @@
     },
     "file": "third-party/upstream/bdb26a2ec815931ed6a38f3416362566204ee85ecdef96702b636402da4c75c3.txt",
     "sha256": "bdb26a2ec815931ed6a38f3416362566204ee85ecdef96702b636402da4c75c3"
+  },
+  {
+    "package": "agent-base@6.0.2",
+    "repo": "TooTallNate/node-agent-base",
+    "refs": ["6.0.2"],
+    "file": "third-party/upstream/a371115904e82924a6c4e6884b9fa9080e35809e8c04cbc98adbec8551341b7f.txt",
+    "sha256": "a371115904e82924a6c4e6884b9fa9080e35809e8c04cbc98adbec8551341b7f",
+    "source": "https://registry.npmjs.org/agent-base/6.0.2",
+    "evidenceKind": "publisher-declared-standard-terms",
+    "license": "MIT",
+    "reviewEvidence": {
+      "checkedOn": "2026-09-24",
+      "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
+      "npmArchiveSha256": "bc6da06f2a2e6bc80fa5878bd7227bd0318812976d45f47f17e1aafcec2be831",
+      "sourceRevision": "c4b8ea2e1a11bae023bb09b708050a50418204e9",
+      "sourceTreeUrl": "https://api.github.com/repos/TooTallNate/node-agent-base/git/trees/c4b8ea2e1a11bae023bb09b708050a50418204e9?recursive=1",
+      "upstreamLicenseFiles": []
+    }
+  },
+  {
+    "package": "https-proxy-agent@5.0.1",
+    "repo": "TooTallNate/node-https-proxy-agent",
+    "refs": ["5.0.1"],
+    "file": "third-party/upstream/32d9310abf9099556ff17b83c09d7b5a91646825580de5a397e5b150a0d737bb.txt",
+    "sha256": "32d9310abf9099556ff17b83c09d7b5a91646825580de5a397e5b150a0d737bb",
+    "source": "https://registry.npmjs.org/https-proxy-agent/5.0.1",
+    "evidenceKind": "publisher-declared-standard-terms",
+    "license": "MIT",
+    "reviewEvidence": {
+      "checkedOn": "2026-09-24",
+      "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
+      "npmArchiveSha256": "6da16fb44331f2e5d30bd21bf880aa934c1ad4fe7da7187910ef2b2509712019",
+      "sourceRevision": "d0d80cc0482f20495aa8595f802e1a9f3b1b3409",
+      "sourceTreeUrl": "https://api.github.com/repos/TooTallNate/node-https-proxy-agent/git/trees/d0d80cc0482f20495aa8595f802e1a9f3b1b3409?recursive=1",
+      "upstreamLicenseFiles": []
+    }
   }
 ]

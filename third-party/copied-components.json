@@ -367,5 +367,23 @@
     "roots": ["apps/zcode-cli/packages/bundled-skills"],
     "scope": "Official bundled-skills pack: README.md plus skills/dynamic-workflows/{SKILL.md,patterns.md,examples.md}. Verbatim copy, no local modifications. The pack carries the dynamic-workflows skill that upstream moved out of the zcode-guide plugin in version 0.3.0; patterns.md is byte-identical to the copy that shipped inside the MIT zcode-guide plugin, which is the license basis recorded here.",
     "license": "MIT"
+  },
+  {
+    "id": "ZCode Bot Channel (Z.ai)",
+    "referenceRevision": "29628c9acdb81b703bbd4080c207a0e7ce5e276e",
+    "source": "https://raw.githubusercontent.com/zai-org/ZCode/29628c9acdb81b703bbd4080c207a0e7ce5e276e/LICENSE",
+    "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
+    "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
+    "importRevision": "29628c9acdb81b703bbd4080c207a0e7ce5e276e",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision 29628c9 (feat: update v3.14.3), which is the commit that introduced the Bot Channel block. The upstream repository declares license Apache-2.0 in package.json; the LICENSE snapshot pinned here is that repository's Apache-2.0 text (sha256 verified byte-for-byte). 21 of the 27 copied files are byte-identical to upstream; the remaining 6 are listed in modifiedFiles. Upstream records no per-file copyright header, so no upstream-supplied notice line exists to reproduce. Formatting note: the copied sources were additionally run through this repository's oxfmt (0.41.0) because pnpm fmt:check covers packages/services. Upstream does NOT keep this block oxfmt-clean (measured: 18 of 27 upstream files fail our oxfmt), so 19 files are no longer byte-identical to upstream for formatting reasons alone. That formatting-only set was verified by formatting a pristine upstream copy with the same formatter and comparing byte-for-byte: 23 files match the formatted upstream exactly, and only the 4 files in locallyModifiedFiles carry substantive local edits. All copied files were copied verbatim first; no semantic change was introduced by formatting.",
+    "roots": ["packages/services/src/bots", "packages/shared/src/bots.ts"],
+    "scope": "Bot Channel (IM bot) subsystem: packages/services/src/bots/** (27 files, 13830 lines at upstream) plus packages/shared/src/bots.ts (558 lines) — the shared schema/type contract for that subsystem. The Apache-2.0 basis covers these copied sources. The Feishu channel lazily imports @larksuiteoapi/node-sdk, which is a separately registered npm dependency (MIT), not part of this copy. Two files in this directory (attachmentPathGuard.ts, attachmentUrlGuard.ts) are ZCode-CE originals added for SSRF and path-traversal hardening, not upstream copies.",
+    "license": "Apache-2.0",
+    "modifiedFiles": [
+      "packages/services/src/bots/botsService.ts",
+      "packages/services/src/bots/feishuChannelRuntime.ts",
+      "packages/services/src/bots/providers/feishuProvider.ts",
+      "packages/services/src/bots/telegramChannelRuntime.ts"
+    ]
   }
 ]

@@ -124,6 +124,11 @@ const desktopNodeRuntimeExternals = [
   "node-forge",
   // ZIP 解包器内部依赖 CommonJS require("fs")，不能内联到 ESM main/host 产物。
   "yauzl",
+  // Bot Channel 的飞书渠道在启动长连接时才 await import 该 SDK（feishuProvider.ts:1514）。
+  // services 已被 noExternal 内联进 main/host，若不同步外置，这个惰性 import 会被打成内联
+  // 代码，而该 SDK 依赖 ws/axios/protobufjs 等 CJS 边界，内联后在 Electron 里会崩。
+  // 与上游 v3.14.3 的 desktop/tsup.config.ts:121 同一处置。
+  "@larksuiteoapi/node-sdk",
 ];
 
 function createDevReadyMarkerHook(target: "main" | "host" | "preload"): string {

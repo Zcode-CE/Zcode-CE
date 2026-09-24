@@ -312,3 +312,13 @@ export type {
   FeedbackTicketType,
 } from "@zcode/shared";
 export { IClientConfigService } from "./client-config/clientConfig.js";
+
+// Bots service — IBotsService is both a type (interface) and value (descriptor).
+export { IBotsService } from "./bots/bots.js";
+export type {
+  BotBindCodeResult,
+  BotCreateBindCodeParams,
+  BotListWorkspaceRefsParams,
+  BotSaveBotParams,
+  BotTestResult,
+} from "./bots/bots.js";

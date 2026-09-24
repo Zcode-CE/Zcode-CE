@@ -107,6 +107,11 @@ const requiredRuntimeModules = [
   "asn1",
   "bcrypt-pbkdf",
   "tweetnacl",
+  // Bot Channel 的飞书渠道运行时惰性 import 该 SDK。它在 tsup 里是外部依赖，
+  // 因此必须机械校验 app.asar 里真的有它；否则用户启用飞书渠道时才会在 host 进程里
+  // 抛 ERR_MODULE_NOT_FOUND（启动期不报，属"打包能过、用起来才炸"）。
+  // 与上游 v3.14.3 的 desktop/scripts/bundle.mjs:113 同一处置。
+  "@larksuiteoapi/node-sdk",
 ];
 const electronBuilderRetryCount = 3;
 const electronBuilderRetryDelayMs = 5_000;
