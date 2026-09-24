@@ -2468,8 +2468,6 @@ Some publishers provide only a license identifier or a short README license sect
 
 - dfa@1.2.0: https://registry.npmjs.org/dfa/1.2.0
 
-- png-js@1.1.0: https://registry.npmjs.org/png-js/1.1.0
-
 The original import revisions of copied components are not recorded in the current checkout. Pinned license references below do not establish the original copy revision. They cover upstream-derived portions only; local adaptations do not change the upstream terms.
 
 ## Copied source and assets
@@ -31564,6 +31562,8 @@ available under the Apache 2.0 license (https://github.com/puppeteer/puppeteer/b
 ### Notice bdb26a2ec815931ed6a38f3416362566204ee85ecdef96702b636402da4c75c3
 
 - png-js@1.1.0: LICENSE
+
+- png-js@1.1.0: https://registry.npmjs.org/png-js/1.1.0
 
 
 

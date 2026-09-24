@@ -738,11 +738,12 @@
     "repo": "devongovett/png.js",
     "license": "MIT",
     "source": "https://registry.npmjs.org/png-js/1.1.0",
-    "evidenceKind": "packaged-license-file",
     "reviewEvidence": {
       "checkedOn": "2026-09-23",
-      "result": "The versioned npm archive ships a complete LICENSE (MIT License, Copyright (c) 2017 Devon Govett) and package.json omits the license field; the packaged text is used verbatim for the notice, and the publisher declaration is recorded here so the entry is not reported as undeclared.",
+      "result": "The versioned npm archive ships a complete LICENSE (MIT License, Copyright (c) 2017 Devon Govett); it is snapshotted verbatim under the version-pinned tarball URL. package.json omits the license field, so the license identifier is recorded here as well.",
       "npmArchiveSha256": "8fc286c879eb4ac49ab405054956e3afbdfe696e48f360f2c4d6adb2cf053faf"
-    }
+    },
+    "file": "third-party/upstream/bdb26a2ec815931ed6a38f3416362566204ee85ecdef96702b636402da4c75c3.txt",
+    "sha256": "bdb26a2ec815931ed6a38f3416362566204ee85ecdef96702b636402da4c75c3"
   }
 ]
