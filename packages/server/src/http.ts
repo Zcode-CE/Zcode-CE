@@ -57,6 +57,12 @@ import {
   type TrustedProxyRange,
 } from "./authThrottle.js";
 import { buildTrustedHostEntries, evaluateHost, type TrustedHostEntry } from "./hostAllowlist.js";
+import {
+  buildLoopbackExposureRefusal,
+  buildProxySignalWithoutTokenWarning,
+  collectExposureSignals,
+  refusalSignals,
+} from "./exposureGate.js";
 import { createAuditLog, type AuditLog } from "./auditLog.js";
 
 function wrapWebSocket(ws: WebSocket): ISocket {
@@ -709,12 +715,44 @@ export function assertListenSecurity(options: {
   authSourceConfigured?: boolean;
   /** 令牌集合是否真的可用（`AuthTokenSource.enabled`）。 */
   authSourceEnabled?: boolean;
+  /**
+   * 生效的可信代理（`ZCODE_SERVER_TRUSTED_PROXIES` 解析后）。**非空 = 运维声明"我在反代/隧道之后"**
+   * ⇒ 回环绑定也要求令牌（见 exposureGate.ts 的模块注释：这是"一个 curl 即完全控制权"那条绕过路径的堵法）。
+   */
+  trustedProxies?: readonly TrustedProxyRange[];
+  /**
+   * 运维**显式登记**的 Host 白名单条目（默认集合之外的主机名）。**非空 = 运维声明"有外部域名指向本服务"**
+   * ⇒ 同上，回环绑定也要求令牌。
+   */
+  configuredTrustedHosts?: readonly TrustedHostEntry[];
+  /**
+   * 生效的跨源白名单（`ZCODE_SERVER_TRUSTED_ORIGINS` 解析后）。**它不参与拒绝判定** ——
+   * 只登记它是此前能起来的一种部署形态，把"配错"升级成"起不来"会打死合法路径；
+   * 它只在"回环 + 无令牌"时走**告警**（见 buildProxySignalWithoutTokenWarning）。
+   */
+  trustedOrigins?: readonly string[];
 }): void {
   // fail-closed：非回环必须有**可用**的令牌来源。
   // 注意区分两种情况：没配（下面给三条做法）与配了但为空（文件损坏/空文件 ⇒ 必须显式拒绝，
   // 否则会静默退化成「无鉴权的对外监听」，那正是本函数要防的那一档）。
   const hasUsableSource = options.authSourceEnabled ?? Boolean(options.authToken?.trim());
-  if (isLoopbackHost(options.host) || hasUsableSource) {
+  // 回环**不再**无条件放行：只要运维给出了「这东西会被本机之外访问」的信号（配了可信代理、
+  // 或登记了默认集合之外的域名），"回环可达 = 只有本机能到"这个前提就不成立了 ⇒ 令牌必须开着。
+  // 判据与文案的唯一所有者在 exposureGate.ts（本函数只负责在正确的时机拒绝）。
+  if (isLoopbackHost(options.host)) {
+    const signals = refusalSignals(
+      collectExposureSignals({
+        trustedProxies: options.trustedProxies ?? [],
+        configuredTrustedHosts: options.configuredTrustedHosts ?? [],
+        trustedOrigins: options.trustedOrigins ?? [],
+      }),
+    );
+    if (signals.length > 0 && !hasUsableSource) {
+      throw new Error(buildLoopbackExposureRefusal({ host: options.host, signals }));
+    }
+    return;
+  }
+  if (hasUsableSource) {
     return;
   }
   if (options.authSourceConfigured && !hasUsableSource) {
@@ -771,24 +809,33 @@ export function createHttpServer(
       }
     : undefined;
   const tokenSource = options.tokenSource ?? explicitTokenSource;
-  assertListenSecurity({
-    host,
-    ...(explicitToken ? { authToken: explicitToken } : {}),
-    authSourceConfigured: Boolean(options.tokenSource || explicitToken),
-    authSourceEnabled: Boolean(tokenSource?.enabled),
-  });
-  // 启动期断言：ROUTE_POLICY 的「受保护」标注必须与 isTokenProtectedPath 实现一致（G11）。
-  // 放在最前面：口径不一致时要**拒绝启动**，而不是带着"标注与实现不符"的面板跑起来。
-  assertRoutePolicyEnforced();
   const trustedOrigins = parseTrustedOrigins(options.trustedOrigins?.join(","));
   const trustedProxies = options.trustedProxies ?? [];
   // Host 白名单（G6）：默认 = 回环各形态 + 本机网卡地址 + 实际监听地址；运维显式登记追加其后。
+  // **必须在下面的 fail-closed 检查之前算好**：登记项本身就是一个"这东西会被外部访问"的信号
+  // （见 exposureGate.ts），而判据的唯一来源是**最终生效的条目**（按 label 区分默认项与登记项），
+  // 不是"环境变量有没有被设置" —— 一个被丢弃的非法值不该触发拒绝启动。
   const trustedHostEntries =
     options.trustedHostEntries ??
     buildTrustedHostEntries({
       configuredEntries: options.trustedHosts ?? [],
       listenHost: host,
     });
+  const configuredTrustedHosts = trustedHostEntries.filter((entry) => entry.label === "configured");
+  // 启动期断言：ROUTE_POLICY 的「受保护」标注必须与 isTokenProtectedPath 实现一致（G11）。
+  // 保持它**先于**监听安全检查：这是与用户配置无关的**代码一致性**断言，口径不一致时必须先被报出来，
+  // 而不是被一个配置问题（例如"回环 + 无令牌 + 有信号"）先挡掉、让人误以为代码本身没问题。
+  assertRoutePolicyEnforced();
+  // fail-closed 的唯一所有者：非回环 + 无令牌 ⇒ 拒绝；**回环 + 外部访问信号 + 无令牌 ⇒ 也拒绝**。
+  assertListenSecurity({
+    host,
+    ...(explicitToken ? { authToken: explicitToken } : {}),
+    authSourceConfigured: Boolean(options.tokenSource || explicitToken),
+    authSourceEnabled: Boolean(tokenSource?.enabled),
+    trustedProxies,
+    configuredTrustedHosts,
+    trustedOrigins,
+  });
   const throttle =
     options.throttle ??
     createAuthThrottle({ warn: (address, message) => warn(message + "（" + address + "）") });
@@ -1186,6 +1233,22 @@ export function createHttpServer(
       tokenAuth: Boolean(tokenSource?.enabled),
     });
     if (exposureWarning) warn(exposureWarning);
+    // 有"会被外部访问"的信号、却没有任何可用令牌时的告警（**不改行为**）。
+    // 可达条件（唯一一份口径在 exposureGate.ts，由测试的矩阵用例逐格钉住）：A 类信号
+    // （可信代理 / 登记域名）与"非回环 + 无令牌"这两档都已在 assertListenSecurity 里被**拒绝启动**，
+    // 因此能走到这里的**唯一**形态是：**回环 + 只有 ZCODE_SERVER_TRUSTED_ORIGINS 这一条信号
+    // + 没有任何可用令牌**。那时服务能起来，而被放行的那个来源拿到的是没有鉴权的完整控制权。
+    const proxySignalWarning = buildProxySignalWithoutTokenWarning({
+      host,
+      signals: collectExposureSignals({
+        trustedProxies,
+        configuredTrustedHosts,
+        trustedOrigins,
+      }),
+      tokenSourceEnabled: Boolean(tokenSource?.enabled),
+      loopback: isLoopbackHost(host),
+    });
+    if (proxySignalWarning) warn(proxySignalWarning);
   });
 
   // WebSocket 的来源校验必须挂在 **HTTP 升级事件**上，而不是 Hono 中间件里：

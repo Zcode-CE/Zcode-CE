@@ -88,11 +88,22 @@ async function main(): Promise<void> {
   // CUA 等一堆子系统再报错（那些日志会淹没真正的拒绝原因），也不应产生副作用。
   // 同一判定在 createHttpServer 内再执行一次，保证任何调用方都绕不过。
   // 「配了令牌文件却没解析出令牌」在这里就拒绝启动（authSourceConfigured + 未 enabled）。
+  // 判定口径与 createHttpServer 内那次**完全一致**（同一函数、同一组参数），因此这里传
+  // 「回环 + 外部访问信号」时也会在**拉起任何子系统之前**就拒绝 —— 那正是本函数放在最前面的理由。
+  // 注意 trustedHosts 是**解析后**的生效项：非法项已被丢弃，一个写错的域名不会让服务起不来
+  // （与 parseTrustedHosts 的既有取舍一致），但一个**生效**的登记项就是"会被外部访问"的信号。
   assertListenSecurity({
     host: host ?? DEFAULT_HTTP_LISTEN_HOST,
     ...(authToken ? { authToken } : {}),
     authSourceConfigured: Boolean(authTokensFilePath || authToken),
     authSourceEnabled: authEnabled,
+    trustedProxies,
+    configuredTrustedHosts: trustedHosts.map((entry) =>
+      entry.port === undefined
+        ? { host: entry.host, label: "configured" }
+        : { host: entry.host, port: entry.port, label: "configured" },
+    ),
+    trustedOrigins,
   });
 
   const zcodeBuiltinProviderConfigFilePath = await materializeBundledZCodeBuiltinProviderConfig({
