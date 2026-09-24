@@ -25,6 +25,7 @@ import {
   runCliCleanupWithTimeout,
 } from "./shutdown.js";
 import { runSkillsCommand } from "./skills-command.js";
+import { headlessWorkflowRuntimeConfig } from "./workflow-flag.js";
 import type { CommandCenterApp, SlashCommand } from "./command-center.js";
 import type {
   CliPermissionMode,
@@ -219,6 +220,11 @@ export const runPrompt = async (
         ...(mode ? { mode } : {}),
         ...(toolDisallowlist ? { toolDisallowlist } : {}),
         ...(forceMcs ? { midConversationSystem: { mode: "force" as const } } : {}),
+        // headless 的动态工作流开关。与官方默认值相反：官方 `-p` 默认关闭、传
+        // `--enable-workflow` 才打开；本仓库默认开启（core 的「缺席即开启」），因此这里
+        // 只在用户显式关闭时落一个 false，开启态保持缺席 —— 与 TUI/stdio 同一条策略，
+        // 也避免把那几处「缺席即开启」的注释写成与实现不符。见 workflow-flag.ts。
+        ...headlessWorkflowRuntimeConfig(options),
         memory: { extractionEnabled: options.memoryBench === true },
         modelStreaming: "on",
         presentationSurface,

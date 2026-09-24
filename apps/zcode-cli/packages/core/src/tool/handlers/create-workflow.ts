@@ -28,6 +28,7 @@ import {
 } from "@zcode/contracts";
 import type { ToolApprovalGate, ToolEntry, ToolExecutionContext, ToolHandler } from "../types.js";
 import { CREATE_WORKFLOW_TOOL_DESCRIPTION } from "./create-workflow-description.js";
+import { createWorkflowNeedsSkill, requireDynamicWorkflowSkill } from "./workflow-skill-gate.js";
 import {
   resolveCreateWorkflowInput,
   validateCreateWorkflowSource,
@@ -325,13 +326,19 @@ export const createWorkflowToolEntry: ToolEntry = {
   // 天花板同在这里读：钳制必须发生在确认窗之前，否则用户批准的是一个不会生效的数。
   // 模型目录同在这里读：`subagent_model` 必须在确认窗之前解析成规范形，否则用户批准的是一个
   // 还没被认出来的名字，而解不出来的调用会在批准之后才失败。
-  resolveInput: (input, context) =>
-    resolveCreateWorkflowInput(
+  resolveInput: (input, context) => {
+    // 技能门先于一切解析：没读过 dynamic-workflows 就拒绝提交脚本（saved 来源例外，见 gate 模块）。
+    if (createWorkflowNeedsSkill(input)) {
+      const refused = requireDynamicWorkflowSkill(context, CREATE_WORKFLOW_TOOL_NAME);
+      if (refused) return refused;
+    }
+    return resolveCreateWorkflowInput(
       input,
       context.workingDirectory ?? ".",
       context.dynamicWorkflowRunPort?.concurrencyCeiling?.(),
       context.modelCatalogPort,
-    ),
+    );
+  },
   prepareApproval: prepareCreateWorkflowApproval,
   inputSchema: CreateWorkflowInputJsonSchema,
   outputSchema: CreateWorkflowOutputJsonSchema,

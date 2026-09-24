@@ -29,6 +29,8 @@ Options:
   -h, --help       Show help
   -v, --version    Show version
   -p, --prompt <text>  Run a single prompt without opening the TUI
+  --enable-workflow  Enable dynamic workflows for --prompt/--target (on by default here; kept for the official spelling)
+  --no-enable-workflow  Disable dynamic workflows for --prompt/--target (official default is off; ours is on)
   --memory-bench   With --prompt, enable automatic Memory extraction and wait before exiting (requires Memory enabled)
   --browser-use <mode> Enable Browser Use backend (supported: headless)
   --surface <surface>  Presentation surface for headless prompts/app-server: terminal or desktop

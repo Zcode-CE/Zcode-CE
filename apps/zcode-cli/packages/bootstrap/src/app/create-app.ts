@@ -806,7 +806,8 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
         return await resolveZCodeCustomCommandPrompt(text, {
           // 动态工作流灰度关闭时 `/workflow` 不得展开成插件提示词。目录侧已经
           // 把它从 `/` 面板剔除，但用户仍可手打命令名，两条路径必须给出同一个结论。
-          // 缺席（TUI、headless、workflow_child）不设门禁，见 runtimeConfig 字段注释。
+          // 缺席（TUI、workflow_child，以及未显式关闭的 headless）不设门禁，
+          // 见 runtimeConfig 字段注释。
           ...(runtimeConfig.dynamicWorkflowEnabled === false
             ? { disabledCommandNames: DYNAMIC_WORKFLOW_GATED_COMMAND_NAMES }
             : {}),

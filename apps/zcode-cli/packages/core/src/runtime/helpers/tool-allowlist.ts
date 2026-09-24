@@ -63,9 +63,10 @@ export function resolveRuntimeDisallowedTools(
 
 /**
  * 动态工作流灰度门在 registerBuiltInTools 上的取值。
- * **缺席即开启**：TUI、headless `-p` 和 workflow_child 都不写这个字段，它们必须保留完整工具面；
- * 只有受信 Host 创建的 protocol session 会显式写 false。fail-closed 的缺省值在协议服务端的
- * appRuntimePreferences，不在这一层。
+ * **缺席即开启**：TUI 和 workflow_child 都不写这个字段，它们必须保留完整工具面；
+ * 只有受信 Host 创建的 protocol session 会显式写 false，headless `-p` 仅在用户传
+ * `--no-enable-workflow` 时写 false（本仓库 headless 默认开启，与官方相反）。
+ * fail-closed 的缺省值在协议服务端的 appRuntimePreferences，不在这一层。
  *
  * 之所以和 resolveRuntimeDisallowedTools 一样收在这里而不是写在调用点：注册面有**两个**入口
  * （helpers/runtime-tools.ts 的首次装配、methods/embedded-search-branch.ts 的分支刷新），

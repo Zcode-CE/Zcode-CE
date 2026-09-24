@@ -31,6 +31,14 @@ export type GlobalOptions = {
   browserExecutable?: string;
   browserUse?: "headless";
   detectedLocale?: GlobalDetectedLocale;
+  /**
+   * headless 的动态工作流开关，命令行显式取值（缺席即未指定）。
+   *
+   * 与官方默认值相反：官方 headless `-p` 默认关闭、传 `--enable-workflow` 才打开；
+   * 本仓库默认开启、`--no-enable-workflow` 才关闭。缺席时取本仓库默认（开启）。
+   * 见 apps/zcode-cli/packages/cli/src/workflow-flag.ts。
+   */
+  enableWorkflow?: boolean;
   force: boolean;
   json: boolean;
   locale?: GlobalLocale;

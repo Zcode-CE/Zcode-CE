@@ -10,8 +10,8 @@ interface ResolveZCodeBuiltinPromptCommandOptions {
   workingDirectory?: string;
   /**
    * 动态工作流灰度门：**显式 false** 时 `/workflow` 不展开成提示词。
-   * 与 `/` 目录侧的剔除同一判据；缺席（TUI、headless、workflow_child 等未参与灰度的调用方）
-   * 不设门禁。
+   * 与 `/` 目录侧的剔除同一判据；缺席（TUI、workflow_child，以及未显式关闭的 headless）
+   * 不设门禁。headless 的取值来自 `--no-enable-workflow`（本仓库默认开启，与官方相反）。
    */
   dynamicWorkflowEnabled?: boolean;
 }
@@ -33,7 +33,9 @@ export function resolveZCodeBuiltinPromptCommand(
   }
 
   if (invocation.name === DYNAMIC_WORKFLOW_SLASH_COMMAND_NAME) {
-    return options.dynamicWorkflowEnabled === false ? undefined : buildWorkflowPrompt(invocation.args);
+    return options.dynamicWorkflowEnabled === false
+      ? undefined
+      : buildWorkflowPrompt(invocation.args);
   }
 
   if (invocation.name !== "init") {

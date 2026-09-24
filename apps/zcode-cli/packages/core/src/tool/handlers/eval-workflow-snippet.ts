@@ -40,6 +40,7 @@ import type {
   ToolInputValidationResult,
 } from "../types.js";
 import { EVAL_WORKFLOW_SNIPPET_TOOL_DESCRIPTION } from "./eval-workflow-snippet-description.js";
+import { requireDynamicWorkflowSkill } from "./workflow-skill-gate.js";
 import { readWorkflowScriptFile } from "./workflow-path-source.js";
 import { formatWorkflowDiagnosticLines } from "./workflow-script-notes.js";
 import { describeWorkflowScriptPath } from "./workflow-script-path.js";
@@ -261,6 +262,8 @@ export const evalWorkflowSnippetToolEntry: ToolEntry = {
   // 来源二选一只对模型入参成立；`path` 在归一化里读成 `code`，确认门与 handler 因此同形。
   validateInput: (input) => validateEvalWorkflowSnippetInput(input),
   resolveInput: (input, context) =>
+    // 技能门先于 path 归一化（handlers/workflow-skill-gate.ts）：片段的语言规则也在技能里。
+    requireDynamicWorkflowSkill(context, EVAL_WORKFLOW_SNIPPET_TOOL_NAME) ??
     resolveEvalWorkflowSnippetInput(input, context.workingDirectory ?? "."),
   inputSchema: EvalWorkflowSnippetInputJsonSchema,
   outputSchema: EvalWorkflowSnippetOutputJsonSchema,

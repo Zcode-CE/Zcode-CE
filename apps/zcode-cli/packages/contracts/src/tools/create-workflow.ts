@@ -8,6 +8,14 @@ import { SAVED_WORKFLOW_MAX_NAME_CHARS, SavedWorkflowScopeSchema } from "./saved
 
 export const CREATE_WORKFLOW_TOOL_NAME = "CreateWorkflow";
 
+/**
+ * 教模型写工作流的内置技能名（apps/zcode-cli/packages/bundled-skills/skills/<name>/SKILL.md）。
+ * 四个创作工具（Create/Amend/Save/EvalWorkflowSnippet）的 resolveInput 以它为门：会话里没有
+ * 加载过这份技能就拒绝提交脚本。
+ * 住在 contracts 里是因为 core 的门与 bootstrap 的技能包都读它，而两者不能互相 import。
+ */
+export const DYNAMIC_WORKFLOW_SKILL_NAME = "dynamic-workflows";
+
 /** 「恰好给一个执行体来源」的违规说明。写成常量是因为模型是它唯一的读者，三条路径同一句话。 */
 export const CREATE_WORKFLOW_SOURCE_ERROR =
   "Provide exactly one workflow source: `script` for a one-off script written inline, `saved` to run a workflow saved in this project, or `path` for a script file on disk (the file a previous result named). Passing more than one, or none, is ambiguous.";

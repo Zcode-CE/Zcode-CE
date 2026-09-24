@@ -23,6 +23,7 @@ import {
 } from "@zcode/contracts";
 import type { ToolApprovalGate, ToolEntry, ToolHandler, ToolHandlerFailure } from "../types.js";
 import { AMEND_WORKFLOW_TOOL_DESCRIPTION } from "./amend-workflow-description.js";
+import { amendWorkflowNeedsSkill, requireDynamicWorkflowSkill } from "./workflow-skill-gate.js";
 import {
   AMEND_WORKFLOW_ERROR_CODE,
   predecessorNotFoundFailure,
@@ -258,7 +259,14 @@ export const amendWorkflowToolEntry: ToolEntry = {
   handler: amendWorkflowHandler,
   // 修订脚本至多给一个，只对模型入参成立（归一化后 `script` 与 `path` 同时在场是合法执行态）。
   validateInput: (input) => validateAmendWorkflowSource(input),
-  resolveInput: resolveAmendWorkflowInput,
+  resolveInput: (input, context) => {
+    // 技能门先于前驱解析：带 path / script 的修订是在写脚本；只改设定的调用沿用前驱脚本，放行。
+    if (amendWorkflowNeedsSkill(input)) {
+      const refused = requireDynamicWorkflowSkill(context, AMEND_WORKFLOW_TOOL_NAME);
+      if (refused) return refused;
+    }
+    return resolveAmendWorkflowInput(input, context);
+  },
   prepareApproval: prepareAmendWorkflowApproval,
   inputSchema: AmendWorkflowInputJsonSchema,
   outputSchema: CreateWorkflowOutputJsonSchema,

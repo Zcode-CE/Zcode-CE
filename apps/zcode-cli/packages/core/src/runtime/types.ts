@@ -216,9 +216,13 @@ export interface AgentRuntimeConfig {
   taskType?: SessionTaskType;
   /**
    * 动态工作流灰度门：Host 判定后经
-   * ZCode Protocol 下发，runtime 只消费。**缺席即开启**——TUI、headless `-p` 与
-   * workflow_child 都不会设置它，它们必须保留完整工具面；只有受信 Host
-   * 创建的 protocol session 才会显式写 false 把十个工作流工具关掉。
+   * ZCode Protocol 下发，runtime 只消费。**缺席即开启**——TUI 与 workflow_child 都不写它，
+   * 它们必须保留完整工具面；只有受信 Host 创建的 protocol session 会显式写 false
+   * 把十个工作流工具关掉。
+   *
+   * headless `-p` 也会写它，但只在用户显式传 `--no-enable-workflow` 时写 false：
+   * 本仓库 headless 默认开启（与官方相反，官方 `-p` 默认关闭）。见
+   * apps/zcode-cli/packages/cli/src/workflow-flag.ts。
    */
   dynamicWorkflowEnabled?: boolean;
 

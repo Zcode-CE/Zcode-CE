@@ -255,6 +255,12 @@ export interface ToolInputResolutionContext {
    */
   modelCatalogPort?: ModelCatalogPort;
   sessionId?: string;
+  /**
+   * 「这个会话此刻加载着某个技能吗」的探针（handlers/workflow-skill-gate.ts）。由 runtime 用
+   * provider 可见历史回答（agent/loaded-skills.ts），所以 compaction 之后答案随历史一起变回
+   * 否。缺席 = 本会话没有 Skill 工具或调用方不参与，门不生效。
+   */
+  hasLoadedSkill?: (skillName: string) => boolean;
 }
 
 export type ToolInputResolutionResult = { result: true; input: unknown } | ToolHandlerFailure;

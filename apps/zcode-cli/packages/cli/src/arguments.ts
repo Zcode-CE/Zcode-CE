@@ -34,6 +34,17 @@ export const parseGlobalArgs = (argv: string[]) =>
       "memory-bench": {
         type: "boolean",
       },
+      // 官方 headless 的开关名。本仓库 headless 默认开启动态工作流，所以它是幂等的
+      // （传了不改变行为，但也不报未知参数）；真正能改变行为的是下面的反向开关。
+      "enable-workflow": {
+        type: "boolean",
+      },
+      // 本仓库特有的关闭开关。刻意声明成独立选项而不是用 parseArgs 的 allowNegative：
+      // allowNegative 会把既有的 `--no-color`/`--no-browser` 改写成 `color`/`browser`
+      // 两个新键（实测），那会让 `noColor`/`noBrowser` 的读取点静默失效。
+      "no-enable-workflow": {
+        type: "boolean",
+      },
       attach: {
         multiple: true,
         type: "string",

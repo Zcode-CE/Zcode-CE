@@ -25,6 +25,11 @@ import { runPrompt } from "./prompt-command.js";
 import { runPluginsCommand, type PluginsCommandFlags } from "./plugins-command.js";
 import { runSkillsCommand } from "./skills-command.js";
 import { runTuiCommand } from "./tui-command.js";
+import {
+  ENABLE_WORKFLOW_SCOPE_ERROR,
+  isHeadlessWorkflowFlagSupportedInvocation,
+  resolveHeadlessWorkflowFlag,
+} from "./workflow-flag.js";
 import type {
   CliPermissionMode,
   CliResumeRequest,
@@ -94,6 +99,7 @@ const globalOptions = (
   browserUse: GlobalOptions["browserUse"],
   browserExecutable: GlobalOptions["browserExecutable"],
   outputFormat: GlobalOptions["outputFormat"],
+  enableWorkflow: GlobalOptions["enableWorkflow"],
 ): GlobalOptions => {
   return {
     browserExecutable,
@@ -102,6 +108,7 @@ const globalOptions = (
     force: values.force === true,
     json: values.json === true,
     locale,
+    ...(enableWorkflow === undefined ? {} : { enableWorkflow }),
     ...(values["memory-bench"] === true ? { memoryBench: true } : {}),
     noColor: values["no-color"] === true,
     ...(outputFormat ? { outputFormat } : {}),
@@ -380,6 +387,8 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
     ctx.stderr.write(`${message}\n`);
     return 1;
   }
+  const forceMcs = parsed.values["force-mcs"] === true;
+  const enableWorkflow = resolveHeadlessWorkflowFlag(parsed.values);
   const options = globalOptions(
     parsed.values,
     locale,
@@ -387,8 +396,8 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
     browserUse,
     browserExecutable,
     outputFormat,
+    enableWorkflow,
   );
-  const forceMcs = parsed.values["force-mcs"] === true;
   let targetRequest: CliTargetRequest | undefined;
   try {
     targetRequest = normalizeTargetRequest(parsed.values);
@@ -423,6 +432,18 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
   if (parsed.values.version === true) {
     ctx.stdout.write(`${version}\n`);
     return 0;
+  }
+
+  if (
+    enableWorkflow !== undefined &&
+    !isHeadlessWorkflowFlagSupportedInvocation({
+      positionals: parsed.positionals,
+      prompt: parsed.values.prompt as string | undefined,
+      targetRequest,
+    })
+  ) {
+    ctx.stderr.write(`${ENABLE_WORKFLOW_SCOPE_ERROR}\n`);
+    return 1;
   }
 
   if (
