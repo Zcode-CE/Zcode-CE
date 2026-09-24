@@ -282,6 +282,21 @@ export interface CrossSiteGuardOptions {
    * 也不要让最关键的拒绝路径裸奔。
    */
   denialHeaders?: () => Record<string, string>;
+  /**
+   * 拒绝回调（审计埋点，B1）。**只传判定所需的字段**，不透传请求对象 —— 这样审计实现无法
+   * "顺手"把 `Origin` / 查询串 / cookie 抄进日志。
+   *
+   * 本模块**不持有可信代理配置**，所以给出的只是原始信息（socket 对端 + 原始 XFF 头），
+   * 由调用方（http.ts）用**它自己的口径**解析出真正的客户端地址，避免审计日志与限流
+   * 用两套地址口径（那会让"谁被限流了"和"谁出现在审计里"对不上）。
+   */
+  onReject?: (params: {
+    socketPeer?: string;
+    forwardedFor?: string;
+    method: string;
+    path: string;
+    reason: string;
+  }) => void;
 }
 
 /**
@@ -314,15 +329,26 @@ export function createCrossSiteGuard(options: CrossSiteGuardOptions): Middleware
       await next();
       return;
     }
+    const requestPath = new URL(c.req.url).pathname;
+    // 审计埋点：**先记事件、再做"只告警一次"的降噪** —— 审计与告警是两条流，
+    // 告警（warn）要防刷屏，审计要能计数（由 auditLog 的合并策略负责，不在这里丢）。
+    options.onReject?.({
+      socketPeer: (c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined)
+        ?.incoming?.socket?.remoteAddress,
+      forwardedFor: c.req.header("x-forwarded-for"),
+      method: c.req.method,
+      path: requestPath,
+      reason: decision.reason ?? "Cross-site request rejected",
+    });
     // 每个「路径 + 方法」只告警一次：跨站探测会持续打，不能让日志被淹掉（可观测但不噪音）。
-    const key = c.req.method + " " + new URL(c.req.url).pathname;
+    const key = c.req.method + " " + requestPath;
     if (!once.has(key)) {
       once.add(key);
       options.warn?.(
         "[cross-site] 已拒绝跨站 " +
           c.req.method +
           " " +
-          key.slice(key.indexOf(" ") + 1) +
+          requestPath +
           "（Origin=" +
           (c.req.header("origin") ?? "") +
           "，对端=" +

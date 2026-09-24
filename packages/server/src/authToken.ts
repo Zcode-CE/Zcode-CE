@@ -93,6 +93,13 @@ export interface AuthTokenSource {
   verify(candidate: string | undefined): boolean;
   /** 当前令牌数量的快照（用于日志与断言，不含明文）。 */
   snapshot(): AuthTokenSnapshot;
+  /**
+   * 取某个候选令牌对应的**标签**（审计日志用），未命中返回 undefined。
+   *
+   * 与 `verify` 的区别：**不产生副作用**（不改「最近使用」顺序）—— 审计路径不应改变任何状态。
+   * 同样**只返回标签，绝不返回令牌**。
+   */
+  labelFor(candidate: string | undefined): string | undefined;
 }
 
 interface MutableTokenState {
@@ -178,6 +185,18 @@ export function createAuthTokenStore(options: AuthTokenStoreOptions): AuthTokenS
         count: state.records.length,
         labels: state.records.map((record) => record.label ?? "<unnamed>"),
       };
+    },
+    labelFor(candidate) {
+      if (!candidate) {
+        return undefined;
+      }
+      const candidateDigest = digest(candidate);
+      for (const [storedDigest, label] of state.digestByToken) {
+        if (constantTimeEqualHex(storedDigest, candidateDigest)) {
+          return label;
+        }
+      }
+      return undefined;
     },
     reload() {
       if (!options.filePath) {

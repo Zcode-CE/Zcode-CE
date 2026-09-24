@@ -57,6 +57,7 @@ import {
   type TrustedProxyRange,
 } from "./authThrottle.js";
 import { buildTrustedHostEntries, evaluateHost, type TrustedHostEntry } from "./hostAllowlist.js";
+import { createAuditLog, type AuditLog } from "./auditLog.js";
 
 function wrapWebSocket(ws: WebSocket): ISocket {
   const onData = new Emitter<VSBuffer>();
@@ -104,12 +105,48 @@ const log = (...args: unknown[]) =>
 const warn = (...args: unknown[]) =>
   console.warn(formatLogPrefix("zcode-server:http", process.pid), ...args);
 
+/** 连接级审计所需的上下文（在 upgrade gate 里算好，避免这一层再依赖中间件状态）。 */
+interface ConnectionAuditContext {
+  audit: AuditLog;
+  activeConnections: Map<
+    string,
+    { role: string; peer: string; authenticated: boolean; startedAt: number }
+  >;
+  peer: string;
+  path: string;
+  authenticated: boolean;
+  tokenLabel?: string;
+}
+
 function setupChannelServer(
   ws: WebSocket,
   services: ServiceCollection,
   clientMode: "desktop-continuous" | "web-remote-replayable",
+  auditContext?: ConnectionAuditContext,
 ) {
   const socket = wrapWebSocket(ws);
+  // 连接级审计（B1）：建立与断开各一条，close 带存活时长与连接 id（可把 open/close 配对）。
+  // 注意：**不写令牌**，只写标签；不写查询串（`?token=` 会进浏览器历史，进审计等于多一处落盘）。
+  const connectionId = randomUUID();
+  const startedAt = Date.now();
+  const role = clientMode === "desktop-continuous" ? "trusted-host-relay" : "terminal-client";
+  if (auditContext) {
+    auditContext.activeConnections.set(connectionId, {
+      role,
+      peer: auditContext.peer,
+      authenticated: auditContext.authenticated,
+      startedAt,
+    });
+    auditContext.audit.record({
+      kind: "audit:ws-open",
+      peer: auditContext.peer,
+      role,
+      connectionId,
+      path: auditContext.path,
+      authenticated: auditContext.authenticated,
+      ...(auditContext.tokenLabel ? { tokenLabel: auditContext.tokenLabel } : {}),
+    });
+  }
   const protocol = new SocketProtocol(socket);
   const rawServer = new ChannelServer(protocol, "server");
   // 用日志中间件包装，统一记录所有 RPC 调用
@@ -140,6 +177,19 @@ function setupChannelServer(
   }
   services.exposeOnChannelServer(server, overrides);
   socket.onClose(() => {
+    if (auditContext) {
+      auditContext.activeConnections.delete(connectionId);
+      auditContext.audit.record({
+        kind: "audit:ws-close",
+        peer: auditContext.peer,
+        role,
+        connectionId,
+        path: auditContext.path,
+        authenticated: auditContext.authenticated,
+        durationMs: Date.now() - startedAt,
+        ...(auditContext.tokenLabel ? { tokenLabel: auditContext.tokenLabel } : {}),
+      });
+    }
     void connectionScope?.dispose();
     rawServer.dispose();
   });
@@ -189,6 +239,14 @@ export interface HttpServerOptions {
   trustedHosts?: { host: string; port?: number }[];
   /** 直接注入白名单条目（测试用；给定时不再从监听地址/接口推导）。 */
   trustedHostEntries?: TrustedHostEntry[];
+  /** 审计日志（B1）。缺省由本函数创建一个；测试可注入以捕获事件。 */
+  audit?: AuditLog;
+  /**
+   * 并发 WebSocket 连接上限（B3）：**防资源耗尽**，与限流（防爆破，按地址计数、时间窗封禁）
+   * 职责不同、互不替代。超限时拒绝新升级（HTTP 403 + 明确原因），已建立的连接不受影响。
+   * 默认 32：单机自托管下「本人所有设备 + 少量浏览器标签」远低于此值。
+   */
+  maxConcurrentConnections?: number;
 }
 
 function readTrimmedEnv(name: string): string | undefined {
@@ -440,6 +498,65 @@ function hasValidLiteToken(c: Context, source: AuthTokenSource): boolean {
 }
 
 /**
+ * 识别的路由清单 + 公开/受保护标注（G11）。
+ *
+ * **为什么要有这张表**：鉴权是**白名单**语义 —— 不在 `isTokenProtectedPath` 里的路径一律公开。
+ * 于是「新增一条路由、忘了归入 /`api` 或 /`ws` 前缀」会让鉴权**静默缺席**（而 SPA fallback 还会
+ * 给这个路径返回 200 的壳，看不出异常）。这张表把「这条路由是公开还是受保护」写成显式契约：
+ * - 它是**运行时兜底**：`assertRoutePolicyEnforced` 在启动时逐条断言「受保护的路由确实被
+ *   `isTokenProtectedPath` 覆盖」，不满足就**拒绝启动**（fail-closed，而不是留个洞）；
+ * - 它同时是**测试的可读契约**：测试逐条对照这张表与实现，防未来漂移。
+ *
+ * 加新路由时：在这里加一行、选 `public`/`protected`，测试会立刻告诉你口径是否自洽。
+ */
+export interface RoutePolicyEntry {
+  /** 精确路径或前缀（`prefix: true` 时按前缀匹配）。 */
+  path: string;
+  prefix?: boolean;
+  policy: "public" | "protected";
+  /** 为什么是公开的（公开路由必须写理由，避免"顺手公开"）。 */
+  note: string;
+}
+
+export const ROUTE_POLICY: readonly RoutePolicyEntry[] = [
+  { path: "/api/server-info", policy: "protected", note: "泄露主机名/版本/工作区绝对路径" },
+  {
+    path: "/api/rpc-host-capability",
+    policy: "protected",
+    note: "签发 trusted-host ticket（提权面）",
+  },
+  { path: "/api/connect-remote", policy: "protected", note: "让服务端出网建连接（SSRF 面）" },
+  { path: "/api", prefix: true, policy: "protected", note: "API 命名空间整体受保护" },
+  { path: "/ws", policy: "protected", note: "agent 级 RPC 通道（terminal-client 角色）" },
+  { path: "/ws/host", policy: "protected", note: "需一次性 ticket，拿 desktop-continuous 角色" },
+  { path: "/ws/remote/:id", prefix: true, policy: "protected", note: "远程连接桥接（一次性 id）" },
+  { path: "/", policy: "public", note: "SPA 壳：浏览器必须先拿到它才能进入鉴权流程" },
+  { path: "/index.html", policy: "public", note: "同上" },
+  { path: "/share/**", prefix: true, policy: "public", note: "会话分享落地页（分享码本身即凭据）" },
+  {
+    path: "/assets/**",
+    prefix: true,
+    policy: "public",
+    note: "静态资源（JS/CSS/字体），无业务数据",
+  },
+];
+
+function matchesRoutePolicy(entry: RoutePolicyEntry, pathname: string): boolean {
+  if (entry.prefix) {
+    // `/api` 前缀同时要覆盖精确的 `/api` 本身（历史上这条曾落到 SPA fallback）。
+    const base = entry.path.endsWith("/") ? entry.path.slice(0, -1) : entry.path;
+    if (base.endsWith("/**")) {
+      return pathname.startsWith(base.slice(0, -3) + "/");
+    }
+    return pathname === base || pathname.startsWith(base + "/");
+  }
+  if (entry.path.startsWith("/ws/remote/")) {
+    return pathname.startsWith("/ws/remote/");
+  }
+  return pathname === entry.path;
+}
+
+/**
  * 需要令牌的路径前缀。
  *
  * 注意 /api 与 /ws 的**精确路径**也必须算在内：此前只认 /api/ 前缀与 /ws 精确值，
@@ -453,6 +570,37 @@ function isTokenProtectedPath(pathname: string): boolean {
     pathname.startsWith("/ws/") ||
     pathname.startsWith("/api/")
   );
+}
+
+/**
+ * 启动期断言：`ROUTE_POLICY` 里标为 `protected` 的每条路由，都必须真的被
+ * `isTokenProtectedPath` 覆盖；否则说明"标注是受保护的、实现是公开的"——这种不一致必须
+ * **拒绝启动**（新的攻击面往往就是这么来的：加注解容易，改判断遗漏）。
+ */
+export function assertRoutePolicyEnforced(
+  isProtected: (pathname: string) => boolean = isTokenProtectedPath,
+): void {
+  for (const entry of ROUTE_POLICY) {
+    if (entry.policy !== "protected") {
+      continue;
+    }
+    // 前缀条目用一个具体样例路径探针（`/api` 前缀要连同精确形式一起验）。
+    const probes = entry.prefix
+      ? [entry.path.endsWith("/**") ? entry.path.slice(0, -2) + "sample" : entry.path]
+      : [entry.path.replace(":id", "sample-id")];
+    for (const probe of probes) {
+      if (!isProtected(probe)) {
+        throw new Error(
+          "路由口径不一致：ROUTE_POLICY 标明 '" +
+            entry.path +
+            "' 是受保护路由，但 isTokenProtectedPath 不覆盖它（探针：" +
+            probe +
+            "）。" +
+            "这会让该路由静默变成公开面 —— 请把它的前缀加入 isTokenProtectedPath，或把它标为 public 并写明理由。",
+        );
+      }
+    }
+  }
 }
 
 function isStaticFallbackAllowed(pathname: string): boolean {
@@ -524,6 +672,17 @@ function staticContentType(filePath: string): string {
  * `.reverse/40-remote-control/SECURITY-SERVER-DEFAULTS.md`。
  */
 export const DEFAULT_HTTP_LISTEN_HOST = "127.0.0.1";
+
+/**
+ * 并发 WebSocket 连接上限的默认值（B3）。
+ *
+ * 与限流（A2）**职责不同**：限流按地址计数、时间窗封禁，防的是**凭据爆破**；
+ * 这个上限防的是**资源耗尽**（一次得手的凭据或本机上的其它进程开几千条连接把服务拖垮）。
+ * 32 的依据：单机自托管场景是「本人几台设备 + 几个浏览器标签」，正常使用远低于此值，
+ * 而它足以拦住"连接洪水"。超限语义见 upgrade gate：**拒绝新连接（403 + 明确原因），
+ * 已建立的连接不受影响** —— 不做排队（排队会让攻击者用队首阻塞合法用户）。
+ */
+export const DEFAULT_MAX_CONCURRENT_CONNECTIONS = 32;
 
 function normalizeListenHost(host: string): string {
   const trimmed = host.trim().toLowerCase();
@@ -608,6 +767,7 @@ export function createHttpServer(
         enabled: true,
         verify: (candidate) => candidate === explicitToken,
         snapshot: () => ({ count: 1, labels: ["<env>"] }),
+        labelFor: (candidate) => (candidate === explicitToken ? "<env>" : undefined),
       }
     : undefined;
   const tokenSource = options.tokenSource ?? explicitTokenSource;
@@ -617,6 +777,9 @@ export function createHttpServer(
     authSourceConfigured: Boolean(options.tokenSource || explicitToken),
     authSourceEnabled: Boolean(tokenSource?.enabled),
   });
+  // 启动期断言：ROUTE_POLICY 的「受保护」标注必须与 isTokenProtectedPath 实现一致（G11）。
+  // 放在最前面：口径不一致时要**拒绝启动**，而不是带着"标注与实现不符"的面板跑起来。
+  assertRoutePolicyEnforced();
   const trustedOrigins = parseTrustedOrigins(options.trustedOrigins?.join(","));
   const trustedProxies = options.trustedProxies ?? [];
   // Host 白名单（G6）：默认 = 回环各形态 + 本机网卡地址 + 实际监听地址；运维显式登记追加其后。
@@ -629,6 +792,22 @@ export function createHttpServer(
   const throttle =
     options.throttle ??
     createAuthThrottle({ warn: (address, message) => warn(message + "（" + address + "）") });
+  // 审计日志（B1）：与 warn 分开的一条结构化流（一行一条 JSON，便于 grep/journald 采集）。
+  const audit = options.audit ?? createAuditLog();
+  if (!options.audit) {
+    // 退出前把窗口内的计数写出来（否则最后 <60s 的合并计数会随进程消失）。
+    // 只在本函数**自己创建** audit 时挂：注入方（如 entry-http）希望自己掌握生命周期。
+    const flushAudit = () => audit.flush();
+    process.once("SIGTERM", flushAudit);
+    process.once("SIGINT", flushAudit);
+  }
+  const maxConcurrentConnections =
+    options.maxConcurrentConnections ?? DEFAULT_MAX_CONCURRENT_CONNECTIONS;
+  /** 当前活跃的 WebSocket 连接（含即将升级的），用于并发上限与 close 事件配对。 */
+  const activeConnections = new Map<
+    string,
+    { role: string; peer: string; authenticated: boolean; startedAt: number }
+  >();
   // 运行期暴露面告警：只在首次遇到「非回环对端 + 非 TLS」时提示一次（不拒绝请求）。
   let plainHttpPeerWarned = false;
   app.use("*", async (c, next) => {
@@ -663,6 +842,7 @@ export function createHttpServer(
       return;
     }
     const hostHeader = c.req.header("host") ?? "<missing>";
+    const pathname = new URL(c.req.url).pathname;
     // 每台主机名只告警一次：扫描器会持续打不同的 Host，不能让日志被淹没。
     if (!hostGuardWarned.has(hostHeader)) {
       hostGuardWarned.add(hostHeader);
@@ -672,10 +852,18 @@ export function createHttpServer(
           " 的请求（" +
           c.req.method +
           " " +
-          new URL(c.req.url).pathname +
+          pathname +
           "）。这是 DNS rebinding 防护；若这是你的反代域名，请登记进 ZCODE_SERVER_TRUSTED_HOSTS。",
       );
     }
+    // 审计：Host 被拒（**记录解析后的对端地址**；Host 头本身是攻击者可控的，写进来便于排障但不作键）。
+    audit.record({
+      kind: "audit:host-rejected",
+      peer: resolvePeerAddress(c, trustedProxies) ?? "unknown",
+      method: c.req.method,
+      path: pathname,
+      reason: "Host 不在白名单（DNS rebinding 防护）",
+    });
     return c.json({ error: decision.reason ?? "Host not allowed" }, 403, {
       "X-ZCode-Host-Rejected": "1",
       ...buildSecurityHeaders(securityHeadersOptions),
@@ -690,11 +878,31 @@ export function createHttpServer(
       trustedOrigins,
       warn,
       denialHeaders: () => buildSecurityHeaders(securityHeadersOptions),
+      // 审计：跨站被拒（Origin 与 Host 是**不同防线**，所以要分开记事件类型，便于事后区分
+      // "有人从别的站点发起请求" 与 "有人在用伪造 Host 做 rebinding"）。
+      onReject: (params) => {
+        audit.record({
+          kind: "audit:origin-rejected",
+          // 用与限流**同一口径**解析对端（可信代理规则），保证"谁被限流"与"谁在审计里"能对上。
+          peer:
+            resolveClientAddress({
+              socketAddress: params.socketPeer,
+              forwardedFor: params.forwardedFor,
+              trustedProxies,
+            }) ?? "unknown",
+          method: params.method,
+          path: params.path,
+          reason: "Origin 与 Host 不同源（跨站请求防护）",
+        });
+      },
     }),
   );
   // 每个请求的鉴权上下文：对端地址 + 是否已记过一次失败。
   // 用 WeakMap 而不是可变闭包变量：闭包变量会在并发请求间串味（同一个中间件实例服务所有请求）。
-  const perRequestAuth = new WeakMap<Context, { peer?: string; failureRecorded: boolean }>();
+  const perRequestAuth = new WeakMap<
+    Context,
+    { peer?: string; failureRecorded: boolean; authenticated?: boolean; tokenLabel?: string }
+  >();
   if (tokenSource?.enabled) {
     app.use("*", async (c, next) => {
       const pathname = new URL(c.req.url).pathname;
@@ -722,13 +930,44 @@ export function createHttpServer(
           // 成功即清零：正常用户的偶发输错不会累积到阈值（阈值只拦持续失败的暴力破解）。
           throttle.recordSuccess(peer);
         }
-        perRequestAuth.set(c, peer ? { peer, failureRecorded: false } : { failureRecorded: false });
+        // 令牌**标签**（不是令牌）随请求上下文带下去，供连接级审计（`audit:ws-open`）使用。
+        const tokenLabel =
+          validToken && tokenSource
+            ? tokenSource.labelFor(
+                new URL(c.req.url).searchParams.get("token") ??
+                  parseCookieHeader(c.req.header("cookie")).get(zcodeLiteTokenCookieName),
+              )
+            : undefined;
+        perRequestAuth.set(c, {
+          ...(peer ? { peer } : {}),
+          failureRecorded: false,
+          authenticated: validToken,
+          ...(tokenLabel ? { tokenLabel } : {}),
+        });
         await next();
         return;
       }
       // ① 鉴权失败：计数 + 可观测（修改前这条链路上没有任何失败记录，入侵完全静默）。
       const banned = throttle.recordFailure(peer);
       perRequestAuth.set(c, { ...(peer ? { peer } : {}), failureRecorded: true });
+      // 审计：鉴权失败（**不写令牌、不写查询串** —— 只写路径与解析后的对端地址）。
+      audit.record({
+        kind: "audit:auth-failure",
+        peer: peer ?? "unknown",
+        method: c.req.method,
+        path: pathname,
+        reason: isTokenProtectedPath(pathname) ? "令牌无效或缺失" : "未授权路径",
+        ...(banned ? {} : {}),
+      });
+      if (banned) {
+        // 审计：封禁（与失败分开记一条，便于只看封禁事件）。
+        audit.record({
+          kind: "audit:auth-ban",
+          peer: peer ?? "unknown",
+          path: pathname,
+          reason: "同一地址连续失败达到阈值，已临时封禁",
+        });
+      }
       warn(
         "鉴权失败（" +
           (banned ? "已触发封禁" : "累计 " + String(throttle.failureCount(peer ?? "")) + " 次") +
@@ -759,22 +998,55 @@ export function createHttpServer(
   app.get("/api/server-info", async (c) => c.json(await createServerInfo(options, services)));
   app.post("/api/rpc-host-capability", (c) => c.json(hostCapabilities.issue()));
 
+  /**
+   * 组装连接级审计上下文。
+   *
+   * 在 `createEvents(c)` 里调用（那时还能拿到 Hono `Context`）：令牌标签 / 是否已鉴权来自
+   * 令牌中间件写下的 `perRequestAuth`；对端地址用与限流**同一口径**重新解析（可信代理规则）。
+   */
+  const buildConnectionAuditContext = (c: Context): ConnectionAuditContext => {
+    const requestUrl = new URL(c.req.url);
+    const env = c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined;
+    const peer =
+      resolveClientAddress({
+        socketAddress: env?.incoming?.socket?.remoteAddress,
+        forwardedFor: c.req.header("x-forwarded-for"),
+        trustedProxies,
+      }) ?? "unknown";
+    const auth = perRequestAuth.get(c);
+    return {
+      audit,
+      activeConnections,
+      peer: auth?.peer ?? peer,
+      path: requestUrl.pathname,
+      authenticated: auth?.authenticated ?? !tokenSource?.enabled,
+      ...(auth?.tokenLabel ? { tokenLabel: auth.tokenLabel } : {}),
+    };
+  };
+
   // 普通 `/ws` 永远是 terminal-client；浏览器/任意客户端设置旧 mode header
   // 都不能再把自己提升为 trusted host。
   app.get(
     "/ws",
-    upgradeWebSocket(() => ({
-      onOpen(_event, ws) {
-        setupChannelServer(ws.raw as WebSocket, services, "web-remote-replayable");
-      },
-    })),
+    upgradeWebSocket((c) => {
+      // `createEvents` 在升级时执行，是我们还能拿到 Context 的最后一站 ⇒ 审计上下文在这里算好。
+      const auditContext = buildConnectionAuditContext(c);
+      return {
+        onOpen(_event, ws) {
+          setupChannelServer(ws.raw as WebSocket, services, "web-remote-replayable", auditContext);
+        },
+      };
+    }),
   );
 
-  const upgradeTrustedHostWebSocket = upgradeWebSocket(() => ({
-    onOpen(_event, ws) {
-      setupChannelServer(ws.raw as WebSocket, services, "desktop-continuous");
-    },
-  }));
+  const upgradeTrustedHostWebSocket = upgradeWebSocket((c) => {
+    const auditContext = buildConnectionAuditContext(c);
+    return {
+      onOpen(_event, ws) {
+        setupChannelServer(ws.raw as WebSocket, services, "desktop-continuous", auditContext);
+      },
+    };
+  });
   app.use("/ws/host", async (c, next) => {
     const capability = c.req.header(ZCODE_RPC_HOST_CAPABILITY_HEADER);
     if (!hostCapabilities.consume(capability)) {
@@ -817,6 +1089,7 @@ export function createHttpServer(
     "/ws/remote/:id",
     upgradeWebSocket((c) => {
       const id = c.req.param("id");
+      const auditContext = buildConnectionAuditContext(c);
       return {
         onOpen(_event, ws) {
           if (!id) {
@@ -838,7 +1111,12 @@ export function createHttpServer(
             .register(ISystemService, connection.services.systemService)
             .register(ITerminalService, connection.services.terminalService);
 
-          setupChannelServer(ws.raw as WebSocket, remoteServices, "web-remote-replayable");
+          setupChannelServer(
+            ws.raw as WebSocket,
+            remoteServices,
+            "web-remote-replayable",
+            auditContext,
+          );
         },
       };
     }),
@@ -916,6 +1194,8 @@ export function createHttpServer(
   // 因此这里先于 injectWebSocket 挂自己的 upgrade 监听：拒绝的直接写 socket 并结束，
   // 放行的**不处理**（不消费 socket），交给随后注册的 node-ws 监听器正常升级。
   const upgradeGuardWarned = new Set<string>();
+  /** 连接上限告警只打一次（这是"持续被拒"的稳定状态，不该刷屏）。 */
+  let connectionLimitWarned = false;
   // 被本 gate 拒绝的升级请求要在 socket 上留标记：@hono/node-ws 的监听器随后仍会被调用，
   // 它会往已 end 的 socket 再写一次响应（实测崩法：ERR_STREAM_WRITE_AFTER_END）。
   // 所以 gate **之后**注册的每个 upgrade 监听器都被包一层「已拒绝就跳过」。
@@ -942,6 +1222,13 @@ export function createHttpServer(
     const pathname = new URL(request.url ?? "/", "http://placeholder").pathname;
     // ① Host 白名单（G6）：先于来源判定 —— rebinding 的请求 Host 是攻击者的域名，
     //    而它的 Origin 与 Host 自洽，只有这一步能拦住。
+    const socketPeer = request.socket.remoteAddress;
+    const upgradePeer =
+      resolveClientAddress({
+        socketAddress: socketPeer,
+        forwardedFor: request.headers["x-forwarded-for"],
+        trustedProxies,
+      }) ?? "unknown";
     const hostDecision = evaluateHost(request.headers.host, trustedHostEntries);
     if (!hostDecision.allowed) {
       const hostHeader = request.headers.host ?? "<missing>";
@@ -955,6 +1242,12 @@ export function createHttpServer(
             "（DNS rebinding 防护；反代域名请登记进 ZCODE_SERVER_TRUSTED_HOSTS）",
         );
       }
+      audit.record({
+        kind: "audit:host-rejected",
+        peer: upgradePeer,
+        path: pathname,
+        reason: "Host 不在白名单（DNS rebinding 防护，WebSocket 升级）",
+      });
       rejectedUpgradeSockets.add(socket);
       rejectUpgrade({
         socket,
@@ -966,7 +1259,42 @@ export function createHttpServer(
       });
       return;
     }
-    // ② 来源校验（跨站请求）。
+    // ② 并发上限（B3）：**防资源耗尽**，与限流（按地址、防爆破）职责不同。
+    //    语义：拒绝**新**连接（403 + 明确原因），已建立的连接不受影响；不做排队
+    //    （排队等于让攻击者用队首阻塞合法用户）。检查放在来源判定**之前**：
+    //    连接洪水的第一诉求是"立刻止血"，而不是先给每个请求算一遍来源。
+    if (activeConnections.size >= maxConcurrentConnections) {
+      if (!connectionLimitWarned) {
+        connectionLimitWarned = true;
+        warn(
+          "已拒绝新的 WebSocket 连接：当前活跃连接数达到上限 " +
+            String(maxConcurrentConnections) +
+            "。这是资源保护（防连接洪水）；如确有需要请调大上限或先排查异常连接。",
+        );
+      }
+      audit.record({
+        kind: "audit:connection-limit-rejected",
+        peer: upgradePeer,
+        path: pathname,
+        reason: "活跃连接数达到上限",
+        connections: activeConnections.size,
+        maxConnections: maxConcurrentConnections,
+      });
+      rejectedUpgradeSockets.add(socket);
+      rejectUpgrade({
+        socket,
+        reason:
+          "Too many active WebSocket connections (limit " +
+          String(maxConcurrentConnections) +
+          "). Retry later or raise the server's concurrent-connection limit.",
+        extraHeaders: {
+          "X-ZCode-Connection-Limit": "1",
+          ...buildSecurityHeaders(securityHeadersOptions),
+        },
+      });
+      return;
+    }
+    // ③ 来源校验（跨站请求）。
     const decision = evaluateUpgradeOrigin(
       {
         pathname,
@@ -980,6 +1308,12 @@ export function createHttpServer(
     if (decision.allowed) {
       return;
     }
+    audit.record({
+      kind: "audit:origin-rejected",
+      peer: upgradePeer,
+      path: pathname,
+      reason: "Origin 与 Host 不同源（跨站请求防护，WebSocket 升级）",
+    });
     if (!upgradeGuardWarned.has(pathname)) {
       upgradeGuardWarned.add(pathname);
       warn(

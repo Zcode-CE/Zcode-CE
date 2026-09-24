@@ -7,6 +7,7 @@ import { DEFAULT_HTTP_LISTEN_HOST, assertListenSecurity, createHttpServer } from
 import { createAuthTokenStore, loadAuthTokensFromFile, type AuthTokenRecord } from "./authToken.js";
 import { parseTrustedProxies } from "./authThrottle.js";
 import { parseTrustedHosts } from "./hostAllowlist.js";
+import { createAuditLog } from "./auditLog.js";
 
 /** `ZCODE_SERVER_HSTS`：只认显式的真值，缺省与拼错都当 false（安全默认值）。 */
 function isTruthyEnv(value: string | undefined): boolean {
@@ -103,8 +104,12 @@ async function main(): Promise<void> {
     providerProvisioningTargetEnabled: authEnabled,
   });
 
+  // 审计日志（B1）由入口创建并注入：这样入口自己也能为「令牌重载」写审计事件 —— 重载发生在
+  // http 服务之外，却是最需要留痕的动作之一（谁在什么时候撤销了哪把钥匙）。
+  const audit = createAuditLog();
   const server = createHttpServer(services, port, {
     ...(host ? { host } : {}),
+    audit,
     ...(staticRoot ? { staticRoot, spaFallback: true } : {}),
     ...(authEnabled ? { authRequired: true } : {}),
     ...(tokenSource ? { tokenSource } : {}),
@@ -121,12 +126,30 @@ async function main(): Promise<void> {
   if (tokenSource && authTokensFilePath) {
     process.on("SIGHUP", () => {
       const result = tokenSource.reload();
-      if (!result.ok) {
-        console.warn(
-          "[zcode-server:http] SIGHUP 重载失败，继续使用上一份令牌集合：" +
-            (result.error ?? "未知原因"),
-        );
+      const snapshot = tokenSource.snapshot();
+      if (result.ok) {
+        // 审计：重载成功（只写条数与标签，**绝不写令牌**）。
+        audit.record({
+          kind: "audit:token-reload",
+          peer: "local", // SIGHUP 是本机信号：发起方不是网络对端，写 "local" 比写对方 IP 诚实。
+          reason: "SIGHUP 重载令牌文件",
+          tokenCount: snapshot.count,
+          tokenLabels: snapshot.labels,
+        });
+        return;
       }
+      console.warn(
+        "[zcode-server:http] SIGHUP 重载失败，继续使用上一份令牌集合：" +
+          (result.error ?? "未知原因"),
+      );
+      // 失败也要留痕：一次「撤销没生效」必须能从审计里看出来。
+      audit.record({
+        kind: "audit:token-reload-failed",
+        peer: "local",
+        reason: "SIGHUP 重载失败，保持上一份令牌集合",
+        tokenCount: snapshot.count,
+        tokenLabels: snapshot.labels,
+      });
     });
   }
   void server;

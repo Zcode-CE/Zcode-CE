@@ -25,7 +25,7 @@ zcode --web                         # 只在 127.0.0.1（默认；不对外）
 
 `--host` 为 `0.0.0.0`/`::` 时 runner 会逐个打印网卡可达地址，并带上令牌（`runner.mjs:213-217` 的 `networkUrls`）；`--no-token` 只允许与回环 host 组合（组合校验在 `runner.mjs` 的参数解析阶段，见 §3）。
 
-**实测状态（本轮）**：源码态起 `packages/server/dist/entry-http.js` + `ZCODE_WEB_STATIC_ROOT=<仓库>/packages/web/dist` + 令牌，浏览器可打开并可用（§11 有命令与原始观测）；**完整安装包链路**（`scripts/build-zcode.mjs` → `zcode --web`）本轮未实跑（需要整包构建），其分解见 §9。
+**实测状态（本轮）**：源码态起 `packages/server/dist/entry-http.js` + `ZCODE_WEB_STATIC_ROOT=<仓库>/packages/web/dist` + 令牌，浏览器可打开并可用（§12 有命令与原始观测）；**完整安装包链路**（`scripts/build-zcode.mjs` → `zcode --web`）本轮未实跑（需要整包构建），其分解见 §9。
 
 ---
 
@@ -46,7 +46,8 @@ zcode --web                         # 只在 127.0.0.1（默认；不对外）
 - 输入串行：已接受的 busy/running 输入由 CLI/runtime 的 `CommandInbox` 做串行 admission（`apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/command-inbox.ts`；约定见根 `AGENTS.md` 的「进程、协议与远程控制」）。
 - 恢复语义：`web-remote-replayable` 走**可重放快照**（`packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts:3420` 的投递形态映射、`:2223-2290` 的 replayable 分支；客户端侧 `packages/ui/src/hooks/useZCodeTaskService.ts:238-260` 用 `getTaskSnapshotWithEtag` 做快照 + etag 恢复）。
 
-**手机与桌面同时连会发生什么 —— 未测**（本轮只验证了「两个客户端都能建立连接」，见 §11）。能确定的是：两者各自拿到独立的连接作用域，订阅 ownership 互不共享；**业务层并发**（同一会话被两个客户端同时输入、owner/lease 如何裁决、是否出现双写）本轮**没有测**，不要在文档或产品文案里承诺行为。桌面端自己的 owner/lease 机制（`packages/desktop/src/host/...`）属于 desktop 内部拓扑，**不是**本条链路的状态所有者。
+**手机与桌面同时连会发生什么 —— 未测**（本轮只验证了「两个客户端都能建立连接」，见 §12；
+这一限制现在有一处**集中的、如实写明的**声明，见 **§9.4**）。能确定的是：两者各自拿到独立的连接作用域，订阅 ownership 互不共享；**业务层并发**（同一会话被两个客户端同时输入、owner/lease 如何裁决、是否出现双写）本轮**没有测**，不要在文档或产品文案里承诺行为。桌面端自己的 owner/lease 机制（`packages/desktop/src/host/...`）属于 desktop 内部拓扑，**不是**本条链路的状态所有者。
 
 ---
 
@@ -58,7 +59,7 @@ zcode --web                         # 只在 127.0.0.1（默认；不对外）
 2. 用户在手机浏览器打开 `http://<主机>:<端口>/?token=<令牌>`；
 3. 服务端校验查询串里的令牌后种下 cookie：`zcode_lite_token=<令牌>; Path=/; HttpOnly; SameSite=Lax`（`packages/server/src/http.ts:222-254`），**https（含反代 `X-Forwarded-Proto: https`）时追加 `Secure`**；
 4. 之后只访问根路径即可，令牌不再出现在地址栏；
-5. 反代/隧道场景见 §9 与 `docs/development/local-setup.md` 的「Web 工作台的监听与对外访问」。
+5. 反代/隧道场景见 §10 与 `docs/development/local-setup.md` 的「Web 工作台的监听与对外访问」。
 
 **要不要二维码？M1 不做。** 理由：当前可用形态是「一条链接」，二维码只是把这条链接换个载体；而产品内生成二维码需要引入新的图形依赖，涉及新依赖取舍（按根 `AGENTS.md` 的判据属「非核心便利件」，应单独决策）。用户可用任意二维码工具把打印出来的链接转成码。
 
@@ -320,7 +321,7 @@ WebSocket 用真实 socket 发 `Host: evil.com` ⇒ **HTTP 403**（不是握手�
 
 **明确不承诺**：恢复到**断线前那个任务**。原因是应用的 store 由 `StoreProvider` 在每次挂载时创建（`packages/ui/src/store/StoreProvider.tsx:31-40` 用 `useRef` 持有实例、通过 Context 提供，**没有模块级单例**），重新挂载后无法从外部读回「当前任务」；实现它需要把 store 生命周期上提或把任务标识落到 URL/持久化，属后续项（§11）。M1 的恢复语义是**回到工作区（会话列表）并可继续操作**，两者差别必须在发布文案里说清。
 
-**验收方式**（可复现）：起服务 → 浏览器打开 → 杀掉服务进程（模拟锁屏/断线）→ 页面出现重连覆盖层 → 重新起服务（同端口）→ 覆盖层消失、应用恢复可用。§11 给了命令与原始观测。
+**验收方式**（可复现）：起服务 → 浏览器打开 → 杀掉服务进程（模拟锁屏/断线）→ 页面出现重连覆盖层 → 重新起服务（同端口）→ 覆盖层消失、应用恢复可用。§12 给了命令与原始观测。
 
 ---
 
@@ -333,7 +334,87 @@ WebSocket 用真实 socket 发 `Host: evil.com` ⇒ **HTTP 403**（不是握手�
 
 ---
 
-## 9. 威胁模型与内网穿透指引
+## 9. 审计日志与并发上限（task-46）
+
+> 批次 A 让「被拒」**看得见**（401/403 + 告警），但**没有账本**：出事后无法回答「谁在何时连过、
+> 谁被拒了几次、谁被撤销、令牌什么时候重载过」，于是处置只剩「全量轮换 + 重启」这一档。
+> 这一节补上账本（B1）与资源边界（B3）。
+
+### 9.1 审计日志（B1）
+
+**形态**：一行一条结构化 JSON，前缀沿用仓库 `formatLogPrefix`，source 为 `zcode-server:audit`，
+事件名带 `audit:` 前缀（`grep 'audit:'` 即可单独取出）。等级：生命周期与重载 = `info`；
+安全拒绝 = `warn`（仓库约定「不可恢复错误用 error」，审计本身不制造 error）。
+
+| 事件                                               | 触发点                                                     | 关键字段                                                                                                              |
+| -------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `audit:ws-open` / `audit:ws-close`                 | WebSocket 连接建立/断开（三条 `/ws*` 路由）                | `connectionId`（把 open/close 配对）、`role`、`authenticated`、`peer`、`path`、`durationMs`（仅 close）、`tokenLabel` |
+| `audit:auth-failure`                               | 令牌无效/缺失（`/api*`、`/ws*`）                           | `peer`、`method`、`path`、`reason`                                                                                    |
+| `audit:auth-ban`                                   | 失败次数达到阈值触发封禁（与失败**分开记**，便于只看封禁） | `peer`、`path`、`reason`                                                                                              |
+| `audit:host-rejected`                              | Host 不在白名单（中间件与 WS 升级两条路径）                | `peer`、`path`、`reason`                                                                                              |
+| `audit:origin-rejected`                            | Origin 与 Host 不同源（中间件与 WS 升级两条路径）          | `peer`、`method`、`path`、`reason`                                                                                    |
+| `audit:connection-limit-rejected`                  | 并发连接数达到上限                                         | `peer`、`path`、`connections`、`maxConnections`                                                                       |
+| `audit:token-reload` / `audit:token-reload-failed` | SIGHUP 重载成功/失败                                       | `tokenCount`、`tokenLabels`（**只有标签**）、`reason`                                                                 |
+
+**写入纪律（硬约束）**：**绝不写入**凭据、令牌（明文或前缀）、cookie、**完整查询串**
+（`?token=...` 会进浏览器历史与代理日志，写进审计等于再多一处落盘）、请求体、工作区文件内容、
+原始 `X-Forwarded-For`。只写**解析后的对端地址**（与限流同一口径，可信代理规则）与**令牌标签**。
+只写 `pathname`，不写 `search`。**测试含否定式断言**：用真实令牌字符串反向搜索整份审计文本，必须搜不到。
+
+**高频事件的代价与取舍（不静默丢弃）**：被扫描时失败事件是突发的（单个扫描器可打出每秒几十条）。
+三条路里我们**不选**「不限速」（日志被打爆，真事件被淹）、**也不选**「丢重复」（静默丢事件正是审计最不该有的行为），
+而是**合并 + 计数**：同键（`事件 + 对端 + 原因 + 路径 + 角色`）在窗口内写第一条、窗口末写一条**汇总**
+（带 `coalesced.count / windowMs / firstAt / lastAt`）。**没有任何事件丢失**，只是从「逐条明细」降级为
+「明细 + 计数」。阈值依据：窗口 60s、窗口内逐条上限 200 条 —— 稳态最多约 1 条/秒 + 1 条汇总/分钟/键，
+正常使用远达不到；200 条足够保留一次真实攻击的完整明细。**不同对端不合并**（否则会掩盖"多源扫描"）。
+进程收到 `SIGTERM`/`SIGINT` 时 `flush()`，避免最后 <60s 的计数随进程消失。
+若审计写入本身失败：**不影响请求处理**，但会打一条 `error`（fail-loud，不 fail-silent）。
+
+### 9.2 并发上限（B3）
+
+| 项           | 语义                                                                                                                                                       |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 上界         | 并发 WebSocket 连接数，默认 **32**（`DEFAULT_MAX_CONCURRENT_CONNECTIONS`，可配 `maxConcurrentConnections`）                                                |
+| 与限流的区别 | **限流（§5.1）防凭据爆破**（按地址计数、时间窗封禁）；**并发上限防资源耗尽**（一次得手的凭据或本机其它进程开几千条连接把服务拖垮）。两者职责不同、互不替代 |
+| 超限语义     | **拒绝新连接**：HTTP **403** + 明确原因 + `X-ZCode-Connection-Limit: 1`；**已建立的连接不受影响**；**不排队**（排队等于让攻击者用队首阻塞合法用户）        |
+| 检查位置     | 在 WS 升级 gate 里，**先于来源判定**（连接洪水的第一诉求是立刻止血）                                                                                       |
+| 可观测       | 拒绝写入审计；同时打一条 `warn`（只打一次，避免刷屏）                                                                                                      |
+| 依据         | 单机自托管是「本人几台设备 + 几个浏览器标签」，正常远低于 32；32 足以拦住连接洪水                                                                          |
+
+### 9.3 路由公开/受保护标注（G11）
+
+鉴权是**白名单**语义（不在 `isTokenProtectedPath` 里的路径一律公开），因此「新增路由忘了归入
+`/api` 或 `/ws` 前缀」会让鉴权**静默缺席**（而 SPA fallback 还会给该路径返回 200 的壳，看不出异常）。
+对策：`http.ts` 里的 **`ROUTE_POLICY`** 表把每条已知路由的公开/受保护写成显式契约（公开路由必须写明理由），
+并由 **`assertRoutePolicyEnforced()` 在启动时逐条断言**「标为受保护的路由确实被鉴权覆盖」——
+不满足就**拒绝启动**（fail-closed）。测试逐条对照该表与实现，防未来漂移；**当前无缺口**。
+
+### 9.4 限制（**如实声明，不要读成"已经验证"**）
+
+- **多客户端并发写语义未经测试**：手机上打开面板、桌面上同时操作**同一个会话**时会发生什么
+  （谁赢、是否出现重复提交、owner/lease 如何裁决）**没有任何实测**。
+  既有边界是：已接受的 busy/running 输入由 CLI/runtime 的 `CommandInbox` 做**串行 admission**
+  （见根 `AGENTS.md`「进程、协议与远程控制」），每个 RPC attachment 各自持有独立的连接作用域与订阅 ownership
+  （`packages/services/src/zcode-agent/zcodeAgentConnectionScope.ts`）——**但这是设计约定，不是并发写的验收结论**。
+  在测出来之前：**不要**把它当"两端会互相看到对方的修改"，也**不要**把 §9.2 的连接数上限读成"并发写已被保护"
+  （前者限的是**连接数**，后者管的是**写入语义**，两件事）。
+- 审计日志**不落盘轮转**：只走 stdout/采集器（journald 等），本服务不管轮转；需要留存请自行配置采集与轮转。
+
+### 9.5 验收（可执行）
+
+```bash
+cd packages/server
+node --import tsx --test test/auditLog.test.ts    # 结构/等级/合并计数/否定式/flush/fail-loud
+node --import tsx --test test/auditHttp.test.ts   # 真实链路：连接/失败/封禁/两类拒绝/上限 + 路由标注
+```
+
+**反向验证**：去掉 `http.ts` 里任一 `audit.record` 调用 ⇒ 对应事件断言变红；
+把合并策略改成"超限即丢" ⇒ 「事件计数不丢」变红；把 `ROUTE_POLICY` 的一条受保护路由改成不被
+`isTokenProtectedPath` 覆盖 ⇒ `assertRoutePolicyEnforced` 抛错（该用例已单独钉住）。
+
+---
+
+## 10. 威胁模型与内网穿透指引
 
 **这条链路暴露的是 agent 级 RPC** —— 拿到连接就能在该主机的工作区里执行命令、读写文件。因此：
 
@@ -354,7 +435,7 @@ WebSocket 用真实 socket 发 `Host: evil.com` ⇒ **HTTP 403**（不是握手�
 
 ---
 
-## 10. 明确不提供什么（不要按官方远控预期使用）
+## 11. 明确不提供什么（不要按官方远控预期使用）
 
 | 不提供                                         | 说明                                                                          |
 | ---------------------------------------------- | ----------------------------------------------------------------------------- |
@@ -367,7 +448,7 @@ WebSocket 用真实 socket 发 `Host: evil.com` ⇒ **HTTP 403**（不是握手�
 
 ---
 
-## 11. 验收（可执行命令与期望）
+## 12. 验收（可执行命令与期望）
 
 ```bash
 # 1) 构建 web 资产（开发/源码态）
@@ -389,7 +470,7 @@ curl -s -o /dev/null -w 'with-token %{http_code}\n' "http://<主机>:3030/api/se
 
 ---
 
-## 12. 未定 / 后续
+## 13. 未定 / 后续
 
 1. **完整安装包链路的端到端验证**（`scripts/build-zcode.mjs` → `zcode --web` → 手机）：本轮只验证了「源码构建的 web 资产 + packages/server 入口 + 令牌 + 局域网可达」这一条；整包构建（含运行时 node_modules 复制与 TUI 运行时 stage）未实跑，需要单独一轮。
 2. **二维码 / 一键分享**：需评估新依赖（§3）。
