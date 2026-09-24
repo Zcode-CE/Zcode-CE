@@ -54,6 +54,9 @@
 - **CI 新增的两个 job 未在真实 runner 上跑过**：无头服务器发行包的构建/挂载 job、远程资产上传 job 都只在本地核对（release 流水线**其余** job 长期在真实 runner 上运行，不受这条影响）。
 - **Docker / WSL 作为远程工作区承载未实测**（本批只在 Linux 上验证）。
 - **本说明不含任何性能数字**：没有实测的性能结论一律不写。
+- **平台：正式支持 Linux-x64**。macOS / Windows **未实测**，且当前包内的原生载荷**只含 Linux**（node-pty 等）⇒ **不承诺可用**；终端功能需要对应平台的原生载荷。
+- **⚠️ Windows 上不要用 kill -HUP**：令牌轮换依赖 SIGHUP，而 Windows 没有这个信号、**对进程发 SIGHUP 会终止进程** ⇒ 那不是重载令牌，是**把服务杀掉**。Windows 下改完令牌文件请**重启服务**。
+- **手机 + 桌面同时操作同一会话的并发写语义没有任何实测**：CommandInbox 的串行 admission 是**设计约定**，不是并发写的验收结论；连接数上限（默认 32）只防资源耗尽，**不要读作「并发写已被保护」**。
 
 ## 已知限制
 
@@ -115,6 +118,9 @@
 - **The two new CI jobs have not run on a real runner**: the headless-server package build/attach job and the remote-asset upload job were verified locally only (the **rest** of the release workflow runs on real runners and is unaffected).
 - **Docker / WSL as remote-workspace hosts untested** (this batch was verified on Linux only).
 - **No performance numbers are quoted**: nothing without a measurement is written here.
+- **Platform: Linux-x64 is the supported one.** macOS / Windows are **not tested**, and the native payloads inside the bundle are **Linux-only** (node-pty and friends), so **do not expect them to work**; the terminal feature needs that platform's native payload.
+- **On Windows, do not use kill -HUP**: token rotation relies on SIGHUP, which Windows does not have — and sending SIGHUP **terminates the process**, so it is not a reload, it is killing your server. On Windows, restart the service after editing the token file.
+- **Concurrent writes to one session from a phone and a desktop at the same time have no measurements at all**: the CommandInbox serial admission is a **design convention**, not a verification result for concurrent writes; the connection cap (default 32) only prevents resource exhaustion and must **not** be read as "concurrent writes are protected".
 
 ## Known limitations
 
