@@ -43,8 +43,14 @@ const ELEVATION_PATTERN = new RegExp(`(?:^|[\\n;&|(])\\s*(?:${ELEVATION_COMMANDS
 /**
  * 除制表符与换行符之外的全部 C0 控制字符 + DEL。
  * 归一化已把 CR 折成 LF，所以这里连 CR 一起拒绝：留下任何 CR 都意味着有路径绕过了归一化。
+ *
+ * 用码点比较而不是正则：控制字符正则会被 oxlint 的 no-control-regex 标为"意外控制字符"，
+ * 而这里**必须**匹配它们（这正是该函数的全部职责）。码点写法也把区间意图写得更直白：
+ * C0 里放行 \t(0x09) 与 \n(0x0a)，其余（含 CR 0x0d）与 DEL(0x7f) 全拒。
  */
-const FORBIDDEN_CONTROL_CHARACTER_PATTERN = /[\u0000-\u0008\u000b-\u001f\u007f]/;
+function isForbiddenControlCodePoint(codePoint: number): boolean {
+  return codePoint <= 0x08 || (codePoint >= 0x0b && codePoint <= 0x1f) || codePoint === 0x7f;
+}
 
 export type GuidedTerminalPrivilege = "elevated" | "standard";
 
@@ -100,7 +106,11 @@ export function detectGuidedTerminalPrivilege(text: string): GuidedTerminalPrivi
 
 /** 文本是否含会破坏「只有用户回车才执行」这一不变量的控制字符。 */
 export function hasForbiddenGuidedTerminalControlCharacters(text: string): boolean {
-  return FORBIDDEN_CONTROL_CHARACTER_PATTERN.test(text);
+  for (const character of text) {
+    const codePoint = character.codePointAt(0);
+    if (codePoint !== undefined && isForbiddenControlCodePoint(codePoint)) return true;
+  }
+  return false;
 }
 
 /**

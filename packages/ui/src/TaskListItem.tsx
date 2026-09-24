@@ -481,7 +481,14 @@ export const MemoTaskItem = memo(function TaskListItem({
     ) : null;
   const taskActionGroupNode =
     fileTreeActionNode || archiveActionNode ? (
-      <span data-task-row-actions="true" className="flex shrink-0 items-center gap-0.5">
+      // 移动端触控命中：任务行的行内动作（文件树 / 归档）在粗指针下放到 44px。
+      // 这是 draft-task-row.tsx:73 那条注释所指的「其他任务行」——
+      // 草稿行嵌在整行可点区域内故意例外，任务行则是独立动作组，放大不会夺走整行点击。
+      // 只加 pointer:coarse 作用域内的类 ⇒ 桌面 1280 逐项不变；代价：任务行 28 → 44（密度换命中）。
+      <span
+        data-task-row-actions="true"
+        className="flex shrink-0 items-center gap-0.5 [@media(pointer:coarse)]:[&_button]:min-h-11 [@media(pointer:coarse)]:[&_button]:min-w-11"
+      >
         {fileTreeActionNode}
         {archiveActionNode}
       </span>

@@ -1139,7 +1139,10 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
               </ControlHintTooltip>
             ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          {/* 侧栏任务区工具条的动作组（新建分组 / 排序筛选 / 归档任务视图切换）。
+              移动端触控命中：粗指针下把组内按钮放到 44px（同 WorkspaceSidebarItem.tsx:929 的机制）。
+              只加 pointer:coarse 作用域内的类 ⇒ 桌面 1280 逐项不变。 */}
+          <div className="flex shrink-0 items-center gap-1 [@media(pointer:coarse)]:[&_button]:min-h-11 [@media(pointer:coarse)]:[&_button]:min-w-11">
             {taskViewMode === "grouped" ? (
               <ControlHintTooltip
                 title={workspaceReadOnlyReason ?? intl.formatMessage({ id: "taskGroup.newGroup" })}
