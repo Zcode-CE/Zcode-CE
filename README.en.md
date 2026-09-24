@@ -60,6 +60,8 @@ The official distribution ships the following capabilities without their source.
 
 For every capability this build does not provide, and why, see [Differences from the official distribution](docs/development/official-diff.md).
 
+**The CLI/Web distribution currently supports Linux-x64**: Windows / macOS need a per-target build plus that platform's native payloads and a terminal backend (conpty), and Windows needs an alternative to `SIGHUP` for token rotation. See the [headless server docs](docs/operations/headless-server.md) for the support boundary (cross-platform is out of scope for this release).
+
 ## Install
 
 Download the installer for your platform from [Releases](https://github.com/Zcode-CE/Zcode-CE/releases).

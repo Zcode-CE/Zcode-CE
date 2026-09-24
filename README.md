@@ -59,6 +59,8 @@ ZCode-CE 基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0�
 
 其余未提供的能力及其原因见[与官方发行版的差异](docs/development/official-diff.md)。
 
+**CLI/Web 发行包目前支持 Linux-x64**：Windows / macOS 需按目标平台构建并补齐原生载荷与终端后端（conpty），另需为 Windows 提供令牌轮换的替代通道（Windows 没有 `SIGHUP`）。支持边界见[无头服务器文档](docs/operations/headless-server.md)（跨平台不在本版范围）。
+
 ## 安装
 
 从 [Releases](https://github.com/Zcode-CE/Zcode-CE/releases) 下载对应平台的安装包。
