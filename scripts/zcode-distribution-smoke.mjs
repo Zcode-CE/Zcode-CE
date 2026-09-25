@@ -137,26 +137,34 @@ try {
   assert.equal(terminalExit, undefined, screen);
   assert.doesNotMatch(screen, /Cannot find (?:module|package)|ERR_MODULE_NOT_FOUND/);
 
-  // 终止 TUI：用**真信号**，不要往 pty 里写 \u0003。
+  // 终止 TUI：用真信号，不要往 pty 里写 \u0003。
   //
-  // 为什么不能用 \u0003（实测，本仓踩过：CI 上 flaky，同一产物两次结果不同）：
-  // pty 里写入 0x03 的落点取决于**当时是否已进入 raw mode**，而这是一个竞态：
-  //   · 还没设 raw mode ⇒ line discipline 的 ISIG 把它转成**真 SIGINT**
-  //     ⇒ OpenTUI 的 exitSignals 里有 SIGINT ⇒ exitHandler 直接 destroy ⇒ 退出码 130（不是 0）；
-  //   · 已设 raw mode ⇒ ISIG 关闭 ⇒ 它变成普通字节，而 TUI 的 useKeyboard 只处理按键事件，
-  //     实测**收不到** ⇒ 进程**根本不退出**（探针 5/5 超时）。
-  // 实测退出码分布（同一产物，就绪后等待不同时长再发 \u0003）：
-  //   0ms→[0,0,0,0,130]  500ms→[0,0,0,0,0]  1000ms→[0,0,130,0,0]
-  //   2000ms→[130,0,0,130,130]  5000ms→[130,130,0,130,130]
-  // ⇒ 等得越久越容易 130（信号路径），再久则挂死（raw 路径）⇒ 这个手段**本质上不可靠**。
+  // 为什么不能用 \u0003（实测：本仓 CI 上 flaky，同一产物两次结果不同）：
+  // 0x03 的落点由 tty 行规程的 ISIG 决定（翻转点约 1.0–1.2s，且不确定）：
+  //   · ISIG 生效 ⇒ 它是**真 SIGINT** ⇒ 被 apps/zcode-cli/packages/cli/src/shutdown.ts:8 的
+  //     SIGINT: 130 映射成退出码 130（不是 0）；
+  //   · ISIG 关闭 ⇒ 它是普通字节，而按键处理实测收不到 ⇒ 进程不退出。
+  // 更关键的是**两次 \u0003 的竞态**（这才是 flaky 的真身）：
+  //   第 1 个被 once 监听消费并开始**异步关机**；第 2 个若在 unregister 之后到达 ⇒ 没有 JS 监听
+  //   ⇒ 进程被**裸信号**杀死。而 node-pty 对裸信号死亡报的是 exitCode=0 / signal=<n>
+  //   （实测：kill SIGTERM ⇒ {exitCode:0, signal:15}）⇒ **原来的 assert.equal(exitCode, 0)
+  //   在"被信号杀死"时也会通过** —— 它自称验"键盘优雅退出(0)"，实际让它通过的是信号致死。
+  //   （此段归因与校准由 .reverse/124-smoke-timing/FINDINGS.md 的真终端模拟器实验给出；
+  //    早先"Ctrl-C 落在启动屏"与"两屏交替"两种解释都已被该实验推翻：
+  //    启动屏文案在 ≥1605ms 消失且不再回来，两屏是先后切换、不共存；
+  //    EmptyTranscriptLogo 被两个屏幕共用且带逐帧动画，在原始字节流里看起来像"共存"。）
   //
-  // 本步骤要证明的是「解包产物里的 TUI 能被正常终止、不挂死、无残留」——
-  // 用真信号可以**确定性地**证明这一点（实测 SIGTERM ⇒ 3/3 稳定 143，SIGINT ⇒ 3/3 稳定 130）。
-  // 「键盘退出链路」不在这里验：在 pty 上模拟按键无法可靠复现（见上：raw mode 竞态），
-  // 在这里测只会得到一个 flaky 的假信号。它的判定逻辑（两次 Ctrl-C 才确认退出）
-  // 是纯函数 resolveCtrlCExitIntent（apps/zcode-cli/packages/tui/src/app-keyboard-helpers.ts），
-  // 由 apps/zcode-cli/packages/tui/test/ctrlCExitIntent.test.ts 覆盖 —— 那里能确定性复现，
-  // 且不依赖 pty/raw mode 的时序。
+  // 本步骤要证明的是「解包产物里的 TUI 能被干净终止、不挂死、无残留」——
+  // 用真信号可以确定性地证明这一点（实测 SIGTERM ⇒ 143 稳定 15/15，无抖动）。
+  // ⚠️ 代价（不掩饰）：这里**不再验证"真实按键能否穿过 pty 到达应用层并优雅退出"**。
+  // 那条在 pty 上不可达（即使 stty -isig 强制关行规程，主界面的
+  // "Press Ctrl-C again to exit." 提示 5/5 从未出现）。判定逻辑由纯函数测试覆盖
+  // （apps/zcode-cli/packages/tui/test/ctrlCExitIntent.test.ts），但"按键送达"这一环
+  // **当前没有端到端覆盖** —— 要补，得在不经 pty 行规程的层面喂按键事件。
+  //
+  // ⚠️ 平台前置：143 = 128 + SIGTERM(15) 是 POSIX 语义。本步骤只在 ubuntu-latest 上跑
+  // （见 .github/workflows/release.yml 的 headless server package job），因此成立；
+  // 在 Windows 上直接跑这个脚本会因信号语义不同而失败。
   process.kill(terminal.pid, "SIGTERM");
   const tuiExit = await Promise.race([
     tuiExited,
