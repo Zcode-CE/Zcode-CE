@@ -299,7 +299,11 @@ staging 根下也不存在 `install.sh` / `latest.json`；
 
 ```bash
 pnpm build:zcode --base-url <依赖托管基址>            # 1) 构建
-node scripts/zcode-distribution-smoke.mjs dist/zcode/releases/*.tar.gz
+# 2) smoke：路径必须含 <版本>/ 这一层。`releases/*.tar.gz` 少一层 ⇒ 匹配不到（shell 把字面量
+#    原样传给 tar ⇒ status 2）；`releases/*/*.tar.gz` 会连历史版本一起匹配 ⇒ smoke 只读 argv[2]，
+#    且 glob 按字典序 ⇒ 可能"测旧版、发新版"。CI 里由 build 步骤输出精确路径，这里手工跑同理。
+VERSION="$(node -p "require('./package.json').version")"
+node scripts/zcode-distribution-smoke.mjs "dist/zcode/releases/$VERSION/zcode-$VERSION.tar.gz"
 ```
 
 发布到 CDN（让 `install.sh` 的布局成立；机制与缓存头口径见

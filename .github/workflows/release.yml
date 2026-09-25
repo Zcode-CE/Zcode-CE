@@ -367,20 +367,30 @@ jobs:
           fi
           node scripts/build-zcode.mjs --base-url "$ZCODE_DIST_BASE_URL"
           echo "packaged=true" >> "$GITHUB_OUTPUT"
+          # 把**本次构建产出的精确路径**输出给后续步骤。
+          # 为什么不在后续步骤里用 dist/zcode/releases/*.tar.gz 这类 glob：releases/ 下是
+          # releases/<版本>/<文件> 两层，少写一层会匹配不到（shell 把字面量原样传给 tar ⇒ status 2）；
+          # 而补成 releases/*/*.tar.gz 又会匹配到**历史版本**（本地/CI 缓存里可能并存 ce.2 与 ce.3）
+          # ⇒ smoke 只读 argv[2] ⇒ 只测第一个，且 glob 按字典序 ⇒ 可能"测旧版、发新版"。
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "tarball=dist/zcode/releases/$VERSION/zcode-$VERSION.tar.gz" >> "$GITHUB_OUTPUT"
+          echo "sha256=dist/zcode/releases/$VERSION/sha256.txt" >> "$GITHUB_OUTPUT"
 
       # 打到最终消费点：smoke 在隔离目录里解包并真跑 TUI 与 --web 面板。
+      # 用 build 步骤输出的**精确路径**，不要用 glob（理由见 build 步骤里的注释）。
       - name: Smoke test unpacked package
         if: steps.build_package.outputs.packaged == 'true'
-        run: node scripts/zcode-distribution-smoke.mjs dist/zcode/releases/*.tar.gz
+        run: node scripts/zcode-distribution-smoke.mjs "${{ steps.build_package.outputs.tarball }}"
 
       - name: Upload package artifact
         if: steps.build_package.outputs.packaged == 'true'
         uses: actions/upload-artifact@v6
         with:
           name: zcode-headless-server
+          # 同上：用精确路径。`path:` 不是 shell，但支持 ${{ }} 表达式。
           path: |
-            dist/zcode/releases/*.tar.gz
-            dist/zcode/releases/sha256.txt
+            ${{ steps.build_package.outputs.tarball }}
+            ${{ steps.build_package.outputs.sha256 }}
           if-no-files-found: warn
           retention-days: 30
 
@@ -392,7 +402,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "${{ github.ref_name }}" \
-            dist/zcode/releases/*.tar.gz dist/zcode/releases/sha256.txt \
+            "${{ steps.build_package.outputs.tarball }}" "${{ steps.build_package.outputs.sha256 }}" \
             --clobber --repo "${{ github.repository }}"
 
       # npm 发布（zcode-ce）。
