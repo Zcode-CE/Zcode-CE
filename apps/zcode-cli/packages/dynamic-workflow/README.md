@@ -134,10 +134,19 @@ diagnostics/schemas/graph output, implement until green.
   stdlib `.d.ts` closure (`lib.es2022.d.ts` and its `/// <reference lib>` chain)
   is embedded into `src/compiler/libs.generated.ts` by `scripts/generate-libs.mjs`.
   That file is gitignored and regenerated automatically whenever the installed
-  `typescript` version changes (the generator is chained into `build`,
-  `typecheck`, `test`, and `coverage`; it exits fast when already current). This
-  keeps dev and the bundled/SEA CLI identical: with no fallback to disk, a missing
-  lib fails package tests too.
+  `typescript` version changes; the generator exits fast when already current.
+
+  `compile.ts` imports it as `./libs.generated.js` (the ESM/TS convention; tsx maps
+  that back to the `.ts`), so **the file must exist before anything imports the
+  compiler**, and it is not in git. The generator is chained into this package's own
+  `build` / `charts` / `typecheck` scripts, and — because CI's `pnpm test` runs with
+  no `apps/zcode-cli` build products at all — into `scripts/run-tests.mjs`
+  (`TEST_PACKAGE_GENERATORS`) as well. Upstream's README claimed `test` and
+  `coverage` chained it; neither script ever existed, which is how this reached CI
+  red (run 36136866942).
+
+  This keeps dev and the bundled/SEA CLI identical: with no fallback to disk, a
+  missing lib fails package tests too.
 
 ## Site identity
 

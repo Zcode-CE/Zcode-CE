@@ -33,6 +33,17 @@
 **本地复刻 CI 时必须先移走这些 dist**，否则「本机构建过」会掩盖这条链路的失败
 （`ERR_MODULE_NOT_FOUND`）—— 见 `docs/development/local-setup.md`。
 
+**同一个「无产物」前提还有第二种失败形态：包内相对导入指向被 gitignore 的生成文件。**
+`@zcode/dynamic-workflow` 的 `src/compiler/compile.ts` 导入 `./libs.generated.js`，
+而该文件只由本包的 `scripts/generate-libs.mjs` 产出（`.ts` 形态、被 `.gitignore` 忽略）。
+它在干净检出里从不存在 ⇒ 该包与依赖它的 `core` / `bootstrap` 测试在 ESM link 阶段
+直接 `ERR_MODULE_NOT_FOUND`（CI run 36136866942）。这不是 `zcodeSourceResolver.mjs` 的缺口：
+那个钩子只重写 `@zcode/*` 的**包解析**，而这是**包内相对导入**；且 tsx 本来就会把
+`./x.js` 映射到同名 `x.ts`，只是**目标文件必须存在**。
+因此 `scripts/run-tests.mjs` 用 `TEST_PACKAGE_GENERATORS` 登记「跑测试前必须先跑的生成脚本」，
+只对登记过的包执行其自身的生成脚本（幂等、实测 0.02s、不跑 tsc）。
+**新增「源码 import 一个被 gitignore 的生成文件」时，必须同时在该表登记它的生成脚本。**
+
 **刻意不跑 `pnpm licenses:check`**：它比对的平台包集合与 runner 平台相关，
 在 CI 环境会因平台差异产生与改动无关的失败。
 

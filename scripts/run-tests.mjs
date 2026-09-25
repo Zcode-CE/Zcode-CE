@@ -110,6 +110,59 @@ function needsZcodeSourceResolver(packageDir) {
   return packageDir.startsWith("apps/zcode-cli/");
 }
 
+/**
+ * 测试前必须先生成的包内产物（登记制，勿自动发现 —— 理由同 TEST_PACKAGES）。
+ *
+ * 为什么需要它（CI run 36136866942 的根因）：@zcode/dynamic-workflow 的
+ * src/compiler/compile.ts 以相对路径 `./libs.generated.js` 导入同目录的生成文件，
+ * 而该文件只由本包的 scripts/generate-libs.mjs 产出（.ts 形态，且被 .gitignore 忽略）。
+ * 根 package.json 的 typecheck 工程列表不含 apps/zcode-cli ⇒ 干净检出里它从不存在
+ * ⇒ 测试在 ESM link 阶段直接 ERR_MODULE_NOT_FOUND。
+ *
+ * 实测否掉了三条看似更近的修法（勿回退到它们）：
+ * - 不是 tsx 的映射缺口：tsx 本来就把 `./x.js` 映射到同名 `x.ts`，但只在目标文件存在时
+ *   才成立。干净检出里补上 libs.generated.ts 后同一条命令即通过（实测 3/3）。
+ *   所以缺的不是映射规则，而是这个文件本身；给 resolver 加「包内相对导入」规则等于
+ *   新造一份 tsx 已有的行为，还扩大了它的风险面。
+ * - 不是改 compile.ts 的 import：改成 `.ts` 需要 allowImportingTsExtensions，
+ *   而本包要 tsc 产出 dist，emit 与 .ts 说明符不兼容。
+ * - 不是让生成脚本额外产出 .js：产物落在 src/ 下要多一条 gitignore、与 .ts 形态重复，
+ *   且 tsc 会把 src/** 里的 .js 一并纳入编译范围。
+ *
+ * 为什么在测试入口生成，而不是加 CI 步骤：加步骤会让所有测试变慢，且掩盖
+ * 「测试依赖一个没人生成的产物」这个真问题。这里只对登记过的包跑它自己的生成脚本：
+ * 幂等（typescript 版本一致即 exit 0）、实测 0.02s、不跑 tsc，因此不构成构建成本。
+ */
+const TEST_PACKAGE_GENERATORS = new Map([
+  ["apps/zcode-cli/packages/dynamic-workflow", "scripts/generate-libs.mjs"],
+]);
+
+/**
+ * 生成前置：在任何测试进程启动之前跑完所有登记的生成脚本。
+ *
+ * 为什么必须是前置而不是「跑到那个包时再生成」：依赖是跨包的。core 与 bootstrap 的测试
+ * 经 @zcode/dynamic-workflow 的 src/index.ts 传递导入 compile.ts，而 core 在 TEST_PACKAGES 里
+ * 排在 dynamic-workflow 之前 —— 实测按包内生成时 core 仍然红（110 文件 / 2 包失败），
+ * 只有把生成提前到循环之外才对。所以这里不做「按需」优化：登记的生成脚本一共只有 0.02s。
+ *
+ * 生成失败必须立刻终止，不能带着缺失的模块去跑测试 —— 那样报出来的是
+ * ERR_MODULE_NOT_FOUND，会把「生成脚本坏了」误诊成「导入路径写错了」。
+ */
+function generateTestPrerequisites() {
+  for (const [packageDir, generator] of TEST_PACKAGE_GENERATORS) {
+    const result = spawnSync(process.execPath, [generator], {
+      cwd: join(repoRoot, packageDir),
+      stdio: "inherit",
+    });
+    if (result.status !== 0) {
+      console.error(
+        `[test] ${packageDir}: 生成脚本 ${generator} 失败（exit ${result.status}）—— 测试依赖它，终止`,
+      );
+      process.exit(1);
+    }
+  }
+}
+
 function collectTests(packageDir) {
   const testDir = join(repoRoot, packageDir, "test");
   if (!existsSync(testDir)) return [];
@@ -120,6 +173,8 @@ function collectTests(packageDir) {
 
 let totalTests = 0;
 let failedPackages = 0;
+
+generateTestPrerequisites();
 
 for (const packageDir of TEST_PACKAGES) {
   const files = collectTests(packageDir);
