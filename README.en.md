@@ -64,6 +64,8 @@ For every capability this build does not provide, and why, see [Differences from
 
 ## Install
 
+### Desktop app
+
 Download the installer for your platform from [Releases](https://github.com/Zcode-CE/Zcode-CE/releases).
 
 | Platform    | Format                                         | Notes                                                                                                                   |
@@ -74,6 +76,31 @@ Download the installer for your platform from [Releases](https://github.com/Zcod
 **Data directory**: shared with the official ZCode at `~/.zcode/v2`. Both can be installed side by side (separate install identities), but running them simultaneously is not recommended.
 
 > **About Windows signing**: the official distribution is signed with a DigiCert organization-validated (OV) certificate. As a community project we cannot obtain that class of certificate, and are applying for free open-source code signing from [SignPath Foundation](https://signpath.org/) (the certificate is issued to SignPath Foundation, not to this project). Once approved, the SmartScreen prompt goes away. See the [Code signing policy](docs/operations/code-signing-policy.md).
+
+### Headless server (CLI / Docker)
+
+Use these when you do not want the desktop app and only need the workbench running on a server, driven from a browser (phones included). They do not take over the desktop app and do not include its local capabilities (Computer Use, embedded browser).
+
+| Form                     | How                                                  | Current status                                                                                                                                                                                                                                                                                                                     |
+| ------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Docker (local build)** | `compose.yaml` + `Dockerfile` at the repository root | Available now, provided you have the source tree. This release pushes no image to any registry; you build it locally with `docker compose up -d --build`                                                                                                                                                                           |
+| **npm CLI**              | `npx zcode-ce --web`                                 | **Not published to npm yet**: the package name is fixed as `zcode-ce`, but the package does not resolve on the registry (you can confirm with `npm view zcode-ce version`) ⇒ running `npx zcode-ce` today fails. Until it is published, use the Docker form, or build the distribution yourself and run `node bin/zcode.mjs --web` |
+
+The Docker form first needs the build context `dist/zcode/` (which requires the source tree; the command is in [Headless server distribution](docs/operations/headless-server.md) §2), then:
+
+```bash
+# 1) prepare the token (compose reads .env in the same directory)
+printf "ZCODE_SERVER_TOKEN=%s\n" "$(openssl rand -hex 16)" > .env
+: > tokens.txt        # compose mounts this as the token file (append to rotate)
+
+# 2) build + start (the first run builds the image, a few minutes)
+docker compose up -d --build
+
+# 3) check it is alive (local)
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3030/   # 200
+```
+
+Volumes and backups, tokens and rotation, LAN access and the security boundary: [Headless server: Docker](docs/operations/headless-server-docker.md). Flags, secure defaults and platform support: [Headless server distribution](docs/operations/headless-server.md).
 
 Prefer to build from source or contribute? See [Setup](#setup) and [Development](#development) below.
 

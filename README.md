@@ -64,6 +64,8 @@ ZCode-CE 基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0�
 
 ## 安装
 
+### 桌面应用
+
 从 [Releases](https://github.com/Zcode-CE/Zcode-CE/releases) 下载对应平台的安装包。
 
 | 平台        | 格式                                           | 说明                                                                          |
@@ -74,6 +76,31 @@ ZCode-CE 基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0�
 **数据目录**：与官方 ZCode 共享 `~/.zcode/v2`，两者**可并存安装**（安装身份独立），但**不建议同时运行**。
 
 > **关于 Windows 签名**：官方发行版使用 DigiCert 签发的组织验证（OV）证书签名。本项目作为社区项目无法申请同类证书，正在申请 [SignPath Foundation](https://signpath.org/) 的免费开源代码签名（证书签发给 SignPath Foundation，非本项目），通过后将消除 SmartScreen 提示。详见 [Code signing policy](docs/operations/code-signing-policy.md)。
+
+### 无头服务器（CLI / Docker）
+
+不装桌面应用、只在服务器上跑工作台并用浏览器（含手机窄屏）操作时走这两条。它们不接管桌面端，也不含桌面端的本地能力（Computer Use、内嵌浏览器等）。
+
+| 形态                   | 用法                                 | 当前状态                                                                                                                                                                                                                    |
+| ---------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Docker（本地构建）** | 仓库根 `compose.yaml` + `Dockerfile` | 现在可用，前提是有仓库源码。本版不向任何 registry 推镜像，镜像由你本地 `docker compose up -d --build` 构建                                                                                                                  |
+| **npm CLI**            | `npx zcode-ce --web`                 | **尚未发布到 npm**：包名已定为 `zcode-ce`，但该包在 registry 上还取不到（用 `npm view zcode-ce version` 可自行确认）⇒ 现在执行 `npx zcode-ce` 会失败。发布前请走 Docker 形态，或自行构建分发包后 `node bin/zcode.mjs --web` |
+
+Docker 形态要先产出构建上下文 `dist/zcode/`（需要仓库源码，命令见[无头服务器发行包](docs/operations/headless-server.md) §2），然后：
+
+```bash
+# 1) 准备令牌（compose 会读同目录 .env）
+printf "ZCODE_SERVER_TOKEN=%s\n" "$(openssl rand -hex 16)" > .env
+: > tokens.txt        # compose 会把它挂成令牌文件（追加即可轮换）
+
+# 2) 构建 + 启动（首次会构建镜像，约几分钟）
+docker compose up -d --build
+
+# 3) 探活（本机）
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3030/   # 200
+```
+
+卷与备份、令牌与轮换、局域网访问、安全边界见[无头服务器：Docker](docs/operations/headless-server-docker.md)；参数、安全默认值与平台支持见[无头服务器发行包](docs/operations/headless-server.md)。
 
 想从源码构建或参与开发？见下方[初始化](#初始化)与[开发与运行](#开发与运行)。
 
