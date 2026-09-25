@@ -1,117 +1,95 @@
-<!-- 草稿：未发版，发版前删除本行 -->
-
 > 本次更新按"你能感知到的变化"组织。
 
 ## 同步上游
 
 **本版同步的上游版本**：`v3.14.3`（来源：**开源仓库**；依据：**源码比对**）。
 
-| 条目                                                    | 同步情况                                                                                                                                                                |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 工作流引擎：续跑确定性修复（重放次序）                  | **已跟进** —— 不修则确定性脚本在续跑后会**静默失败**                                                                                                                    |
-| 工作流卡片：性能与稳定性建模                            | **已跟进**                                                                                                                                                              |
-| 工作流失败语义：内容拒收可诊断                          | **已跟进** —— 否则跨版本时会把「版本不匹配」表现成一片网络抖动 + 反复重订阅                                                                                             |
-| 协议 v4：workflowRuns 扩张（op 5→7、实例上限 256→1024） | **未跟进（有意）** —— 必须整体搬运；当前跨版本互连会表现为内容拒收，见「已知限制」                                                                                      |
-| IM 机器人（上游称 Bot Channel）                         | **部分跟进** —— **入站面已实现**（`/bot/**` 独立接入：独立凭据 + 独立限流 + fail-closed）；入口与启用流程已提供且**默认关闭**；**桌面端 UI 接线未完成**，见「已知限制」 |
-| 云端 relay / 配对服务器 / 移动壳                        | **不适用** —— 实测上游开源版**也不提供**（全仓检索 0 命中）；本项目同样不引入中继                                                                                       |
+| 条目                                                    | 同步情况                                               |
+| ------------------------------------------------------- | ------------------------------------------------------ |
+| 工作流引擎：续跑确定性修复（重放次序）                  | **已跟进**                                             |
+| 工作流卡片：性能与稳定性建模                            | **已跟进**                                             |
+| 工作流失败语义：内容拒收可诊断                          | **已跟进**                                             |
+| 协议 v4：workflowRuns 扩张（op 5→7、实例上限 256→1024） | **计划下版跟进**（需整体搬运，含配套 golden 测试）     |
+| IM 机器人（上游称 Bot Channel）                         | **部分跟进** —— 入站面已实现；桌面端 UI 接线未完成     |
+| 云端 relay / 配对服务器 / 移动壳                        | **不适用** —— 上游开源版同样不提供，本项目也不引入中继 |
 
-**一处与上游不同的选择（有意偏离）**：飞书 SDK 我们钉 **1.74.0**，上游钉 **1.64.0**。
-理由：1.64.0 的两个缺陷正好落在飞书**唯一使用的那条长连接路径**上 —— 一个会**杀掉宿主进程**，一个会**静默丢事件**；两者在 1.74.0 均已修复。
+**一处与上游不同的选择（有意偏离）**：飞书 SDK 钉 `1.74.0`（上游为 `1.64.0`）—— 1.64.0 的两个缺陷正好落在飞书唯一使用的那条长连接路径上（一个会杀掉宿主进程，一个会静默丢事件），两者在 1.74.0 均已修复。
 
 ## 新增功能
 
-- **无头服务器 + 浏览器界面**：自包含发行包（服务端入口 + Agent 运行时 + Web 静态资源 + 启动器）。
-  在没有桌面环境的机器上跑 `zcode --web`，同一局域网内的手机或另一台电脑用浏览器即可操作该工作台（含手机窄屏适配）；解包后 `node bin/zcode.mjs --web` 直接起服务。
-  常用参数写入 `~/.zcode/cli/server.json`（命令行 > 环境变量 > 配置文件 > 内置默认），`--web --help` 列出全部默认值与旋钮。
-  默认只监听本机；**非回环地址必须带令牌，否则拒绝启动**。
-- **桌面端的远程控制入口**：账号区新增入口，从这里**启动/停止一个供浏览器访问的服务**，并把地址、二维码与链接交给手机或另一台电脑；对方用浏览器即可操作**这台机器上的工作台**。
-  它**不是**接管桌面端正在开的会话，桌面端已连的远端 SSH / Docker 目标也**不会**共享给浏览器。默认只监听本机，要开放到局域网需显式选择并带令牌；已有服务在跑时只接管显示、**不会重复启动**。
-- **本地 Docker 资产**：新增 `Dockerfile` 与 `compose.yaml`（glibc 基础镜像、非 root 运行、卷持久化、健康检查），以及一份 Docker 专门文档（容器内路径、卷与备份、局域网访问、令牌与轮换、glibc-only 的原因、安全边界）。
-  实测覆盖：容器内起服务、鉴权 401/200、`/ws` 拒绝、**容器内终端可用**、卷持久化、优雅停止。本版**不发布预构建镜像**，请自行 `docker build`。
-- **浏览器会话的断线恢复与版本配套校验**：浏览器客户端连服务端进程这条链路补齐了**断线恢复**与**版本配套校验** —— 手机窄屏下不再"一连就断、断了只能重开"。
-- **工作区列表不再由客户端设置决定**：可见工作区改由**服务端注册表**作为唯一真相源，客户端只做派生视图；未启动的工作区有**诚实的"未启动"状态**，不再假装已就绪。
+- **无头服务器 + 浏览器界面**：自包含发行包，在没有桌面环境的机器上跑 `zcode --web`，同一局域网内的手机或另一台电脑用浏览器即可操作该工作台；解包后 `node bin/zcode.mjs --web` 直接起服务。常用参数写入 `~/.zcode/cli/server.json`，`--web --help` 列出全部默认值与旋钮。默认只监听本机；**非回环地址必须带令牌，否则拒绝启动**。
+- **桌面端的远程控制入口**：账号区新增入口，从这里启动/停止一个供浏览器访问的服务，并把地址、二维码与链接交给手机或另一台电脑。它**不是**接管桌面端正在开的会话，桌面端已连的远端 SSH / Docker 目标也**不会**共享给浏览器。
+- **本地 Docker 资产**：新增 `Dockerfile` 与 `compose.yaml`（glibc 基础镜像、非 root 运行、卷持久化、健康检查），以及一份 Docker 专门文档。本版**不发布预构建镜像**，请自行 `docker build`。
+- **npm 包**：本版起发布 `zcode-ce`，`npx zcode-ce --web` 可直接起无头服务。
+- **浏览器会话的断线恢复与版本配套校验**：手机窄屏下不再"一连就断、断了只能重开"。
+- **工作区列表不再由客户端设置决定**：可见工作区改由**服务端注册表**作为唯一真相源；未启动的工作区有诚实的"未启动"状态，不再假装已就绪。
 - **PDF 制作能力**：随包 Node 载荷（PDFKit + FontKit，MIT），**零外部依赖**，可生成中文正文、表格与页码。
 - **MCP 可以按单个工具启停**：不想让模型看到某个工具，就在 MCP 服务器配置里写 `disabledTools`（设置页也有对应表单）。
-- **引导式授权**：命令块新增「发送到终端」——命令进入**你自己的终端**，**由你按回车**才执行，而不是替你在后台跑。
-- **远程工作区资产自建**：SSH 远程工作区的运行时资产可本地装配并端到端校验；社区 CDN 接入发布链，并新增「自定义 CDN 托管地址」（含基址语义修正：自定义地址按**字面值**作为发布根）。
+- **引导式授权**：命令块新增「发送到终端」——命令进入**你自己的终端**，**由你按回车**才执行。需要**管理员权限**的命令（装系统依赖、改系统配置、绑特权端口等）会**额外标注**；提权与回车确认都在你的终端里完成，**Agent 拿不到管理员权限，也不会替你输入密码**。
+- **远程工作区资产自建**：SSH 远程工作区的运行时资产可本地装配并端到端校验；新增「自定义 CDN 托管地址」。
 
 ## 体验优化
 
-- **手机窄屏**：修复主内容区被裁切、设置行错位、头部重叠、断线覆盖层挡住交互、键盘遮挡输入；扩大输入区与侧栏的可点区域；状态浮层不再压住正文；命令面板与触屏提示贴边；工具行展开在触屏上有可发现的入口且内容可读。
-- **触屏可达性**：补齐原先只有 hover 才能触发的入口（"切换终端"移入 ⋯ 菜单、消息操作在触屏上常显、移动 Web 可用"复制全文"，并覆盖剪贴板回退路径与失败提示）。
+- **手机窄屏**：修复主内容区被裁切、设置行错位、头部重叠、断线覆盖层挡住交互、键盘遮挡输入；扩大输入区与侧栏的可点区域。
+- **触屏可达性**：补齐原先只有 hover 才能触发的入口（"切换终端"移入 ⋯ 菜单、消息操作在触屏上常显、移动 Web 可用"复制全文"）。
 
 ## 问题修复
 
-- **页面加载期崩溃**：打开界面时偶发白屏/渲染报错，已在客户端调用顺序上修掉。
+- **页面加载期崩溃**：打开界面时偶发白屏/渲染报错，已修。
 - **授权后永久卡在"正在重连"**：服务重启窗口只探测一次，错过一次就永不重试。
 - **未授权态不再伪装成"正在重连"**：401 与断线现在如实区分；`/api` 精确路径纳入鉴权面。
-- **局域网内无凭证即可操作本机工作台**：本地 Web 服务此前默认不设防，同一局域网内的任何人都能拿到一个权限**高于**普通客户端的凭据。现在默认只监听本机；要对局域网开放必须显式指定地址并带令牌。
-- **上传自检的假失败**：网络抖动误判为失败、以及把"对象确实不可取"当成同一件事；发布根配置写错时改为**上传前**给出可行动的报错。
+- **局域网内无凭证即可操作本机工作台**：本地 Web 服务此前默认不设防。现在默认只监听本机；要对局域网开放必须显式指定地址并带令牌。
+- **上传自检的假失败**：网络抖动误判为失败；发布根配置写错时改为**上传前**给出可行动的报错。
 - **发行包内的服务端打包缺陷**：解包后起服务会抛 `Dynamic require of "fs" is not supported`，已修。
 
 ## 升级须知（行为变化）
 
-- **新增三个服务端环境变量**（都可以不设，默认值在安全侧）：
-  - `ZCODE_SERVER_TRUSTED_ORIGINS`：跨源白名单（逗号分隔）。**只**在前端与后端不同源时才需要，**同源判定恒优先于它**；不登记 ⇒ 跨源请求被拒；登记过宽（例如你不控制的域名）⇒ 等于给别的站点开一道门；空项/非法项会被丢弃并在启动日志说明。若要按域名访问（含反代），还要登记 `ZCODE_SERVER_TRUSTED_HOSTS` —— **两道防线，缺一不可**。
-  - `ZCODE_SERVER_CSP`：缺省 = **report-only**（只上报、不拦截）；`off` = 完全不发；`enforce` = 真正拦截。**拼错的值不会静默升级成 enforce**，而是回落到 report-only 并在启动日志说明。
-  - `ZCODE_SERVER_HSTS`：**只在 https 且显式开启**时才发；一旦下发**无法回撤**（浏览器从此只走 https），因此默认关闭。
+- **新增三个服务端环境变量**（都可选，默认值在安全侧）：
+  - `ZCODE_SERVER_TRUSTED_ORIGINS`：跨源白名单（逗号分隔）。**只**在前端与后端不同源时才需要，**同源判定恒优先于它**；不登记 ⇒ 跨源请求被拒。按域名访问（含反代）还需登记 `ZCODE_SERVER_TRUSTED_HOSTS` —— **两道防线，缺一不可**。
+  - `ZCODE_SERVER_CSP`：缺省 = **report-only**（只上报、不拦截）；`off` = 完全不发；`enforce` = 真正拦截。拼错的值不会静默升级成 enforce，而是回落到 report-only 并在启动日志说明。
+  - `ZCODE_SERVER_HSTS`：**只在 https 且显式开启**时才发；一旦下发**无法回撤**，因此默认关闭。
 - **跨站请求现在会被拒绝（403）**：带跨站 `Origin` 的请求（含跨站 WebSocket 升级）会被拒，并带 `X-ZCode-Cross-Site-Rejected: 1` 响应头。
-- **反代后面必须登记你自己的域名**：新增 Host 白名单（默认只放行回环与本机网卡地址），否则 DNS 重绑定仍能绕过来源校验。用域名访问却在 `ZCODE_SERVER_TRUSTED_HOSTS` 里没登记，你自己也会收到 403 并带 `X-ZCode-Host-Rejected: 1` —— 这条容易在升级后第一次配反代时踩到，**请把域名登记进去**。
-- **鉴权失败开始限流**：同一来源连续 10 次鉴权失败 ⇒ 封禁 15 分钟（返回 403，不是 429）。判断来源时只采信已登记可信代理送来的 `X-Forwarded-For`，未登记 `ZCODE_SERVER_TRUSTED_PROXIES` 时一律按连接来源地址计。
+- **反代后面必须登记你自己的域名**：新增 Host 白名单（默认只放行回环与本机网卡地址）。用域名访问却未登记会收到 403 并带 `X-ZCode-Host-Rejected: 1` —— 升级后第一次配反代时容易踩到。
+- **鉴权失败开始限流**：同一来源连续 10 次鉴权失败 ⇒ 封禁 15 分钟（返回 403，不是 429）。
 - **新增审计日志**：连接建立/断开、鉴权失败、Host 与来源拒绝、令牌重载、并发超限都会写一行结构化日志（`audit:` 前缀）。日志不写令牌、cookie、完整查询串与请求体。
-- **并发连接有上限**：同时活跃的 WebSocket 连接最多 32 条，超限时**拒绝新连接**（已有连接不受影响）。
-- **回环绑定不再等于可以关令牌**：以前只有绑非回环才强制令牌；现在只要给出"**会被外部访问**"的信号 —— 登记了可信代理 `ZCODE_SERVER_TRUSTED_PROXIES`，或登记了默认集合之外的主机名 `ZCODE_SERVER_TRUSTED_HOSTS` —— **回环绑定下未配令牌也会拒绝启动**。
-  原因：把回环端口放到同机反向代理或隧道后面时，请求看起来来自本机，令牌关卡会被绕过。只登记跨源来源 `ZCODE_SERVER_TRUSTED_ORIGINS` 时**只告警、不拒绝启动**。判据读**解析后的生效项**：写错的非法值会被丢弃，不算信号（打错字不该让服务起不来）。
-- **分发入口的同一组合在起进程之前就被拒绝**：`zcode --web` 以前会先打印启动横幅、再由服务端报错；现在这类组合在**启动前**就拦下，不会再出现"先看到 running、再被二段错误打断"。
-- **"缺 Origin 就放行"是有意的取舍**：非浏览器客户端（curl、脚本、CLI）不带 `Origin`，一律放行。因此来源校验**不覆盖非浏览器客户端**；DNS 重绑定由 Host 白名单单独挡（见上一条）。反过来，**用 HTTP/1.1 但完全不发 `Host` 的手工探针会被拒绝**（curl 默认会带，不受影响）。
-- **「Web 控制」与「IM 机器人」是两条不同的路径，不要混为一谈**：
-  「**Web 控制**」用浏览器完整操作这台机器上的工作台（扫码 / 打开链接即可），**不经过任何第三方**，是默认开启的那条；
-  「**IM 机器人**」是让聊天机器人代你操作工作区，**需要你自己的外部账号**（微信 / 飞书 / Telegram 等）、**数据会经过第三方平台**，因此**默认关闭**，启用前会给出提醒。
-  本项目**不引入中继**：这两条都不依赖任何 ZCode 云服务。
+- **并发连接有上限**：同时活跃的 WebSocket 连接最多 32 条，超限时拒绝新连接。
+- **回环绑定不再等于可以关令牌**：只要给出"会被外部访问"的信号 —— 登记了可信代理 `ZCODE_SERVER_TRUSTED_PROXIES`，或登记了默认集合之外的主机名 `ZCODE_SERVER_TRUSTED_HOSTS` —— **回环绑定下未配令牌也会拒绝启动**。只登记跨源来源 `ZCODE_SERVER_TRUSTED_ORIGINS` 时只告警、不拒绝启动。
+- **分发入口的同一组合在起进程之前就被拒绝**：不会再出现"先看到 running、再被二段错误打断"。
+- **"缺 Origin 就放行"是有意的取舍**：非浏览器客户端（curl、脚本、CLI）不带 `Origin`，一律放行。因此来源校验**不覆盖非浏览器客户端**；DNS 重绑定由 Host 白名单单独挡。
+- **「Web 控制」与「IM 机器人」是两条不同的路径，不要混为一谈**：「**Web 控制**」用浏览器完整操作这台机器上的工作台，**不经过任何第三方**，默认开启；「**IM 机器人**」需要你自己的外部账号（微信 / 飞书 / Telegram 等）、**数据会经过第三方平台**，因此**默认关闭**。本项目**不引入中继**。
 - **手机窄屏上部分入口换了位置**（例如"切换终端"进入 ⋯ 菜单）——不是功能删除，是为触屏可达。
 
 ## 已知限制
 
 - **CLI 独立发行包平台支持：正式支持 Linux-x64（glibc）**。该发行包的 macOS / Windows 构建未实测，且包内原生载荷只含 Linux ⇒ **不承诺可用**。
-- **Alpine / musl 不在支持范围**；实测行为是：服务与面板**可以运行**（npm 形态，需自带 **Node ≥24** 的 musl 构建；Alpine 3.24 的 `apk add nodejs` 实测 24.18.1 即满足），**终端功能不可用** —— 会在创建终端时给出明确提示，而不是崩溃。
-- **第三方许可材料：随包通知里仍有部分组件的出版方材料不全** —— 我们按「**发布者声明 + 标准条款 + 已记录的出处**」逐条登记，未闭环的条目在随包的 `THIRD-PARTY-NOTICES.md` 与 `third-party/README.md` 里如实列出（**登记了不等于材料齐全**）。
-  顺带修正一处署名：`brotli` 内嵌的 `google/brotli` 解码器是 **Apache-2.0**，此前被我们记为 MIT；本版已补上其版权与许可声明。
+- **Alpine / musl 不在支持范围**：服务与面板**可以运行**（npm 形态，需自带 **Node ≥24** 的 musl 构建），**终端功能不可用** —— 会在创建终端时给出明确提示，而不是崩溃。
+- **第三方许可材料：随包通知里仍有部分组件的出版方材料不全** —— 未闭环的条目在随包的 `THIRD-PARTY-NOTICES.md` 与 `third-party/README.md` 里如实列出（**登记了不等于材料齐全**）。
 - **远程控制（桌面端）本次只到「开服务 + 连接信息」**：已连设备列表与逐设备断开、端口与监听范围选择、令牌轮换入口**尚未提供**（排后续批次）。
-- **桌面端安装包因此增大约 66 MB**（服务端入口 7.2 MB + Web 界面资源 59 MB，已排除 source map）—— 手机扫码打开的就是这份 Web 界面，必须随包。
-- **IM 机器人（Chat bot）默认关闭，且桌面端 UI 接线本版未完成**：入站面（`/bot/**`）已实现并带独立凭据、独立限流与 fail-closed；缺的是把桌面端配置界面接到该入站面。入口与启用流程已提供（点了会**如实显示**"已请求启用，等待服务端就绪"，**不谎报已启用**）。
-  启用后消息会经**你选择的那家平台**（Telegram / 微信 / 飞书 / Lark）的服务器，**不经过智谱服务器**；需要你自己的外部账号。
-- **协议 v4 的 workflowRuns 扩张未跟进**：跨版本互连时可能表现为「内容被拒收」而非静默错乱 —— 这是刻意的（见「同步上游」）。
-- **npm 包尚未发布**：包名已定为 `zcode-ce`，但它在 registry 上还取不到（用 `npm view zcode-ce version` 可自行确认）⇒ 现在执行 `npx zcode-ce` 会失败。要立刻用上，请走下面的容器形态，或自行构建分发包后 `node bin/zcode.mjs --web`。发布形态已在本地预演通过（打包、安装、起服务、`publish --dry-run`），**但尚未真正 publish**。
-- **容器形态只能管理挂载进去的目录**（这是容器边界本身，不是缺陷）：需要主机全盘访问时，用 npm 形态直接在主机上运行。
-- **Docker 镜像约 801 MB**（基础镜像 `node:24-slim` 330 MB + 分发包 391 MB；换 Node 版本或分发内容会变）。
+- **桌面端安装包因此增大约 66 MB**。
+- **IM 机器人默认关闭，且桌面端 UI 接线本版未完成**：入站面（`/bot/**`）已实现并带独立凭据、独立限流与 fail-closed。启用后消息会经**你选择的那家平台**的服务器，**不经过智谱服务器**。
+- **协议 v4 的 workflowRuns 扩张尚未跟进（计划下版）**：跨版本互连时可能表现为「内容被拒收」而非静默错乱。
+- **容器形态只能管理挂载进去的目录**（这是容器边界本身）：需要主机全盘访问时，用 npm 形态直接在主机上运行。
+- **Docker 镜像约 801 MB**。
 - 与上一版相同（Windows 构建未签名、Windows / macOS 未在真机做完整功能回归、Linux 桌面自动化为实验性等），本批**未新增**其他长期限制。
 
 ## 本版尚未验证
 
-- **真机软键盘（IME）未验证**：窄屏键盘避让只在受控环境下核对，未在真机 IME 上验证。
+- **真机软键盘（IME）未验证**：窄屏键盘避让只在受控环境下核对。
 - **手机 + 桌面同时连同一会话的并发语义未测**：两端能各自连接，但同一会话被两端同时操作的行为**没有测**，不要依赖。
 - **浏览器级"跨源页面 + 跨源 fetch"未做**：WS 侧已有等价覆盖与测试，但"跨源网页用 fetch 打服务"这条路径未实测。
-- **没有沙箱**：令牌泄露（或加固被绕过）意味着在宿主上以服务进程权限执行命令、读写工作区外文件（含 `~/.zcode/v2` 里的 provider 凭据）；工作区之外没有第二道边界。
-- **无令牌吊销**：令牌是静态共享密钥、没有设备维度；轮换令牌会让**所有**已连设备重连（设备级撤销属后续批次）。
+- **没有沙箱**：令牌泄露意味着在宿主上以服务进程权限执行命令、读写工作区外文件（含 `~/.zcode/v2` 里的 provider 凭据）。
+- **无令牌吊销**：令牌是静态共享密钥、没有设备维度；轮换令牌会让**所有**已连设备重连。
 - **反代配置未实测**：文档里的 Caddy / nginx 最小配置需要在你自己有证书的环境里自测。
 - **"先被扫描、再被封"的过程未复现**：限流在受控条件下验证过，但没有在真实公网扫描下跑过。
-- **CI 新增的两个 job 未在真实 runner 上跑过**：无头服务器发行包的构建/挂载 job、远程资产上传 job 都只在本地核对（release 流水线**其余** job 长期在真实 runner 上运行，不受这条影响）。
-- **WSL 作为远程工作区承载未实测**：需要 Windows 客户端或 `windows-latest` CI，且需启用 WSL2；**Docker 承载已实测通过**（真实 Docker 29.8.0、rootless、cgroup v2，容器用默认参数，含在容器内启动服务并完成握手）。
-- **musl 主机（如 Alpine）上的本机运行：终端不可用，服务与面板可用（实测）**：
-  起服务、连面板、`/api/server-info` 鉴权、`/ws` 无令牌拒绝都已实测通过；**创建终端会被拦断并给出可操作提示**。
-  拦断取代了此前的**进程级崩溃**：在 musl 上原生 `fork()` 会 **Segmentation fault（exit 139）并杀掉整个进程**，该崩溃不可捕获 —— 这也是为什么拦断发生在**装载原生模块之前**，而不是"装不上再说"。
-- **远程工作区在 musl 远端上不可用（实测）**：载荷是 glibc 构建（`node` 报 `cannot execute: required file not found`，缺 `/lib64/ld-linux-x86-64.so.2`），
-  因此连接时会**在部署资产之前拦断**并给可操作原因；改用 glibc 发行版的远端镜像即可。
-- **上游同样不支持 musl**（不是本版独有的取舍）：上游 `node-pty` 没有 musl 预编译，官方发行版的资产集也只有 `platformArch` 维度、没有 `-musl` 平台类。
-- **npm 形态的 Node 下限是 `>=24`**：低于下限时可能在打印启动横幅后才失败（实测 Node 20 在导入期即失败），请先用 `node --version` 确认。
-- **⚠️ Windows 上不要用 kill -HUP**：令牌轮换依赖 SIGHUP，而 Windows 没有这个信号、**对进程发 SIGHUP 会终止进程** ⇒ 那不是重载令牌，是**把服务杀掉**。Windows 下改完令牌文件请**重启服务**。
-- **手机 + 桌面同时操作同一会话的并发写语义没有任何实测**：CommandInbox 的串行 admission 是**设计约定**，不是并发写的验收结论；连接数上限（默认 32）只防资源耗尽，**不要读作「并发写已被保护」**。
+- **WSL 作为远程工作区承载未实测**：需要 Windows 客户端或 `windows-latest` CI；**Docker 承载已实测通过**。
+- **远程工作区在 musl 远端上不可用（实测）**：载荷是 glibc 构建，连接时会**在部署资产之前拦断**并给可操作原因。
+- **上游同样不支持 musl**（不是本版独有的取舍）。
+- **npm 形态的 Node 下限是 `>=24`**：低于下限时可能在打印启动横幅后才失败，请先用 `node --version` 确认。
+- **Windows 上不要用 kill -HUP**：令牌轮换依赖 SIGHUP，而 Windows 没有这个信号、**对进程发 SIGHUP 会终止进程**。Windows 下改完令牌文件请**重启服务**。
 
 ---
 
 # English
-
-<!-- Draft: not released — delete this line before tagging. -->
 
 > This release is organised by the changes you can perceive.
 
@@ -119,81 +97,72 @@
 
 **Upstream version synced in this release**: `v3.14.3` (source: **open-source repo**; basis: **source comparison**).
 
-| Item                                                                 | Status                                                                                                                                               |
-| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workflow engine: resume determinism fix (replay order)               | **Synced** — without it, deterministic scripts **fail silently** after a resume                                                                      |
-| Workflow cards: performance/stability modelling                      | **Synced**                                                                                                                                           |
-| Workflow failure semantics: diagnosable content rejection            | **Synced** — otherwise a version mismatch surfaces as a burst of network flakiness plus repeated resubscribes                                        |
-| Protocol v4: workflowRuns expansion (5→7 ops, instance cap 256→1024) | **Not synced (deliberate)** — must move as a whole; cross-version interop currently surfaces as content rejection, see Known limitations             |
-| IM bots (upstream calls it Bot Channel)                              | **Partially synced** — entry point and enable flow shipped and **off by default**; server-side capability pending, see Known limitations             |
-| Cloud relay / pairing server / mobile shell                          | **Not applicable** — measured: the upstream open-source repo **does not provide it either** (exhaustive search, 0 hits); this project ships no relay |
+| Item                                                                 | Status                                                                                                         |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Workflow engine: resume determinism fix (replay order)               | **Synced**                                                                                                     |
+| Workflow cards: performance/stability modelling                      | **Synced**                                                                                                     |
+| Workflow failure semantics: diagnosable content rejection            | **Synced**                                                                                                     |
+| Protocol v4: workflowRuns expansion (5→7 ops, instance cap 256→1024) | **Planned for the next release** (must move as a whole, with matching golden tests)                            |
+| IM bots (upstream calls it Bot Channel)                              | **Partially synced** — inbound side implemented; desktop UI wiring not finished                                |
+| Cloud relay / pairing server / mobile shell                          | **Not applicable** — the upstream open-source repo does not provide it either, and this project ships no relay |
 
-**One deliberate divergence from upstream**: we pin the Feishu SDK at **1.74.0** while upstream pins **1.64.0**.
-Reason: two defects in 1.64.0 sit exactly on the **only long-connection path** Feishu uses — one **kills the host process**, one **silently drops events**; both are fixed in 1.74.0.
+**One deliberate divergence from upstream**: we pin the Feishu SDK at `1.74.0` (upstream pins `1.64.0`) — two defects in 1.64.0 sit exactly on the only long-connection path Feishu uses (one kills the host process, one silently drops events); both are fixed in 1.74.0.
 
 ## New features
 
-- **Headless server + browser UI**: a self-contained distribution (server entry + Agent runtime + Web static assets + launcher).
-  Run `zcode --web` on a machine **without a desktop environment** and a phone or another computer on the same LAN can drive that workbench in a browser (narrow-screen phones included); after unpacking, `node bin/zcode.mjs --web` starts the service directly.
-  Frequently used options can be written to the config file `~/.zcode/cli/server.json` (command line > environment variables > config file > built-in defaults), and `--web --help` now lists every default and knob.
-  It listens on loopback by default; a **non-loopback bind without a token refuses to start**.
-- **Remote control entry point on the desktop**: a new entry in the account area starts/stops a **service that browsers can reach**, and hands out the address, QR code and link to a phone or another computer — which then drives **the workbench on that machine** in a browser.
-  It does **not** take over sessions that are already open on the desktop, and remote SSH / Docker targets connected from the desktop are **not** shared with the browser. It listens on loopback by default; opening it to the LAN requires an explicit choice and a token. If a service is already running, the panel adopts it for display and does **not** start a second one.
-- **Local Docker assets**: a `Dockerfile` and `compose.yaml` (glibc base image, non-root, volume persistence, health check) plus a dedicated Docker document (paths inside the container, volumes and backup, LAN access, tokens and rotation, why glibc-only, security boundary).
-  Measured: service inside the container, auth 401/200, `/ws` rejection, **terminal usable inside the container**, volume persistence, graceful stop. This release **does not publish a prebuilt image** — build it yourself with `docker build`.
-- **Disconnect recovery and version compatibility checks for browser sessions**: the browser-client → server path gained **disconnect recovery** and **version compatibility checks** — on narrow screens it no longer "connects once, then dies and has to be reopened".
-- **The workspace list no longer depends on client settings**: visible workspaces now come from a **server-side registry** as the single source of truth, with the client as a derived view; a workspace that is not running shows an honest **"not started"** state instead of pretending to be ready.
+- **Headless server + browser UI**: a self-contained distribution; run `zcode --web` on a machine without a desktop environment and a phone or another computer on the same LAN can drive that workbench in a browser. After unpacking, `node bin/zcode.mjs --web` starts the service directly. Frequently used options can be written to `~/.zcode/cli/server.json`, and `--web --help` lists every default and knob. It listens on loopback by default; a **non-loopback bind without a token refuses to start**.
+- **Remote control entry point on the desktop**: a new entry in the account area starts/stops a **service that browsers can reach**, and hands out the address, QR code and link to a phone or another computer. It does **not** take over sessions already open on the desktop, and remote SSH / Docker targets connected from the desktop are **not** shared with the browser.
+- **Local Docker assets**: a `Dockerfile` and `compose.yaml` (glibc base image, non-root, volume persistence, health check) plus a dedicated Docker document. This release **does not publish a prebuilt image** — build it yourself with `docker build`.
+- **npm package**: starting with this release we publish `zcode-ce`; `npx zcode-ce --web` starts the headless service directly.
+- **Disconnect recovery and version compatibility checks for browser sessions**: on narrow screens it no longer "connects once, then dies and has to be reopened".
+- **The workspace list no longer depends on client settings**: visible workspaces now come from a **server-side registry** as the single source of truth; a workspace that is not running shows an honest **"not started"** state instead of pretending to be ready.
 - **PDF generation**: bundled Node payload (PDFKit + FontKit, MIT), **zero external dependencies** — CJK body text, tables, page numbers.
 - **Per-tool MCP toggles**: hide a single tool from the model via `disabledTools` in the MCP server config (the settings page has a form for it too).
-- **Guided authorization**: a new "send to terminal" action on command blocks — the command lands in **your** terminal and only runs when **you** press Enter.
-- **Self-hosted remote-workspace assets**: SSH remote-workspace runtime assets can be assembled locally and verified end to end; the community CDN is wired into the release pipeline, and a **custom CDN hosting address** setting was added (including a base-URL semantics fix: a custom address is used **literally** as the publish root).
+- **Guided authorization**: a new "send to terminal" action on command blocks — the command lands in **your own** terminal and only runs when **you** press Enter. Commands that need **administrator rights** (installing system dependencies, changing system configuration, binding privileged ports) are **additionally labelled**; the elevation and the Enter press both happen in your terminal, so the **agent never gains administrator rights and never types your password**.
+- **Self-hosted remote-workspace assets**: SSH remote-workspace runtime assets can be assembled locally and verified end to end; a **custom CDN hosting address** setting was added.
 
 ## Improvements
 
-- **Narrow-screen phones**: fixed main-content clipping, settings-row misalignment, header overlap, a disconnect overlay that blocked interaction, and the keyboard covering the input; enlarged the composer and sidebar tap areas; status overlays no longer cover the body text; command palette and touch hints are now flush; tool-row expansion is discoverable and readable on touch.
-- **Touch reachability**: entries that used to require hover are now reachable on phones ("switch terminal" moved into the ⋯ menu, message actions stay visible on touch, "copy full response" works on mobile web, including the clipboard fallback and a failure message).
+- **Narrow-screen phones**: fixed main-content clipping, settings-row misalignment, header overlap, a disconnect overlay that blocked interaction, and the keyboard covering the input; enlarged the composer and sidebar tap areas.
+- **Touch reachability**: entries that used to require hover are now reachable on phones ("switch terminal" moved into the ⋯ menu, message actions stay visible on touch, "copy full response" works on mobile web).
 
 ## Fixes
 
-- **Crash while a page was loading**: the interface occasionally showed a blank screen or a render error; fixed at the client call-order level.
+- **Crash while a page was loading**: the interface occasionally showed a blank screen or a render error; fixed.
 - **Stuck "reconnecting" after authorization**: the server-restart window was probed only once — one miss meant never retrying.
 - **Unauthorized state no longer masquerades as "reconnecting"**: 401 and a dropped connection are now distinguished; the exact `/api` path is inside the auth surface.
-- **Any device on the LAN could drive the local workbench without credentials**: the local Web service used to be open by default, so anyone on the same LAN could obtain a credential with **higher** privilege than a normal client. It now listens on loopback only; exposing it to the LAN requires an explicit bind address and a token.
-- **False failures in upload self-checks**: network flakiness was reported as a failure, and "object really is not retrievable" was conflated with it; a misconfigured publish root now fails **before** uploading with an actionable error.
+- **Any device on the LAN could drive the local workbench without credentials**: the local Web service used to be open by default. It now listens on loopback only; exposing it to the LAN requires an explicit bind address and a token.
+- **False failures in upload self-checks**: network flakiness was reported as a failure; a misconfigured publish root now fails **before** uploading with an actionable error.
 - **A packaging defect in the bundled server**: starting the service from an unpacked distribution used to fail with `Dynamic require of "fs" is not supported`; fixed.
 
 ## Upgrade notes (behaviour changes)
 
 - **Three new server environment variables** (all optional; defaults sit on the safe side):
-  - `ZCODE_SERVER_TRUSTED_ORIGINS`: cross-origin allowlist (comma-separated). Needed **only** when the frontend and backend are not same-origin; **the same-origin check always wins**; leaving it unset rejects cross-origin requests, and registering too much (e.g. a domain you do not control) opens a door for that site; empty/invalid entries are dropped and reported in the startup log. If you access the panel by domain (including behind a proxy), also register `ZCODE_SERVER_TRUSTED_HOSTS` — **two separate defences, both required**.
-  - `ZCODE_SERVER_CSP`: default = **report-only** (reports, does not block); `off` = send nothing; `enforce` = actually block. A **misspelled value does not silently become enforce** — it falls back to report-only and says so in the startup log.
-  - `ZCODE_SERVER_HSTS`: sent **only over https and only when explicitly enabled**; once sent it **cannot be taken back** (browsers will only use https), which is why it is off by default.
+  - `ZCODE_SERVER_TRUSTED_ORIGINS`: cross-origin allowlist (comma-separated). Needed **only** when the frontend and backend are not same-origin; **the same-origin check always wins**; leaving it unset rejects cross-origin requests. If you access the panel by domain (including behind a proxy), also register `ZCODE_SERVER_TRUSTED_HOSTS` — **two separate defences, both required**.
+  - `ZCODE_SERVER_CSP`: default = **report-only** (reports, does not block); `off` = send nothing; `enforce` = actually block. A misspelled value does not silently become enforce — it falls back to report-only and says so in the startup log.
+  - `ZCODE_SERVER_HSTS`: sent **only over https and only when explicitly enabled**; once sent it **cannot be taken back**, which is why it is off by default.
 - **Cross-site requests are now rejected (403)**: requests carrying a cross-site `Origin` (including cross-site WebSocket upgrades) are rejected with an `X-ZCode-Cross-Site-Rejected: 1` response header.
-- **Behind a reverse proxy you must register your own domain**: a new Host allowlist (by default only loopback and local interface addresses are allowed) closes the DNS-rebinding path. Accessing the panel by a domain that is not listed in `ZCODE_SERVER_TRUSTED_HOSTS` gets **your own domain rejected with 403** and an `X-ZCode-Host-Rejected: 1` header — an easy trap the first time you put a proxy in front of the service. **Register the domain.**
-- **Failed authentication is now rate limited**: 10 failed attempts in a row from one source ⇒ a 15-minute ban (returns 403, not 429). The client address is taken from `X-Forwarded-For` only when the request comes from a declared trusted proxy (`ZCODE_SERVER_TRUSTED_PROXIES`); otherwise the connection's own address is used.
+- **Behind a reverse proxy you must register your own domain**: a new Host allowlist (by default only loopback and local interface addresses are allowed). Accessing the panel by a domain that is not listed gets **your own domain rejected with 403** and an `X-ZCode-Host-Rejected: 1` header — an easy trap the first time you put a proxy in front of the service.
+- **Failed authentication is now rate limited**: 10 failed attempts in a row from one source ⇒ a 15-minute ban (returns 403, not 429).
 - **New audit log**: connection open/close, failed authentication, Host and origin rejections, token reloads, and connection-limit rejections each write one structured line (prefix `audit:`). Tokens, cookies, full query strings, and request bodies are never written.
-- **Concurrent connections are capped**: at most 32 WebSocket connections can be active at once; beyond that **new connections are rejected** (existing ones are unaffected).
-- **A loopback bind no longer means you can turn the token off**: previously only a non-loopback bind forced a token; now, as soon as you give a "this will be reachable from outside" signal — a registered trusted proxy (`ZCODE_SERVER_TRUSTED_PROXIES`) or a registered hostname outside the default set (`ZCODE_SERVER_TRUSTED_HOSTS`) — a **loopback bind without a token also refuses to start**.
-  Reason: when a loopback port is put behind an on-host reverse proxy or tunnel, requests look local and the token gate is bypassed. Registering only cross-origin sources (`ZCODE_SERVER_TRUSTED_ORIGINS`) **warns but does not refuse to start**. The judgement reads **effective entries after parsing**: malformed values are dropped and do not count as a signal (a typo should not stop the service from starting).
-- **The distribution entry point refuses the same combinations before starting the process**: `zcode --web` used to print the startup banner first and let the server report the error afterwards; these combinations are now rejected **before startup**, so you no longer see "running" followed by a second-stage failure.
-- **"No Origin ⇒ allow" is a deliberate trade-off**: non-browser clients (curl, scripts, CLI) send no `Origin` and are always allowed. The origin check therefore **does not cover non-browser clients**; DNS rebinding is blocked separately by the Host allowlist (previous item). Conversely, **a manual probe that uses HTTP/1.1 but sends no `Host` at all is rejected** (curl sends one by default, so it is unaffected).
-- **"Web control" and "IM bot" are two different paths — do not conflate them**:
-  **Web control** drives the workbench on this machine in full, from a browser (scan the code / open the link); it goes through **no third party** and is the path that is on by default.
-  An **IM bot** lets a chat bot act on the workbench for you; it **needs your own external account** (WeChat / Feishu / Telegram, …) and **your data passes through a third-party platform**, so it is **off by default** and warns you before you enable it.
-  This project ships **no relay**: neither path depends on any ZCode cloud service.
+- **Concurrent connections are capped**: at most 32 WebSocket connections can be active at once; beyond that new connections are rejected.
+- **A loopback bind no longer means you can turn the token off**: as soon as you give a "this will be reachable from outside" signal — a registered trusted proxy (`ZCODE_SERVER_TRUSTED_PROXIES`) or a registered hostname outside the default set (`ZCODE_SERVER_TRUSTED_HOSTS`) — a **loopback bind without a token also refuses to start**. Registering only cross-origin sources (`ZCODE_SERVER_TRUSTED_ORIGINS`) warns but does not refuse to start.
+- **The distribution entry point refuses the same combinations before starting the process**: you no longer see "running" followed by a second-stage failure.
+- **"No Origin ⇒ allow" is a deliberate trade-off**: non-browser clients (curl, scripts, CLI) send no `Origin` and are always allowed. The origin check therefore **does not cover non-browser clients**; DNS rebinding is blocked separately by the Host allowlist.
+- **"Web control" and "IM bot" are two different paths — do not conflate them**: **Web control** drives the workbench in full from a browser, goes through **no third party**, and is on by default. An **IM bot** needs your own external account (WeChat / Feishu / Telegram, …) and **your data passes through a third-party platform**, so it is **off by default**. This project ships **no relay**.
 - **Some entries moved on narrow screens** (e.g. "switch terminal" into the ⋯ menu) — not a removal, but touch reachability.
 
 ## Known limitations
 
 - **Platform support for the standalone CLI distribution: Linux-x64 (glibc).** macOS / Windows builds of that distribution are untested and its native payloads are Linux-only, so they are **not promised to work**.
-- **Alpine / musl is outside the supported set.** Measured behaviour: the service and the panel do run (npm form, with a musl build of **Node >= 24** — on Alpine 3.24 `apk add nodejs` yields 24.18.1, which satisfies it), while the **terminal is unavailable** and is refused with an actionable message instead of crashing.
-- **Third-party licence material: some bundled components still lack publisher material** — every such entry is recorded against "**publisher declaration + standard terms + recorded provenance**", and the ones that are not closed are listed honestly in the shipped `THIRD-PARTY-NOTICES.md` and `third-party/README.md` (**being recorded is not a claim that the material is complete**).
-  One attribution fix in the same pass: the `google/brotli` decoder vendored inside `brotli` is **Apache-2.0** and had been recorded as MIT; its copyright and licence notice are now included.
+- **Alpine / musl is outside the supported set**: the service and the panel do run (npm form, with a musl build of **Node >= 24**), while the **terminal is unavailable** and is refused with an actionable message instead of crashing.
+- **Third-party licence material: some bundled components still lack publisher material** — the ones that are not closed are listed honestly in the shipped `THIRD-PARTY-NOTICES.md` and `third-party/README.md` (**being recorded is not a claim that the material is complete**).
 - **Remote control (desktop) stops at "start the service + connection info" in this release**: the connected-device list with per-device disconnect, port/listen-scope selection and a token-rotation entry point are **not provided yet** (later batches).
-- **The desktop installer therefore grows by about 66 MB** (7.2 MB server entry + 59 MB web UI assets, source maps excluded) — the web UI is what a phone opens after scanning, so it has to ship inside the app.
-- **The npm package is not published yet**: the package name is fixed as `zcode-ce`, but it does not resolve on the registry (you can confirm with `npm view zcode-ce version`) ⇒ running `npx zcode-ce` today fails. To use it right now, take the container form below, or build the distribution yourself and run `node bin/zcode.mjs --web`. The publishing shape has been rehearsed locally (pack, install, serve, `publish --dry-run`), **but nothing has actually been published**.
-- **In container form only mounted directories can be managed** (that is the container boundary itself, not a defect): for full host-disk access, run the npm form directly on the host.
-- **The Docker image is about 801 MB** (base image `node:24-slim` 330 MB + distribution 391 MB; it changes with the Node version or distribution contents).
+- **The desktop installer therefore grows by about 66 MB**.
+- **IM bots are off by default and the desktop UI wiring is not finished in this release**: the inbound side (`/bot/**`) is implemented with its own credential, its own throttle and fail-closed behaviour. Once enabled, messages pass through **the platform you chose**, **not through Zhipu's servers**.
+- **Protocol v4 workflowRuns expansion is not synced yet (planned for the next release)**: cross-version interop may surface as "content rejected" rather than silent corruption.
+- **In container form only mounted directories can be managed** (that is the container boundary itself): for full host-disk access, run the npm form directly on the host.
+- **The Docker image is about 801 MB**.
 - Unchanged from the previous version (unsigned Windows build, no full on-device regression on Windows/macOS, experimental Linux desktop automation, …); this batch adds **no** other long-term limitations.
 
 ## Not verified in this release
@@ -201,19 +170,15 @@ Reason: two defects in 1.64.0 sit exactly on the **only long-connection path** F
 - **Real-device soft keyboard (IME) not verified**: keyboard-avoidance changes were checked in a controlled environment only.
 - **Phone + desktop on the same session at the same time is untested**: both can connect, but concurrent driving of one session is **not tested** — do not rely on it.
 - **Browser-level "cross-origin page + cross-origin fetch" not done**: the WS side is covered equivalently (with tests), but a cross-origin page fetching our endpoints has not been measured.
-- **No sandbox**: a leaked token (or a bypass of this hardening) means command execution and file access outside the workspace with the service process's privileges (including provider credentials under `~/.zcode/v2`); there is no second boundary beyond the workspace.
-- **No token revocation**: the token is a static shared secret with no per-device dimension; rotating it reconnects **every** client (per-device revocation is a later batch).
+- **No sandbox**: a leaked token means command execution and file access outside the workspace with the service process's privileges (including provider credentials under `~/.zcode/v2`).
+- **No token revocation**: the token is a static shared secret with no per-device dimension; rotating it reconnects **every** client.
 - **Reverse-proxy configuration not measured**: test the Caddy / nginx snippets in your own certificate environment.
 - **"Scanned first, then banned" was not reproduced**: the rate limit was verified under controlled conditions, not against a real internet scan.
-- **The two new CI jobs have not run on a real runner**: the headless-server package build/attach job and the remote-asset upload job were verified locally only (the **rest** of the release workflow runs on real runners and is unaffected).
-- **WSL as a remote-workspace host is untested**: it needs a Windows client or a `windows-latest` CI runner with WSL2 enabled. **Docker as a host was measured working** (real Docker 29.8.0, rootless, cgroup v2, default container flags, including starting the server inside the container and completing the handshake).
-- **On a musl host (e.g. Alpine) the local service works but the terminal does not (measured)**: starting the service, connecting the panel, `/api/server-info` auth and the unauthenticated `/ws` refusal were all measured working; **creating a terminal is refused with an actionable message**.
-  That refusal replaces a **process-killing crash**: on musl the native `fork()` segfaults (**exit 139**) and takes the whole process down, and the crash is not catchable — which is why the check runs **before the native module is loaded**, not after the failure.
-- **Remote workspaces on a musl target are not usable (measured)**: the payload is a glibc build (`node` fails with `cannot execute: required file not found`, missing `/lib64/ld-linux-x86-64.so.2`), so a connection is **refused before assets are deployed**, with an actionable reason; use a glibc-based image as the remote host.
-- **Upstream does not support musl either** (so this is not a choice unique to this build): upstream `node-pty` ships no musl prebuilds, and the official distribution asset set has only a `platformArch` dimension with no `-musl` platform class.
-- **The npm form requires Node >= 24**: below that, startup can fail _after_ the banner is printed (Node 20 was measured failing at import time) — check `node --version` first.
-- **On Windows, do not use kill -HUP**: token rotation relies on SIGHUP, which Windows does not have — and sending SIGHUP **terminates the process**, so it is not a reload, it is killing your server. On Windows, restart the service after editing the token file.
-- **Concurrent writes to one session from a phone and a desktop at the same time have no measurements at all**: the CommandInbox serial admission is a **design convention**, not a verification result for concurrent writes; the connection cap (default 32) only prevents resource exhaustion and must **not** be read as "concurrent writes are protected".
+- **WSL as a remote-workspace host is untested**: it needs a Windows client or a `windows-latest` CI runner with WSL2 enabled. **Docker as a host was measured working**.
+- **Remote workspaces on a musl target are not usable (measured)**: the payload is a glibc build, so a connection is **refused before assets are deployed**, with an actionable reason.
+- **Upstream does not support musl either** (so this is not a choice unique to this build).
+- **The npm form requires Node >= 24**: below that, startup can fail _after_ the banner is printed — check `node --version` first.
+- **On Windows, do not use kill -HUP**: token rotation relies on SIGHUP, which Windows does not have — and sending SIGHUP **terminates the process**. On Windows, restart the service after editing the token file.
 
 ---
 
