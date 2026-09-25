@@ -493,22 +493,36 @@ jobs:
       # 发布后验证（打到最终消费点）：registry 上能查到，且干净容器里能真跑起来。
       # 同样不能吞失败：这条是"打到最终消费点"的验证（registry 能查到 + 干净环境能起服务）。
       # 曾经它 continue-on-error，于是包根本没发出去时这一步也显示成功。
+      # 发布后验证（打到最终消费点）：registry 上能查到，且干净环境里能真跑起来。
+      #
+      # 时间预算为什么是 300s（2026-09-25 订正：原为 60s，实测不够，v3.14.3-ce.3 因此校验失败）：
+      # 这一步的 npx 要**先下载再解包**，而本包是 66 MB / 11864 个文件（含 44 个 bundleDependencies）。
+      # 解包上万个小文件在 CI runner 上是分钟级操作，之后 --web 服务自身还要启动。
+      # 原来的 60s 只够下载（实测 npm pack 约 4s）却不够解包 + 启动，于是**包明明发出去了，校验却红**。
+      # 这不是"放宽标准"：失败判据（拿不到 200 就退出 1）没有变，只是不再用不够的时间去误判。
       - name: Verify npm package
         if: steps.stage_npm.outputs.staged == 'true'
         run: |
           VERSION=$(node -p "require('./dist/npm-stage/package.json').version")
+          # 这一条只查 registry 元数据，很快，单独放在最前面：包没发出去就立刻失败。
           npm view "zcode-ce@$VERSION" dist.shasum
           cd /tmp
+          # 先只做"下载 + 解包"，把它与"起服务"分开计时 —— 两者都慢时，
+          # 合成一个 300s 预算会看不出是卡在哪一段。
+          echo "::notice::开始下载并解包 zcode-ce@$VERSION（66 MB / 11864 文件）"
+          START=$(date +%s)
+          npx -y "zcode-ce@$VERSION" --version > /tmp/npx-version.txt 2>&1 || true
+          echo "::notice::下载解包耗时 $(($(date +%s) - START))s；输出：$(head -c 200 /tmp/npx-version.txt)"
           npx -y "zcode-ce@$VERSION" --web --no-open --port 3030 &
           NPX_PID=$!
-          for i in $(seq 1 30); do
+          for i in $(seq 1 150); do
             if curl -sI http://127.0.0.1:3030/ | head -1 | grep -q 200; then
-              echo "::notice::npx zcode-ce@$VERSION 起服务并返回 200"
+              echo "::notice::npx zcode-ce@$VERSION 起服务并返回 200（起服务耗时 $((i * 2))s）"
               kill "$NPX_PID" 2>/dev/null || true
               exit 0
             fi
             sleep 2
           done
           kill "$NPX_PID" 2>/dev/null || true
-          echo "::error::npx 起服务未在 60s 内返回 200（包已发布但起不来）"
+          echo "::error::npx 起服务未在 300s 内返回 200（包已发布但起不来）"
           exit 1

@@ -197,7 +197,7 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
 
 ### 7.1 npm
 
-1. **包名固定用 `zcode-ce`**（只读核对：`npm view zcode-ce version` 目前返回 E404 = 尚无同名已发布包；E404 不等于保证能注册，最终以首次 publish 结果为准）。不得用 `@zcode/*`（官方 scope）。
+1. **包名固定用 `zcode-ce`**（**已于 2026-09-25T22:44:50Z 发布 `3.14.3-ce.3`**；只读核对：`npm view zcode-ce version` 现返回该版本号，`dist-tags` 的 `latest` 与 `next` 都指向它）。不得用 `@zcode/*`（官方 scope）。
 2. **打包来源 = 发行包内的 `zcode/` 目录，不是 `dist/zcode/`**：`pnpm build:zcode` 产出的 `dist/zcode/` 是**发布站点根**（`install.sh` + `latest.json` + `releases/<版本>/*.tar.gz`），包根在 tarball 内的 `zcode/` 一层。
    构建脚本把包体 stage 到 `dist/zcode/.work/zcode`、打完 tar 后**删掉 `.work`**，所以 `dist/zcode/` 下**不存在可直接 publish 的目录** —— 必须先解包：`tar xzf dist/zcode/releases/<版本>/zcode-<版本>.tar.gz -C <staging>`，再对 `<staging>/zcode/` 生成 `package.json`。
    `bin` 必须映射到 `bin/zcode.mjs`（与 `install.sh` 用的同一个入口），不要指向任何 `packages/**/dist/*.js`。
@@ -230,8 +230,25 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
    - `bin/zcode.mjs` 首行要有 shebang（`#!/usr/bin/env node`）并保持可执行位；实测包内已是 `755`。
 
 4. 凭据：在仓库 secrets 里加 `NPM_TOKEN`（npm Access Token，Automation 类型；权限只需 publish 该包）。
+   **⚠️ 令牌本身不能是需要交互式双重验证的类型**：实测上传成"需要 2FA 的版本"时，CI 里 `npm publish` 会失败（无人可应答 OTP）。
+   **⚠️ 必须给 `actions/setup-node` 配 `registry-url`**（实测踩过）：只有拿到它，setup-node 才会生成 `.npmrc`，
+   而 `NODE_AUTH_TOKEN` 是**写进那个 `.npmrc`** 的。缺了它，`npm publish` 直接 `ENEEDAUTH`
+   （包已打好、shasum 已算出，却在认证阶段退出 —— registry 上什么都没有）。
+   本仓库还在 job 里加了 `Preflight npm auth` 前置检查（`npm whoami` 真打 registry），让"令牌不可用"在**构建之前**就暴露，
+   而不是等到几百 MB 的包白打好之后。它的触发条件必须与发布路径一致（`startsWith(github.ref, 'refs/tags/')`），
+   否则会出现"tag 推送 + 基址未配置 ⇒ 前置检查被跳过、而 stage/publish 仍执行"的错配。
+
+   **发布后校验的时间预算**：`Verify npm package` 用 `npx -y zcode-ce@<版本>` 起服务并等 `200`。
+   实测本包 **解包约 293 MB / 11864 个文件**，npx 要**先下载再解包**才轮到起服务 ——
+   原先的 **60s 预算不够**（`v3.14.3-ce.3` 因此"包发出去了但校验红"）。现已放宽到 **300s**，
+   并把"下载解包"与"起服务"**分开计时**（合并成一个预算会看不出卡在哪一段）。
+   **这不是放宽标准**：失败判据（拿不到 `200` 就 `exit 1`）没变，只是不再用不够的时间去误判。
+
 5. CI job 形态（**已落地**，在 `release.yml` 的 `headless-server-package` job 内）：checkout → pnpm install →
-   `build-zcode` → smoke → 挂 Release / 上传 artifact → stage npm 包 → `npm publish` → 发布后验证。`continue-on-error: true`。
+   `build-zcode` → smoke → 挂 Release / 上传 artifact → stage npm 包 → `npm publish` → 发布后验证。
+   **不再有 `continue-on-error`**（2026-09-25 订正）：原先 job 级与 `Publish to npm` / `Verify npm package` / `Attach package to release` 四处都设了它，
+   后果是 **npm 发布实际失败（`ENEEDAUTH`）而 CI 显示全绿、registry 上根本没有这个包**。
+   交付终点失败必须让流水线变红 —— 唯一保留的软降级是「基址未配置就跳过构建」这种显式选择（会打印 `::warning::`）。
    **npm 三步不依赖 `ZCODE_DIST_BASE_URL`**：该 job 的构建步骤在变量未配置时会 `exit 0` 跳过，
    而 npm 发布不需要那个变量（见 §2 的例外），所以它的触发条件是 `startsWith(github.ref, 'refs/tags/')`
    —— **不含** `packaged == 'true'`。缺分发包时它自己用 `--allow-placeholder-base-url` 构建一份并补跑 smoke。
