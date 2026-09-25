@@ -87,6 +87,10 @@
 - **npm 形态的 Node 下限是 `>=24`**：低于下限时可能在打印启动横幅后才失败，请先用 `node --version` 确认。
 - **Windows 上不要用 kill -HUP**：令牌轮换依赖 SIGHUP，而 Windows 没有这个信号、**对进程发 SIGHUP 会终止进程**。Windows 下改完令牌文件请**重启服务**。
 
+## 致谢
+
+感谢 [@vinicius-symetrix](https://github.com/vinicius-symetrix)（Vinicius D'Alessandro）在 [PR #1](https://github.com/Zcode-CE/Zcode-CE/pull/1) 中修好了三处移动端与触屏可用性问题：消息操作只在悬停时显示、Web 顶部缺少侧栏折叠入口、"复制完整回复"在非安全源下静默失效。这三处修复已在本版生效。
+
 ---
 
 # English
@@ -179,6 +183,10 @@
 - **Upstream does not support musl either** (so this is not a choice unique to this build).
 - **The npm form requires Node >= 24**: below that, startup can fail _after_ the banner is printed — check `node --version` first.
 - **On Windows, do not use kill -HUP**: token rotation relies on SIGHUP, which Windows does not have — and sending SIGHUP **terminates the process**. On Windows, restart the service after editing the token file.
+
+## Thanks
+
+Thanks to [@vinicius-symetrix](https://github.com/vinicius-symetrix) (Vinicius D'Alessandro) for [PR #1](https://github.com/Zcode-CE/Zcode-CE/pull/1), which fixed three mobile and touch usability problems: message actions that only appeared on hover, a missing sidebar-collapse entry point in the web top overlay, and "copy full response" silently failing on insecure origins. All three fixes are in effect in this release.
 
 ---
 
