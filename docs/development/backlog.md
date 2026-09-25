@@ -66,6 +66,8 @@
 | **`packages/web` 端到端测试依赖本机登录态**（本机无 zai OAuth 凭据 ⇒ 稳定红；CI 上因 dist 不存在而 `skip`）                                            | 工程 | 本批 task-100 发现 + Lead 核实（同一份代码换登录态即由红变绿）                           | M    | 中（**CI 上这 4 条的牙齿是拔掉的** ⇒ 验证盲区）                                 | 待排（下一版）                             |
 | **onboarding 经 RPC 时 host 未注册 channel 会挂起而非 reject**（`catch` 抓不到；`appendRecord` 有 5s 超时，`dismissOnboarding` 没有）                  | 工程 | 本批 task-108 未验证项                                                                   | S    | 中（挂起只影响"决策没落盘"，不阻塞 UI，但属静默）                               | 待排（下一版）                             |
 | **web 端 `deviceMid` 与设备身份不同源**（web 用屏幕指纹，服务侧用 `ensureDeviceMid`）                                                                  | 工程 | 本批 task-108 未验证项                                                                   | S    | 中（同一用户在不同入口可能得到不同 deviceMid）                                  | 待排（下一版）                             |
+| **派单纪律缺失导致磁盘写满（ENOSPC）—— 会话失去执行能力 236 轮**（多位成员各自解包约 400 MB 副本；worker 起不来 ⇒ 连 update_goal 都调不了）            | 工程 | 2026-09-25 事故；已固化到 [delegation-discipline.md](./delegation-discipline.md)         | S    | **高**（不是慢，是**整个会话失去行动与报告能力**）                              | 已排入本版（文档已建）                     |
+| **release.yml 曾用 4 处 continue-on-error 把 npm 发布失败伪装成成功**（CI 全绿、registry 404；另缺 registry-url 导致 ENEEDAUTH）                       | 工程 | 2026-09-25 实测（gh api 步骤结论 success vs npm view 404）                               | S    | **高**（交付物不存在却报成功）                                                  | 已排入本版（提交 76d595c）                 |
 
 ## 有意不做（**写清原因，防后人误以为漏了**）
 
