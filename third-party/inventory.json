@@ -1504,11 +1504,12 @@
     "packages/services/package.json": "34a8d00b4b0e4874c1427cdde4ab0c3d21be955750661dbb19f5241a53a3cb9f",
     "packages/services/src/bots/attachmentPathGuard.ts": "7db16b5bbd951690ae4d92f811a7176451059554ce048ce5229891b27204c687",
     "packages/services/src/bots/attachmentUrlGuard.ts": "33ca4093099dc3c245f96ec93388857e10978e9132b12ea3414d439f70d2effa",
+    "packages/services/src/bots/botAttachmentLimits.ts": "8ed42b6c752ff26af77438ac157d5f35c1cb1e7e647e088cdecfaa1032a9b347",
     "packages/services/src/bots/botConfigHelpers.ts": "f4d5e4d3a6141d44a5d99418417c1d4eed80321084b671ae07d1ea86726abe9a",
     "packages/services/src/bots/botRemoteRuntimeServices.ts": "74bfcb89b3ddb3f8c1ffa30f3a17d12cc542ecc0b52673ff793900e82260fe59",
     "packages/services/src/bots/botRemoteWorkspaceBridge.ts": "740b0cf99acc93d3d901919d4ef2652ebf06279ae445d2476c88a106286a1ae7",
     "packages/services/src/bots/bots.ts": "01764678a4aff2c3fcc8732ae7cf4fa945ea639cf5cd23c331a4d0ac08750fcc",
-    "packages/services/src/bots/botsService.ts": "aa17a65bdbc63450d825377c23f47a80d4e80c7831a0c560f321be7d4c263b52",
+    "packages/services/src/bots/botsService.ts": "77245a3b956f03e45209d0a208adbe8efa26f5d704571ac2c5352f67398fa675",
     "packages/services/src/bots/channelRuntime.ts": "1e2f5b1f3c86e223f039a91bab01121dbc263ce93724438c13b2249e1b147f74",
     "packages/services/src/bots/commandOrder.ts": "5bd3200e30f1458351b355d97328763496c798f4959326c27e581b7fba5f0a72",
     "packages/services/src/bots/commandParser.ts": "bc592f34c14b6f73d5b1ab2c913c0c77c99138f1e043cdb18187143fd069b8ff",
@@ -31009,6 +31010,10 @@
           "sha256": "33ca4093099dc3c245f96ec93388857e10978e9132b12ea3414d439f70d2effa"
         },
         {
+          "file": "packages/services/src/bots/botAttachmentLimits.ts",
+          "sha256": "8ed42b6c752ff26af77438ac157d5f35c1cb1e7e647e088cdecfaa1032a9b347"
+        },
+        {
           "file": "packages/services/src/bots/botConfigHelpers.ts",
           "sha256": "f4d5e4d3a6141d44a5d99418417c1d4eed80321084b671ae07d1ea86726abe9a"
         },
@@ -31026,7 +31031,7 @@
         },
         {
           "file": "packages/services/src/bots/botsService.ts",
-          "sha256": "aa17a65bdbc63450d825377c23f47a80d4e80c7831a0c560f321be7d4c263b52"
+          "sha256": "77245a3b956f03e45209d0a208adbe8efa26f5d704571ac2c5352f67398fa675"
         },
         {
           "file": "packages/services/src/bots/channelRuntime.ts",
