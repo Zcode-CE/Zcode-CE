@@ -17,12 +17,25 @@
  *
  * 为什么桶名必须由参数/环境变量给：仓库是公开的，桶名属于**部署方私有标识**，
  * 写死进源码等于把它随仓库分发出去。缺失时直接失败并指路，而不是回落到某个默认值。
+ *
+ * 与无头服务器载荷的关系：`releases/<版本>/**`（zcode-<版本>.tar.gz + sha256.txt）与
+ * `latest.json` 走同一个桶、同一个域名，但**寻址方式不同** —— 见
+ * `scripts/upload-headless-release-r2.mjs`。两者的公共机制（wrangler put、重试、上传后自检、
+ * 列举）抽在 `scripts/r2-upload-lib.mjs`，本文件与那个脚本共用，避免两套实现漂移。
  */
 
-import { spawn } from "node:child_process";
 import { readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import {
+  cacheControlFor,
+  contentTypeFor,
+  fetchWithRetry,
+  isContentAddressed,
+  putObject,
+  remoteExists,
+} from "./r2-upload-lib.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
@@ -36,11 +49,6 @@ const publicBaseUrl = (args.publicBaseUrl ?? process.env.ZCODE_REMOTE_ASSET_CDN_
 const concurrency = Number(args.concurrency ?? 4);
 const dryRun = args.dryRun === true;
 const skipExisting = args.skipExisting !== false;
-
-/** 内容寻址 + 永不可变的那批：已存在就别再写（Class A 写操作要计数）。 */
-function isContentAddressed(key) {
-  return key.startsWith("components/");
-}
 
 function parseArgs(argv) {
   const parsed = {};
@@ -75,86 +83,7 @@ function walkFiles(dir) {
   return out;
 }
 
-function cacheControlFor(key) {
-  return key.startsWith("components/")
-    ? "public, max-age=31536000, immutable"
-    : "public, max-age=300";
-}
-
-function contentTypeFor(key) {
-  if (key.endsWith(".json")) return "application/json";
-  return "application/octet-stream";
-}
-
-const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
-
-/**
- * 带重试的 fetch：**网络异常**（DNS/TCP/TLS 抖动、代理瞬断）重试，HTTP 状态不重试。
- *
- * 为什么必须有：2026-09-24 实测一次完整上传里，72 个对象的自检有 2 个抛 `fetch failed`，
- * 而这两个对象用 curl 与 Node fetch 各复测都是 200 —— 是**瞬时网络抖动**。当时自检把它当硬失败，
- * 于是「上传全部成功」被报成 `exit 1`，正是最难排查的那类假信号。
- */
 const FETCH_RETRY_DELAYS_MS = [1000, 3000];
-async function fetchWithRetry(url, init) {
-  let lastError;
-  for (let attempt = 0; attempt <= FETCH_RETRY_DELAYS_MS.length; attempt += 1) {
-    try {
-      return await fetch(url, init);
-    } catch (error) {
-      lastError = error;
-      if (attempt < FETCH_RETRY_DELAYS_MS.length) await sleep(FETCH_RETRY_DELAYS_MS[attempt]);
-    }
-  }
-  throw lastError;
-}
-
-/** 远端是否已有该 key（只读，Class B）。没有 --public-base-url 时无从判断，返回 false。 */
-async function remoteExists(key) {
-  if (!publicBaseUrl) return false;
-  try {
-    const response = await fetchWithRetry(`${publicBaseUrl}/${key}`, { method: "HEAD" });
-    return response.status === 200;
-  } catch {
-    // 重试后仍不可达：当作「未确认」并继续上传 —— 内容寻址的同名对象内容一致，重传是幂等的，
-    // 比因为网络抖动而跳过更安全。
-    return false;
-  }
-}
-
-function putObject(key, file) {
-  return new Promise((resolvePut) => {
-    const child = spawn(
-      "wrangler",
-      [
-        "r2",
-        "object",
-        "put",
-        `${bucket}/${key}`,
-        "--file",
-        file,
-        "--remote",
-        "--content-type",
-        contentTypeFor(key),
-        "--cache-control",
-        cacheControlFor(key),
-      ],
-      { stdio: ["ignore", "ignore", "pipe"] },
-    );
-    let stderr = "";
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk;
-    });
-    child.on("error", (error) => resolvePut({ ok: false, error: error.message }));
-    child.on("close", (code) =>
-      resolvePut(
-        code === 0
-          ? { ok: true }
-          : { ok: false, error: stderr.trim().split("\n").slice(-3).join("\n") },
-      ),
-    );
-  });
-}
 
 async function main() {
   if (!bucket) {
@@ -193,14 +122,18 @@ async function main() {
     for (;;) {
       const item = queue.shift();
       if (!item) return;
-      if (skipExisting && isContentAddressed(item.key) && (await remoteExists(item.key))) {
+      if (
+        skipExisting &&
+        isContentAddressed(item.key) &&
+        (await remoteExists(publicBaseUrl, item.key))
+      ) {
         skipped += 1;
         console.log(`  [skip ${skipped}] ${item.key}（内容寻址且远端已存在）`);
         continue;
       }
       let lastError = "";
       for (let attempt = 1; attempt <= 3; attempt += 1) {
-        const result = await putObject(item.key, item.file);
+        const result = await putObject({ bucket, key: item.key, file: item.file });
         if (result.ok) {
           done += 1;
           console.log(`  [ok ${done}/${keys.length - skipped}] ${item.key}`);

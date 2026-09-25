@@ -9,15 +9,17 @@
 
 ## 1. 资产清单（这套东西由哪些部分组成）
 
-| 项           | 值 / 约定                                                                 |
-| ------------ | ------------------------------------------------------------------------- |
-| 装配脚本     | `scripts/assemble-remote-assets.mjs`（仓库内，产出**发布根**）            |
-| 上传脚本     | `scripts/upload-remote-assets-r2.mjs`（仓库内；当前实现走 Cloudflare R2） |
-| 校验脚本     | `scripts/verify-remote-assets.mjs`（仓库内，端到端，不需要真实 CDN）      |
-| 装配暂存目录 | 仓库根 `.tmp/`（`.gitignore` 已忽略，可随时删除重装配）                   |
-| R2 bucket    | `<bucket>`（**不可列举、仅 GET**；不要开 `r2.dev` 公开访问）              |
-| 公开域名     | `https://<域名>`（对象存储的自定义域名，走 CDN 边缘缓存）                 |
-| 客户端基址   | `https://<域名>` —— **= 发布根**（不要把版本号写进基址）                  |
+| 项                         | 值 / 约定                                                                        |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| 装配脚本                   | `scripts/assemble-remote-assets.mjs`（仓库内，产出**发布根**）                   |
+| 上传脚本                   | `scripts/upload-remote-assets-r2.mjs`（仓库内；当前实现走 Cloudflare R2）        |
+| 上传脚本（无头服务器载荷） | `scripts/upload-headless-release-r2.mjs`（同一桶/域名，另一套 key 布局，见 §14） |
+| 上传公共机制               | `scripts/r2-upload-lib.mjs`（put/delete/列举/重试/缓存头口径，两个上传脚本共用） |
+| 校验脚本                   | `scripts/verify-remote-assets.mjs`（仓库内，端到端，不需要真实 CDN）             |
+| 装配暂存目录               | 仓库根 `.tmp/`（`.gitignore` 已忽略，可随时删除重装配）                          |
+| R2 bucket                  | `<bucket>`（**不可列举、仅 GET**；不要开 `r2.dev` 公开访问）                     |
+| 公开域名                   | `https://<域名>`（对象存储的自定义域名，走 CDN 边缘缓存）                        |
+| 客户端基址                 | `https://<域名>` —— **= 发布根**（不要把版本号写进基址）                         |
 
 请求链路：客户端 → `<域名>`（CDN 边缘，自带缓存）→ 对象存储 `<bucket>`。
 
@@ -173,6 +175,9 @@ curl -sS -o /dev/null -w "%{http_code}\n" "https://<域名>/no-such-file.json"
 
 ## 10. 红线（交接必读）
 
+> 无头服务器载荷（`latest.json` + `releases/<版本>/**`）与本节第 2 条**不同**：那批是
+> **按版本号寻址**、允许同 key 覆盖重传的，口径见 §14。本节第 2 条只约束 `components/**`。
+
 1. **域名一旦被写进已分发客户端的默认基址，就不可更换** —— 换域名 = 所有存量用户的远程功能瞬间失效。
    在把它设为默认之前，先确认你愿意长期维护这个域名（见 §11）。
 2. **`components/**`同 key 永不改写**：key 内容寻址 +`immutable` + CDN 长缓存 + manifest 内 sha256
@@ -247,3 +252,78 @@ curl -sS -o /dev/null -w "%{http_code}\n" "https://<域名>/no-such-file.json"
 账户 ID、zone ID、bucket 名、客户端基址、本机凭据路径、列举对象的命令 —— **全部只写在本地私密笔记里**
 （`.reverse/41-remote-cdn/PRIVATE-ACCOUNT.md`，该目录被 `.git/info/exclude` 忽略，不入库、不推送）。
 本文刻意只用占位符，是为了让这份文档可以公开、也为了让别人照着它自建发布点。
+
+---
+
+## 14. 无头服务器载荷（`latest.json` + `releases/<版本>/**`）
+
+**这是与 §1 并列的第二套布局**：同一个桶、同一个域名，但 key 的层级完全不同 ——
+它服务的是 `install.sh`（无头服务器的一行安装脚本），不是远程工作区资产。
+
+```text
+latest.json                              # 版本索引（version + tarball + sha256）
+releases/<版本>/zcode-<版本>.tar.gz      # 运行包
+releases/<版本>/sha256.txt               # 校验摘要
+```
+
+`install.sh` 先取 `<BASE>/latest.json` 拿到 `version` 与 `tarball`，再取
+`<BASE>/releases/<version>/<tarball>`（见 `scripts/zcode-distribution/installer.mjs`）。
+所以 **`latest.json` 必须在运行包之后上传** —— 顺序反了会出现「索引指向一个还取不到的包」的窗口期。
+
+### 14.1 与 `components/**` 的关键差异：寻址方式决定缓存头
+
+| 路径                     | 寻址方式 | 同 key 可否改写 | Cache-Control                         |
+| ------------------------ | -------- | --------------- | ------------------------------------- |
+| `components/**`          | 内容寻址 | ❌ 绝不可以     | `public, max-age=31536000, immutable` |
+| `<版本>/manifest-*.json` | 按版本号 | ✅（热修复）    | `public, max-age=300`                 |
+| `latest.json`            | 按名字   | ✅（换版本）    | `public, max-age=300`                 |
+| `releases/<版本>/**`     | 按版本号 | ✅（重新构建）  | `public, max-age=300`                 |
+
+**`releases/<版本>/**`虽然带版本号，但绝不能用`immutable`**：同一个版本号重新构建后
+内容会变（修复打包缺陷、补依赖），`immutable` 会让改过的包在 CDN 边缘永远取不到，
+表现为「本地 sha256 对、用户装到的还是旧包」。
+
+### 14.2 覆盖语义：不需要 `--clobber`
+
+核实结论（wrangler 4.124）：`wrangler r2 object put` **没有** `--clobber` 开关
+（它的 `--force`/`-y` 是数据目录校验提示，与覆盖无关），但 **put 本身就是覆盖语义** ——
+实测同一 key 连传两次，第二次的内容生效。所以同版本重传不需要额外参数，
+真正要守住的是上面那条缓存头口径。上传脚本默认按"允许覆盖"工作；
+`--no-clobber` 可以改成"已存在就报错"（只想补传缺失对象时用）。
+
+### 14.3 上传与保留最近 N 个版本
+
+```bash
+# 先看要传什么、要删什么（不写桶）
+node scripts/upload-headless-release-r2.mjs --dist dist/zcode \
+  --bucket <bucket> --public-base-url https://<域名> --keep-versions 10 --dry-run
+
+# 真上传（自检通过后才动清理；清理需要 --yes）
+node scripts/upload-headless-release-r2.mjs --dist dist/zcode \
+  --bucket <bucket> --public-base-url https://<域名> --keep-versions 10 --yes
+```
+
+**上传后自检**（`--public-base-url` 必填，除非 `--dry-run`）：逐个 HEAD 确认可取，
+再按类型 GET 校验内容 —— tar 走**流式 sha256**（不整份落盘）并与本地比对，
+`latest.json` 比对 `version`/`tarball`/`sha256`，`sha256.txt` 逐字节比对。
+只 HEAD 是不够的：HEAD 只证明"这个 key 上有东西"，证明不了内容是我们刚传的那份。
+
+**保留最近 N 个版本**（`--keep-versions`，默认 10）：只删 `releases/<版本>/**`，
+且**先列完整清单、再删**（dry-run 直接打印；真删需要 `--yes`）。三条不变式：
+
+1. **`components/**`永不进候选** —— 那是内容寻址、跨版本共享的资产，删掉旧客户端直接连不上
+远程工作区，且**无法恢复**。判定是纯函数`planVersionRetention`（在 `scripts/r2-upload-lib.mjs`），
+由 `scripts/test/uploadHeadlessReleaseRetention.test.mjs` 用合成数据钉住。
+2. **当前正在上传的版本无条件保留** —— 补传一个老版本时不会把自己删掉。
+3. **只删远端确实存在的 key**（用列举结果，不是本地目录）；版本号按**数字分段**排序
+   （`ce.10` 比 `ce.2` 新，字符串排序会排反 ⇒ 删掉最新的几个）。
+
+`install.sh` 默认**不**上传（它是给用户自取的脚本，传上去会让"哪个 install.sh 是权威版本"
+变成两个来源）；确需上传时加 `--include-install-sh`。
+
+### 14.4 凭据
+
+与 §2 同口径：只用本机 `wrangler login` 的登录态，**不需要** S3 API token。
+脚本内部为"列举对象"读一次 `wrangler auth token`（wrangler 4.124 没有
+`r2 object list` 子命令，只能走 REST API），但该值**从不落到 stdout/stderr、也不进 argv**；
+脚本不读、不打印任何凭据。

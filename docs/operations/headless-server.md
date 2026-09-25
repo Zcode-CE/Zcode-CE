@@ -11,13 +11,13 @@
 
 一个**自包含发行包**：解包即得到
 
-| 目录                                              | 内容                                                                                       |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `bin/zcode.mjs`                                   | 可执行入口（runner）：`zcode --web …` 起服务；也可直接跑 TUI                               |
-| `server/`                                         | 服务端（HTTP + WebSocket + RPC + 静态资源托管）                                            |
-| `agent/zcode.cjs`                                 | Agent 运行时（app-server bundle），**+ `agent/provider/` 内置 provider 配置 + 第三方声明** |
-| `web/`                                            | Web 面板静态根（前端构建产物）                                                             |
-| `install.sh` / `releases/*.tar.gz` + `sha256.txt` | 安装脚本与归档校验和                                                                       |
+| 目录                                              | 内容                                                                                                                |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `bin/zcode.mjs`                                   | 可执行入口（runner）：`zcode --web …` 起服务；也可直接跑 TUI                                                        |
+| `server/`                                         | 服务端（HTTP + WebSocket + RPC + 静态资源托管）                                                                     |
+| `agent/zcode.cjs`                                 | Agent 运行时（app-server bundle），**+ `agent/provider/` 内置 provider 配置 + 第三方声明**                          |
+| `web/`                                            | Web 面板静态根（前端构建产物）                                                                                      |
+| `install.sh` / `releases/*.tar.gz` + `sha256.txt` | 安装脚本与归档校验和（三者构成**发布站点根**，上传布局见 §8 与 [remote-assets-cdn.md §14](./remote-assets-cdn.md)） |
 
 它**不是**桌面应用的替代品，也**不包含**桌面端的本地能力（Computer Use、内嵌浏览器等）。
 它提供的是：**在服务器上跑 Agent，用浏览器当界面**。
@@ -36,6 +36,31 @@ node scripts/build-zcode.mjs --out-dir dist/zcode --version 3.14.3-ce.3
 **`--base-url`（`ZCODE_DIST_BASE_URL`）是必填项**：它写进 `install.sh`，决定安装时去哪里取依赖；
 缺失时脚本会直接失败（`Configure ZCODE_DIST_BASE_URL in .env or pass --base-url`）。
 **在哪托管这份依赖载荷属于部署决策**，本仓库不指定默认值。
+
+**例外：npm 打包链路**。`--base-url` 在全仓**只有一个消费点** —— 写进发布站点根的
+`install.sh` 与 `latest.json.baseUrl`（`scripts/build-zcode.mjs`）。包体（tarball 内的 `zcode/`）
+与它无关，实测同一份构建产物换两个不同基址，解包后整棵目录树**逐字节相同**。
+所以 npm 发布不需要真实托管地址：
+
+```bash
+node scripts/build-zcode.mjs --allow-placeholder-base-url   # 未配 ZCODE_DIST_BASE_URL 时用占位基址
+```
+
+占位基址是 `https://zcode-dist.invalid/zcode/`（`.invalid` 是 RFC 2606 保留、永不解析的顶级域），
+**只影响 `install.sh` 与 `latest.json`，不进 npm 包**：包的 `files` 是
+`["bin","server","agent","web","!**/*.map"]`，不含 `install.sh`。用占位基址时 `install.sh` 里会多出
+一段 stderr 告警（提示设置 `ZCODE_DIST_BASE_URL`），且运行期仍可用该变量覆盖。
+这条不变式由 `scripts/test/installScriptBaseUrl.test.mjs` 钉住。
+
+**本项目的实际托管点（2026-09-25 决定）**：基址为 `https://cdn.eidolonmachine.xyz/zcode`（社区 CDN，Cloudflare R2）。
+放在 `/zcode` 子路径而不是根，是为了与同域下**已有的远程工作区资产**（`/components/**`、`/<版本>/manifest-*.json`）隔离。
+对应仓库变量 `ZCODE_DIST_BASE_URL` 与 `pnpm build:zcode` 的 `--base-url` 必须用同一个值。
+
+⚠️ **这个域名一旦随 `install.sh` 分发出去就不可更换**（换域名 = 存量用户的 `install.sh` 全部失效）——
+与 [远程资产 CDN](remote-assets-cdn.md) §10 的红线 1 同一条约束。改动前先确认愿意长期维护它。
+
+**容量**（R2 免费额度实测口径：10 GB-month 存储、出流量免费）：远程资产 192.4 MB + 每个版本约 78 MB，
+按此估算免费额度可容纳上百个版本；发布脚本只保留最近 10 个版本，占用不会随时间单调增长。
 
 ---
 
@@ -205,8 +230,12 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
    - `bin/zcode.mjs` 首行要有 shebang（`#!/usr/bin/env node`）并保持可执行位；实测包内已是 `755`。
 
 4. 凭据：在仓库 secrets 里加 `NPM_TOKEN`（npm Access Token，Automation 类型；权限只需 publish 该包）。
-5. CI job 形态：新 job `publish-npm-headless`，`if: startsWith(github.ref, 'refs/tags/') && inputs.publish_registry == true`（或独立的 `workflow_dispatch`）；
-   步骤：checkout → pnpm install → `pnpm build:zcode --base-url <依赖托管基址>` → **解包 `releases/<版本>/*.tar.gz` 到 staging** → 生成 `package.json` → `npm publish --access public --tag <dist-tag>`。`continue-on-error: true`。
+5. CI job 形态（**已落地**，在 `release.yml` 的 `headless-server-package` job 内）：checkout → pnpm install →
+   `build-zcode` → smoke → 挂 Release / 上传 artifact → stage npm 包 → `npm publish` → 发布后验证。`continue-on-error: true`。
+   **npm 三步不依赖 `ZCODE_DIST_BASE_URL`**：该 job 的构建步骤在变量未配置时会 `exit 0` 跳过，
+   而 npm 发布不需要那个变量（见 §2 的例外），所以它的触发条件是 `startsWith(github.ref, 'refs/tags/')`
+   —— **不含** `packaged == 'true'`。缺分发包时它自己用 `--allow-placeholder-base-url` 构建一份并补跑 smoke。
+   早先的写法把 npm 步骤挂在这个 job 的 `packaged` 输出上，结果是「变量没配 ⇒ npm 也不发」。
    **`--tag` 是必需的**：版本号是预发布（`3.14.3-ce.3`），不带 `--tag` 时 npm 直接报
    `You must specify a tag using --tag when publishing a prerelease version`（实测，退出码非 0）。
 6. 发布后验证：`npm view <名字>@<版本> dist.shasum` 有值；另起干净容器 `npx -y <名字>@<版本> --web --no-open --port 3030` 后 `curl -sI localhost:3030/` 应为 200。
@@ -230,6 +259,15 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
 **体积上限余量**：npm 单包 tarball 上限约 100 MB，本包 65.9 MB ⇒ 余量约 34 MB。
 
 **未验证项**：① 包名 `zcode-ce` 的真实注册（E404 只说明当前未被占用，首次 publish 才算数）；② 从 registry 安装（`npx zcode-ce@<版本>`）—— 预演只验了本地 tarball；③ macOS / Windows / musl 上装这个 npm 包（包内 `node-pty` 预编译含 darwin/win32，但本机只实测了 linux-x64）；④ `engines: ">=24"` 在 Node 22 上的实际表现（本机只有 Node 24，未构造低版本环境）。
+
+**「base-url 不影响 npm 包」的实测证据（2026-09-25，本机 Linux x64）**：
+用两个不同基址各构建一份（`https://cdn-a.invalid/zcode/` 与 `https://cdn-b.invalid/other/`），
+两份的 `install.sh` 与 `latest.json` 确实不同，但解包后的包树 `diff -r` **无差异**；
+再各自 `stage-npm-package` 后 `diff -r` 两份 staging 目录，同样**无差异**。
+另用 `--allow-placeholder-base-url`（不配 `ZCODE_DIST_BASE_URL`）走完整条 CI 步骤：
+占位域名只出现在 `dist/zcode/install.sh` 里，`grep -rI zcode-dist.invalid dist/npm-stage` **0 命中**，
+staging 根下也不存在 `install.sh` / `latest.json`；
+装到隔离 prefix 后 `zcode --web --no-open` 起服务并 `curl -sI` 拿到 **200**。
 
 ### 7.2 Docker
 
@@ -263,6 +301,22 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
 pnpm build:zcode --base-url <依赖托管基址>            # 1) 构建
 node scripts/zcode-distribution-smoke.mjs dist/zcode/releases/*.tar.gz
 ```
+
+发布到 CDN（让 `install.sh` 的布局成立；机制与缓存头口径见
+[remote-assets-cdn.md §14](./remote-assets-cdn.md)）：
+
+```bash
+# 2) 先看要传什么、要删什么（不写桶；--dry-run 下 --public-base-url 可省）
+node scripts/upload-headless-release-r2.mjs --dist dist/zcode \
+  --bucket <bucket> --public-base-url https://<域名> --keep-versions 10 --dry-run
+
+# 3) 真上传（上传后逐个自检 sha256 / latest.json 内容；清理需 --yes）
+node scripts/upload-headless-release-r2.mjs --dist dist/zcode \
+  --bucket <bucket> --public-base-url https://<域名> --keep-versions 10 --yes
+```
+
+顺序仍是「**先发载荷、再发版**」：`install.sh` 从 `<BASE>/latest.json` 取版本，
+载荷没传完就发版会让用户装到一半失败。
 
 **发布前最低判据**：`node bin/zcode.mjs --help` 与 `node bin/zcode.mjs --version` 都必须**退出码 0**（用户形态的第一步；比 smoke 更快）。
 
@@ -300,7 +354,9 @@ smoke-exit=0
 
 - **未对外发布**：发布流水线仍只**构建 + 冒烟 + 挂 workflow artifact**，不推 npm / 不推 Docker 镜像。**本地 Docker 资产已提供**（仓库根 `Dockerfile` + `compose.yaml`，由用户自行 `docker build`，见 [headless-server-docker.md](./headless-server-docker.md)）；§7 的 registry 发布步骤仍未执行。
   **npm 侧的发布形态已预演验证**（3.14.3-ce.3，本地 `npm pack` + 真装真跑 + `publish --dry-run`，**未真发**），包描述、体积与全部实测数据见 §7.1 末「实测结论」；Docker 侧仍只到「本地 `docker build`」。
-- **依赖载荷托管位置未定**：`--base-url` 指向的依赖由部署方决定；本仓库不提供默认值。
+- **依赖载荷托管位置**：本仓库发布时托管在社区 CDN（`ZCODE_CDN_BASE_URL`，见
+  [remote-assets-cdn.md](./remote-assets-cdn.md)）；`--base-url` 指向的依赖由部署方决定，
+  自建者不配就仍是占位/官方默认。**npm 形态不需要它**（见 §2 的例外）。
 - **本机与远端都有 libc 拦断，且都在失败之前**：**正式支持**的是 **glibc 发行版**（见 §10 的 `Linux-x64（glibc）` 一行）。远端工作区在**连接时**先判 libc 再部署资产；**本机**（CLI / 无头 server）在**创建终端之前**判定，命中 musl 时给出可操作错误并正常退出 —— 不再出现原生 fork 的段错误（实测对照见 §10）。
 - **musl 上的能力边界（实测）**：Alpine 系**可以运行服务与面板**（需满足 `engines` 的 Node 版本，见 §10），**终端功能不可用**并会明确提示；本版**不承诺** musl 上的完整能力。
 - **Docker 作为承载环境已实测**（Linux x64，`node:24-slim` 本地构建）：`GET /` 200、`/api/server-info` 无令牌 401 / 带令牌 200、`/ws` 401、**容器内 pty 可开**（uid 10001 下 `terminal-exit=0`）、卷持久化、`SIGTERM` 优雅退出（exit 0，约 1 s）、HUP 令牌重载（送给 `entry-http.js` 子进程时生效）、`compose config/build/up/down` 全通 —— 逐条命令与输出见 [headless-server-docker.md](./headless-server-docker.md) §10。**WSL 作为承载环境仍未实测**；只在 Linux 上验证。

@@ -11,6 +11,9 @@
  *   1. 之前的一次性探针跑完不退出（残留句柄/子进程），超时被杀 ⇒ 这里显式收尾并 process.exit；
  *   2. "远端" HOME 重定向到临时目录，绝不碰真实 ~/.zcode；
  *   3. 退出码语义明确：0 = 全链路通过。
+ *   4. 收尾必须"先等远端进程真的退出、再删临时目录"：远端 server 进程活着时仍在写它的 HOME
+ *      （sqlite WAL、日志），与 rmSync 抢同一个目录会返回 ENOTEMPTY，把 PASS 判成 FAIL
+ *      （CI run 36142453581 的实际现象）。
  *
  * 用法：
  *   node scripts/assemble-remote-assets.mjs            # 先装配
@@ -116,6 +119,9 @@ class LocalPosixBackend {
     const child = spawn("/bin/sh", ["-c", command], {
       env: { ...process.env, HOME: remoteHome },
       stdio: ["pipe", "pipe", "pipe"],
+      // 独立进程组（setsid）：远端命令自己还会 fork（agent 子进程等），只杀直接子进程会留下
+      // 继续写 HOME 的孙进程，清理竞态照旧。独立成组后 shutdown() 能用 kill(-pid) 收掉整棵树。
+      detached: true,
     });
     this.#children.add(child);
     child.on("exit", () => this.#children.delete(child));
@@ -151,14 +157,82 @@ class LocalPosixBackend {
 
   dispose() {}
 
-  killChildren() {
-    for (const child of this.#children) {
+  /**
+   * 收尾：先 SIGTERM 整个进程组，**等它们真的退出**，超时才 SIGKILL。
+   *
+   * 为什么必须等（而不是发完信号就走）：CI run 36142453581 的现象是「RESULT: PASS 之后清理
+   * 临时目录报 ENOTEMPTY」。根因是远端 server 进程没干净退出（日志里的
+   * "remote stdio close timed out after 5000ms"），仍在写自己的 HOME，而调用方紧接着
+   * rmSync 同一个目录 —— 目录在遍历中被写入就返回 ENOTEMPTY，于是「验证通过」被清理步骤判成失败。
+   * 等待是消除竞态的**唯一**正确做法：重试只能缩小窗口，等待才能关掉窗口。
+   *
+   * 为什么杀进程组：见 exec() 里 detached 的说明。
+   */
+  async shutdown({ graceMs = 5_000 } = {}) {
+    const children = [...this.#children];
+    if (children.length === 0) {
+      return { terminated: 0, killed: 0, survivors: 0 };
+    }
+    for (const child of children) {
+      this.#signalGroup(child, "SIGTERM");
+    }
+    let survivors = await this.#waitForExit(children, graceMs);
+    let killed = 0;
+    if (survivors.length > 0) {
+      for (const child of survivors) {
+        this.#signalGroup(child, "SIGKILL");
+      }
+      killed = survivors.length;
+      survivors = await this.#waitForExit(survivors, graceMs);
+    }
+    if (survivors.length > 0) {
+      // 不吞：还有进程活着就说明临时目录仍可能被写，如实报出来（外层清理会据此重试并给出结论）。
+      console.warn(
+        `[fake-remote] shutdown 后仍有 ${survivors.length} 个远端进程未退出（pid ${survivors
+          .map((child) => child.pid)
+          .join(", ")}）`,
+      );
+    }
+    return { terminated: children.length - killed, killed, survivors: survivors.length };
+  }
+
+  #signalGroup(child, signal) {
+    try {
+      // 负 pid = 整个进程组。进程组已不存在时抛 ESRCH，落到 child.kill 再试一次。
+      process.kill(-child.pid, signal);
+    } catch {
       try {
-        child.kill("SIGTERM");
+        child.kill(signal);
       } catch {
-        // 已经退出
+        // 进程与进程组都已消失
       }
     }
+  }
+
+  /** 等待这批子进程退出，返回超时后仍未退出的那些。 */
+  #waitForExit(children, timeoutMs) {
+    const alive = (child) => child.exitCode === null && child.signalCode === null;
+    const pending = children.filter(alive);
+    if (pending.length === 0) {
+      return Promise.resolve([]);
+    }
+    return new Promise((resolve) => {
+      let remaining = pending.length;
+      let settled = false;
+      const finish = (survivors) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(survivors);
+      };
+      const timer = setTimeout(() => finish(pending.filter(alive)), timeoutMs);
+      for (const child of pending) {
+        child.once("exit", () => {
+          remaining -= 1;
+          if (remaining === 0) finish([]);
+        });
+      }
+    });
   }
 
   #resolve(remotePath) {
@@ -246,11 +320,52 @@ async function main() {
     await connection.disposeAndWait({ timeoutMs: 5_000 });
     exitCode = 0;
   } finally {
-    backend.killChildren();
+    // 顺序即修复：先等远端进程真的退出，再交给外层的临时目录清理 —— 反过来就是 ENOTEMPTY 竞态。
+    await backend.shutdown();
     backend.dispose();
     server.close();
   }
   return exitCode;
+}
+
+const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
+
+/**
+ * 只有"目录非空/正忙"这类**明确的瞬时竞态**才值得重试，其余错误必须原样抛出。
+ *
+ * 为什么不用一个 try/catch 把所有错误吞掉：临时目录清不掉往往是磁盘/权限出问题的第一信号，
+ * 吞掉之后脚本会以 exit 0 结束，而问题被推迟到"CI runner 磁盘写满"这种更晚、更难定位的时刻。
+ */
+function isTransientCleanupError(error) {
+  return (
+    error instanceof Error &&
+    ["ENOTEMPTY", "EBUSY", "ENOENT"].includes(/** @type {NodeJS.ErrnoException} */ (error).code)
+  );
+}
+
+/**
+ * 删除临时目录；ENOTEMPTY 视为竞态并重试，重试仍失败则**抛出**（调用方据此把退出码改成非 0）。
+ *
+ * 为什么要重试而不是只等一次：等待进程退出已经关掉了主要窗口，但被 SIGKILL 的进程退出与内核
+ * 回收目录项之间仍有极短窗口；重试是给这个窗口兜底，不是用来掩盖"进程还活着"。
+ */
+async function removeTempDir(dir, { attempts = 5, delayMs = 200 } = {}) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+      return true;
+    } catch (error) {
+      if (!isTransientCleanupError(error) || attempt >= attempts) {
+        console.error(
+          `临时目录清理失败（第 ${attempt} 次尝试）：${dir}\n` +
+            `  ${error instanceof Error ? error.message : String(error)}\n` +
+            "  目录可能被残留的远端进程占用；用 --keep-temp 保留现场，或手工删除该目录后重跑。",
+        );
+        return false;
+      }
+      await sleep(delayMs);
+    }
+  }
 }
 
 let exitCode = 1;
@@ -269,12 +384,15 @@ try {
   console.error(`RESULT: FAIL — ${error instanceof Error ? error.message : String(error)}`);
   exitCode = 1;
 } finally {
-  if (!keepTemp) {
-    rmSync(tempDir, { recursive: true, force: true });
+  if (keepTemp) {
+    console.log(`日志与临时目录保留在 ${tempDir}`);
+  } else if (await removeTempDir(tempDir)) {
+    console.log("日志已随临时目录清理（--keep-temp 可保留）");
+  } else {
+    // 清不掉是**真实失败**，必须让退出码非 0：CI 里静默留下几十 MB 的临时目录同样是缺陷。
+    console.log(`日志与临时目录未能清理，保留在 ${tempDir}`);
+    exitCode = 1;
   }
-  console.log(
-    keepTemp ? `日志与临时目录保留在 ${tempDir}` : `日志已随临时目录清理（--keep-temp 可保留）`,
-  );
   // 显式退出：假后端会留下 ssh2/子进程类的句柄，靠事件循环自然退出会挂住（一次性探针就踩过）。
   process.exit(exitCode);
 }

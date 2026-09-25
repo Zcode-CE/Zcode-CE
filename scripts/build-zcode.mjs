@@ -17,6 +17,18 @@ const root = resolve(import.meta.dirname, "..");
 const defaultOutDir = resolve(root, "dist", "zcode");
 const defaultBaseUrl = (await loadEndpointEnv()).ZCODE_DIST_BASE_URL?.trim() || "";
 const packageDirName = "zcode";
+/**
+ * npm 打包专用的占位基址：只在没有配置真实托管地址时使用。
+ *
+ * 为什么可以这样：--base-url 在全仓只有一个消费点 —— 写进发布站点根的 install.sh
+ * （见本文件末尾的 installScriptSource 调用）与 latest.json.baseUrl。包体（tarball 内的
+ * zcode/ 那一层）与它无关，实测同一份构建产物换两个不同基址，解包后的整棵目录树逐字节相同。
+ *
+ * 为什么必须显式标出来：用户可能拿到这个站点根里的 install.sh 直接用，那时它指向的
+ * 占位域名下取不到东西。用 .invalid 顶级域（RFC 2606 保留、永不解析）并在 install.sh 里
+ * 额外打一行警告，比编一个看起来像真的域名要诚实。
+ */
+const npmPackagingPlaceholderBaseUrl = "https://zcode-dist.invalid/zcode/";
 const usage = `Usage:
   pnpm build:zcode
   node scripts/build-zcode.mjs --skip-build
@@ -29,6 +41,10 @@ Options:
   --version <text>    Release version. Defaults to root package.json version.
   --out-dir <path>    Output directory. Defaults to dist/zcode.
   --base-url <url>    Default install.sh download base URL.
+  --allow-placeholder-base-url
+                      npm packaging: fall back to a placeholder base URL when
+                      ZCODE_DIST_BASE_URL is not configured. Affects only
+                      install.sh and latest.json; package contents are unchanged.
   --help, -h          Show this help.
 `;
 
@@ -51,6 +67,7 @@ function readArgValue(argv, arg, index) {
 
 function parseArgs(argv) {
   const options = {
+    allowPlaceholderBaseUrl: false,
     baseUrl: defaultBaseUrl,
     help: false,
     outDir: defaultOutDir,
@@ -69,6 +86,10 @@ function parseArgs(argv) {
     }
     if (arg === "--skip-build") {
       options.skipBuild = true;
+      continue;
+    }
+    if (arg === "--allow-placeholder-base-url") {
+      options.allowPlaceholderBaseUrl = true;
       continue;
     }
     if (arg === "--version" || arg.startsWith("--version=")) {
@@ -252,11 +273,19 @@ async function createTarball({ packageParent, releaseDir, tarballName }) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  if (!options.help && !options.baseUrl)
-    throw new Error("Configure ZCODE_DIST_BASE_URL in .env or pass --base-url");
   if (options.help) {
     console.log(usage);
     return;
+  }
+  if (!options.baseUrl) {
+    if (!options.allowPlaceholderBaseUrl) {
+      throw new Error("Configure ZCODE_DIST_BASE_URL in .env or pass --base-url");
+    }
+    options.baseUrl = npmPackagingPlaceholderBaseUrl;
+    console.warn(
+      `[zcode] 未配置 ZCODE_DIST_BASE_URL，改用 npm 打包占位基址 ${npmPackagingPlaceholderBaseUrl}\n` +
+        "        生成的 install.sh 只用于取包体（npm 发布）；要分发安装脚本请配置真实托管地址。",
+    );
   }
 
   const rootPackageJson = await readJson(resolve(root, "package.json"));
@@ -306,7 +335,10 @@ async function main() {
     ),
   );
   const installScript = resolve(outDir, "install.sh");
-  await writeFile(installScript, installScriptSource(options.baseUrl));
+  await writeFile(
+    installScript,
+    installScriptSource(options.baseUrl, { placeholderBaseUrl: npmPackagingPlaceholderBaseUrl }),
+  );
   await chmod(installScript, 0o755);
   await rm(workDir, {
     force: true,

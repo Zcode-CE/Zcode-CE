@@ -397,20 +397,43 @@ jobs:
 
       # npm 发布（zcode-ce）。
       #
-      # 为什么放在这个 job 内而不是新开 job：分发包已经在这里构建好（上一步），
-      # 新开 job 要重新 checkout + install + build（约十几分钟），且可能与这里的产物不一致。
-      # 复用同一份产物是「验证打到最终消费点」的前提 —— 发出去的必须是刚 smoke 过的那份。
+      # 与上面几步的**关键区别：npm 发布不依赖 ZCODE_DIST_BASE_URL**。
+      # 该变量只影响 install.sh 里印哪个地址（build-zcode.mjs 的唯一消费点），而 npm 包的
+      # files 是 ["bin","server","agent","web","!**/*.map"]（不含 install.sh）
+      # ⇒ 包体内容与基址完全无关（实测：同一份构建产物换两个基址，解包后整棵树逐字节相同，
+      # stage 出的 npm 目录也逐字节相同）。所以这里**不能**复用 build_package 的 packaged 输出：
+      # 仓库变量没配时那一步会 exit 0 跳过，npm 发布会被连带跳过 —— 而它本来不需要那个变量。
+      #
+      # 因此本步自带"缺分发包就自己构建"的兜底：优先复用上面 smoke 过的那份（那是首选，
+      # 发出去的必须是刚验证过的那份）；没有时用 --allow-placeholder-base-url 现构建一份，
+      # 占位基址只写进 install.sh 与 latest.json，不进 npm 包（验证见
+      # scripts/test/installScriptBaseUrl.test.mjs 与 docs/operations/headless-server.md §7.1）。
       #
       # 为什么 continue-on-error：npm 发布失败不该阻塞 tag 发版（与上面挂 Release 同口径）。
       # 为什么只在 tag 触发：预发布版本号（3.14.3-ce.N）不适合从任意分支发布。
       - name: Stage npm package
         id: stage_npm
-        if: steps.build_package.outputs.packaged == 'true' && startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           # 包根不是 dist/zcode/（那是发布站点根：install.sh + latest.json + releases/*.tar.gz），
           # 且 build-zcode 打完 tar 就删掉 .work/ ⇒ 必须先解包。
           # 详见 docs/operations/headless-server.md §7.1。
-          node scripts/stage-npm-package.mjs dist/zcode/releases/*.tar.gz
+          # 按版本号精确选包，不要 ls | head -1：那取的是字典序第一个，
+          # 而 3.14.3-ce.2 排在 3.14.3-ce.3 之前 —— 会把上一个版本发上 registry。
+          VERSION=$(node -p "require('./package.json').version")
+          TARBALL="dist/zcode/releases/$VERSION/zcode-$VERSION.tar.gz"
+          if [ ! -f "$TARBALL" ]; then
+            echo "::notice::没有可复用的 $VERSION 分发包（ZCODE_DIST_BASE_URL 未配置时构建步骤会跳过），为 npm 发布单独构建一份"
+            node scripts/build-zcode.mjs --allow-placeholder-base-url
+          fi
+          if [ ! -f "$TARBALL" ]; then
+            echo "::error::构建后仍找不到 $TARBALL"
+            exit 1
+          fi
+          echo "使用分发包：$TARBALL"
+          # 兜底构建出来的那份没经过上面的 smoke，这里补一次：发出去的包必须是跑得起来的。
+          node scripts/zcode-distribution-smoke.mjs "$TARBALL"
+          node scripts/stage-npm-package.mjs "$TARBALL"
           echo "staged=true" >> "$GITHUB_OUTPUT"
 
       - name: Publish to npm

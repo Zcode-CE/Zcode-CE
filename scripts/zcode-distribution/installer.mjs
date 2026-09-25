@@ -1,11 +1,27 @@
 const packageDirName = "zcode";
 
-export function installScriptSource(baseUrl) {
+export function installScriptSource(baseUrl, { placeholderBaseUrl } = {}) {
+  // 占位基址的告警：这份 install.sh 是在没有真实托管地址时生成的（npm 打包链路），
+  // 直接拿它装会去一个永不解析的域名取包。警告打到 stderr，不改变脚本的退出码语义。
+  // 未使用占位基址时整段不产出 —— 正常的 install.sh 与改动前逐字节相同。
+  const placeholderPrelude =
+    placeholderBaseUrl && baseUrl === placeholderBaseUrl
+      ? [
+          `PLACEHOLDER_BASE_URL="${placeholderBaseUrl}"`,
+          "",
+          'if [ "${BASE_URL%/}" = "${PLACEHOLDER_BASE_URL%/}" ]; then',
+          '  echo "zcode install: this install.sh was generated without a real download base URL" >&2',
+          '  echo "  (placeholder: ${PLACEHOLDER_BASE_URL}). Set ZCODE_DIST_BASE_URL to your hosting URL." >&2',
+          "fi",
+          "",
+          "",
+        ].join("\n")
+      : "";
   return `#!/usr/bin/env sh
 set -eu
 
 BASE_URL="\${ZCODE_DIST_BASE_URL:-${baseUrl}}"
-INSTALL_DIR="\${ZCODE_DIST_HOME:-$HOME/.zcode/runtime}"
+${placeholderPrelude}INSTALL_DIR="\${ZCODE_DIST_HOME:-$HOME/.zcode/runtime}"
 BIN_DIR="\${ZCODE_DIST_BIN_DIR:-$HOME/.local/bin}"
 
 need_cmd() {
