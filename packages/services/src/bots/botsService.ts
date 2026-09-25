@@ -1,6 +1,10 @@
 /* eslint-disable max-lines -- Bots 服务仍复用原 RPC 文件名，先把鉴权、命令路由、ZCode Agent 桥接收口集中在同一服务内。 */
 import { Buffer } from "node:buffer";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import {
+  BOT_MAX_ATTACHMENTS_PER_MESSAGE,
+  BOT_MAX_ATTACHMENT_SIZE_BYTES,
+} from "./botAttachmentLimits.js";
 import { resolveAllowedAttachmentLocalPath } from "./attachmentPathGuard.js";
 import { fetchBotAttachmentFromUrl } from "./attachmentUrlGuard.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -692,12 +696,13 @@ const BOT_FORCED_MODE = "yolo";
 const BOT_TYPING_INTERVAL_MS = 4_000;
 const BOT_TASK_META_RETRY_DELAYS_MS = [80, 160, 320] as const;
 const BOT_WORKSPACE_REFS_CACHE_TTL_MS = 5_000;
-// 导出给「入站请求体上限」的耦合断言用（packages/server 的 bot 入站 spec）：
-// 合法最大 payload = ceil(N × S / 3) × 4（base64 膨胀）+ JSON 外壳，
-// 该值与请求体上限是耦合的，改这里必须同步重算上限，否则会打断合法流量。
+// 两个附件上限的定义已移到无依赖叶子模块 ./botAttachmentLimits.js（task-111）：
+// 它们要经 browser-safe 的根入口 @zcode/services 导出，而本模块 import 了
+// ./attachmentUrlGuard.js → undici（Node-only），留在本文件会让根入口闭包被拉进 undici
+// ⇒ 浏览器产物里 process is not defined ⇒ Web 客户端白屏。本文件只 import 它们。
+// 耦合关系不变：合法最大 payload = ceil(N × S / 3) × 4（base64 膨胀）+ JSON 外壳，
+// 该值与 /bot/** 请求体上限是耦合的，改常量必须同步重算上限，否则会打断合法流量。
 // 详见 .reverse/93-bot-ingress/BOT-INGRESS-SPEC.md §7.1.1。
-export const BOT_MAX_ATTACHMENTS_PER_MESSAGE = 4;
-export const BOT_MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024;
 const BOT_ATTACHMENT_DOWNLOAD_TIMEOUT_MS = 30_000;
 const REMOTE_RECONNECT_DEDUPE_TTL_MS = 3_000;
 const REMOTE_RECONNECT_DELIVERY_DEDUPE_TTL_MS = 2 * 60_000;

@@ -173,15 +173,61 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
 ### 7.1 npm
 
 1. **包名固定用 `zcode-ce`**（只读核对：`npm view zcode-ce version` 目前返回 E404 = 尚无同名已发布包；E404 不等于保证能注册，最终以首次 publish 结果为准）。不得用 `@zcode/*`（官方 scope）。
-2. **打包来源 = 分发包根**：先 `pnpm build:zcode`，再对 `dist/zcode/` 生成 `package.json`；`bin` 必须映射到 `bin/zcode.mjs`（与 `install.sh` 用的同一个入口），不要指向任何 `packages/**/dist/*.js`。
-3. 准备包描述：在 staging 目录（`dist/zcode/`）生成 `package.json`：
-   `{ "name": "zcode-ce", "version": "<与 tag 一致的版本>", "bin": { "zcode": "bin/zcode.mjs" }, "files": ["bin", "server", "agent", "web"], "engines": { "node": ">=24" }, "license": "Apache-2.0", "repository": "Zcode-CE/Zcode-CE", "description": "社区版（非官方）无头服务器 + Web 面板" }`。
-   注意：`bin/zcode.mjs` 首行要有 shebang（`#!/usr/bin/env node`）并保持可执行位。
+2. **打包来源 = 发行包内的 `zcode/` 目录，不是 `dist/zcode/`**：`pnpm build:zcode` 产出的 `dist/zcode/` 是**发布站点根**（`install.sh` + `latest.json` + `releases/<版本>/*.tar.gz`），包根在 tarball 内的 `zcode/` 一层。
+   构建脚本把包体 stage 到 `dist/zcode/.work/zcode`、打完 tar 后**删掉 `.work`**，所以 `dist/zcode/` 下**不存在可直接 publish 的目录** —— 必须先解包：`tar xzf dist/zcode/releases/<版本>/zcode-<版本>.tar.gz -C <staging>`，再对 `<staging>/zcode/` 生成 `package.json`。
+   `bin` 必须映射到 `bin/zcode.mjs`（与 `install.sh` 用的同一个入口），不要指向任何 `packages/**/dist/*.js`。
+   注意包内原生的 `package.json` 是 `{"name":"zcode-runtime","private":true,...}` —— **`private: true` 会让 `npm publish` 直接拒绝**，必须整个覆盖掉（不是合并）。
+3. 准备包描述：覆盖 `<staging>/zcode/package.json`。**不能照抄下面这版的最小字段** —— 实测有两处会致命（详见本节末「实测结论」）：
+   ```jsonc
+   {
+     "name": "zcode-ce",
+     "version": "<与 tag 一致的版本>",
+     "type": "module",
+     "bin": { "zcode": "bin/zcode.mjs" },
+     "files": ["bin", "server", "agent", "web", "!**/*.map"],
+     "dependencies": {
+       /* 46 个运行时依赖，版本从包内 node_modules/<name>/package.json 读 */
+     },
+     "bundleDependencies": [
+       /* 与 dependencies 同名同序 */
+     ],
+     "engines": { "node": ">=24" },
+     "license": "Apache-2.0",
+     "repository": "Zcode-CE/Zcode-CE",
+     "description": "社区版（非官方）无头服务器 + Web 面板",
+   }
+   ```
+
+   - **`node_modules` 必须靠 `bundleDependencies` 进包**：npm **无条件排除**包根 `node_modules`，写进 `files` 或加 `.npmignore` 都无效（实测三种写法都进不去）。少了它，服务会**先打印启动横幅再崩** `ERR_MODULE_NOT_FOUND: Cannot find package 'yaml'` —— 只看横幅会误判成功。
+   - **`.map` 用 `!**/_.map`排除**：2 279 个 sourcemap 全在`web/assets/`，实测占 tarball 16 MB（81.9 MB → 65.9 MB）。注意 `!\*\*/_.map`**不会**排除包内`node_modules` 里那 31 个小 map（1.4 MB，属上游发布物，留着无妨）。
+   - **`type: "module"`**：不加仍能跑，但每次启动都报 `MODULE_TYPELESS_PACKAGE_JSON` 警告（`server/entry-http.js` 会被重解析）。
+   - `bin/zcode.mjs` 首行要有 shebang（`#!/usr/bin/env node`）并保持可执行位；实测包内已是 `755`。
 4. 凭据：在仓库 secrets 里加 `NPM_TOKEN`（npm Access Token，Automation 类型；权限只需 publish 该包）。
 5. CI job 形态：新 job `publish-npm-headless`，`if: startsWith(github.ref, 'refs/tags/') && inputs.publish_registry == true`（或独立的 `workflow_dispatch`）；
-   步骤：checkout → pnpm install → `pnpm build:zcode --base-url <依赖托管基址>` → 生成 `package.json` → `npm publish --access public`。`continue-on-error: true`。
+   步骤：checkout → pnpm install → `pnpm build:zcode --base-url <依赖托管基址>` → **解包 `releases/<版本>/*.tar.gz` 到 staging** → 生成 `package.json` → `npm publish --access public --tag <dist-tag>`。`continue-on-error: true`。
+   **`--tag` 是必需的**：版本号是预发布（`3.14.3-ce.3`），不带 `--tag` 时 npm 直接报
+   `You must specify a tag using --tag when publishing a prerelease version`（实测，退出码非 0）。
 6. 发布后验证：`npm view <名字>@<版本> dist.shasum` 有值；另起干净容器 `npx -y <名字>@<版本> --web --no-open --port 3030` 后 `curl -sI localhost:3030/` 应为 200。
+   **判据要打到进程存活，不能只看横幅**：缺依赖时服务会先打印 `ZCode Web is running` 再崩，因此必须同时确认进程仍在 + `curl` 真的拿到 200（本页 §7.1 末的实测就是这么做的）。
 7. 回滚：72 小时内可 `npm unpublish <名字>@<版本>`；之后只能 `npm deprecate <名字>@<版本> "原因"` 并发布修复版本。
+
+**实测结论（3.14.3-ce.3，Linux x64，Node v24.21.0，npm 12.0.2 —— 发布预演，未真发）**：
+按上面第 2、3 条生成的包，`npm pack` 实测 **65.9 MB / 11 822 文件**（解包 293 MB），随后**真装真跑**通过：
+
+| 检查项                               | 实测结果                                                                                 |
+| ------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `npm pack`                           | 65.9 MB，11 822 文件（含 `bundleDependencies` 44 个）                                    |
+| 含 `.map`？                          | 仅 `node_modules` 内 31 个 / 1.4 MB；`web/assets/` 的 2 279 个已被 `!**/*.map` 排除      |
+| `npm i -g`（隔离 prefix）            | 通过，`node_modules` 完整保留，`bin/zcode` 软链正确                                      |
+| **离线安装** `npm i -g --offline`    | 通过 ⇒ 打包的依赖自足，装时不联网                                                        |
+| `bin/zcode.mjs`                      | 首行 `#!/usr/bin/env node`，权限 **755**（安装后仍 755）                                 |
+| `zcode --web --no-open --port 39218` | `curl -sI localhost:39218/` → **200**；进程存活；`SIGTERM` 干净退出                      |
+| `node-pty` 原生载荷                  | 从**装好的包**里 `pty.spawn` 成功（`exitCode=0`），`prebuilds/linux-x64/pty.node` 在包内 |
+| `npm publish --dry-run --tag next`   | 通过（`+ zcode-ce@3.14.3-ce.3`）；**不带 `--tag` 会失败**                                |
+
+**体积上限余量**：npm 单包 tarball 上限约 100 MB，本包 65.9 MB ⇒ 余量约 34 MB。
+
+**未验证项**：① 包名 `zcode-ce` 的真实注册（E404 只说明当前未被占用，首次 publish 才算数）；② 从 registry 安装（`npx zcode-ce@<版本>`）—— 预演只验了本地 tarball；③ macOS / Windows / musl 上装这个 npm 包（包内 `node-pty` 预编译含 darwin/win32，但本机只实测了 linux-x64）；④ `engines: ">=24"` 在 Node 22 上的实际表现（本机只有 Node 24，未构造低版本环境）。
 
 ### 7.2 Docker
 
@@ -251,6 +297,7 @@ smoke-exit=0
 ## 9. 已知限制与未验证项
 
 - **未对外发布**：发布流水线仍只**构建 + 冒烟 + 挂 workflow artifact**，不推 npm / 不推 Docker 镜像。**本地 Docker 资产已提供**（仓库根 `Dockerfile` + `compose.yaml`，由用户自行 `docker build`，见 [headless-server-docker.md](./headless-server-docker.md)）；§7 的 registry 发布步骤仍未执行。
+  **npm 侧的发布形态已预演验证**（3.14.3-ce.3，本地 `npm pack` + 真装真跑 + `publish --dry-run`，**未真发**），包描述、体积与全部实测数据见 §7.1 末「实测结论」；Docker 侧仍只到「本地 `docker build`」。
 - **依赖载荷托管位置未定**：`--base-url` 指向的依赖由部署方决定；本仓库不提供默认值。
 - **本机与远端都有 libc 拦断，且都在失败之前**：**正式支持**的是 **glibc 发行版**（见 §10 的 `Linux-x64（glibc）` 一行）。远端工作区在**连接时**先判 libc 再部署资产；**本机**（CLI / 无头 server）在**创建终端之前**判定，命中 musl 时给出可操作错误并正常退出 —— 不再出现原生 fork 的段错误（实测对照见 §10）。
 - **musl 上的能力边界（实测）**：Alpine 系**可以运行服务与面板**（需满足 `engines` 的 Node 版本，见 §10），**终端功能不可用**并会明确提示；本版**不承诺** musl 上的完整能力。

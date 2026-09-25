@@ -55,8 +55,9 @@ function decisionFor(userId: string, status: "dismissed" | "existing_local_user"
 /**
  * 隔离的数据目录 + 预置的记录文件。
  *
- * 用 setDataBaseDir 而不是 ZCODE_DATA_BASE_DIR 环境变量：paths.ts 在模块加载时就读环境变量，
- * 测试文件里的静态 import 会被提升到赋值之前，环境变量写法必然失效。
+ * 用 setDataBaseDir 而不是 ZCODE_DATA_BASE_DIR 环境变量：paths.ts 在首次调用 getDataBaseDir() 时
+ * 求值并缓存数据根，而这里的第一处调用来自被测代码的静态 import 链 —— 赋值语句排在它后面，
+ * 环境变量写法必然失效（缓存后改也无效）。
  */
 async function withRecordFile(
   file: OnboardingRecordFile | null,

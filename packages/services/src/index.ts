@@ -319,10 +319,19 @@ export { IBotsService } from "./bots/bots.js";
 // 合法最大 payload = ceil(N × S / 3) × 4（base64 膨胀）+ JSON 外壳。
 // 导出是为了让 packages/server 的 botIngress.test.ts 能写耦合断言而不是把 4/5MiB
 // 抄一遍（抄一遍的话测试自己也会漂移）。见 BOT-INGRESS-SPEC §7.1.1。
+//
+// 必须从无依赖叶子模块导出，不能从 ./bots/botsService.js（task-111 修复）：
+// botsService → attachmentUrlGuard → undici（Node-only），而 undici 顶层就读
+// process.versions.node ⇒ 这两个常量一旦从 botsService 导出，本入口的导出闭包
+// 就被拉进 undici，浏览器产物里直接 ReferenceError: process is not defined，
+// Web 客户端白屏（真浏览器实测；同批还有 paths.ts 顶层的 homedir 崩溃）。
+// 这与 node.ts:544-545 的既有约定同源：依赖 node:* 的实现只经 @zcode/services/node
+// 暴露，防止 browser-safe 根入口把 Node-only 依赖带进 renderer。
+// 护栏：test/browserSafeBarrelClosure.test.ts 断言本入口闭包不含 undici/node:*/paths.ts。
 export {
   BOT_MAX_ATTACHMENTS_PER_MESSAGE,
   BOT_MAX_ATTACHMENT_SIZE_BYTES,
-} from "./bots/botsService.js";
+} from "./bots/botAttachmentLimits.js";
 export type {
   BotBindCodeResult,
   BotCreateBindCodeParams,

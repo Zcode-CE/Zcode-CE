@@ -8,8 +8,20 @@ import { DATA_BASE_DIR_FORBIDDEN_WINDOWS_INSTALL_DIR_ERROR_CODE } from "@zcode/s
 
 let _dataBaseDir: string | null = null;
 export const ZCODE_WINDOWS_APP_INSTALL_DIR_ENV = "ZCODE_WINDOWS_APP_INSTALL_DIR";
-const envDataBaseDir = process.env.ZCODE_DATA_BASE_DIR?.trim() || null;
-const defaultDataBaseDir = process.env.HOME?.trim() || homedir();
+
+/**
+ * 默认数据根，首次求值后缓存（null = 尚未求值）。
+ *
+ * 为什么不在模块顶层求值：本模块会被 web 客户端打进浏览器产物
+ * （packages/ui 以值导入本包，例如 src/lib/cuaComposerEntryState.ts 的
+ * isCuaPermissionStatusAvailable），而浏览器里没有 process.env，也没有
+ * node:os 的 homedir —— Vite 把它替换成一个空对象，调用即
+ * TypeError: (0, X.homedir) is not a function。顶层求值会让整个页面在加载期崩掉
+ * （实测：真浏览器控制台一条 error，390x844 与 1440x900 都一样）。
+ *
+ * 为什么求值一次后要缓存，而不是每次调用动态读：见 getDataBaseDir() 内注释。
+ */
+let defaultDataBaseDir: string | null = null;
 
 interface DataBaseDirTargetValidationOptions {
   platform?: NodeJS.Platform | string;
@@ -30,12 +42,18 @@ export function setDataBaseDir(dir: string | null): void {
   _dataBaseDir = dir?.trim() || null;
 }
 
-/** Get the current base directory. Priority: setDataBaseDir() > env ZCODE_DATA_BASE_DIR > homedir(). */
+/** Get the current base directory. Priority: setDataBaseDir() > env ZCODE_DATA_BASE_DIR > HOME > homedir(). */
 export function getDataBaseDir(): string {
   if (_dataBaseDir) return _dataBaseDir;
-  if (envDataBaseDir) return envDataBaseDir;
   // 服务实例会启动后台刷新任务；若每次调用都动态读取 HOME，
   // 测试或宿主切换环境变量后，旧实例可能把数据写到新实例目录。
+  // 因此这里只在首次求值时读一次环境变量并缓存（惰性求值 + 缓存）：
+  // 顶层求值在浏览器里必崩（见 defaultDataBaseDir 注释），而每次动态读会破坏上面这条语义。
+  // 与惰性求值之前的唯一差别是求值时机：从模块加载推迟到首次调用；同进程内仍然只读一次。
+  if (defaultDataBaseDir === null) {
+    defaultDataBaseDir =
+      process.env.ZCODE_DATA_BASE_DIR?.trim() || process.env.HOME?.trim() || homedir();
+  }
   return defaultDataBaseDir;
 }
 

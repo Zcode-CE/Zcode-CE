@@ -30,11 +30,11 @@ import {
 /**
  * 隔离数据根。
  *
- * 为什么不用改 HOME：`getDataBaseDir()` 把默认值在模块求值时固化了
- * （paths.ts:12 `defaultDataBaseDir = process.env.HOME?.trim() || homedir()`），
- * 之后再改 HOME 不会生效 —— 那样写测试会污染真实 ~/.zcode/v2（本文件初版踩过：
+ * 为什么不用改 HOME：`getDataBaseDir()` 在首次调用时读一次 HOME 并缓存
+ * （task-111 起是惰性求值 + 缓存，此前是模块顶层求值），之后再改 HOME 不会生效 ——
+ * 那样写测试会污染真实 ~/.zcode/v2（本文件初版踩过：
  * 在真实数据根里建了 bot-attachments/bot-1 与一个指向 /tmp 的软链）。
- * 因此改用模块自带的注入点 `setDataBaseDir()`，它优先于 HOME（paths.ts:34-39）。
+ * 因此改用模块自带的注入点 `setDataBaseDir()`，它优先于 HOME。
  */
 async function withIsolatedDataRoot(run: (home: string) => Promise<void>): Promise<void> {
   const home = await mkdtemp(join(tmpdir(), "zcode-botguard-"));
