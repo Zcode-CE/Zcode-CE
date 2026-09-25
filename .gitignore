@@ -2,6 +2,11 @@ node_modules/
 dist/
 # zcode-server-cli 发行包 staging 输出，本地组装产物不入库。
 dist-release/
+# node-repl-host 的 tsc 声明产物目录（tsconfig outDir + emitDeclarationOnly），不是源码：
+# 该包 package.json 无 types/files 字段、exports 全指 ./src/*.ts，没有任何消费方读它。
+# 此前漏了这条，16 个 d.ts 被跟踪，每次构建后都产生噪声 diff（见提交 28ab20e）。
+# 与 dist/ 同样写成无斜杠 pattern，任意层级都生效。
+dist-types/
 # macOS CI 按架构隔离 electron-builder 输出目录，这些仍是构建产物。
 packages/desktop/dist-*/
 out/
