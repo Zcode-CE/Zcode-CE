@@ -16,7 +16,14 @@ export interface NodePtyPayloadAssertionResult {
   digest?: string;
 }
 
-/** 断言产物内 node-pty 载荷只有我们验证过的那一份（不得带 build/Release|build/Debug，prebuilds 必须与平台包一致）。 */
+/**
+ * 该平台原生载荷的来源包名（linux 系 ⇒ @lydell/node-pty-<key>；win32 系 / darwin 系 ⇒ node-pty）。
+ * 实测依据：node-pty 官方 npm 包不带 linux prebuild、但自带 win32/darwin prebuild；
+ * 而 @lydell 的 win32 包不含 pty.node（只有 conpty.node）。
+ */
+export function resolveNodePtyPayloadSourcePackageName(platformKey: string): string;
+
+/** 断言产物内 node-pty 载荷只有我们验证过的那一份（不得带 build/Release|build/Debug 下任一原生模块，prebuilds 必须与来源包一致）。 */
 export function assertPackagedNodePtyPayloadVerified(
   params: NodePtyPayloadAssertionParams,
 ): NodePtyPayloadAssertionResult;

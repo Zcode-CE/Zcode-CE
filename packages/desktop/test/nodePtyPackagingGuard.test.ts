@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+
+const require = createRequire(import.meta.url);
 import test from "node:test";
 import {
   assertPackagedNodePtyPayloadVerified,
+  resolveNodePtyPayloadSourcePackageName,
   resolvePackagedNodePtyPrebuildPath,
   resolveSourceNodePtyPrebuildPath,
 } from "../scripts/node-pty-package-assets.mjs";
@@ -152,6 +156,99 @@ test("路径约定：护栏检查的位置与 resolvePackagedNodePtyPrebuildPath
       platformKey: PLATFORM_KEY,
     });
     assert.equal(result.checked, true, "同一布局下护栏必须通过，证明两侧口径一致");
+  });
+  if (skipped) t.skip("本机没有 " + SOURCE_PACKAGE + "：" + skipped);
+});
+
+/**
+ * 平台来源分叉的回归护栏（本次 Windows 构建失败的直接原因）。
+ *
+ * 原缺陷：护栏把来源包硬编码成 `@lydell/node-pty-<platformKey>`，而 @lydell 的 win32 包
+ * 不提供 pty.node（实测其 prebuilds/win32-x64 下只有 conpty.node / conpty_console_list.node /
+ * conpty/），win32 构建因此在 afterPack 抛 Cannot find module '@lydell/node-pty-win32-x64'。
+ * 修复后来源按平台分叉，且 restore 与断言共用同一份映射（禁止各写一份）。
+ */
+test("来源包按平台分叉：linux 用 @lydell，win32/darwin 用 node-pty 自身", () => {
+  assert.equal(resolveNodePtyPayloadSourcePackageName("linux-x64"), "@lydell/node-pty-linux-x64");
+  assert.equal(
+    resolveNodePtyPayloadSourcePackageName("linux-arm64"),
+    "@lydell/node-pty-linux-arm64",
+  );
+  for (const key of ["win32-x64", "win32-arm64", "darwin-x64", "darwin-arm64"]) {
+    assert.equal(
+      resolveNodePtyPayloadSourcePackageName(key),
+      "node-pty",
+      key + " 的来源必须是 node-pty 自身（@lydell 的 win32 包不含 pty.node）",
+    );
+  }
+});
+
+test("win32/darwin 产物：用 node-pty 自带的 prebuild 就能通过（原缺陷的直接回归）", () => {
+  // 这条不经过 resolveNodePtyPayloadSourcePackageName：直接从 node-pty 自身目录取那份，
+  // 因此映射被改坏时它不会「跟着一起坏」而假绿（反向验证时发现的空跑风险）。
+  let nodePtyRoot: string;
+  try {
+    nodePtyRoot = dirname(require.resolve("node-pty/package.json"));
+  } catch {
+    return; // 本机没有 node-pty（CI 恒有）
+  }
+  let covered = 0;
+  for (const platformKey of ["win32-x64", "win32-arm64", "darwin-x64", "darwin-arm64"]) {
+    const prebuild = join(nodePtyRoot, "prebuilds", platformKey, "pty.node");
+    if (!existsSync(prebuild)) continue;
+    covered += 1;
+    // 产物布局 = node-pty 目录原样（prebuilds 已在该平台目录下）。
+    const root = mkdtempSync(join(tmpdir(), "node-pty-src-" + platformKey + "-"));
+    const packageRoot = join(root, "node-pty");
+    mkdirSync(join(packageRoot, "prebuilds", platformKey), { recursive: true });
+    cpSync(prebuild, join(packageRoot, "prebuilds", platformKey, "pty.node"));
+    try {
+      const result = assertPackagedNodePtyPayloadVerified({
+        nodePtyPackageRoot: packageRoot,
+        platformKey,
+      });
+      assert.equal(
+        result.checked,
+        true,
+        platformKey + " 必须通过（原缺陷在此抛 Cannot find module）",
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+  assert.ok(covered > 0, "本机 node-pty 必须至少带一个 win32/darwin prebuild，否则这条回归是空跑");
+});
+
+test("build/Release 下的 conpty.node 也必须被拦（Windows 真正加载的那一份）", (t) => {
+  // Windows 默认走 conpty 后端：windowsPtyAgent.js:38-50 命中时 loadNativeModule('conpty')，
+  // 只有回退 winpty 才 loadNativeModule('pty')。只查 pty.node 会让这份绕过护栏。
+  const skipped = withFakeArtifact((resourcesDir, packageRoot) => {
+    const forbiddenDir = join(packageRoot, "build", "Release");
+    mkdirSync(forbiddenDir, { recursive: true });
+    writeFileSync(join(forbiddenDir, "conpty.node"), "host-built-conpty");
+    assert.throws(
+      () => assertPackagedNodePtyPayloadVerified({ resourcesDir, platformKey: PLATFORM_KEY }),
+      (error: unknown) => {
+        const message = String(error instanceof Error ? error.message : error);
+        assert.ok(message.includes("build/Release"), "必须点名 build/Release，实际：" + message);
+        assert.ok(message.includes("conpty.node"), "必须点名 conpty.node，实际：" + message);
+        return true;
+      },
+    );
+  });
+  if (skipped) t.skip("本机没有 " + SOURCE_PACKAGE + "：" + skipped);
+});
+
+test("build/Debug 下的 conpty_console_list.node 同样必须被拦", (t) => {
+  const skipped = withFakeArtifact((resourcesDir, packageRoot) => {
+    const forbiddenDir = join(packageRoot, "build", "Debug");
+    mkdirSync(forbiddenDir, { recursive: true });
+    writeFileSync(join(forbiddenDir, "conpty_console_list.node"), "host-built-list");
+    assert.throws(
+      () => assertPackagedNodePtyPayloadVerified({ resourcesDir, platformKey: PLATFORM_KEY }),
+      (error: unknown) =>
+        String(error instanceof Error ? error.message : error).includes("conpty_console_list.node"),
+    );
   });
   if (skipped) t.skip("本机没有 " + SOURCE_PACKAGE + "：" + skipped);
 });

@@ -5,6 +5,23 @@ import { dirname, resolve } from "node:path";
 
 const require = createRequire(import.meta.url);
 
+/**
+ * 各平台原生载荷的来源包（唯一映射：restore 与出包断言共用同一份，禁止各写一份）。
+ *
+ * 为什么按平台分叉（实测，别凭直觉改）：
+ *  - linux 系：node-pty 官方 npm 包不带 linux prebuild（node-pty@1.1.0 的 tarball 里
+ *    prebuilds 只有 darwin-x64 / darwin-arm64 / win32-x64 / win32-arm64，linux 0 命中），
+ *    只能从 @lydell/node-pty-<key> 取 —— restoreTargetNodePtyPrebuild 就是为这条路径存在的。
+ *  - win32 系 / darwin 系：node-pty 官方包自带 prebuilds/<key>/pty.node，restore 显式跳过
+ *    （见上面的 os !== "linux" 分支），所以产物里那一份的来源就是 node-pty 自身。
+ *  - 注意 @lydell 的 win32 包不提供 pty.node：它的 prebuilds/win32-x64 下只有
+ *    conpty.node / conpty_console_list.node / conpty/（lydell 分支去掉了 winpty 后端）。
+ *    所以 win32 上把来源写成 @lydell 必然解析失败 —— 这正是本函数存在的原因。
+ */
+export function resolveNodePtyPayloadSourcePackageName(platformKey) {
+  return platformKey.startsWith("linux-") ? `@lydell/node-pty-${platformKey}` : "node-pty";
+}
+
 export function restoreTargetNodePtyPrebuild({ desktopPackageRoot, targetPlatform }) {
   if (targetPlatform.os !== "linux") {
     console.log(`[beforePack] node-pty prebuild restore skipped for ${targetPlatform.key}`);
@@ -12,7 +29,7 @@ export function restoreTargetNodePtyPrebuild({ desktopPackageRoot, targetPlatfor
   }
 
   const platformKey = targetPlatform.key;
-  const sourcePackageName = `@lydell/node-pty-${platformKey}`;
+  const sourcePackageName = resolveNodePtyPayloadSourcePackageName(platformKey);
   let sourceBinaryPath;
 
   try {
@@ -63,6 +80,18 @@ export function resolveSourceNodePtyPrebuildPath({ sourcePackageName, platformKe
 const NODE_PTY_FORBIDDEN_BUILD_DIRS = ["build/Release", "build/Debug"];
 
 /**
+ * node-pty 会按名字加载的原生模块全集（每个名字都走同一套目录搜索顺序）。
+ *
+ * 为什么必须列全集而不是只查 pty.node：Windows 上默认走 conpty 后端
+ * （`windowsPtyAgent.js:38-50`：useConpty 未显式关闭时按 build number 判定，
+ * 命中则 `loadNativeModule('conpty')`，只有回退 winpty 时才 `loadNativeModule('pty')`；
+ * 另有 `conpty_console_list_agent.js:11` 加载 `conpty_console_list`）。
+ * 只查 `pty.node` 的话，Windows 产物里的 `build/Release/conpty.node` 会绕过这条断言，
+ * 而它恰恰是 Windows 运行时真正加载的那一份 —— 护栏在最需要它的平台上留了洞。
+ */
+const NODE_PTY_NATIVE_MODULE_NAMES = ["pty", "conpty", "conpty_console_list"];
+
+/**
  * 分发产物内的 node-pty 原生载荷必须**只有我们验过的那一份**。
  *
  * 为什么必须（否则后人会顺手删掉这条校验）：node-pty 的加载顺序是
@@ -99,25 +128,33 @@ export function assertPackagedNodePtyPayloadVerified({
     return { checked: false, reason: `产物内没有 node-pty: ${packageRoot}` };
   }
 
-  // ① 不得存在 build/Release 或 build/Debug 下的 pty.node —— 它们会抢先于 prebuilds 被加载。
+  // ① 不得存在 build/Release 或 build/Debug 下任一原生模块（pty / conpty / conpty_console_list）
+  //    —— 它们会抢先于 prebuilds 被加载。名字全集的理由见 NODE_PTY_NATIVE_MODULE_NAMES。
   for (const dir of NODE_PTY_FORBIDDEN_BUILD_DIRS) {
-    const forbiddenPath = resolve(packageRoot, dir, "pty.node");
-    if (existsSync(forbiddenPath)) {
-      throw new Error(
-        `分发产物内不得包含 node-pty 的 ${dir}/pty.node：${forbiddenPath}\n` +
-          "原因：node-pty 的加载顺序是 [build/Release, build/Debug, prebuilds/<platform>-<arch>]" +
-          "（node-pty/lib/utils.js:19），build/Release 优先于 prebuilds ⇒ 运行时会静默加载这份" +
-          "未经我们验证的原生模块（与打包恢复进来的那一份版本/校验和都不同）。",
-      );
+    for (const moduleName of NODE_PTY_NATIVE_MODULE_NAMES) {
+      const forbiddenPath = resolve(packageRoot, dir, `${moduleName}.node`);
+      if (existsSync(forbiddenPath)) {
+        throw new Error(
+          `分发产物内不得包含 node-pty 的 ${dir}/${moduleName}.node：${forbiddenPath}\n` +
+            "原因：node-pty 的加载顺序是 [build/Release, build/Debug, prebuilds/<platform>-<arch>]" +
+            "（node-pty/lib/utils.js:19），build/Release 优先于 prebuilds ⇒ 运行时会静默加载这份" +
+            "未经我们验证的原生模块（与打包恢复进来的那一份版本/校验和都不同）。",
+        );
+      }
     }
   }
 
-  // ② prebuilds/<platform>/pty.node 必须存在，且与平台包（我们验过的那份）逐字节一致。
+  // ② prebuilds/<platform>/pty.node 必须存在，且与来源包（我们验过的那份）逐字节一致。
+  //    来源包按平台不同（见 resolveNodePtyPayloadSourcePackageName）：linux-* 是 @lydell 平台包
+  //    （beforePack 从那里恢复），win32-*/darwin-* 是 node-pty 官方包自带的 prebuild。
+  //    诚实边界：win32/darwin 上来源与产物同出 node-pty 自身，② 因此弱于 linux —— 它只能证明
+  //    "产物里那份与 node-pty 官方包一致"，不能证明"与另一份独立构建一致"；真正有牙齿的是 ①。
   const packagedBinaryPath = resolve(packageRoot, "prebuilds", platformKey, "pty.node");
   if (!existsSync(packagedBinaryPath)) {
     throw new Error(`node-pty 预编译产物缺失: ${packagedBinaryPath}`);
   }
-  const expectedPackageName = sourcePackageName ?? `@lydell/node-pty-${platformKey}`;
+  const expectedPackageName =
+    sourcePackageName ?? resolveNodePtyPayloadSourcePackageName(platformKey);
   const sourceBinaryPath = resolveSourceNodePtyPrebuildPath({
     sourcePackageName: expectedPackageName,
     platformKey,
