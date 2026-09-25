@@ -328,14 +328,17 @@ jobs:
       # 脚本内部：内容寻址对象已存在即跳过；每个对象上传后逐个 HEAD 自检（对发布根）。
       - name: Upload to bucket
         run: node scripts/upload-remote-assets-r2.mjs --root .tmp/remote-assets-publish --public-base-url "$ZCODE_PUBLIC_BASE_URL"
-  # 无头服务器发行包（tarball）：构建 + 冒烟 + 挂 Release / 上传 artifact。
+  # 无头服务器发行包（tarball）：构建 + 冒烟 + 挂 Release / 上传 artifact / 发布 npm。
   #
-  # 为什么不阻塞发版：这个包与安装包互相独立，registry/打包出问题不该让「安装包已经好了」的发版失败。
-  # 整个 job 用 continue-on-error: true，内部再做一次「基址未配置就跳过」的软降级。
-  # 本轮**不发布到任何 registry**（npm/Docker 的清单见 docs/operations/headless-server.md §7）。
+  # 不再用 job 级 continue-on-error（2026-09-25 订正）。
+  # 原先的理由是"这个包与安装包互相独立，registry/打包出问题不该让发版失败"，但实测暴露了两个问题：
+  #   1. 它把**发布失败**也一起吞了 —— CI 全绿，而 npm 上根本没有这个包（registry 实测 404）；
+  #   2. 排查时看到的是"job success"，必须翻到日志末尾才发现 npm error。
+  # 本版起 npm 包是本流水线的**交付终点之一**：发不出去就必须红，不能伪装成成功。
+  # 唯一保留的软降级是「基址未配置就跳过」（那是"这次不发布"的有意选择，会打印 notice），
+  # 见下方 Build headless server package 的 if 条件与 docs/operations/headless-server.md §7.1。
   headless-server-package:
     name: headless server package
-    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -345,14 +348,38 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
 
+      # registry-url 是 npm 认证的前提：actions/setup-node 只有拿到它才会写 .npmrc，
+      # 而 NODE_AUTH_TOKEN 是**写进那个 .npmrc** 的。缺了它，npm publish 直接 ENEEDAUTH
+      # （实测：包已打好、shasum 已算出，但认证阶段就退出 —— registry 上根本没有这个包）。
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 24.14.0
           cache: pnpm
+          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # 认证前置检查：在构建/打包之前就把"令牌不可用"暴露出来。
+      # 否则失败会推迟到最后的 npm publish，报一句 ENEEDAUTH，而那时：
+      #   · 包已经打好（几百 MB、上万文件），白跑；
+      #   · 错误信息不含"是哪个 secret 的问题"，排查要翻日志。
+      # 只在需要发布时检查（未配置 base-url 的试跑不该因此变红）。
+      - name: Preflight npm auth
+        if: vars.ZCODE_DIST_BASE_URL != ''
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::NPM_TOKEN 未配置或为空 —— 无法发布 npm 包"
+            exit 1
+          fi
+          # whoami 会真正打到 registry：令牌无效/过期/无发布权限都会在这里失败。
+          npm whoami || {
+            echo "::error::NPM_TOKEN 无效（npm whoami 失败）—— 请确认它是 granular access token 且勾选了 publish 权限"
+            exit 1
+          }
 
       # --base-url 决定 install.sh 去哪里取依赖；未配置时**跳过而不是失败**：
       # 既避免「配置缺失」染红发版流程，也避免把占位域名写进用户拿到的 install.sh。
@@ -395,9 +422,9 @@ jobs:
           retention-days: 30
 
       # tag 发版时顺带挂到 Release（与安装包并列）。失败只 warn：这个包不该影响 Release 本身。
+      # 同样不再吞失败：挂不上 Release 说明用户拿不到这个包，必须红。
       - name: Attach package to release
         if: steps.build_package.outputs.packaged == 'true' && startsWith(github.ref, 'refs/tags/')
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -419,7 +446,6 @@ jobs:
       # 占位基址只写进 install.sh 与 latest.json，不进 npm 包（验证见
       # scripts/test/installScriptBaseUrl.test.mjs 与 docs/operations/headless-server.md §7.1）。
       #
-      # 为什么 continue-on-error：npm 发布失败不该阻塞 tag 发版（与上面挂 Release 同口径）。
       # 为什么只在 tag 触发：预发布版本号（3.14.3-ce.N）不适合从任意分支发布。
       - name: Stage npm package
         id: stage_npm
@@ -446,9 +472,11 @@ jobs:
           node scripts/stage-npm-package.mjs "$TARBALL"
           echo "staged=true" >> "$GITHUB_OUTPUT"
 
+      # 失败必须让流水线变红：发布是本流水线的交付终点，吞掉失败等于把
+      # "没发出去"伪装成"发成功"（曾经用 continue-on-error: true，CI 显示绿色而
+      # npm 上根本没有这个包 —— registry 实测 404）。
       - name: Publish to npm
         if: steps.stage_npm.outputs.staged == 'true'
-        continue-on-error: true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
@@ -458,9 +486,10 @@ jobs:
           echo "::notice::published zcode-ce@$(node -p "require('./package.json').version")"
 
       # 发布后验证（打到最终消费点）：registry 上能查到，且干净容器里能真跑起来。
+      # 同样不能吞失败：这条是"打到最终消费点"的验证（registry 能查到 + 干净环境能起服务）。
+      # 曾经它 continue-on-error，于是包根本没发出去时这一步也显示成功。
       - name: Verify npm package
         if: steps.stage_npm.outputs.staged == 'true'
-        continue-on-error: true
         run: |
           VERSION=$(node -p "require('./dist/npm-stage/package.json').version")
           npm view "zcode-ce@$VERSION" dist.shasum
@@ -476,5 +505,5 @@ jobs:
             sleep 2
           done
           kill "$NPX_PID" 2>/dev/null || true
-          echo "::warning::npx 起服务未在 60s 内返回 200（包可能已发布但启动有问题）"
+          echo "::error::npx 起服务未在 60s 内返回 200（包已发布但起不来）"
           exit 1
