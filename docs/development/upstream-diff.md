@@ -135,13 +135,13 @@ git merge upstream/main
 
 ## 已知的技术债
 
-| #   | 项                                                                              | 严重度 | 状态                                                         |
-| --- | ------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------ |
-| 1   | `tsconfig.main.json` 的 `rootDir` 越界（`tsc -b` 会把编译产物写进 `src/`）      | 高     | ✅ 已修（`18948a9` 补 `noEmit`）                             |
-| 2   | `pnpm typecheck` 的工程列表不含 desktop main/renderer                           | 中     | ✅ 已修（`8549509` 纳入 main/renderer/scheduler）            |
-| 3   | desktop main/renderer 存在既有类型错误                                          | 中     | ✅ 已修（`ce03e36` main 77→0、`5cbe4cd` renderer/scheduler） |
-| 4   | `packages/ui` 的 `@/*` 别名导致测试必须从包目录内执行                           | 低     | ⬜ 仍存在                                                    |
-| 5   | `THIRD-PARTY-NOTICES.md` 的 30 项材料待补齐（`licenses:check --strict` 不通过） | 中     | ⬜ 仍存在                                                    |
+| #   | 项                                                                          | 严重度 | 状态                                                            |
+| --- | --------------------------------------------------------------------------- | ------ | --------------------------------------------------------------- |
+| 1   | `tsconfig.main.json` 的 `rootDir` 越界（`tsc -b` 会把编译产物写进 `src/`）  | 高     | ✅ 已修（`18948a9` 补 `noEmit`）                                |
+| 2   | `pnpm typecheck` 的工程列表不含 desktop main/renderer                       | 中     | ✅ 已修（`8549509` 纳入 main/renderer/scheduler）               |
+| 3   | desktop main/renderer 存在既有类型错误                                      | 中     | ✅ 已修（`ce03e36` main 77→0、`5cbe4cd` renderer/scheduler）    |
+| 4   | `packages/ui` 的 `@/*` 别名导致测试必须从包目录内执行                       | 低     | ⬜ 仍存在                                                       |
+| 5   | `THIRD-PARTY-NOTICES.md` 仍有材料待补齐（`licenses:check --strict` 不通过） | 中     | ⬜ 仍存在（**条数以 `third-party/inventory.json` 为准**，见下） |
 
 技术债 #1 的历史规避方式（**已由 `noEmit` 修掉**，保留作为背景）：不要对
 `packages/desktop` 使用 `tsc -b`，改用 `tsc -p <cfg> --noEmit` 或
@@ -159,6 +159,18 @@ node scripts/licenses.mjs check           # 基础检查，当前通过
 node scripts/licenses.mjs check --strict  # 发布前必须通过，当前**不通过**
 ```
 
-基础检查通过**不等于**合规完成 —— `--strict` 列出 30 项待补齐材料
-（`@trycua/cua-driver-*`、`@ubjs/*` 的版本级许可材料，以及 Skia / QuickJS-NG
-等原生组件的构建来源）。清单见 `third-party/README.md`。
+基础检查通过**不等于**合规完成 —— `--strict` 还会列出待补齐材料
+（如 `@trycua/cua-driver-*`、`@ubjs/*` 的版本级许可材料，以及 Skia / QuickJS-NG
+等原生组件的构建来源）。
+
+**条数不写在这里**（它会随依赖变化而漂移，写死必然过期）。取当前值：
+
+```bash
+# 阻断项条数（"待补齐材料"就是这一项）
+node -p "require('./third-party/inventory.json').reviewRequired.length"
+
+# 已按两档口径书面声明、不再阻断的条数
+node -p "require('./third-party/inventory.json').documentedLimitations.length"
+```
+
+字段含义与判定档位见 `third-party/README.md`（它同样规定"确切数字以 `inventory.json` 为准，不要在本文件里抄写数字"）。
