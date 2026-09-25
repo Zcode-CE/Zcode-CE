@@ -12,6 +12,7 @@ import {
   stageTuiRuntime,
 } from "./zcode-distribution/assets.mjs";
 import { installScriptSource } from "./zcode-distribution/installer.mjs";
+import { tuiRuntimeWorkspaceBuildProjects } from "./zcode-distribution/runtime-dist-prerequisites.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const defaultOutDir = resolve(root, "dist", "zcode");
@@ -168,6 +169,16 @@ async function buildOutputs(skipBuild) {
   }
 
   run("pnpm", ["--filter", "@zcode/cli...", "build"]);
+  // TUI 运行时 staging 还需要几个"没有 build 脚本"的 workspace 包（清单与理由见 runtime-dist-prerequisites.mjs）。
+  // 为什么必须显式补：pnpm 会静默跳过没有 build 脚本的 workspace 包，而 stageTuiRuntime 对
+  // 它们逐个要求 dist/index.js ⇒ 只跑上面那条 filter 的调用方（CI 的 headless server package job、
+  // 本地首次构建、任何自动化）都会在 stageTuiRuntime 处失败，报 Missing @zcode/shared dist files。
+  // 也不能靠根 typecheck 兜底：那是另一个命令，且 CI 的这个 job 从不跑它。
+  // 用 tsc -b（与根 typecheck 同一种模式）：这些包是 tsc 工程，且 -b 会跟随 project references，
+  // 将来给它们加 references 时不会静默失效。
+  if (tuiRuntimeWorkspaceBuildProjects.length > 0) {
+    run("pnpm", ["exec", "tsc", "-b", ...tuiRuntimeWorkspaceBuildProjects]);
+  }
   await rm(resolve(root, "packages", "server", "dist"), {
     force: true,
     recursive: true,
