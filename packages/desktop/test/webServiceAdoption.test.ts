@@ -10,9 +10,12 @@ import {
   isPortOpen,
   pickFreePort,
   readTokenForTest,
+  startStubUnderSlowReaper,
   STUB_SERVER_PATH,
+  waitForProcessGone,
   type RealDepsHarness,
 } from "./support/webServiceRealDeps.js";
+import { isProcessAlive } from "../src/main/web-service/probe.js";
 
 /**
  * 编排层端到端（**真实子进程**，不依赖 Electron）。
@@ -122,9 +125,11 @@ test("★stale 判定：kill -9（异常退出）后判 stale/pid-dead，状态�
     assert.ok(record);
 
     process.kill(record.pid, "SIGKILL");
-    for (let i = 0; i < 60 && (await isPortOpen("127.0.0.1", port)); i += 1) {
-      await new Promise((r) => setTimeout(r, 50));
-    }
+    // 必须等 pid 真的消失，不能只等端口释放（CI run 36151161461 的根因）。
+    // 内核先关监听 socket（端口立即释放）、进程随后才是僵尸，僵尸要等本进程回收才离开进程表
+    // ⇒ 只等端口时，窗口内 process.kill(pid, 0) 仍成功，探活会跳过 pid-dead 去探端口，
+    // 拿到 ECONNREFUSED ⇒ 断言看到 port-closed。等 pid 消失是更强的条件（端口先于僵尸释放）。
+    await waitForProcessGone(record.pid);
 
     const staleStatus = await controller.status();
     assert.equal(staleStatus.state, "stopped", "pid 已死时对外表现为可重新开启");
@@ -203,9 +208,8 @@ test("★stale 的区分度：'从未开启' 与 '陈旧条目' 对外可区分�
     const record = await readWebServiceState(harness.statePath);
     assert.ok(record);
     process.kill(record.pid, "SIGKILL");
-    for (let i = 0; i < 60 && (await isPortOpen("127.0.0.1", port)); i += 1) {
-      await new Promise((r) => setTimeout(r, 50));
-    }
+    // 同上：等 pid 消失，而不是只等端口释放。
+    await waitForProcessGone(record.pid);
     const afterCrash = await controller.status();
     assert.equal(afterCrash.state, "stopped");
     assert.equal(afterCrash.staleReason, "pid-dead", "异常退出必须被标成陈旧条目");
@@ -215,6 +219,85 @@ test("★stale 的区分度：'从未开启' 与 '陈旧条目' 对外可区分�
       neverStarted.staleReason,
       "陈旧条目与从未开启必须可区分（否则面板那条文案是死分支）",
     );
+  });
+});
+
+test("★stale 判定的时序：'端口已释放' 不等于 'pid 已死'（CI 那条 flaky 的根因）", async () => {
+  // 这条确定性地复现 CI run 36151161461 上那条 flaky，并证明修法的判据是对的。
+  //
+  // 根因：SIGKILL 之后内核分两步收尾 —— 先 exit_files 关掉监听 socket（端口立即释放），
+  // 进程随后才是僵尸，而僵尸要等父进程（本测试进程）在事件循环里 waitpid 才离开进程表。
+  // 两步之间有窗口：端口已关、但 process.kill(pid, 0) 仍成功。
+  // 本地这个窗口约 0.1ms（测试进程的事件循环恰好转过一次就回收了 ⇒ 5/5 绿，暴力 400/400 也绿），
+  // CI runner 上测试进程会在 kill 之后被调度出去（并行跑多个测试文件），
+  // 回来时端口已关、事件循环一次都没转 ⇒ 探活跳过 pid-dead 去探端口 ⇒ 拿到 port-closed。
+  //
+  // 复现手段：把替身服务挂在一个故意不回收僵尸的父进程下（同步阻塞、不读 SIGCHLD 管道），
+  // 把 0.1ms 的窗口拉到秒级。这不是造假 —— 状态文件里的 pid 确实已经死了、端口确实已释放，
+  // 只是进程表条目还没消失，与 CI 上发生的是同一件事，只是窗口更宽。
+  //
+  // 断言分两半，缺一不可：
+  // ① 窗口内（端口已释放、pid 仍可见）探活确实会判成 port-closed —— 证明这个时序真的会红，
+  //    也证明「只等端口释放」是过强的假设（原测试就是踩在这里）；
+  // ② pid 真的消失之后必须判成 pid-dead —— 这是契约 §3 stale 一行的判据，也是修法的落点。
+  await withHarness(async (harness) => {
+    const port = await pickFreePort();
+    const controller = createWebServiceController(harness.deps);
+    const { stubPid, release } = await startStubUnderSlowReaper({
+      port,
+      tokenPath: harness.tokenPath,
+    });
+    try {
+      for (let i = 0; i < 400 && !(await isPortOpen("127.0.0.1", port)); i += 1) {
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      assert.equal(await isPortOpen("127.0.0.1", port), true, "替身服务必须真的在监听");
+      // 状态文件指向替身服务的 pid（与编排层启动成功后写下的记录同形）。
+      await writeWebServiceState(harness.statePath, {
+        pid: stubPid,
+        host: "127.0.0.1",
+        port,
+        tokenFile: harness.tokenPath,
+        startedAt: Date.now(),
+        entry: "web-service-stub-server.mjs",
+      });
+
+      process.kill(stubPid, "SIGKILL");
+      // 等到端口真的释放 —— 但故意不等 pid 消失，以复现 CI 的采样时刻。
+      for (let i = 0; i < 400 && (await isPortOpen("127.0.0.1", port)); i += 1) {
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      assert.equal(await isPortOpen("127.0.0.1", port), false, "端口必须已释放");
+      assert.equal(
+        isProcessAlive(stubPid),
+        true,
+        "此时 pid 仍应可见（僵尸）—— 这是本条要钉住的窗口；若为 false 说明持有者没生效",
+      );
+
+      // ① 窗口内：探活只能给出 port-closed（= CI 上那条失败的实际取值）。
+      const duringWindow = await controller.status();
+      assert.equal(duringWindow.state, "stopped");
+      assert.equal(
+        duringWindow.staleReason,
+        "port-closed",
+        "端口已释放但 pid 仍可见时，探活只能判成 port-closed —— 这正是原测试拿到 port-closed 的原因",
+      );
+
+      // ② pid 真的消失之后：必须判成 pid-dead（契约 §3 的 stale 判据）。
+      await release();
+      assert.equal(isProcessAlive(stubPid), false, "释放后 pid 必须从进程表消失");
+      const afterGone = await controller.status();
+      assert.equal(afterGone.state, "stopped");
+      assert.equal(
+        afterGone.staleReason,
+        "pid-dead",
+        "pid 消失后必须判成 pid-dead（'等 pid 消失'才是正确的等待判据）",
+      );
+      // 区分度仍在：陈旧条目（有 reason）与从未开启（无 reason）必须可区分。
+      assert.notEqual(afterGone.staleReason, undefined);
+    } finally {
+      await release();
+    }
   });
 });
 

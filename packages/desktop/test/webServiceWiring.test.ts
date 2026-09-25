@@ -7,7 +7,12 @@ import { PlatformChannels } from "@zcode/shared";
 import { WEB_SERVICE_CHANNELS, registerWebServiceIpc } from "../src/main/web-service/ipc.js";
 import { createWebServiceController } from "../src/main/web-service/service.js";
 import { readWebServiceState } from "../src/main/web-service/state.js";
-import { readTokenForTest, createRealDeps, pickFreePort } from "./support/webServiceRealDeps.js";
+import {
+  readTokenForTest,
+  createRealDeps,
+  pickFreePort,
+  waitForProcessGone,
+} from "./support/webServiceRealDeps.js";
 import {
   buildRemoteControlWiring,
   parseRemoteControlConnectionInfo,
@@ -184,13 +189,10 @@ test("★真实 kill -9 ⇒ 陈旧条目：入口回到 off，且面板能看到
     const record = await readWebServiceState(harness.statePath);
     assert.ok(record);
     process.kill(record.pid, "SIGKILL");
-    for (let i = 0; i < 60; i += 1) {
-      await new Promise((r) => setTimeout(r, 50));
-      const probe = await fetch("http://127.0.0.1:" + port + "/", {
-        signal: AbortSignal.timeout(200),
-      }).catch(() => null);
-      if (!probe) break;
-    }
+    // 与 webServiceAdoption.test.ts 同一处竞态（CI run 36151161461）：只等「端口关了」不够 ——
+    // 端口在进程退出的 exit_files 阶段就释放，而僵尸要等本进程回收才离开进程表，
+    // 窗口内 process.kill(pid, 0) 仍成功 ⇒ 探活会判成 port-closed。必须等 pid 真的消失。
+    await waitForProcessGone(record.pid);
 
     const status = (await harness.call(WEB_SERVICE_CHANNELS.status)) as {
       state: string;
