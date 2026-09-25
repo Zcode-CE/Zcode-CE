@@ -6,8 +6,14 @@
 > （那是桌面端**窗口内**的连接注册表，`packages/desktop/src/host/windowRemoteConnectionRegistry.ts`，
 > 与本文这条链路没有关系）。本仓库只有 `packages/web` ↔ `packages/server` 这一条自托管链路，
 > 见根 `AGENTS.md` 的「上游形态提示（本仓库未实现）」。
-> **不是**官方产品的「扫码 + 云 relay + 移动壳」那套（官方那套在开源前已被整块移除：本仓库 0 命中，云 relay 与官方托管的手机页面均不可复制）。
+> **不是**官方产品的「扫码 + 云 relay + 移动壳」那套：上游开源版移除的是**产品面**（云 relay 服务、
+> 配对/扫码服务器、移动壳），协议与传输层接缝（`relay_owner`/`relay_bridge` 枚举、`web-remote-replayable`）
+> 从开源基线起就存在 —— 准确口径见根 `AGENTS.md` 的「上游形态提示」与 [上游同步台账](upstream-sync.md) 的「已修正的既有结论」。
+> 本仓库这两样都**没有引入**（全仓检索云 relay / 移动壳相关常量 0 命中）。
 > 本仓库**不托管任何中继**：服务跑在你自己的机器上，网络可达性由你的局域网/私网/隧道负责。
+> **本文是这条链路的权威说明**（状态所有者、四道闸的判定口径、`/bot/**` 入站面）；
+> 部署与参数清单见 [无头服务器发行包](../operations/headless-server.md)，反代场景见
+> [反代部署](../operations/headless-server-reverse-proxy.md) —— 三处冲突时以本文的安全口径为准。
 
 ---
 

@@ -1,6 +1,9 @@
 # 与官方发行版的差异
 
-> 状态：已核实 · 对照版本 ZCode 3.14.1（官方）与 ZCode-CE 3.14.1-ce.1
+> 状态：已核实 · 对照版本 ZCode 3.14.3（官方，本机安装的 `3.14.3` 发行版）与 ZCode-CE 3.14.3-ce.3（当前检出）
+>
+> **本文的对照基线**：官方侧以本机安装的官方发行版为准，CE 侧以根 `package.json` 的版本为准。
+> 文中带版本号的实测记录（如 §「远程工作区」的 CDN 探测）是**当时的快照**，重跑会得到不同结果。
 
 本文逐条回答「开源版是不是缺了一大堆功能」这个问题。所有结论都给出**可复现的验证方法**，
 读者可以自己查。文中区分三类事实：
@@ -18,25 +21,27 @@
 
 ### 插件清单对照
 
-官方发行版随包分发 14 个插件，本仓库分发 10 个（其中 5 个是从官方发行包搬运的 MIT 内容，
+官方发行版随包分发 14 个插件，本仓库分发 11 个（其中 5 个是从官方发行包搬运的 MIT 内容，
 见下文「本项目已补齐的部分」；`computer-use` 有 3 个文件带本地修改，其余为逐字节原样）。
 
-| 插件                      | 官方 | 本仓库 | 说明                                                                                         |
-| ------------------------- | ---- | ------ | -------------------------------------------------------------------------------------------- |
-| `browser-use`             | ✅   | ✅     | 上游开源，本仓库同步维护                                                                     |
-| `node-repl-host`          | ✅   | ✅     | 上游开源，Browser Use 与 Computer Use 的宿主                                                 |
-| `documents` (DOCX)        | ✅   | ✅     | 官方版授权受限，本仓库为独立 MIT 实现                                                        |
-| `presentations`           | ✅   | ✅     | 同上                                                                                         |
-| `spreadsheets`            | ✅   | ✅     | 同上                                                                                         |
-| `pdf`                     | ✅   | ❌     | 官方授权仅限非商业使用                                                                       |
-| `image-search`            | ✅   | ❌     | 依赖官方服务端与账号鉴权                                                                     |
-| `android-emulator`        | ✅   | ❌     | 仅分发编译产物，无源码                                                                       |
-| `ios-simulator`           | ✅   | ❌     | 仅分发编译产物，无源码                                                                       |
-| `computer-use`            | ✅   | ✅     | 官方插件搬运（MIT），执行改用开源驱动；**本仓对其中 3 个文件有本地修改**（见下「本地修改」） |
-| `plugin-creator`          | ✅   | ✅     | 官方插件原样搬运（MIT；工作流改编自 Codex）                                                  |
-| `skill-creator`           | ✅   | ✅     | 官方插件原样搬运（MIT）                                                                      |
-| `zcode-guide`             | ✅   | ✅     | 官方插件原样搬运（MIT）                                                                      |
-| `restore-legacy-sessions` | ✅   | ✅     | 官方插件原样搬运（MIT）                                                                      |
+> 计数口径与复算方式见本文「验证方法」的「核实插件清单差异」一节；数字随每次改动漂移，引用前请重新执行那里的命令。
+
+| 插件                      | 官方 | 本仓库 | 说明                                                                                               |
+| ------------------------- | ---- | ------ | -------------------------------------------------------------------------------------------------- |
+| `browser-use`             | ✅   | ✅     | 上游开源，本仓库同步维护                                                                           |
+| `node-repl-host`          | ✅   | ✅     | 上游开源，Browser Use 与 Computer Use 的宿主                                                       |
+| `documents` (DOCX)        | ✅   | ✅     | 官方版授权受限，本仓库为独立 MIT 实现                                                              |
+| `presentations`           | ✅   | ✅     | 同上                                                                                               |
+| `spreadsheets`            | ✅   | ✅     | 同上                                                                                               |
+| `pdf`                     | ✅   | ✅     | 官方版授权受限，本仓库为自研 MIT 实现（PDFKit + FontKit 载荷）；排版深度未对齐，见「可补齐性评估」 |
+| `image-search`            | ✅   | ❌     | 依赖官方服务端与账号鉴权                                                                           |
+| `android-emulator`        | ✅   | ❌     | 仅分发编译产物，无源码                                                                             |
+| `ios-simulator`           | ✅   | ❌     | 仅分发编译产物，无源码                                                                             |
+| `computer-use`            | ✅   | ✅     | 官方插件搬运（MIT），执行改用开源驱动；**本仓对其中 3 个文件有本地修改**（见下「本地修改」）       |
+| `plugin-creator`          | ✅   | ✅     | 官方插件原样搬运（MIT；工作流改编自 Codex）                                                        |
+| `skill-creator`           | ✅   | ✅     | 官方插件原样搬运（MIT）                                                                            |
+| `zcode-guide`             | ✅   | ✅     | 官方插件原样搬运（MIT）                                                                            |
+| `restore-legacy-sessions` | ✅   | ✅     | 官方插件原样搬运（MIT）                                                                            |
 
 > 另有一个**非插件**的内置技能包：`bundled-skills`（官方 3.14.3 新增）。它不是插件（无
 > `.zcode-plugin/plugin.json`），由运行时按 `source:"bundled"` + `scope:"system"` 的 skill root 原地发现；
@@ -361,16 +366,16 @@ Superpowers，本仓库用户没有这个入口。
 
 本仓库的官方插件声明文件
 （`apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts`）
-声明了 **14 个**插件，本仓库仍不分发其中的 `android-emulator`、`ios-simulator`、`pdf`、
-`image-search` 四个。该文件在 fix.3 之前与上游基线逐字节一致，fix.3 起为其中几个内容型插件
+声明了 **14 个**插件，本仓库仍不分发其中的 `android-emulator`、`ios-simulator`、
+`image-search` 三个（`pdf` 已由本仓库自研实现补齐，见上文「可补齐性评估」）。该文件在 fix.3 之前与上游基线逐字节一致，fix.3 起为其中几个内容型插件
 补了 `requiredSeedPaths`（见该文件内注释），因此**现在已与基线不同**。
 
 这些声明在运行时找不到对应目录，会被静默跳过（`resolveFilesystemPluginRoot` 遍历
 `rootCandidates` 全部落空后返回 `undefined`）。
 
 默认启用名单（`packages/shared/src/plugin-marketplaces.ts` 的
-`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`）里同样保留了没有实体的条目（`pdf` 与
-`image-search`）。但**这些条目只参与「已发现的插件是否默认启用」这一个判断**，集合的每一处
+`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`）里同样保留了没有实体的条目（`image-search` 一项；
+`pdf` 本仓库已有实体）。但**这些条目只参与「已发现的插件是否默认启用」这一个判断**，集合的每一处
 消费点都作用在**已发现、已加载或已落盘缓存**的候选之上：
 
 | 消费点                              | 求值对象                             |
@@ -443,8 +448,10 @@ CLI 侧过去从不写这个字段，于是 `zcode -p "/workflow …"` 一直可
 
 ### 无头服务器 + 浏览器面板（本仓库自研，官方没有这条线）
 
-官方在开源之前已整块移除手机远控：配对、二维码、云 relay、移动壳在官方产物里都存在，
-但**本仓库 0 命中**（全仓检索云 relay / 移动壳相关常量），桌面端也没有任何入站服务。
+官方开源版**移除的是产品面、保留的是协议与传输层接缝**（准确口径见根 `AGENTS.md` 的「上游形态提示」
+与 [上游同步台账](upstream-sync.md) 的「已修正的既有结论」）：配对/扫码服务、云 relay 服务与移动壳
+这些**产品面**在上游开源版里不存在（全仓检索云 relay / 移动壳相关常量 0 命中），而
+`relay_owner`/`relay_bridge` 枚举与 `web-remote-replayable` 链路从开源基线起就在。
 本仓库走的是**自托管**路线，并已形成一条独立的可用路径：
 
 | 项         | 内容                                                                                                                                                                                                                                                                                 |
@@ -456,11 +463,14 @@ CLI 侧过去从不写这个字段，于是 `zcode -p "/workflow …"` 一直可
 | 中继与遥测 | **不经任何中继**（浏览器直连你起的服务）、**不采集遥测**                                                                                                                                                                                                                             |
 | 解包级验证 | `scripts/zcode-distribution-smoke.mjs`：解包后在隔离环境跑 `--web`，验 `/` 壳、`/api/server-info`、WebSocket、优雅退出                                                                                                                                                               |
 
-**分发状态（如实记录）**：`pnpm build:zcode` 能构建这个发行包，但**发布流水线里没有任何 job 构建/挂载它**
-（`grep -rn 'build:zcode|zcode-distribution' .github/workflows/` → **0 命中**）⇒ 目前属于"代码有、用户拿不到"。
+**分发状态（如实记录）**：`pnpm build:zcode` 能构建这个发行包，发布流水线里的 `headless-server-package`
+job（`.github/workflows/release.yml`）也会构建它、跑 smoke 并挂 workflow artifact；tag 发版时**顺带**挂到 Release
+（`continue-on-error`，失败不影响发版）。该 job 需要仓库变量 `ZCODE_DIST_BASE_URL`，**未配置时跳过而不是失败**。
+⇒ 现状是"构建与挂载都通，但默认不启用"，而不是"代码有、用户拿不到"。
 
-**未验证**：手机与桌面**同时**连同一会话的并发语义没有测（见[网页远控](web-remote-control.md) §8）；
-Docker / WSL 作为承载环境未实测。
+**未验证**：手机与桌面**同时**连同一会话的并发语义没有测（见[网页远控](web-remote-control.md) §8）。
+Docker 作为**本机容器承载**已实测（见 [Docker 文档](../operations/headless-server-docker.md) §10）；
+Docker 作为**远程工作区承载**也已实测（见[远程工作区](remote-workspace.md) §6 第 6 条）；**WSL 仍未实测**。
 
 ### 远程工作区（SSH / Docker / WSL）：代码完整，但打包版取不到远程运行时
 
@@ -535,7 +545,8 @@ ZCODE_REMOTE_ASSET_CDN_BASE_URL=<发布根> pnpm dev:desktop      # 指向它
 用法与排障见[远程工作区](remote-workspace.md)。
 
 **Docker / WSL 与 SSH 共用同一套部署与资源代码**（`deploy.ts` / `remoteAssetCache.ts`），因此同样
-受这条缺口影响；但**未对 Docker / WSL 实测**，此处不作结论。修复路径（自建资源发布点 / 资源随包
+受这条缺口影响。其中 **Docker 已实测通过**（2026-09-24，真实 Docker 29.8.0 / rootless / cgroup v2，
+见[远程工作区](remote-workspace.md) §6 第 6 条）；**WSL 未实测**，此处不作结论。修复路径（自建资源发布点 / 资源随包
 分发 / 对齐官方多区域 CDN）与验收命令见 [无头服务器发行包](../operations/headless-server.md) 与 [远程资产 CDN](../operations/remote-assets-cdn.md)。
 
 **另一处差异**：官方主进程还带一条 SSH 专用资源服务器常量
@@ -580,7 +591,7 @@ ZCODE_REMOTE_ASSET_CDN_BASE_URL=<发布根> pnpm dev:desktop      # 指向它
 
 ## 验证方法
 
-以下命令读者可以自行执行。官方侧路径以本机安装的官方 ZCode 3.14.1 为例，**前提是你已经
+以下命令读者可以自行执行。官方侧路径以本机安装的官方 ZCode 3.14.3 为例，**前提是你已经
 安装了官方发行版**；未安装时这些命令会失败，属正常现象。本仓库侧命令在仓库根目录执行。
 
 ### 通用前提
@@ -602,9 +613,10 @@ BASE=872ad96
 # 官方插件清单（应为 14 项）
 ls "$OFFICIAL"
 
-# 本仓库插件清单（应为 10 项：按真实 plugin.json 清单计）
-find apps/zcode-cli/packages -name plugin.json -path '*.zcode-plugin*' \
-  | sed 's|/.zcode-plugin/plugin.json||' | sort
+# 本仓库插件清单（应为 11 项：按真实 plugin.json 清单计）
+# 注意要排除 cli/dist/ 下的构建产物副本，否则会多出 5 条
+find apps/zcode-cli/packages -maxdepth 3 -name plugin.json -path '*.zcode-plugin*' \
+  -not -path '*/cli/dist/*' | sed 's|/.zcode-plugin/plugin.json||' | sort
 ```
 
 注意 `apps/zcode-cli/packages/` 下还有一个 `superpowers-plugin/` 目录，但它只有一个
@@ -742,12 +754,13 @@ for (const m of src.matchAll(/\["([a-z]+)",\s*"[a-z]+",\s*"[A-Za-z]+"/g)) names.
 console.log([...new Set(names)].length);
 '
 
-# 实际分发的插件数（应为 10）
-find apps/zcode-cli/packages -name plugin.json -path '*.zcode-plugin*' | wc -l
+# 实际分发的插件数（应为 11）
+find apps/zcode-cli/packages -maxdepth 3 -name plugin.json -path '*.zcode-plugin*' \
+  -not -path '*/cli/dist/*' | wc -l
 ```
 
-预期结果：14 项声明、10 个实际分发的插件——声明里有 4 个插件在仓库中不存在
-（`android-emulator`、`ios-simulator`、`pdf`、`image-search`）。
+预期结果：14 项声明、11 个实际分发的插件——声明里有 3 个插件在仓库中不存在
+（`android-emulator`、`ios-simulator`、`image-search`）。
 
 ## 待验证项
 

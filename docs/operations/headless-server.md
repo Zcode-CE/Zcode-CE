@@ -115,7 +115,7 @@ node bin/zcode.mjs --web [--host <host>] [--port <port>] [--workspace <path>] \
 ## 5. 凭据与数据目录
 
 - **数据目录**：`~/.zcode/v2`（会话、任务索引、设置、设备身份）。headless 服务与桌面端**共用同一目录** ——
-  同一台机器上同时跑两者时不要并发写同一工作区。
+  同一台机器上同时跑两者时不要并发写同一工作区。完整布局、备份与恢复**以 [data-layout.md](./data-layout.md) 为准**。
 - **provider 凭据**：随包带 `agent/provider/zcode-builtin.json`（内置 provider/model 配置）；
   登录态（OAuth 令牌等）落在数据目录里，与桌面端一致。也可用环境变量覆盖端点
   （`ZCODE_BASE_URL`、`ZCODE_ENDPOINT_ORIGIN` 等，见仓库根 `.env.example`）。
@@ -156,9 +156,9 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
 
 - `@zcode/*` 是**官方 scope**，社区版**不得占用**（也不得发布同名包冒充官方）。
 - 仓库里的 `packages/zcode-server-cli` 是 `private: true`（本就不用于发布），**不要**把它改名/改私有性来"借"名字。
-- 建议形态（**可用性未验证，发布前必须自行确认**）：带 scope 的 `@zcode-ce/server`，或不带 scope 的
-  `zcode-ce-server`；包描述里注明"社区版，非官方发行版"。发布前至少确认：名称未被占用、scope 归属你所有、
-  `README` 里写明非官方。
+- 包名固定用 `zcode-ce`，与 §7.1 第 1 条同一口径。早先记过的两个候选写法 `@zcode-ce/server` 与
+  `zcode-ce-server` 已作废，不要再按它们发布。包描述里注明"社区版，非官方发行版"；发布前至少确认：
+  名称未被占用、`README` 里写明非官方。
 
 **支持成本是真实成本**：一旦发布，用户会用**你无法控制的环境**提 issue（旧内核、无 systemd、只读 rootfs、
 代理/证书……），而"版本通道"也要你维护。判断标准是"我们是否愿意长期接住这些 issue"，不是"打包有多容易"。
@@ -178,6 +178,7 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
    `bin` 必须映射到 `bin/zcode.mjs`（与 `install.sh` 用的同一个入口），不要指向任何 `packages/**/dist/*.js`。
    注意包内原生的 `package.json` 是 `{"name":"zcode-runtime","private":true,...}` —— **`private: true` 会让 `npm publish` 直接拒绝**，必须整个覆盖掉（不是合并）。
 3. 准备包描述：覆盖 `<staging>/zcode/package.json`。**不能照抄下面这版的最小字段** —— 实测有两处会致命（详见本节末「实测结论」）：
+
    ```jsonc
    {
      "name": "zcode-ce",
@@ -202,6 +203,7 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
    - **`.map` 用 `!**/_.map`排除**：2 279 个 sourcemap 全在`web/assets/`，实测占 tarball 16 MB（81.9 MB → 65.9 MB）。注意 `!\*\*/_.map`**不会**排除包内`node_modules` 里那 31 个小 map（1.4 MB，属上游发布物，留着无妨）。
    - **`type: "module"`**：不加仍能跑，但每次启动都报 `MODULE_TYPELESS_PACKAGE_JSON` 警告（`server/entry-http.js` 会被重解析）。
    - `bin/zcode.mjs` 首行要有 shebang（`#!/usr/bin/env node`）并保持可执行位；实测包内已是 `755`。
+
 4. 凭据：在仓库 secrets 里加 `NPM_TOKEN`（npm Access Token，Automation 类型；权限只需 publish 该包）。
 5. CI job 形态：新 job `publish-npm-headless`，`if: startsWith(github.ref, 'refs/tags/') && inputs.publish_registry == true`（或独立的 `workflow_dispatch`）；
    步骤：checkout → pnpm install → `pnpm build:zcode --base-url <依赖托管基址>` → **解包 `releases/<版本>/*.tar.gz` 到 staging** → 生成 `package.json` → `npm publish --access public --tag <dist-tag>`。`continue-on-error: true`。

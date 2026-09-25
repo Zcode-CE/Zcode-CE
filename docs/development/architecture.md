@@ -8,8 +8,10 @@
 apps/zcode-cli/          Agent CLI 与运行时（独立 workspace，有自己的 pnpm-workspace.yaml）
   packages/              adapters / bootstrap / cli / contracts / core / i18n / tui …
   packages/*-plugin/     内置插件（browser-use / node-repl-host / documents / presentations /
-                         spreadsheets / zcode-cua / plugin-creator / skill-creator / zcode-guide /
-                         restore-legacy-sessions）
+                         spreadsheets / pdf / zcode-cua / plugin-creator / skill-creator /
+                         zcode-guide / restore-legacy-sessions，共 11 个）
+                         ⚠️ 这里只列目录；插件清单与逐项对照以 docs/development/official-diff.md 为准
+                         （superpowers-plugin/ 只有 LICENSE、没有 plugin.json，不是插件）
   packages/bundled-skills/ 内置技能包（非插件：无 plugin.json，运行时原地发现为
                          source:"bundled" / scope:"system" 的技能根，不可卸载）
   tools/                 prompt-trajectory / typescript

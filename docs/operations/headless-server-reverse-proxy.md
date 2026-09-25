@@ -5,7 +5,7 @@
 > **④ 回环端口放到反代后面会发生什么（令牌那道闸为何默认不生效，以及本版怎么拦）**。
 > **如果你只想看一条**：§3.4 是本文最该读的一节 —— 它讲的是"代理把外部流量带进了一个只监听回环的服务"，
 > 而这类部署的错误配置会让**一个不带 `Origin` 的客户端拿到无需令牌的完全控制权**。
-> 服务本身的安全边界见 [headless-server.md](./headless-server.md) §4；链路与威胁模型见 [web-remote-control.md](../development/web-remote-control.md)；
+> 服务本身的安全边界见 [headless-server.md](./headless-server.md) §4；链路与威胁模型见 [web-remote-control.md](../development/web-remote-control.md)（**四道闸的判定口径以那一份为准**，本页只讲反代场景下的后果与配置）；
 > 三条部署路线（本机 / 私网隧道 / TLS 反代）见 [local-setup.md](../development/local-setup.md) 的「Web 工作台的监听与对外访问」。
 
 ## 0. 四条先记住的结论

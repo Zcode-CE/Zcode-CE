@@ -10,11 +10,12 @@ ZCode-CE 基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0�
 
 ## 改动概览
 
-相对上游基线 `872ad96`（`feat: open source`），本仓库共 46 个提交、385 个文件变更
-（+18124 / −27414 行）。改动按主题分为六类。
+相对上游基线 `872ad96`（`feat: open source`），本仓库已累积 194 个提交、826 个文件变更
+（+99364 / −28229 行，2026-09-25 快照）。下面六类里的**提交哈希与文件清单是各自的落地时刻**，
+行数分布表则是 2026-09-22 的旧快照，只用于看相对量级。改动按主题分为六类。
 
 > 计数核对方式：`git rev-list --count 872ad96..HEAD` 与 `git diff --shortstat 872ad96 HEAD`。
-> 这两个数字随每次提交增长，引用前请重新执行。
+> 这两个数字随每次提交增长，引用前请重新执行 —— 本节其余数字同理。
 
 ### 1. 移除遥测与监控（178 文件，+839 / −21505）
 
@@ -101,17 +102,22 @@ ZCode-CE 基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0�
 
 详见 [发布流程](../operations/release.md) 与 [持续集成](../operations/ci.md)。
 
-### 改动分布
+### 改动分布（2026-09-25 快照）
 
 | 目录                      | 文件数 |
 | ------------------------- | ------ |
-| `packages/desktop`        | 121    |
-| `packages/ui`             | 100    |
-| `apps/zcode-cli/packages` | 47     |
-| `packages/services`       | 26     |
-| `packages/shared`         | 20     |
-| `docs`                    | 17     |
-| `packages/zcode-cua`      | 10     |
+| `apps/zcode-cli/packages` | 220    |
+| `packages/ui`             | 176    |
+| `packages/desktop`        | 148    |
+| `packages/services`       | 87     |
+| `packages/shared`         | 38     |
+| `docs`                    | 30     |
+| `packages/server`         | 29     |
+| `third-party`             | 22     |
+| `packages/zcode-cua`      | 11     |
+
+> 只列前九项，复算方式：`git diff --numstat 872ad96 HEAD | awk '{print $3}'` 后按目录前缀归并。
+> 这张表随每次提交增长，引用前请重新执行。
 
 ## 同步上游
 

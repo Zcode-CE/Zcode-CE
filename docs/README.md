@@ -40,6 +40,7 @@
 | [持续集成](operations/ci.md)                                      | CI 校验项、发布矩阵、打包命令与常见失败原因            |
 | [数据与配置](operations/data-layout.md)                           | 数据目录布局、身份变更的数据影响、备份                 |
 | [无头服务器发行包](operations/headless-server.md)                 | 自包含 `zcode` 包：运行、旋钮、安全边界、平台支持      |
+| [无头服务器：Docker](operations/headless-server-docker.md)        | 本地构建容器形态：卷与备份、令牌与轮换、局域网访问     |
 | [无头服务器反代部署](operations/headless-server-reverse-proxy.md) | 反代/TLS 之后的三件事：Host 白名单、挂域名根、可信代理 |
 | [CJK 字体供给](operations/font-provisioning.md)                   | 字体策略：用系统已装字体、不下载不打包                 |
 | [GitHub 加速配置](operations/github-mirror.md)                    | 国内网络下的镜像/加速配置与验证方式                    |

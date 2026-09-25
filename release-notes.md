@@ -81,6 +81,7 @@
 - **IM 机器人（Chat bot）默认关闭，且服务端能力本版尚未接入**：入口与启用流程已提供（点了会**如实显示**"已请求启用，等待服务端就绪"，不谎报已启用）。
   启用后消息会经**你选择的那家平台**（Telegram / 微信 / 飞书 / Lark）的服务器，**不经过智谱服务器**；需要你自己的外部账号。
 - **协议 v4 的 workflowRuns 扩张未跟进**：跨版本互连时可能表现为「内容被拒收」而非静默错乱 —— 这是刻意的（见「同步上游」）。
+- **npm 包尚未发布**：包名已定为 `zcode-ce`，但它在 registry 上还取不到（用 `npm view zcode-ce version` 可自行确认）⇒ 现在执行 `npx zcode-ce` 会失败。要立刻用上，请走下面的容器形态，或自行构建分发包后 `node bin/zcode.mjs --web`。发布形态已在本地预演通过（打包、安装、起服务、`publish --dry-run`），**但尚未真正 publish**。
 - **容器形态只能管理挂载进去的目录**（这是容器边界本身，不是缺陷）：需要主机全盘访问时，用 npm 形态直接在主机上运行。
 - **Docker 镜像约 801 MB**（基础镜像 `node:24-slim` 330 MB + 分发包 391 MB；换 Node 版本或分发内容会变）。
 - 与上一版相同（Windows 构建未签名、Windows / macOS 未在真机做完整功能回归、Linux 桌面自动化为实验性等），本批**未新增**其他长期限制。
@@ -190,6 +191,7 @@ Reason: two defects in 1.64.0 sit exactly on the **only long-connection path** F
   One attribution fix in the same pass: the `google/brotli` decoder vendored inside `brotli` is **Apache-2.0** and had been recorded as MIT; its copyright and licence notice are now included.
 - **Remote control (desktop) stops at "start the service + connection info" in this release**: the connected-device list with per-device disconnect, port/listen-scope selection and a token-rotation entry point are **not provided yet** (later batches).
 - **The desktop installer therefore grows by about 66 MB** (7.2 MB server entry + 59 MB web UI assets, source maps excluded) — the web UI is what a phone opens after scanning, so it has to ship inside the app.
+- **The npm package is not published yet**: the package name is fixed as `zcode-ce`, but it does not resolve on the registry (you can confirm with `npm view zcode-ce version`) ⇒ running `npx zcode-ce` today fails. To use it right now, take the container form below, or build the distribution yourself and run `node bin/zcode.mjs --web`. The publishing shape has been rehearsed locally (pack, install, serve, `publish --dry-run`), **but nothing has actually been published**.
 - **In container form only mounted directories can be managed** (that is the container boundary itself, not a defect): for full host-disk access, run the npm form directly on the host.
 - **The Docker image is about 801 MB** (base image `node:24-slim` 330 MB + distribution 391 MB; it changes with the Node version or distribution contents).
 - Unchanged from the previous version (unsigned Windows build, no full on-device regression on Windows/macOS, experimental Linux desktop automation, …); this batch adds **no** other long-term limitations.

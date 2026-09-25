@@ -2,7 +2,8 @@
 
 > 本页讲**把无头服务端跑在 Docker 容器里**这条形态（ce.3 起提供本地资产）。
 > 本版**不发布镜像到任何 registry**：镜像由你在本地 `docker build` 出来。
-> 平台能力矩阵与「为什么必须 glibc」见 [headless-server.md](./headless-server.md) §10；本页只讲容器形态与实测。
+> 平台能力矩阵与「为什么必须 glibc」见 [headless-server.md](./headless-server.md) §10；
+> 参数、安全默认值与旋钮以 [headless-server.md](./headless-server.md) §3–§5.1 为准，本页只讲容器形态与实测。
 
 ## 1. 快速开始（compose，推荐）
 

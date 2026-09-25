@@ -137,6 +137,9 @@ curl -s -o /dev/null -w 'api-no-token %{http_code}\n' http://<HOST>:3030/api/ser
 curl -s -o /dev/null -w 'api-token %{http_code}\n'    "http://<HOST>:3030/api/server-info?token=$ZCODE_SERVER_AUTH_TOKEN"  # 200
 ```
 
+> 上面这些旋钮的**完整口径**（默认值、fail-closed 判定、反代语义）以
+> [无头服务器发行包](../operations/headless-server.md) §4–§5.1 为准；本节只覆盖开发态起服务的差异。
+
 ### 分发入口（`zcode --web`）的对应关系
 
 独立运行包里的 `zcode --web` 自己有一套更严格的默认值：`--host` 默认 `127.0.0.1`（端口默认 `3030`，被占用时回退到空闲端口并打印实际地址）；非回环时自动生成并注入令牌（`--token` 可指定）。**`--no-token` 与 `--host` 指定非回环地址的组合**在服务端 fail-closed 之后会被拒绝启动（服务端会打印拒绝原因并退出）；需要对外时请给出 `--token`，或改为「回环 + 隧道/反代」。
