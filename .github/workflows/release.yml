@@ -365,9 +365,14 @@ jobs:
       # 否则失败会推迟到最后的 npm publish，报一句 ENEEDAUTH，而那时：
       #   · 包已经打好（几百 MB、上万文件），白跑；
       #   · 错误信息不含"是哪个 secret 的问题"，排查要翻日志。
-      # 只在需要发布时检查（未配置 base-url 的试跑不该因此变红）。
+      # 条件必须与**发布路径**一致，不能写成"基址已配置"：
+      #   · Stage npm package 的条件是 startsWith(github.ref, 'refs/tags/')（它有
+      #     --allow-placeholder-base-url 兜底，基址没配也照样能打出一份包）；
+      #   · 于是"tag 推送 + 基址未配置"时，若这里用 vars 判断就会被跳过，而 Stage/Publish 仍执行
+      #     ⇒ 认证检查被绕过，又回到"发不出去却报成功"。
+      # 用同一个条件（tag）才不会错配；非 tag 的试跑本就不会发布。
       - name: Preflight npm auth
-        if: vars.ZCODE_DIST_BASE_URL != ''
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
