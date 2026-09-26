@@ -511,7 +511,30 @@ jobs:
         run: |
           VERSION=$(node -p "require('./dist/npm-stage/package.json').version")
           # 这一条只查 registry 元数据，很快，单独放在最前面：包没发出去就立刻失败。
-          npm view "zcode-ce@$VERSION" dist.shasum
+          #
+          # 为什么必须等传播（2026-09-26 订正，v3.14.3-ce.3.fix.2 实测）：
+          # npm publish 返回成功**不等于**该版本已可查询 —— 它的日志会打印
+          # 「Your package is being processed and may take a few minutes to become available.」。
+          # 实测：publish 于 20:00:45 UTC 报成功，registry 直到 20:14:05 UTC 才可查（约 13 分 20 秒）。
+          # 而本步骤在 publish 后 1 秒执行 ⇒ 必然 404 ⇒ 流水线红，**但包其实发成功了**。
+          # 这与 continue-on-error 的「误报成功」是同一类问题的反面：**交付终点误报失败**。
+          #
+          # 判据不变（拿不到元数据仍然失败，且失败信息明确区分「未发布」与「起不来」），
+          # 只是给传播留出预算：最多轮询 20 分钟。
+          npm_ready=false
+          for attempt in $(seq 1 60); do
+            if npm view "zcode-ce@$VERSION" dist.shasum > /tmp/npm-shasum.txt 2>/dev/null; then
+              echo "::notice::npm 元数据就绪（第 $attempt 次查询，约 $(( (attempt - 1) * 20 ))s）"
+              cat /tmp/npm-shasum.txt
+              npm_ready=true
+              break
+            fi
+            sleep 20
+          done
+          if [ "$npm_ready" != "true" ]; then
+            echo "::error::npm 元数据在 20 分钟内仍不可查 —— 包未真正发布（尽管 publish 报了成功）"
+            exit 1
+          fi
           cd /tmp
           # 先只做"下载 + 解包"，把它与"起服务"分开计时 —— 两者都慢时，
           # 合成一个 300s 预算会看不出是卡在哪一段。

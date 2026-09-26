@@ -44,7 +44,7 @@ _upstream_tag=v3.14.3-ce.3.fix.2
 source=(
     "${pkgname}-${pkgver}.pkg.tar.zst::https://github.com/Zcode-CE/Zcode-CE/releases/download/${_upstream_tag}/${_pkgname}-${_upstream_ver}-linux-x64.pkg.tar.zst"
 )
-sha256sums=('0351f8e800da1c6f175345ca9478968d8e94434175eb54abbebc0b4bee2fdc3b')
+sha256sums=('63c55939ae064f507e5a9bcab76ef79124640317041b5fda8055016752fbba04')
 
 package() {
     # 源就是我们自己的 pacman 包：直接解到 ${pkgdir} 即可，不需要再打包一次。
