@@ -11,6 +11,19 @@ import type {
 } from "./index.js";
 
 /**
+ * 模型请求 attempt 发送前刷新运行时请求头（provider runtime headers）的原因。
+ *
+ * - `model-request`：常规模型请求，含 adapter 内部重试的每一次 attempt。
+ * - `captcha-retry`：start-plan 渠道收到网关的 3007 验证码挑战后触发的单次重试；
+ *   渲染层据此重新求解验证码并回传新 token（对齐官方 `CaptchaRequestRetry.takeReason()`，
+ *   见 docs/development/126-start-plan-3007-root-cause.md §2.1）。
+ *
+ * 抽成具名类型而不是在各处散落字面量联合：该值跨 adapter / core / bootstrap / 协议四处传递，
+ * 任一处的字面量漂移都会让 `captcha-retry` 在链路中静默退化成普通请求（渲染层不重新求解）。
+ */
+export type ProviderRuntimeHeadersRequestReason = "model-request" | "captcha-retry";
+
+/**
  * Runtime 与 Adapter 之间的调用级执行信息。
  *
  * 它不属于业务 ModelRequest，也不允许普通调用方据此改变 Provider 或模型身份。
@@ -32,7 +45,7 @@ export interface ModelInvocationContext {
   refreshRuntimeHeadersBeforeAttempt?: (input: {
     accountAccess?: ZCodeProviderAccountAccess;
     attempt: number;
-    reason?: "model-request";
+    reason?: ProviderRuntimeHeadersRequestReason;
     abortSignal?: AbortSignal;
     providerId: string;
     modelId: string;

@@ -78,6 +78,7 @@ import type {
   ResolvedAiSdkModel,
 } from "./runner-runtime.js";
 import { resolveModelForAttempt, RuntimeHeadersRefreshError } from "./runner-runtime-headers.js";
+import { CaptchaRequestRetry, isCaptchaRejection } from "./captcha-retry.js";
 import { retryAllowedByFailurePolicy } from "./workflow-model-failure-policy.js";
 import {
   modelFailureStatusFields,
@@ -119,18 +120,22 @@ export async function* runStreamText(input: {
   let requestMessages = input.request.messages;
   let signatureRepairAttempted = false;
   let emptyCompletionRetryCount = 0;
+  // start-plan 的 3007 验证码挑战单次重试额度（spec §4.5，对齐官方 CaptchaRequestRetry）。
+  // 每次模型请求新建，不跨请求复用 ⇒ 「每个模型请求最多重试一次」。
+  const captchaRetry = new CaptchaRequestRetry(input.request, input.resolved);
 
   for (
     let attempt = 1;
     retryAttemptLoopContinues(
       retryBudget,
       attempt,
-      input.retry.maxAttempts + Number(signatureRepairAttempted),
+      // 官方口径：重试 attempt 的额外额度并入预算，不占用普通瞬态失败的重试机会。
+      input.retry.maxAttempts + Number(signatureRepairAttempted) + captchaRetry.extraAttempts,
     );
     attempt += 1
   ) {
     const retryBudgetAttempt =
-      attempt - Number(signatureRepairAttempted);
+      attempt - Number(signatureRepairAttempted) - captchaRetry.extraAttempts;
     const startedAt = Date.now();
     // SSE idle timeout 后的重试如果仍固定首请求窗口，容易被同一段 provider 静默窗口反复打断；
     // core recovery 和 adapter 内部 retry 都统一按重试次数每次增加 30s。
@@ -155,7 +160,7 @@ export async function* runStreamText(input: {
       {
         ...baseStatusContext,
         maxAttempts: statusMaxAttempts(
-          Number(signatureRepairAttempted),
+          Number(signatureRepairAttempted) + captchaRetry.extraAttempts,
         ),
       },
       attempt,
@@ -278,6 +283,9 @@ export async function* runStreamText(input: {
     try {
       resolved = await resolveModelForAttempt({
         attempt,
+        // 每次 attempt 都取一次 reason：上一次 3007 认领的重试在这里以 "captcha-retry"
+        // 去要新的运行时请求头，渲染层据此重新求解验证码（官方 takeReason 语义）。
+        reason: captchaRetry.takeReason(),
         request: attemptRequest,
         resolveModel: input.resolveModel,
       });
@@ -487,6 +495,9 @@ export async function* runStreamText(input: {
             } satisfies Record<string, unknown>),
         });
         if (hiddenProviderBusinessError) {
+          // 3007 的 response-header 变体就在这里被合成出来；官方 `if(uOe(we))throw we`
+          // 让它以原始 ProviderBusinessError 离开，进入外层 catch 的验证码重试闸门。
+          if (isCaptchaRejection(hiddenProviderBusinessError)) throw hiddenProviderBusinessError;
           const failure = classifyModelFailure(
             hiddenProviderBusinessError,
             input.request.abortSignal,
@@ -511,6 +522,10 @@ export async function* runStreamText(input: {
             source: diagnostics.lastErrorChunk ?? diagnostics.lastFinishChunk,
           });
           if (streamEndedWithoutOutputError) {
+            // 同上一处：3007 必须以原始错误离开，否则重试闸门被 TerminalStreamChunkError 绕过。
+            if (isCaptchaRejection(streamEndedWithoutOutputError)) {
+              throw streamEndedWithoutOutputError;
+            }
             const failure = classifyModelFailure(
               streamEndedWithoutOutputError,
               input.request.abortSignal,
@@ -726,6 +741,28 @@ export async function* runStreamText(input: {
       if (retryWithRepairedHistory) {
         failureDecision.canRetry = true;
       }
+      // 3007 验证码挑战必须在分类器之前拦截：码表把 3007 映射成
+      // AuthFailed + retryable:false（与官方逐字一致，不改），策略表对 AuthFailed 直接 stop。
+      // skip 口径对齐官方：已发出可见输出、或 compact 的 response_body 阶段不得重放。
+      const retryWithCaptchaRefresh = captchaRetry.claim(
+        error,
+        // 与官方 `Pe===void 0||E||Xe||...` 逐项对应：options 未构造 = 请求还没准备；
+        // 已发出可见输出 / 已在 compact 的 response_body 阶段 = 重放会重复用户可见内容。
+        options === undefined ||
+          emittedRetryBoundaryEvent ||
+          streamOutputCommitted ||
+          (input.request.preserveProviderStreamBoundaries === true &&
+            failureDecision.context?.streamFailurePhase === "response_body"),
+      );
+      if (retryWithCaptchaRefresh) {
+        failureDecision.canRetry = true;
+        statusContext = {
+          ...statusContext,
+          maxAttempts: statusMaxAttempts(
+            Number(signatureRepairAttempted) + captchaRetry.extraAttempts,
+          ),
+        };
+      }
 
       logStreamFailureDiagnostics({
         attempt,
@@ -764,6 +801,33 @@ export async function* runStreamText(input: {
         },
       );
       terminalStatusPublished = true;
+
+      if (retryWithCaptchaRefresh) {
+        // 立即重试、不退避：挑战重试的等待时间由用户在渲染层完成验证码决定，
+        // 本地退避只会让「用户已完成验证码」与「重试发出」之间多出一段无意义延迟。
+        input.logger?.warn("Retrying model stream after captcha rejection", {
+          attempt,
+          event: "model.captcha_rejection.retry",
+          maxAttempts: statusContext.maxAttempts,
+          nextAttempt: attempt + 1,
+          requestId: statusContext.requestId,
+          status: "waiting",
+        });
+        await publishRetryScheduledStatus(
+          input,
+          statusContext,
+          attempt,
+          0,
+          {
+            ...failure,
+            retryReason: ModelRetryReason.AuthRefresh,
+          },
+          requestHeaders,
+          responseHeaders,
+          admission,
+        );
+        continue;
+      }
 
       if (retryWithRepairedHistory) {
         await publishRetryScheduledStatus(
@@ -1196,6 +1260,9 @@ async function handleStreamErrorEvent(
   input: Parameters<typeof handleStreamChunk>[0],
   error: unknown,
 ): Promise<Awaited<ReturnType<typeof handleStreamChunk>>> {
+  // 3007 验证码挑战必须走外层 catch 的重试闸门，不能被这里包成 TerminalStreamChunkError
+  // 后直接终态。官方 vVr 的首行就是 `if(uOe(t))throw t`，本行与之逐字对应。
+  if (isCaptchaRejection(error)) throw error;
   const retryWithRepairedHistory =
     !input.emittedRetryBoundaryEvent && input.repairThinkingSignatureRejection(error);
   const statusContext = retryWithRepairedHistory

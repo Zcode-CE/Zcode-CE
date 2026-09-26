@@ -11,6 +11,7 @@ import type {
 } from "@zcode/shared/zcode-protocol-v4";
 import { V4CommandNoopError } from "../../v4-gateway.js";
 import { runSessionModelConfigMutation } from "../../model-config-mutation.js";
+import { resetHeldQueueAfterModelSelectionChange } from "../../queue-held-reset.js";
 import { requireRecord } from "../record-access.js";
 import type { V4CommandCoreHost, V4SessionRecordView } from "../types.js";
 
@@ -79,7 +80,7 @@ async function switchModelConfig(
 ): Promise<CommandResult | undefined> {
   const payload = envelope.payload as CommandPayloadMap["switchModelConfig"];
   const record = requireRecord(host, envelope.sessionId);
-  return runSessionModelConfigMutation(record.app, async () => {
+  const resumedHeldQueue = await runSessionModelConfigMutation(record.app, async () => {
     // previous 必须在串行化临界区内、setModel 之前快照。registry fallback 可能排在本命令
     // 前面，若在排队前读取会拿到过期 previous，并让 noop/事件顺序与 runtime 真值分裂。
     const previousSelection = record.app.runtime.getSessionModelSelection();
@@ -137,8 +138,37 @@ async function switchModelConfig(
       // trace 链路结构透传自 record（会话根 trace），不在命令层另起无关联 traceId。
       traceContext: record.traceContext,
     });
-    return undefined;
+    // spec 130 §4.6：切换成功后若队列因上一次 turn 失败而 held，显式复位授权位，
+    // 否则用户切了渠道仍只能点 UI 的「恢复队列」（127 §5.2 症状 3）。
+    // 放在 emitModelSelected 之后：此刻 runtime 与投影的选型都已落定，复位不会与
+    // 「切模型」这个动作本身的事件顺序打架；失败路径在上方已抛，根本到不了这里，
+    // 因此天然满足「切换失败不复位」。
+    // 只在 modelIdentityChanged 分支之外也执行：同模型显式改 thought 同样是「用户表达继续
+    // 用这个会话」；判据件内部会按选型是否真的变更做幂等短路，同值重复提交不产生事件。
+    const resumedHeldQueue = await resetHeldQueueAfterModelSelectionChange({
+      app: record.app,
+      sessionId: record.app.sessionId,
+      previousSelection: previousModelSelection,
+      nextSelection: nextModelSelection,
+      readQueueState: () => host.getQueueAutoDrainState?.(record.app.sessionId) ?? null,
+      traceContext: record.traceContext,
+      ...(host.logger ? { logger: host.logger } : {}),
+    });
+    return resumedHeldQueue;
   });
+  // ready hook 必须在 runSessionModelConfigMutation 临界区之外调用：
+  // 该钩子的实现（v4-bridge.ts:1080 → server-operations.ts afterStateMutation）在
+  // 会话空闲时会走 ensureSessionModelAvailable → runSessionModelConfigMutation，
+  // 而 model-config-mutation.ts 的串行化是非重入的（实测：锁内再进同一把锁直接
+  // 自死锁）。而「空闲 + 队列 held」正是本修复最主要的使用场景，放在锁内必然挂死。
+  if (resumedHeldQueue) {
+    // 与 queue.ts:138-142 的 setAutoDrain(true) 逐字同源：只翻授权位不够——idle 暂停队列
+    // 没有 active turn 可替它启动队首，必须复用同一条 ready hook（busy 时只武装，
+    // idle 时立即按 sendQueuedNow 原子路径提升）。否则用户切完渠道仍看到队列卡着，
+    // 「同会话可继续」只兑现了一半。
+    await host.afterLegacyStateMutation?.(record, "queue_auto_drain_resumed");
+  }
+  return undefined;
 }
 
 /**

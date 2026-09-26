@@ -118,6 +118,7 @@ import {
   projectSessionSubagents,
 } from "./subagent-session-query.js";
 import { runSessionModelConfigMutation } from "../zcode-protocol-v4/model-config-mutation.js";
+import { resetHeldQueueAfterModelSelectionChange } from "../zcode-protocol-v4/queue-held-reset.js";
 import { runWithSessionResidencyFinalization } from "./session-residency.js";
 
 const PLAN_MODE_GOAL_CONTINUATION_SKIPPED_MESSAGE = "Plan mode 下已记录 goal，但不会自动继续。";
@@ -2672,14 +2673,63 @@ export async function cancelBackgroundTask(
   return result;
 }
 
+/**
+ * 切模型复位队列授权位（spec 130 §4.6）在旧协议 setModel 路径上的接线。
+ *
+ * 独立成函数而不是内联在 setModel 里，是为了让这条接线可被单测直接覆盖：
+ * setModel 的收尾 `afterStateMutation` 需要完整 snapshot/eventStore/sessionStore，
+ * 而本函数只依赖 record.app + 投影读侧——把「复位接线」与「旧协议广播」解耦后，
+ * 前者可以用最小桩验证（test/queueHeldResetWiring.test.ts）。
+ *
+ * previousSelection 必须由调用方在 setModel 之前快照：切换后 runtime 的当前选型
+ * 已是目标值，那时再读会让「是否变更」恒为 false，复位永不触发。
+ *
+ * 目标选型从 runtime 读回而不是用入参：app.setModel 会对入参做 registry 归一
+ * （档位补全/兼容回落），入参不一定是最终生效值。
+ */
+export async function resumeHeldQueueAfterModelChange(
+  context: ZCodeProtocolAgentServerContext,
+  record: ZCodeProtocolSessionRecord,
+  previousSelection: ModelSelection | undefined,
+): Promise<boolean> {
+  const nextSelection = record.app.runtime.getSessionModelSelection();
+  if (!nextSelection) return false;
+  const resumedHeldQueue = await resetHeldQueueAfterModelSelectionChange({
+    app: record.app,
+    sessionId: record.app.sessionId,
+    previousSelection,
+    nextSelection,
+    readQueueState: () => context.v4Gateway?.getQueueAutoDrainState(record.app.sessionId) ?? null,
+    traceContext: record.traceContext,
+    ...(context.logger ? { logger: context.logger } : {}),
+  });
+  // 与 v4 命令路径同一义务（queue.ts:138-142）：只翻授权位不够，idle 暂停队列没有
+  // active turn 能替它启动队首。本路径没有命令层的 afterLegacyStateMutation 钩子，
+  // 经 gateway 上 onTargetCompleted 同款的 ready hook 入口触发同一份重评。
+  if (resumedHeldQueue) context.v4Gateway?.requestQueueDrainReevaluation(record.app.sessionId);
+  return resumedHeldQueue;
+}
+
 export async function setModel(context: ZCodeProtocolAgentServerContext, rawParams: unknown) {
   const params = parseParams(zcodeSessionSetModelParamsSchema, rawParams);
   const record = requireSession(context, params.sessionId);
   assertExpectedRevision(record, params.expectedRevision);
+  // 复位判据要在 setModel 之前快照 previous：切换后 runtime 的当前选型已是目标值，
+  // 那时再读会让「是否变更」恒为 false，复位永不触发。
+  const previousSelection = record.app.runtime.getSessionModelSelection();
   await runSessionModelConfigMutation(record.app, async () => {
     // 完整 Session 配置命令不能经身份字符串丢掉 reasoning；由共享 setter 原子校验/保存。
     await record.app.setModel(params.model);
   });
+  // spec 130 §4.6：切换成功后若队列因上一次 turn 失败而 held，复位授权位。
+  // 位置在 runSessionModelConfigMutation 之外、afterStateMutation 之前：
+  // - setModel 抛错时根本到不了这里 ⇒ 天然满足「切换失败不复位」；
+  // - 复位会追加 QueueAutoDrainChanged 事件，必须先于旧协议广播收口，否则
+  //   广播出去的 snapshot 与事件日志短暂不一致。
+  // 本路径的消费方是桌面 zcodeSessionService 与 replayable/bot facade
+  // （zcodeTaskServiceAdapter:1792/2725），与 v4 switchModelConfig 是两条独立路径，
+  // 但共用同一个判据件（queue-held-reset.ts），不复制实现。
+  await resumeHeldQueueAfterModelChange(context, record, previousSelection);
   return await afterStateMutation(context, record, "model_changed");
 }
 

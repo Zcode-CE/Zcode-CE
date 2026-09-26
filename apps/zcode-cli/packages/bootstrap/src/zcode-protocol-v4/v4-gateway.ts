@@ -321,6 +321,15 @@ export interface V4GatewayHost {
   invalidatePersistentCommandFacts?(sessionId: string): void;
   /** canonical goal complete 已进入 projection；宿主副作用必须 detached，禁止阻塞 ingest。 */
   onTargetCompleted?(sessionId: string, event: SessionEvent): void;
+  /**
+   * 队列授权位被复位后请宿主重评一次自动提升（spec 130 §4.6）。
+   *
+   * 与 onTargetCompleted 同源：bridge 内两者都落到同一个 `autoDrainV4QueueIfReady`。
+   * 为什么必须重评：暂停队列的项只活在投影里（core 的 activeTurn.pendingInputs 已随 turn
+   * 结束释放），idle 会话没有任何 active turn 能替它启动队首——只翻授权位不够，
+   * 用户切完渠道仍会看到队列卡着。这条与 queue.ts:138-142 的 setAutoDrain(true) 义务一致。
+   */
+  requestQueueDrainReevaluation?(sessionId: string): void;
   /** 完整 chunk transaction commit 后一次性写 session artifact。 */
   putSessionAttachment?(
     sessionId: string,
@@ -2572,6 +2581,34 @@ export class ConversationV4Gateway {
 
   getQueueLength(sessionId: string): number {
     return this.publishers.get(sessionId)?.getSnapshot().queue.items.length ?? 0;
+  }
+
+  /**
+   * 切模型复位队列授权位（spec 130 §4.6）的判据读侧：queue.autoDrain + pauseReason。
+   *
+   * 为什么必须由投影提供 pauseReason：core 只有 agent-runtime.ts:216 的 `queueAutoDrain`
+   * 布尔，不区分原因（127 §6.1 第 4 点）；pauseReason 只在投影
+   * （packages/shared/src/zcode-protocol-v4/snapshot.ts:222）。没有它就无法区分
+   * 「turn 失败造成的 held」与「用户主动 Stop 造成的 held」，而后者按 spec 必须保留。
+   *
+   * 无 publisher（会话尚无投影 / 冷恢复未水合）→ null，调用方按「不复位」处理：
+   * 宁可漏一次自动复位（用户仍可点「恢复队列」），也不误清用户主动停止的暂停队列。
+   */
+  getQueueAutoDrainState(sessionId: string): {
+    autoDrain: boolean;
+    pauseReason?: "stopped" | "manual" | "error";
+  } | null {
+    const queue = this.publishers.get(sessionId)?.getSnapshot().queue;
+    if (!queue) return null;
+    return {
+      autoDrain: queue.autoDrain,
+      ...(queue.pauseReason ? { pauseReason: queue.pauseReason } : {}),
+    };
+  }
+
+  /** 见 V4GatewayHost.requestQueueDrainReevaluation：转发给宿主（实现归 bridge）。 */
+  requestQueueDrainReevaluation(sessionId: string): void {
+    this.host.requestQueueDrainReevaluation?.(sessionId);
   }
 
   /** Resident 回收保护：publisher queue 与 CommandInbox pinned facts 任一存在都不可关闭。 */

@@ -2392,7 +2392,15 @@ export const zcodeUserInputResponseSchema = z
   .strict();
 export type ZCodeUserInputResponse = z.infer<typeof zcodeUserInputResponseSchema>;
 
-export const zcodeProviderRuntimeHeadersRequestReasonSchema = z.enum(["model-request"]);
+// `captcha-retry`：start-plan 的 3007 验证码挑战触发单次重试时，agent 以此 reason
+// 重新请求运行时鉴权材料，使渲染层重新求解验证码并回传新 token（对齐官方语义）。
+export const zcodeProviderRuntimeHeadersRequestReasonSchema = z.enum([
+  "model-request",
+  "captcha-retry",
+]);
+export type ZCodeProviderRuntimeHeadersRequestReason = z.infer<
+  typeof zcodeProviderRuntimeHeadersRequestReasonSchema
+>;
 export const zcodeProviderRuntimeHeadersRequestParamsSchema = z
   .object({
     requestId: nonEmptyString,
@@ -2425,13 +2433,21 @@ export const zcodeProviderRuntimeHeadersResponseSchema = z.discriminatedUnion("h
   z
     .object({
       headersApplied: z.literal(true),
-      // 合并重接：成功必须携带当前请求的鉴权材料，不依赖旧 Registry 已被写入。
+      // 合并重接：成功携带当前请求的鉴权材料，不依赖旧 Registry 已被写入。
+      // 可选：渲染层应答（如 start-plan 的验证码挑战）不携带账号材料——账号材料由 host 自行
+      // 解析，渲染层只回传 runtimeProviderHeaders。与官方 renderer 的响应形态一致
+      // （官方只发 {headersApplied:true, runtimeProviderHeaders}）。
+      // host 自答路径仍会填该字段；把它设为必填会让渲染层被迫发一个它不该管的字段。
       requestAuth: z
         .object({
           apiKey: nonEmptyString.optional(),
           headers: z.record(nonEmptyString, nonEmptyString).optional(),
         })
-        .strict(),
+        .strict()
+        .optional(),
+      // 渲染层回传的运行时请求头（当前仅 start-plan 的阿里云验证码凭据）。
+      // host 只把白名单内的头并入 requestAuth.headers，不接受任意头注入。
+      runtimeProviderHeaders: z.record(nonEmptyString, nonEmptyString).optional(),
       errorMessage: nonEmptyString.optional(),
     })
     .strict(),

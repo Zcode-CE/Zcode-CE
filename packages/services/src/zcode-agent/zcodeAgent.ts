@@ -17,6 +17,8 @@ import type {
   ModelSelection,
   ZCodeSessionImportHistory,
   ZCodePermissionRequestParams,
+  ZCodeProviderRuntimeHeadersRequestParams,
+  ZCodeProviderRuntimeHeadersResponse,
   AgentLaneResourceSample,
   ZCodeMcpTelemetryEvent,
   ZCodeMcpResourceSample,
@@ -177,6 +179,24 @@ export interface ZCodeAgentWorkspaceRuntimeIdentity {
 
 export const ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE = "ZCODE_AGENT_RUNTIME_UNAVAILABLE";
 
+/**
+ * start-plan 验证码挑战在本端无解（spec §4.4）。
+ *
+ * 语义：agent 请求运行时验证码头，但本会话没有任何能完成验证码求解的订阅者。
+ * 用稳定码而非只靠文案：UI/agent 需要按码分支（可辨识），文案只负责给人看。
+ * 与 ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE 同族放在 services 面——它描述的是
+ * host 侧「本端能力缺席」，不是协议契约（协议契约在 shared）。
+ *
+ * 两种「无解」必须用不同的码区分，因为运维定位时它们是两回事：
+ * - 无 UI：本端根本没有会话订阅者（无 pane 后台会话、纯 CLI）；
+ * - UI 不支持：有订阅者，但没有任何一个声明自己具备渲染验证码的能力
+ *   （典型是 Bot 链路——它能收会话事件，但无法渲染/求解验证码）。
+ */
+export const ZCODE_PROVIDER_RUNTIME_HEADERS_UNAVAILABLE_CODE =
+  "ZCODE_PROVIDER_RUNTIME_HEADERS_UNAVAILABLE";
+export const ZCODE_PROVIDER_RUNTIME_HEADERS_CAPABILITY_MISSING_CODE =
+  "ZCODE_PROVIDER_RUNTIME_HEADERS_CAPABILITY_MISSING";
+
 export type ZCodeAgentRuntimePolicy = "start-if-needed" | "existing-only";
 
 export interface ZCodeAgentRuntimeLifecycleEvent extends ZCodeAgentWorkspaceTarget {
@@ -331,6 +351,29 @@ export interface ZCodeAgentRespondSessionRuntimePreferencesParams {
   resolution:
     | { status: "resolved"; preferences: ZCodeSessionRuntimePreferencesResult }
     | { status: "failed"; message: string };
+}
+
+/**
+ * 渲染层对 `providerRuntimeHeaders.request` 的应答（对齐官方 respondProviderRuntimeHeaders）。
+ *
+ * 入参形状与 `ZCodeProviderRuntimeHeadersRequestParams` 同源：渲染层只需把 host 广播的
+ * request 原样回传（requestId/sessionId/workspace 用于定位 pending），再加上 response。
+ * `response.runtimeProviderHeaders` 里只有白名单内的阿里云验证码头会被 host 合并进
+ * `requestAuth.headers`，渲染层不能借此注入任意请求头。
+ */
+/**
+ * 声明/撤销「本会话具备渲染验证码能力」（spec §4.4 的第二道判据）。
+ *
+ * 调用即登记，返回的 disposable.dispose() 即撤销。多声明者按计数管理：
+ * 只有最后一个撤销者才真正移除能力（见 zcodeAgentService 里计数语义的注释）。
+ */
+export interface ZCodeAgentDeclareSessionCaptchaCapabilityParams extends ZCodeAgentSessionTarget {}
+
+export interface ZCodeAgentRespondProviderRuntimeHeadersParams {
+  requestId: string;
+  sessionId: string;
+  workspace: import("@zcode/shared").ZCodeWorkspaceRef;
+  response: ZCodeProviderRuntimeHeadersResponse;
 }
 
 export interface ZCodeAgentSessionSubscribeParams extends ZCodeAgentSessionTarget {
@@ -538,6 +581,13 @@ export type ZCodeAgentServiceEvent =
   | { type: "state.updated"; notification: ZCodeStateUpdatedNotification }
   | { type: "permission.request"; request: ZCodePermissionRequestParams }
   | { type: "userInput.request"; request: ZCodeUserInputRequestParams }
+  // start-plan 的模型请求需要渲染层求解阿里云验证码后回传运行时请求头。
+  // 与 permission/userInput 同族：host 是转发方，渲染层是唯一的求解方与应答方；
+  // 详见 docs/development/130-start-plan-captcha-spec.md §4.2/§4.3。
+  | {
+      type: "providerRuntimeHeaders.request";
+      request: ZCodeProviderRuntimeHeadersRequestParams;
+    }
   | {
       type: "userInput.response";
       requestId: string;
@@ -705,6 +755,28 @@ export interface IZCodeAgentService {
     params: ZCodeAgentRespondSessionRuntimePreferencesParams,
   ): Promise<void>;
   onDynamicSessionRuntimePreferencesRequest(): Event<ZCodeAgentSessionRuntimePreferencesRequest>;
+  /**
+   * start-plan 验证码挑战的渲染层应答入口（spec §4.3）。
+   *
+   * 与 respondSessionRuntimePreferences 同层：host 只在收到渲染层应答后把验证码头并入
+   * 账号鉴权材料再回传 Agent。重复应答同一 requestId 是幂等 no-op（不抛错给 UI）——
+   * 弹窗重放、手机远控与桌面端同时应答都属正常路径。
+   */
+  respondProviderRuntimeHeaders(
+    params: ZCodeAgentRespondProviderRuntimeHeadersParams,
+  ): Promise<void>;
+  /**
+   * 声明本会话具备渲染/求解验证码的能力（spec §4.4）。
+   *
+   * 渲染层在挂载时声明、卸载时 dispose。host 只在 start-plan 转发前检查该声明，
+   * 缺失即快速失败——因为请求没有 host 侧超时，转发给一个不能求解的订阅者
+   * 只会让它悬挂到 CLI 侧 180s。
+   *
+   * 语义边界：声明只表达「我能求解」，不校验实际能力；host 不缓存任何验证码凭据。
+   */
+  declareSessionCaptchaCapability(
+    params: ZCodeAgentDeclareSessionCaptchaCapabilityParams,
+  ): IDisposable;
   /**
    * CLI 进程级资源样本，带 services 打的 lane 标签（CLI 自己不知道 lane）。
    * 使用 dynamic event 避免 RPC 服务在无人订阅时缓冲周期事件；

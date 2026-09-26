@@ -137,6 +137,11 @@ export type { PermissionConfig } from "./permission/index.js";
 
 // Runtime
 export { AgentRuntime } from "./runtime.js";
+// 「同一模型选型」判等：core 内部 applySubmissionExecutionState（turn-model.ts:60）判定
+// 是否需要发 ModelSelected 用的就是它；bootstrap 的切模型复位队列授权位
+// （zcode-protocol-v4/queue-held-reset.ts）也必须用同一份口径——两处各自演化会让
+// 「算不算切了模型」出现两种答案，症状是复位该触发时不触发（或反之抖动 revision）。
+export { sameModelSelection } from "./runtime/methods/turn-model.js";
 export { createExternalTurnFaultError } from "./runtime/helpers/turn-errors.js";
 export { repairPersistedRemoteSessionPaths } from "./runtime/helpers/persisted-remote-session-path-repair.js";
 // 「按值把一段转录复制进另一个会话」的克隆器。fork 之外的第二个消费者是 dwf 的 amend-resume

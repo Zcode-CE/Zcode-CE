@@ -706,6 +706,8 @@ export function createConversationV4Gateway(
     hasQueuedDelivery: (sessionId, delivery) =>
       context.v4Gateway?.hasQueuedDelivery(sessionId, delivery) ?? false,
     getQueueLength: (sessionId) => context.v4Gateway?.getQueueLength(sessionId) ?? 0,
+    getQueueAutoDrainState: (sessionId) =>
+      context.v4Gateway?.getQueueAutoDrainState(sessionId) ?? null,
     waitForProjectionEventCommit: (sessionId, eventId, options) => {
       const gateway = context.v4Gateway;
       if (!gateway) {
@@ -1430,6 +1432,21 @@ export function createConversationV4Gateway(
     cliVersion: context.deps.version,
     sessionExists: (sessionId) => context.sessions.has(sessionId),
     onDebug: (message) => log?.debug(message),
+    // 队列授权位复位（spec 130 §4.6）后的重评入口：与 onTargetCompleted 落到同一个
+    // autoDrainV4QueueIfReady。legacy session/setModel 路径（server-operations.ts）没有
+    // v4 命令层的 afterLegacyStateMutation 钩子，靠这条拿到同一份 ready hook 义务。
+    requestQueueDrainReevaluation: (sessionId) => {
+      const record = context.sessions.get(sessionId);
+      if (!record) return;
+      void Promise.resolve()
+        .then(() => autoDrainV4QueueIfReady(record))
+        .catch((error: unknown) => {
+          context.logger?.warn("v4 auto-drain reevaluation after queue resume failed", {
+            error: error instanceof Error ? error.message : String(error),
+            sessionId,
+          });
+        });
+    },
     onTargetCompleted: (sessionId) => {
       const record = context.sessions.get(sessionId);
       if (!record) return;

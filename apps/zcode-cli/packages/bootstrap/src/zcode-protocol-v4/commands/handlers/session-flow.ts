@@ -15,6 +15,7 @@ import type { TurnAttachment } from "@zcode/core";
 import { mapAttachmentRefsToTurnAttachments } from "../attachment-refs.js";
 import { inputIntentMetadata } from "../input-intent.js";
 import { startPromptTurn, turnBackgroundAttributionOf } from "../prompt-turn.js";
+import { resetHeldQueueAfterModelSelectionChange } from "../../queue-held-reset.js";
 import { requireRecord } from "../record-access.js";
 import type { V4CommandCoreHost, V4SessionRecordView } from "../types.js";
 import { V4CommandNoopError } from "../../v4-gateway.js";
@@ -191,6 +192,9 @@ async function sendText(
   if (!hasPromptInput(payload.text, payload.attachments)) {
     throw new V4InputAdmissionRejectedError("proto.invalidPayload", "input must not be empty");
   }
+  // 提交前快照会话选型：core 在 turn 内部才应用本次选型（turn-model.ts:51-70），
+  // 命令层之后读到的已是新值，「是否变更」的判据必须在任何 await 之前固定。
+  const sessionSelectionBeforeSubmit = record.app.runtime?.getSessionModelSelection?.();
   const attachments = await mapAttachmentRefsToTurnAttachments(record.app, payload.attachments);
   const submittedExecutionState = resolveSubmittedExecutionState(record, payload);
   const submissionIntent = (options: Parameters<typeof inputIntentMetadata>[1]) =>
@@ -285,6 +289,16 @@ async function sendText(
     });
   } finally {
     releaseForegroundPromotionLease();
+  }
+  // spec 130 §4.6：本次提交带着与当前会话不同的选型 = 用户表达了「换渠道继续用这个会话」。
+  // 放在 admission 之后：startPromptTurn 抛错时根本到不了这里 ⇒ 满足「变更失败不复位」。
+  // 只有显式携带 modelSelection 才算变更（缺省 = 沿用会话现值，由
+  // resolveSubmittedExecutionState 从 runtime 补齐，不是用户切模型的意图）。
+  if (payload.modelSelection) {
+    await resetHeldQueueForSubmittedModelChange(host, record, {
+      previousSelection: sessionSelectionBeforeSubmit,
+      nextSelection: submittedExecutionState.modelSelection,
+    });
   }
   if (started.admission.kind === "queued") {
     return {
@@ -389,6 +403,44 @@ async function pauseActiveGoal(
     });
     return false;
   }
+}
+
+/**
+ * 切模型复位队列授权位（spec 130 §4.6）在 v4 命令层的共用接线。
+ *
+ * 桌面 v4 Composer 切模型只改 renderer 草稿（useDraftConfigControl.ts:410），真正生效在
+ * 提交时携带的 modelSelection（core turn-model.ts:40-71 applySubmissionExecutionState）。
+ * 因此命令层是这条路径唯一的复位落点——sendText / sendGoalCommand 共用本件。
+ *
+ * `nextSelection` 取提交意图里的目标选型，不读 runtime 当前值：core 在 turn 内部才
+ * 应用选型，命令层此刻读到的仍是旧值，读它会让判据恒为「未变更」而永不复位。
+ *
+ * 复位后必须再触发一次 ready hook（与 queue.ts:138-142 的 setAutoDrain(true) 同一义务）：
+ * 只翻授权位不够，idle 暂停队列没有 active turn 能替它启动队首。
+ */
+export async function resetHeldQueueForSubmittedModelChange(
+  host: V4CommandCoreHost,
+  record: V4SessionRecordView,
+  params: {
+    /** 提交前的会话选型（调用方必须在任何 await 之前快照）。 */
+    previousSelection: ModelSelection | undefined;
+    /** 本次提交携带的目标选型；由 resolveSubmittedExecutionState 解析。 */
+    nextSelection: ModelSelection;
+  },
+): Promise<boolean> {
+  const resumed = await resetHeldQueueAfterModelSelectionChange({
+    app: record.app,
+    sessionId: record.app.sessionId,
+    previousSelection: params.previousSelection,
+    nextSelection: params.nextSelection,
+    readQueueState: () => host.getQueueAutoDrainState?.(record.app.sessionId) ?? null,
+    traceContext: record.traceContext,
+    ...(host.logger ? { logger: host.logger } : {}),
+  });
+  if (resumed) {
+    await host.afterLegacyStateMutation?.(record, "queue_auto_drain_resumed");
+  }
+  return resumed;
 }
 
 /** 轮询等 Bootstrap turn 与 Core foreground command 的 finally 都释放 authority。 */

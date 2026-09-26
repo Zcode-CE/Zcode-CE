@@ -14,6 +14,7 @@ import type {
   ModelRequestDependencies,
   ModelSelection,
   PluginReferenceCatalog,
+  ProviderRuntimeHeadersRequestReason,
   ResolvedUserInstructions,
   StableForkGoalBoundaryMetadata,
   StableForkTargetMetadata,
@@ -413,7 +414,9 @@ export interface ProviderRuntimeHeadersPort {
     abortSignal?: AbortSignal;
     modelId: string;
     providerId: string;
-    reason: "model-request";
+    // 与 contracts 的 ProviderRuntimeHeadersRequestReason 同域：3007 验证码挑战触发的
+    // 单次重试以 "captcha-retry" 走到这里，渲染层据此重新求解验证码（spec §4.5）。
+    reason: ProviderRuntimeHeadersRequestReason;
     sessionId: SessionId;
     traceContext: TraceContext;
     turnId?: TurnId;

@@ -185,6 +185,22 @@ export function buildManualClaimCaptchaSolveScript(options: {
   config: ManualClaimCaptchaConfig;
   timeoutMs: number;
 }): string {
+  // 归一化函数先注入：求解脚本的 success 分支要用它判空。
+  return [RESOLVE_VERIFY_PARAM_SOURCE, buildManualClaimCaptchaSolveExpression(options)].join("\n");
+}
+
+/**
+ * 求解脚本的表达式部分（不含前置的归一化函数注入）。
+ *
+ * 单独导出是为了让 Web / 手机远控的主世界求值路径复用同一份表达式：
+ * 那里用 new Function(归一化源码 + "return (" + 表达式 + ");") 求值，
+ * 而 webview 路径用 executeJavaScript(完整脚本)。两条路径的求解逻辑逐字同源，
+ * 任何修正都会同时作用于两个平面。
+ */
+export function buildManualClaimCaptchaSolveExpression(options: {
+  config: ManualClaimCaptchaConfig;
+  timeoutMs: number;
+}): string {
   const payload = JSON.stringify({
     sceneId: options.config.sceneId,
     prefix: options.config.prefix,
@@ -194,8 +210,6 @@ export function buildManualClaimCaptchaSolveScript(options: {
     buttonId: MANUAL_CLAIM_CAPTCHA_BUTTON_ID,
   });
   return [
-    // 归一化函数先注入：求解脚本的 success 分支要用它判空。
-    RESOLVE_VERIFY_PARAM_SOURCE,
     "(function(){",
     "  var o = " + payload + ";",
     "  return new Promise(function(resolve){",

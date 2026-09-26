@@ -1627,6 +1627,21 @@ export function createZCodeTaskServiceAdapter(
       return;
     }
 
+    // start-plan 验证码挑战的运行时请求头请求（spec §4.2/§4.3）。
+    //
+    // 必须在这里显式 early-return：本函数是 catch-all，末尾会无条件执行
+    // `mapSessionEvent(params, event.event, ...)`；本事件没有 `.event` 字段，
+    // 落到末尾会以 undefined 解引用抛错（新分支被兜底吃掉，与 126 报告里
+    // host 守卫写反属同一类「兜底/简化吞掉分支」的教训）。
+    //
+    // 语义上也刻意不投影：渲染层由 agentService 的
+    // `providerRuntimeHeaders.request` 事件驱动（见 zcodeAgent.ts 的
+    // ZCodeAgentServiceEvent），task-index/stream 这条 replayable 读路径不承载
+    // 一次性验证码凭据（spec §3：凭据不落盘、不入 store、不进日志）。
+    if (event.type === "providerRuntimeHeaders.request") {
+      return;
+    }
+
     if (event.type === "session.event") {
       // 遥测移除（P1）：这里原有 recordAgentModelNetworkTelemetry(event.event)，
       // 把 model_request_completed / model_request_failed 折算成 NetworkObservation 后

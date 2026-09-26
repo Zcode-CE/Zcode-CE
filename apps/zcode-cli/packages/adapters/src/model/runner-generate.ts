@@ -52,6 +52,7 @@ import type {
   ResolvedAiSdkModel,
 } from "./runner-runtime.js";
 import { resolveModelForAttempt, RuntimeHeadersRefreshError } from "./runner-runtime-headers.js";
+import { CaptchaRequestRetry } from "./captcha-retry.js";
 import { retryAllowedByFailurePolicy } from "./workflow-model-failure-policy.js";
 import { modelFailureStatusFields, providerRequestIdFromHeaders } from "./runner-telemetry.js";
 import { repairReasoningHistoryAfterSignatureRejection } from "./reasoning-history-normalization.js";
@@ -91,18 +92,22 @@ export async function runGenerateText(input: {
   let requestMessages = input.request.messages;
   let signatureRepairAttempted = false;
   let emptyCompletionRetryCount = 0;
+  // start-plan 的 3007 验证码挑战单次重试额度（spec §4.5，对齐官方 CaptchaRequestRetry）。
+  // 每次模型请求新建，不跨请求复用 ⇒ 「每个模型请求最多重试一次」。
+  const captchaRetry = new CaptchaRequestRetry(input.request, input.resolved);
 
   for (
     let attempt = 1;
     retryAttemptLoopContinues(
       retryBudget,
       attempt,
-      input.retry.maxAttempts + Number(signatureRepairAttempted),
+      // 官方口径：重试 attempt 的额外额度并入预算，不占用普通瞬态失败的重试机会。
+      input.retry.maxAttempts + Number(signatureRepairAttempted) + captchaRetry.extraAttempts,
     );
     attempt += 1
   ) {
     const retryBudgetAttempt =
-      attempt - Number(signatureRepairAttempted);
+      attempt - Number(signatureRepairAttempted) - captchaRetry.extraAttempts;
     const attemptRequest = { ...input.request, messages: requestMessages };
     const startedAt = Date.now();
     let resolved = input.resolved;
@@ -110,7 +115,7 @@ export async function runGenerateText(input: {
       {
         ...baseStatusContext,
         maxAttempts: statusMaxAttempts(
-          Number(signatureRepairAttempted),
+          Number(signatureRepairAttempted) + captchaRetry.extraAttempts,
         ),
       },
       attempt,
@@ -160,6 +165,9 @@ export async function runGenerateText(input: {
     try {
       resolved = await resolveModelForAttempt({
         attempt,
+        // 每次 attempt 都取一次 reason：上一次 3007 认领的重试在这里以 "captcha-retry"
+        // 去要新的运行时请求头，渲染层据此重新求解验证码（官方 takeReason 语义）。
+        reason: captchaRetry.takeReason(),
         request: attemptRequest,
         resolveModel: input.resolveModel,
       });
@@ -387,7 +395,21 @@ export async function runGenerateText(input: {
               retryBudget,
               inspectProviderFailure(error).providerErrorCode,
             );
-      const canRetry = retryWithRepairedHistory || canRetryWithFailurePolicy;
+      // 3007 验证码挑战必须在分类器之前拦截：码表把 3007 映射成
+      // AuthFailed + retryable:false（与官方逐字一致，不改），策略表对 AuthFailed 直接 stop，
+      // 因此只能在这里提前认领一次重试，否则请求必然终态。
+      // skip 的口径对齐官方：请求还没发出去（prepare 阶段）时重试没有意义。
+      const retryWithCaptchaRefresh = captchaRetry.claim(error, options === undefined);
+      if (retryWithCaptchaRefresh) {
+        statusContext = {
+          ...statusContext,
+          maxAttempts: statusMaxAttempts(
+            Number(signatureRepairAttempted) + captchaRetry.extraAttempts,
+          ),
+        };
+      }
+      const canRetry =
+        retryWithCaptchaRefresh || retryWithRepairedHistory || canRetryWithFailurePolicy;
 
       if (options) {
         recordGenerateTextDebug({
@@ -440,6 +462,33 @@ export async function runGenerateText(input: {
         throw toAdapterError(error, failure, statusContext, attempt, {
           errorPhase: requestInvocationCompleted ? "response" : "prepare",
         });
+      }
+
+      if (retryWithCaptchaRefresh) {
+        // 立即重试、不退避：挑战重试的等待时间由用户在渲染层完成验证码决定，
+        // 本地退避只会让「用户已完成验证码」与「重试发出」之间多出一段无意义延迟。
+        input.logger?.warn("Retrying model request after captcha rejection", {
+          attempt,
+          event: "model.captcha_rejection.retry",
+          maxAttempts: statusContext.maxAttempts,
+          nextAttempt: attempt + 1,
+          requestId: statusContext.requestId,
+          status: "waiting",
+        });
+        await publishRetryScheduledStatus(
+          input,
+          statusContext,
+          attempt,
+          0,
+          {
+            ...failure,
+            retryReason: ModelRetryReason.AuthRefresh,
+          },
+          requestHeaders,
+          responseHeaders,
+          admission,
+        );
+        continue;
       }
 
       if (retryWithRepairedHistory) {

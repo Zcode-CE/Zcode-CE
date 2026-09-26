@@ -20,6 +20,7 @@ import type { V4CommandCoreHost, V4SessionRecordView } from "../types.js";
 import {
   applyHeldQueueDisposition,
   enqueueDeferredInputForBusyWork,
+  resetHeldQueueForSubmittedModelChange,
   resolveSubmittedExecutionState,
   V4InputAdmissionRejectedError,
 } from "./session-flow.js";
@@ -248,6 +249,8 @@ async function sendGoalCommand(
   if (objective.length === 0) {
     throw new V4GoalCompactRejectedError("emptyObjective", "Usage: /goal <objective>");
   }
+  // 同 sendText：在任何 await 之前快照会话选型（见 resetHeldQueueForSubmittedModelChange 注释）。
+  const sessionSelectionBeforeSubmit = record.app.runtime?.getSessionModelSelection?.();
   const submittedExecutionState = resolveSubmittedExecutionState(record, payload);
   if (submittedExecutionState.planEnabled) {
     throw new V4GoalCompactRejectedError(
@@ -257,6 +260,16 @@ async function sendGoalCommand(
   }
   const submissionIntent = (options: Parameters<typeof inputIntentMetadata>[1]) =>
     inputIntentMetadata(envelope, { ...options, ...submittedExecutionState });
+  // spec 130 §4.6：/goal 同样携带标准 Selection，与 sendText 同一判据（见彼处注释）。
+  // 只在显式携带 modelSelection 时复位：缺省表示沿用会话现值（resolveSubmittedExecutionState
+  // 会从 runtime 补齐），不是用户切模型的意图。判据件内部仍按「是否真的变更」做幂等短路。
+  const resetHeldQueueIfSelectionSubmitted = async (): Promise<void> => {
+    if (!payload.modelSelection) return;
+    await resetHeldQueueForSubmittedModelChange(host, record, {
+      previousSelection: sessionSelectionBeforeSubmit,
+      nextSelection: submittedExecutionState.modelSelection,
+    });
+  };
   const routingMode = host.getInputRoutingMode?.(record.app.sessionId) ?? null;
   if (record.activeAbortController || routingMode === "enqueue" || routingMode === "guide") {
     // /goal 是目标控制命令，active turn 中不能直接写 target；
@@ -272,6 +285,8 @@ async function sendGoalCommand(
         intent: submissionIntent({ requestedDelivery: "queue", text: objective }),
       })
     ) {
+      // 入队成功同样复位（与 sendText 的 queued 分支同一裁决）。
+      await resetHeldQueueIfSelectionSubmitted();
       return undefined;
     }
     const queued = await record.app.steerTurn(queuedText, {
@@ -290,6 +305,7 @@ async function sendGoalCommand(
         `goal input queue rejected: ${queued.reason}`,
       );
     }
+    await resetHeldQueueIfSelectionSubmitted();
     return undefined;
   }
   await applyGoalCommand(host, record, {
@@ -300,6 +316,7 @@ async function sendGoalCommand(
     objective,
     intent: submissionIntent({ requestedDelivery: "startNow", text: objective }),
   });
+  await resetHeldQueueIfSelectionSubmitted();
   return undefined;
 }
 

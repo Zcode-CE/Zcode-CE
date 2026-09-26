@@ -4,6 +4,7 @@ import {
   type ProviderFamilyDomain,
   type ZCodeAccountAccess,
   type ZCodeProviderAccountAccess,
+  type ZCodeProviderRuntimeHeadersRequestReason,
   ZAI_PROVIDER_ID,
 } from "@zcode/shared";
 
@@ -16,7 +17,9 @@ export interface AccountRequestAuthInput {
   providerId: string;
   modelId?: string;
   accountAccess: ZCodeProviderAccountAccess | ZCodeAccountAccess;
-  reason: "model-request" | "off-peak" | "usage";
+  // 请求原因与协议侧保持单一事实源：协议新增 reason（如 captcha-retry）时这里自动跟随，
+  // 不再各自维护一份字面量联合（否则协议放宽会在 typecheck 处暴露漏改）。
+  reason: ZCodeProviderRuntimeHeadersRequestReason | "off-peak" | "usage";
 }
 
 export interface AccountAccessIdentityInput {

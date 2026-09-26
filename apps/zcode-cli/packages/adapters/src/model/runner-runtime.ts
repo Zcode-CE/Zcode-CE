@@ -3,6 +3,7 @@ import type {
   ModelProperties,
   ModelRequestAuth,
   ModelTextRequest,
+  ProviderRuntimeHeadersRequestReason,
   TraceContext,
 } from "@zcode/contracts";
 import type { ZCodeProviderAccountAccess } from "@zcode/shared";
@@ -30,7 +31,7 @@ export interface AiSdkModelTextRequest extends ModelTextRequest {
   refreshRuntimeHeadersBeforeAttempt?: (input: {
     accountAccess?: ZCodeProviderAccountAccess;
     attempt: number;
-    reason?: "model-request";
+    reason?: ProviderRuntimeHeadersRequestReason;
     abortSignal?: AbortSignal;
     providerId: string;
     modelId: string;
