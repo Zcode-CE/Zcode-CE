@@ -339,6 +339,12 @@ jobs:
   # 见下方 Build headless server package 的 if 条件与 docs/operations/headless-server.md §7.1。
   headless-server-package:
     name: headless server package
+    # 必须等 build：Release 本身由 build 里的 electron-builder 创建（见上方 build job 的
+    # 串行注释）。本 job 末尾要把无头发行包挂到该 Release 上，若与 build 并行执行，
+    # gh release upload 会抢在 Release 创建之前跑，报 "release not found" 而整个 job 变红。
+    # 实测于 v3.14.3-ce.3.fix.1：build linux / build windows / release-notes 全绿，
+    # 只有本 job 因这一竞态失败。
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
