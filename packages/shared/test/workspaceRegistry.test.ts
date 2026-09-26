@@ -20,6 +20,7 @@ function entry(params: {
   key: string;
   lastActivityAt: number;
   sessionCount?: number;
+  activeSessionCount?: number;
 }): WorkspaceRegistryEntry {
   return {
     workspaceKey: params.key,
@@ -27,6 +28,8 @@ function entry(params: {
     firstSeenAt: 1,
     lastActivityAt: params.lastActivityAt,
     sessionCount: params.sessionCount ?? 1,
+    // 缺省与 sessionCount 同值：多数用例只关心「有几个」，两个口径不必各写一遍。
+    activeSessionCount: params.activeSessionCount ?? params.sessionCount ?? 1,
     sources: ["task-index"],
   };
 }

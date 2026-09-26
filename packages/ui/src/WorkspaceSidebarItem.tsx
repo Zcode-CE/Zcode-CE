@@ -52,7 +52,6 @@ import {
   formatRemoteWorkspaceDisplayLabel,
 } from "@/lib/remoteWorkspaceHistory.js";
 import { TaskList } from "@/TaskList.js";
-import { WorkspaceRuntimeBadge } from "@/WorkspaceRuntimeNotice.js";
 import type { WorkspaceRuntimeState } from "@/hooks/useWorkspaceRuntimeStates.js";
 import { selectWorkspaceZCodeState, useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
@@ -786,10 +785,19 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
         </span>
       ) : null}
       {/*
-       * §3.2：runtime 未启动/启动中/失败必须与远端「未连接」分开表达 ——
-       * 前者是本地 runtime 还没起来（点开即可），后者是远端链路断了（要先重连）。
+       * 「未启动」徽标已移除（fix.2 / Task F1）。
+       *
+       * 为什么删：徽标挂在工作区行上，而 runtime 是按工作区懒启动的，所以首屏几乎每行都带它
+       * （实测 29 行里 28 行带徽标，见 .reverse/40-remote-control/M1-CRITERIA-3-4.md:37）。
+       * 一个恒亮、几乎人人有份的徽标不携带信息，只会变成噪音。
+       *
+       * 为什么可以删而不会退回「以为会话丢了」：列会话不需要 runtime（数据在 SQLite），
+       * 展开行后由 TaskList 的 WorkspaceRuntimeNotice 如实给出「已有 N 个会话、最近活动」与
+       * 「打开并启动」动作（该分支先于「暂无任务」，见 TaskList.tsx 的 isHonestRuntimePlaceholder）。
+       * 也就是说，诚实未启动态由展开后的画面承载，不再由行上的常驻徽标承载。
+       *
+       * 运行中状态仍由官方既有的圆圈表达（组头 liveWorkflowCount 旁 STATUS_DOT.running），未动。
        */}
-      <WorkspaceRuntimeBadge state={runtimeState ?? "unknown"} />
       {readOnlyReason ? (
         <ControlHintTooltip title={readOnlyReason} side="right" align="center">
           <span

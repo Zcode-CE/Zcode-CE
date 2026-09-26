@@ -22,7 +22,7 @@ import { fileURLToPath } from "node:url";
  * M1 验收判据 3 / 4 的真浏览器证据（task-30）。
  *
  * - 判据 3：断线重连后侧栏可见集合仍在且逐条一致（复用 web-remote-replayable 的恢复语义）；
- *   同时未启动徽标 / 持久层会话数不得因重连而错乱。
+ *   同时持久层会话数不得因重连而错乱。
  * - 判据 4：两个独立浏览器上下文（各自 cookie / storage，非同一 context 的两次加载）
  *   对同一服务端的可见集合与会话数逐条一致；客户端设置（`lastWorkspaceSession`）不参与枚举
  *   —— 把它清空后可见集合不变。
@@ -50,8 +50,10 @@ const ROW_SELECTOR = '[data-testid^="workspace-item-"]';
 interface WorkspaceRowSnapshot {
   /** 行 `data-testid` 去掉前缀后的 workspace 路径（= 用户实际看到的行）。 */
   path: string;
-  /** 行上的 runtime 徽标状态（未启动 / 启动中 / 启动失败 / null）。 */
-  badge: string | null;
+  // 这里原有 badge 字段（行上的 runtime 徽标）。fix.2 / Task F1 删除了 WorkspaceRuntimeBadge，
+  // 属性 data-workspace-runtime-badge 已不存在，因此不再采集与比对。
+  // 注意：删掉它没有削弱本测试的核心判据 —— 判据 4 比的是「可见工作区集合」与
+  // 「各 workspace 的会话数」（下面 taskItemCount / sessionCount 两项），徽标只是顺带比对的字段。
   /**
    * 该行列出的会话条数（`task-item-*`）。这是判据 4「各 workspace 的会话数一致」的
    * 主证据：runtime 未启动时这些行来自服务端持久层（tasks-index），与 runtime 无关。
@@ -280,7 +282,6 @@ async function ensureWorkspaceRowsExpanded(page: import("playwright-core").Page)
     taskItems: document.querySelectorAll('[data-testid^="task-item-"]').length,
     tabStripCount: document.querySelectorAll('[role="tablist"] [role="tab"]').length,
     notStarted: document.querySelectorAll('[data-testid="workspace-runtime-not-started"]').length,
-    badges: document.querySelectorAll("[data-workspace-runtime-badge]").length,
     firstRowText: (document.querySelector('[data-testid^="workspace-item-"]')?.textContent ?? "")
       .replace(/\s+/g, " ")
       .trim()
@@ -296,13 +297,11 @@ async function readSidebarSnapshot(page: import("playwright-core").Page): Promis
     const rows = [...document.querySelectorAll(selector)].map((trigger) => {
       // 同 countRowsWithContent：testid 在触发器上，内容在兄弟节点里，统一回到外层 <li>。
       const row = trigger.closest("li") ?? trigger;
-      const badge = row.querySelector("[data-workspace-runtime-badge]");
       const notice = row.querySelector('[data-testid="workspace-runtime-not-started"]');
       const text = notice?.textContent?.replace(/\s+/g, " ").trim() ?? null;
       const matched = text ? /已有 (\d+) 个会话/.exec(text) : null;
       return {
         path: (trigger.getAttribute("data-testid") ?? "").replace(/^workspace-item-/, ""),
-        badge: badge?.getAttribute("data-workspace-runtime-badge") ?? null,
         taskItemCount: row.querySelectorAll('[data-testid^="task-item-"]').length,
         sessionCount: matched ? Number(matched[1]) : null,
       };
@@ -353,9 +352,6 @@ function collectVisibleSetMismatches(left: SidebarSnapshot, right: SidebarSnapsh
       mismatches.push(
         `未启动态会话数不一致 ${row.path}：${previous.sessionCount} → ${row.sessionCount}`,
       );
-    }
-    if (row.badge !== previous.badge) {
-      mismatches.push(`徽标状态不一致 ${row.path}：${previous.badge} → ${row.badge}`);
     }
   }
   if (right.notStartedNoticeCount !== left.notStartedNoticeCount) {
@@ -523,7 +519,7 @@ test("M1 判据 3/4：断线重连后列表仍在 + 两个独立客户端可见�
       "必须真的列出持久层会话（runtime 未启动时也应从 tasks-index 列出）——否则判据 4 的「会话数一致」没有区分力",
     );
     t.diagnostic(
-      `断线前：${before.rows.length} 行 / 列出会话 ${before.totalTaskItems} 条 / 未启动态 ${before.notStartedNoticeCount} 次 / 未启动徽标 ${before.rows.filter((row) => row.badge === "not-started").length} 个 / 覆盖层 ${before.hasConnectionOverlay}`,
+      `断线前：${before.rows.length} 行 / 列出会话 ${before.totalTaskItems} 条 / 未启动态 ${before.notStartedNoticeCount} 次 / 覆盖层 ${before.hasConnectionOverlay}`,
     );
 
     // ── 判据 3：杀掉服务端（同端口、同令牌、同数据目录再起） ──
@@ -552,7 +548,7 @@ test("M1 判据 3/4：断线重连后列表仍在 + 两个独立客户端可见�
       60_000,
     );
     // 恢复需要收敛时间：重连后活跃 workspace 的 sessions-index 订阅重建、会话列表重查，
-    // 期间徽标与会话数都会动。**等状态静止**再取终态（task-38 的根因修复），
+    // 期间会话列表与会话数都会动。**等状态静止**再取终态（task-38 的根因修复），
     // 而不是对过渡态放行 —— 放行会让「以豁免口径判一致、以严格口径判不一致」两者打架。
     const settledAfter = await waitForSettledSnapshot(pageA, {
       label: "判据 3 恢复后",

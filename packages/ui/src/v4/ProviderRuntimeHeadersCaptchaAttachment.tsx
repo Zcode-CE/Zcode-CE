@@ -230,8 +230,17 @@ export function ProviderRuntimeHeadersCaptchaAttachment({
       void orchestrator.handle(request.requestId);
     });
 
-    // 能力声明必须与订阅同生命周期建立与撤销（host 按计数管理，dispose 幂等）。
-    const capability = agentService.declareSessionCaptchaCapability(target);
+    // 能力声明必须与订阅同生命周期建立与撤销。
+    //
+    // 为什么用订阅（onDynamicSessionCaptchaCapability）而不是一个返回 disposable 的方法：
+    // RPC 的 toService 把普通方法名包成 async 并走 channel.call，返回值经 serialize() 的
+    // JSON 路径，函数会被静默丢弃 —— 客户端拿到的是 Promise（未 await）或纯对象，
+    // cleanup 里 .dispose() 就抛 "d.dispose is not a function"，整个附件组件被错误边界接管。
+    // 事件通道的 disposable 由 channelClient 在客户端本地构造，不跨 RPC，因此可用。
+    // 该事件不承载数据，订阅动作本身就是「声明」。
+    const capabilitySubscription = agentService.onDynamicSessionCaptchaCapability(target)(() => {
+      // never 载荷，不会有事件到达；回调仅为满足 Event 契约。
+    });
 
     // 订阅建立日志：本链路的失败形态是「UI 静默收不到事件」，真机排查需要这一条。
     logger.debug("[provider-runtime-captcha] 已订阅 providerRuntimeHeaders.request", {
@@ -270,7 +279,7 @@ export function ProviderRuntimeHeadersCaptchaAttachment({
 
     return () => {
       subscription.dispose();
-      capability.dispose();
+      capabilitySubscription.dispose();
       orchestrator.dispose();
       replies.clear();
     };

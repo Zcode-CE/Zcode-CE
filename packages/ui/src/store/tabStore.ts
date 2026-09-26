@@ -41,6 +41,19 @@ export interface WorkspaceTabState extends TabState {
   workspaceIdentity?: string;
   localWorkspacePath?: string;
   workspacePurpose?: WorkspacePurpose;
+  /**
+   * 仅用于承载「当前激活的工作区」、不写回设置的 tab（fix.2 / Task F1）。
+   *
+   * 为什么需要它：枚举改由服务端注册表决定后，点击一条注册表行仍然需要一个 tab 来承载激活态
+   * （Root 的 workspaceShellPath 与多处 hook 的 activeTabId 都从 tab store 读），
+   * 但那条工作区不是本客户端的显示偏好。把它写回 lastWorkspaceSession 就等于重新让设置参与枚举，
+   * 正是本能力要消灭的第二份真相源（docs/development/workspace-registry.md 第 2.3 节）。
+   * 因此这类 tab 只进 store、不进设置：持久化补丁按本字段过滤。
+   *
+   * 生命周期：只在创建时决定，mergeWorkspaceTabOptions 不得改写它 ——
+   * 否则「点击注册表行」命中已存在的真 tab 时会把真 tab 降级成不持久化（反向丢入口）。
+   */
+  viewOnly?: boolean;
 }
 
 export interface WorkspaceTabOptions {
@@ -51,6 +64,8 @@ export interface WorkspaceTabOptions {
   workspaceIdentity?: string;
   localWorkspacePath?: string;
   workspacePurpose?: WorkspacePurpose;
+  /** 见 WorkspaceTabState.viewOnly：只承载激活态，不写回设置。 */
+  viewOnly?: boolean;
 }
 
 export interface RestorableWorkspaceTab {
@@ -123,6 +138,14 @@ export interface TabStoreState {
   openSettingsTab: () => void;
   /** 通过 workspace 路径激活 tab（跨窗口 focus 用），返回是否找到 */
   activateTabByPath: (path: string, options?: { workspaceIdentity?: string }) => boolean;
+  /**
+   * 激活一个工作区；没有已打开的 tab 时创建一条不写回设置的 viewOnly tab（fix.2 / Task F1）。
+   *
+   * 为什么单独成方法而不是在调用方 addTab：注册表行的「打开」与「把工作区固定到本客户端」是
+   * 两件事。前者只改本机视图状态，后者是显式的显示偏好。addTab 语义是后者（会进设置），
+   * 用它实现前者正是「点击后消失」的成因。
+   */
+  activateOrOpenWorkspaceTab: (workspacePath: string, options?: WorkspaceTabOptions) => TabId;
   /** 切换 workspace 的展开/收起态 */
   toggleWorkspaceExpanded: (path: string) => void;
   /** 展开当前任务区里的全部 workspace */
@@ -161,6 +184,7 @@ function createWorkspaceTab(
     workspaceIdentity: options?.workspaceIdentity,
     localWorkspacePath: options?.localWorkspacePath,
     workspacePurpose: options?.workspacePurpose,
+    viewOnly: options?.viewOnly,
   };
 }
 
@@ -177,6 +201,12 @@ function mergeWorkspaceTabOptions(
     workspaceIdentity: options?.workspaceIdentity ?? tab.workspaceIdentity,
     localWorkspacePath: options?.localWorkspacePath ?? tab.localWorkspacePath,
     workspacePurpose: options?.workspacePurpose ?? tab.workspacePurpose,
+    // viewOnly 只允许单向「提升」，不允许「降级」：
+    // - options.viewOnly === false（用户显式打开工作区/添加项目）⇒ 把仅承载激活态的 tab 转正，
+    //   否则先点过注册表行的路径会永远进不了设置；
+    // - options.viewOnly 未指定或为 true ⇒ 保持原值，绝不把已持久化的真 tab 降级，
+    //   否则点击一条已存在的真 tab 会让它下次启动消失。
+    viewOnly: options?.viewOnly === false ? false : tab.viewOnly,
   };
 }
 
@@ -569,6 +599,35 @@ export function createTabStore(storage: StorageLike | null | undefined = undefin
 
       set(nextState);
       return true;
+    },
+
+    activateOrOpenWorkspaceTab: (workspacePath, options) => {
+      // 已有真 tab（用户显式打开过）⇒ 只激活，不新建，也不改它的 viewOnly 状态。
+      const existing = get().tabs.find(
+        (tab): tab is WorkspaceTabState =>
+          isWorkspaceTab(tab) && isSameWorkspaceTab(tab, workspacePath, options),
+      );
+      if (existing) {
+        get().activateTab(existing.id);
+        return existing.id;
+      }
+
+      // 没有 tab ⇒ 建一条 viewOnly tab 承载激活态。
+      // 它只进 store：持久化补丁（buildDefaultPersistPatch / buildRemoteWorkspacePersistPatch）
+      // 按 viewOnly 过滤，因此 lastWorkspaceSession 逐字不变。
+      const tab = createWorkspaceTab(workspacePath, { ...options, viewOnly: true });
+      set((state) => ({
+        // 与 addTab 的插入位置一致（新项在最前），但这里不进设置，所以顺序只影响本机视图。
+        tabs: [tab, ...state.tabs],
+        activeTabId: tab.id,
+        activeWorkspacePath: workspacePath,
+        activeWorkspaceIdentity: tab.workspaceIdentity ?? null,
+        expandedWorkspacePaths: ensureWorkspaceExpanded(
+          state.expandedWorkspacePaths,
+          workspacePath,
+        ),
+      }));
+      return tab.id;
     },
 
     restoreTabs: (tabsInput, activeIndex: number) => {

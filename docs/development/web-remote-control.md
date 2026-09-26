@@ -544,8 +544,14 @@ node --import tsx --test test/auditHttp.test.ts   # 真实链路：连接/失败
 - 删除或停用一个渠道立即生效（下一次回调就是 404）。
 
 这个不对称是有意的：删除方向立即收紧（fail-closed），新增方向要一个显式动作才放大面
-（fail-safe）。代价是「配了却不生效」会被误判成 bug，因此桌面端远程控制面板的「IM 机器人」
-标签页把这句话常显在提醒块里（`packages/ui/src/RemoteControlImBotTab.tsx`）。
+（fail-safe）。代价是「配了却不生效」会被误判成 bug，因此**在渠道已注入时**，桌面端远程控制
+面板的「IM 机器人」标签页把这句话常显在提醒块里（`packages/ui/src/RemoteControlImBotTab.tsx`）。
+
+**前提必须写出来，否则会读成「总能在这个标签页看到这句话」**：没有真实 channel 实现时，
+该标签页**整块不渲染**（标签触发器与内容都不挂载），用户看不到这句话，也看不到这一页 ——
+判据是 `canRenderRemoteControlImBotTab`（`packages/ui/src/remoteControlPanelModel.ts`），
+与 `canRenderRemoteControlPanel` 同一纪律（能力缺失 ⇒ 不渲染，而不是给一个点了没反应的按钮）。
+宿主真正注入 `imBot` 后这一页自动重现。
 
 ### 12.5 与其它几道闸的关系
 
@@ -596,6 +602,14 @@ node --import tsx --test test/exposureGateHttp.test.ts  # 登记域名 + 无令�
 桌面端远程控制面板的「IM 机器人」标签页里那句话（§12.4），真浏览器断言见
 `.reverse/93-bot-ingress/harness/probe-im-bot.mjs`：它渲染产品组件本身并读 `innerText`，
 判据是「这句话在屏幕上且落在常显的提醒块内」。把渲染点摘掉后探针必须变红（已验证）。
+
+该探针有**两个** case，判据不同（2026-09-27 随 §12.4 的前提一起修订）：
+`enabled` 渲染标签页组件，断言这句话可见且在常显提醒块内；
+`no-channel` 渲染整块面板，断言「IM 机器人」标签页**不渲染**（触发器与内容都不存在）。
+旧版 `no-channel` 直接渲染 `channel={null}` 的标签页并断言"这句话可见" —— 那在
+"渠道缺失 ⇒ 整页不渲染"之后**已不成立**，留着会假绿。探针现在自己断言并在失败时非零退出
+（此前只打印事实，判据写在文档表格里）。反向验证：把门控改成 `showImBotTab = true` 重建后，
+`no-channel` 报「标签触发器不该渲染，却存在」且退出码 1；还原后退出码 0。
 
 ---
 

@@ -270,6 +270,33 @@ export function canRenderRemoteControlPanel(capability: RemoteControlPanelCapabi
 }
 
 /**
+ * 「IM 机器人」标签页的能力门（fix.2）：没有真实通道实现时「整块不渲染」
+ * （标签触发器与内容一起消失），而不是渲染一个点了没反应的「启用」按钮。
+ *
+ * 为什么改（用户已认可的处置）：此前这一页在通道缺席时照样渲染「启用」，
+ * 点击走 `channel?.onEnable()` —— 而通道恒为 undefined（全仓 `imBot=` 0 命中），
+ * 于是确认弹窗点「继续启用」是空操作；又因为 `requested`/`inFlight`/`confirmOpen`
+ * 都是组件局部 state，而 Radix `TabsContent` 无 `forceMount`、宿主 `DialogContent` 关闭即卸载，
+ * 任何切页/关面板都会让组件重挂载、三个标记归零 ⇒ 用户又看到「启用」按钮，
+ * 再点又是同一个确认弹窗，形成闭环（见 docs/development/133-im-bot-approval-loop.md §4.1）。
+ * 这是本仓自己禁止的形态：能力缺失时不渲染，而不是给一个假按钮
+ * （同 {@link canRenderRemoteControlPanel} 的纪律，见 remoteControlWiring.ts:93-94）。
+ *
+ * 判据刻意选成「通道对象是否存在」这一条可测事实：类型上 `onEnable` 是必填，
+ * 因此非空 ⇒ 一定有一个真的动作可调；空 ⇒ 一定没有。不引入第二个判据
+ * （例如再看 status），否则会出现「有通道但按 status 不渲染」这类无法验证的组合。
+ *
+ * 恢复条件（明确）：宿主真正注入 `imBot`（`WorkspaceSidebar` 的
+ * `RemoteControlPanelHost` 传入带 `onEnable` 的通道）后，这一页自动重新出现 ——
+ * 门控只读注入值，不需要改本函数。
+ */
+export function canRenderRemoteControlImBotTab(
+  channel: RemoteControlImBotChannel | null | undefined,
+): channel is RemoteControlImBotChannel {
+  return channel != null;
+}
+
+/**
  * 决策①：首次对局域网开放前必须显式确认。
  *
  * 判据只看**本次请求的 scope**（不是当前 status）：回环启动不弹窗；
@@ -345,8 +372,9 @@ export const REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_TEST_ID = "remote-control-im-b
  * IM 机器人标签页的**可达状态**。
  *
  * 每个取值都有产出路径（ce.3 硬规矩）：
- * - `disabled`：**默认档**。宿主没注入通道（今天 Bot 服务端零产出路径）与
- *   宿主注入了通道但 `status === "disabled"` 都落在这里 ⇒ **都渲染「启用」**。
+ * - `disabled`：默认档，产出路径只有一条 —— 宿主注入了通道且 `status === "disabled"`。
+ *   （"宿主没注入通道"不再是产出路径：那种情况整页不渲染，见
+ *   {@link canRenderRemoteControlImBotTab}。）这一档渲染「启用」。
  * - `enabling`：用户已确认提醒、请求在途（**渲染进程本地**标记，与 Web 面在途同一机制）。
  * - `requested`：请求已结算但宿主仍未回传 `enabled` ⇒ 如实说「已请求，等待服务端就绪」。
  *   **不写「已启用」** —— 服务端还没接入，写成已启用就是谎报。
@@ -356,8 +384,14 @@ export const REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_TEST_ID = "remote-control-im-b
  * 不渲染启用按钮、只给一句说明"，被否掉了 —— 那等于**没同步上游入口**，
  * 只多了一页说明文字。用户的原则是「不能少东西」，且本仓已有先例（切片 1：
  * 入口先渲染、动作待接线，如实标为已知限制）。因此：
- * **默认关闭由"通道未注入 ⇒ 未启用"承载，不是靠"没有按钮"**；
- * 代价是必须给点击**可见反馈**（确认弹窗 → `enabling` → `requested`），不许静默。
+ * 「默认关闭由状态承载，不是靠没有按钮」；
+ * 代价是必须给点击可见反馈（确认弹窗 → `enabling` → `requested`），不许静默。
+ *
+ * fix.2 修订（用户已认可，见 {@link canRenderRemoteControlImBotTab}）：
+ * 上面那条"没注入通道也照样渲染按钮 + 一句说明"的写法在**没有宿主**时就是死路 ——
+ * 说明文字用户不读，点击是空操作，重挂载后又回到确认界面。改为
+ * 「通道缺席 ⇒ 整页不渲染」。"不能少东西"的边界随之明确为：有动作可做时不许少，
+ * 而不是永远渲染一个按钮。`disabled` 档因此只剩"宿主明确回传未启用"这一种产出路径。
  */
 export type RemoteControlImBotState = "disabled" | "enabling" | "requested" | "enabled";
 
@@ -419,8 +453,8 @@ export interface RemoteControlImBotView {
   /**
    * 当前状态的说明；`null` = 无需额外说明（提醒块已经说清楚了）。
    *
-   * 未注入通道时**必须**有说明（`remotePanel.imBot.state.pendingServer`）：
-   * 按钮渲染了但服务端还没接入，不说清楚就是让用户以为点完就能用。
+   * fix.2 起"未注入通道"不再是本字段的产出路径（那一档整页不渲染），
+   * 因此本字段不再承载"服务端还没接入"这类说明 —— 它只解释用户看得见的这一档。
    */
   stateMessageId: string | null;
 }
@@ -432,7 +466,12 @@ export interface RemoteControlImBotView {
  * 「在途」压过「宿主已启用」是为了让点击**立刻**有可见反馈（与 Web 面 `inFlight` 同一语义）。
  */
 export function resolveRemoteControlImBotView(input: {
-  channel: RemoteControlImBotChannel | null | undefined;
+  /**
+   * 已注入的通道。非空是入参契约（fix.2）：没有通道时调用方整块不渲染这一页
+   * （{@link canRenderRemoteControlImBotTab}），根本走不到本函数 ——
+   * 因此这里不再有「通道缺席」分支，也就不再需要那条 pendingServer 说明。
+   */
+  channel: RemoteControlImBotChannel;
   /** 渲染进程本地在途标记（确认后到 promise 结算之间）。 */
   inFlight: boolean;
   /** 本次会话内用户已确认并请求过启用（本地标记）。 */
@@ -466,7 +505,7 @@ export function resolveRemoteControlImBotView(input: {
     state: "disabled",
     badgeMessageId: "remotePanel.imBot.badge.disabled",
     showEnableAction: true,
-    // 通道缺席 ⇒ 服务端能力尚未接入；这一档**仍然渲染启用按钮**，但必须如实说明。
-    stateMessageId: input.channel ? null : "remotePanel.imBot.state.pendingServer",
+    // 通道已注入且宿主报 disabled ⇒ 默认关闭，提醒块已经说清代价，无需再补一句。
+    stateMessageId: null,
   };
 }

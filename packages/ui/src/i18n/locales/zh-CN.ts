@@ -1256,9 +1256,6 @@ const zhCN: Record<string, string> = {
     "已移除项目，但检测到 {count} 个 Windows 保留名文件，可能影响后续删除或重命名目录：{path}",
   "workspaceSidebar.reconnect": "重新连接",
   "workspaceSidebar.connecting": "连接中",
-  "workspaceRuntime.badge.notStarted": "未启动",
-  "workspaceRuntime.badge.starting": "启动中",
-  "workspaceRuntime.badge.failed": "启动失败",
   "workspaceRuntime.starting.title": "正在启动工作区…",
   "workspaceRuntime.failed.title": "「{workspace}」启动失败",
   "workspaceRuntime.failed.reasonUnavailable":
@@ -1301,10 +1298,9 @@ const zhCN: Record<string, string> = {
   "remotePanel.imBot.badge.enabling": "启用中",
   "remotePanel.imBot.badge.enabled": "已启用",
   "remotePanel.imBot.action.enable": "启用",
-  // 未注入通道（今天 Bot 服务端零产出路径）**仍然渲染启用按钮**（Lead 拍板：不能少东西），
-  // 但必须如实说明"点了会发生什么" —— 否则按钮就是个骗人的动作。
-  "remotePanel.imBot.state.pendingServer":
-    "机器人通道的服务端能力尚未接入：现在启用只会记下请求，机器人还不会收发消息。",
+  // fix.2：原先这里有一条 pendingServer 说明（"服务端能力尚未接入：现在启用只会记下请求"）。
+  // 那一档已改为「整页不渲染」（remoteControlPanelModel.ts 的 canRenderRemoteControlImBotTab），
+  // 文案不再有产出路径，故删除 —— 留着一个永不可达的键会让下一个人以为还有这条路径。
   "remotePanel.imBot.state.enabling": "正在启用…",
   "remotePanel.imBot.state.requested":
     "已请求启用，等待服务端就绪；在此之前机器人不会收发任何消息。",

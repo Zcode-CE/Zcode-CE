@@ -195,7 +195,8 @@ async function withService(
       await service.initialize({ workspacePath });
     },
     declareCaptchaCapability() {
-      return service.declareSessionCaptchaCapability({ workspacePath, sessionId });
+      // 事件形态：订阅即声明，退订即撤销（返回值是客户端本地构造的 disposable）。
+      return service.onDynamicSessionCaptchaCapability({ workspacePath, sessionId })(() => {});
     },
     dispose: () => service.disposeAllAndWait(),
   });

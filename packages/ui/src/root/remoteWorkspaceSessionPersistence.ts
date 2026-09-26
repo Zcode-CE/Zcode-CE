@@ -27,8 +27,17 @@ export function buildRemoteWorkspacePersistPatch(
   remoteSessions: readonly RemoteWorkspaceSessionEntry[],
 ): Partial<AppSettings> {
   const remoteSessionMap = buildRemoteWorkspaceSessionEntryMap(remoteSessions);
+  // fix.2 / Task F1：只承载激活态的 viewOnly tab 不进设置。
+  //
+  // 为什么在这里过滤：枚举的唯一来源是服务端注册表（workspace-registry.md 第 2.3 节），
+  // 而点击一条注册表行需要一个 tab 承载激活态。若把它写回 lastWorkspaceSession，
+  // 设置就重新变成了枚举来源 —— 那正是本能力要消灭的第二份真相源，也是
+  // 「点击后消失」的持久化后果（131 号报告第 3 节 (d)）。
+  // 过滤放在序列化入口而不是各写入点：写入点有两条（本函数与 useTabPersistence 的
+  // buildDefaultPersistPatch），收口在一处才不会漏。
+  const persistedTabs = state.tabs.filter((tab) => !(isWorkspaceTab(tab) && tab.viewOnly));
   const serializedWorkspaceSessions = buildPersistedWorkspaceSessionEntries(
-    state.tabs,
+    persistedTabs,
     remoteSessionMap,
   );
   const serializedRemoteWorkspaceKeys = new Set(
@@ -39,7 +48,10 @@ export function buildRemoteWorkspacePersistPatch(
   const pendingRemoteSessions = remoteSessions.filter(
     (entry) => !serializedRemoteWorkspaceKeys.has(buildWorkspaceSessionKey(entry)),
   );
-  const workspaceTabs = state.tabs.filter((tab) => tab.kind === "workspace");
+  // 索引必须与 lastWorkspaceSession 同口径：viewOnly tab 不在持久化列表里，
+  // 若拿未过滤的 tabs 求索引，激活的恰好是 viewOnly 行时 lastActiveTabIndex 会指向
+  // 持久化列表里的错误位置，下次启动恢复到别的项目。
+  const workspaceTabs = persistedTabs.filter((tab) => tab.kind === "workspace");
   const activeIndex = state.activeWorkspacePath
     ? workspaceTabs.findIndex((tab) => tab.workspacePath === state.activeWorkspacePath)
     : 0;

@@ -133,28 +133,19 @@ function formatLastActivity(lastActivityAt: number | null | undefined, now: numb
   return String(Math.round(hours / 24)) + "d";
 }
 
-/** 列表行上的「未启动」徽标（与远端「未连接」区分：两者原因不同、动作也不同）。 */
-export function WorkspaceRuntimeBadge({ state }: { state: WorkspaceRuntimeState }) {
-  const { intl } = useZCodeIntl();
-  if (state !== "not-started" && state !== "starting" && state !== "failed") {
-    return null;
-  }
-  const key =
-    state === "starting"
-      ? "workspaceRuntime.badge.starting"
-      : state === "failed"
-        ? "workspaceRuntime.badge.failed"
-        : "workspaceRuntime.badge.notStarted";
-  return (
-    <span
-      data-workspace-runtime-badge={state}
-      className={
-        state === "failed"
-          ? "shrink-0 rounded border border-destructive/40 px-1 text-ui-xs leading-4 text-destructive"
-          : "shrink-0 rounded border border-border px-1 text-ui-xs leading-4 text-foreground-subtle"
-      }
-    >
-      {intl.formatMessage({ id: key })}
-    </span>
-  );
-}
+/*
+ * 这里原本导出 WorkspaceRuntimeBadge（列表行上的「未启动」徽标）。fix.2 / Task F1 删除了它。
+ *
+ * 为什么删：徽标挂在工作区行上、按行渲染，而 runtime 是按工作区懒启动的，所以首屏几乎每行
+ * 都带它（实测 29 行里 28 行带徽标，见 .reverse/40-remote-control/M1-CRITERIA-3-4.md:37）。
+ * 一个恒亮、几乎人人有份的徽标不携带信息，只会变成噪音。
+ *
+ * 诚实未启动态没有丢：它由本文件的 WorkspaceRuntimeNotice 承载（展开行后给出
+ * 「已有 N 个会话、最近活动」与「打开并启动」），该分支先于「暂无任务」处理
+ * （见 TaskList.tsx 的 isHonestRuntimePlaceholder）。也就是说状态信息从「行上常驻」
+ * 移到「展开后可操作」，而不是被删掉。
+ *
+ * 运行中状态仍由官方既有的圆圈表达（WorkspaceSidebarItem 里组头的 STATUS_DOT.running）。
+ *
+ * 若将来要恢复行上标识，请先回答：它相对什么基线才有信息量（恒亮状态不是标识，是背景噪声）。
+ */

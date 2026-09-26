@@ -362,12 +362,22 @@ export interface ZCodeAgentRespondSessionRuntimePreferencesParams {
  * `requestAuth.headers`，渲染层不能借此注入任意请求头。
  */
 /**
- * 声明/撤销「本会话具备渲染验证码能力」（spec §4.4 的第二道判据）。
+ * 「本会话具备渲染验证码能力」的声明通道参数（spec §4.4 的第二道判据）。
  *
- * 调用即登记，返回的 disposable.dispose() 即撤销。多声明者按计数管理：
- * 只有最后一个撤销者才真正移除能力（见 zcodeAgentService 里计数语义的注释）。
+ * 形态是 dynamic event 而不是方法：订阅即声明、退订即撤销。
+ *
+ * 为什么必须是事件通道（而不是返回 IDisposable 的方法）：
+ * RPC 的 toService 把普通方法名包成 async 并走 channel.call，返回值经 serialize() 的
+ * JSON 路径，函数会被静默丢弃 ⇒ 客户端拿到 Promise（未 await 时）或纯对象，
+ * cleanup 里 .dispose() 抛 "d.dispose is not a function"。
+ * 事件通道的 disposable 由 channelClient 在客户端本地构造，不跨 RPC，因此可用。
+ * 同一坑在 useWorkspaceServices.tsx 的注释里有前例：onAgentRuntimeRestarted 曾被误判成
+ * RPC 方法并返回 Promise，释放订阅时触发 Promise.dispose 崩溃。
+ *
+ * 计数语义由 Emitter 的 first/last listener 承担：多个订阅者 = 多个声明者，
+ * 只有最后一个退订才真正撤销能力。
  */
-export interface ZCodeAgentDeclareSessionCaptchaCapabilityParams extends ZCodeAgentSessionTarget {}
+export interface ZCodeAgentSessionCaptchaCapabilityParams extends ZCodeAgentSessionTarget {}
 
 export interface ZCodeAgentRespondProviderRuntimeHeadersParams {
   requestId: string;
@@ -768,15 +778,14 @@ export interface IZCodeAgentService {
   /**
    * 声明本会话具备渲染/求解验证码的能力（spec §4.4）。
    *
-   * 渲染层在挂载时声明、卸载时 dispose。host 只在 start-plan 转发前检查该声明，
+   * 订阅即声明、退订即撤销。host 只在 start-plan 转发前检查该声明，
    * 缺失即快速失败——因为请求没有 host 侧超时，转发给一个不能求解的订阅者
    * 只会让它悬挂到 CLI 侧 180s。
    *
    * 语义边界：声明只表达「我能求解」，不校验实际能力；host 不缓存任何验证码凭据。
+   * 事件载荷为 never：该通道不承载业务数据，订阅动作本身就是全部语义。
    */
-  declareSessionCaptchaCapability(
-    params: ZCodeAgentDeclareSessionCaptchaCapabilityParams,
-  ): IDisposable;
+  onDynamicSessionCaptchaCapability(params: ZCodeAgentSessionCaptchaCapabilityParams): Event<never>;
   /**
    * CLI 进程级资源样本，带 services 打的 lane 标签（CLI 自己不知道 lane）。
    * 使用 dynamic event 避免 RPC 服务在无人订阅时缓冲周期事件；

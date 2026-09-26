@@ -115,6 +115,9 @@ import {
 } from "./providers/weixinRegistration.js";
 import { createFeishuBotProvider } from "./providers/feishuProvider.js";
 import { formatBotMessage, type BotMessageId } from "./messages.js";
+// fix.2：task 失败文案的归一化（稳定码 ⇒ 可操作提示）单独成文件 —— 它是纯映射、无 IO，
+// 与 botsService 的 6000 行实现分开后，可以在不启动整个服务的前提下直接测。
+import { formatBotTaskFailureMessage } from "./taskFailureMessage.js";
 import {
   extractBotAssistantResponseMessages,
   formatBotAssistantReplyBlocks,
@@ -4134,9 +4137,7 @@ export function createBotsService(
               : createOutbound(
                   actor,
                   event.type === "task_error"
-                    ? msg(await readMessageLocale(), "taskFailed", {
-                        message: event.error,
-                      })
+                    ? formatBotTaskFailureMessage(await readMessageLocale(), event.error)
                     : msg(await readMessageLocale(), "received"),
                 ),
           );
@@ -4163,9 +4164,7 @@ export function createBotsService(
             streamingCardStatus = "error";
             if (!hasStreamingCardMessageText()) {
               appendStreamingCardMessages([
-                msg(await readMessageLocale(), "taskFailed", {
-                  message: event.error,
-                }),
+                formatBotTaskFailureMessage(await readMessageLocale(), event.error),
               ]);
             }
             await syncStreamingCardReply(event.type, true);
@@ -4175,9 +4174,7 @@ export function createBotsService(
             bot,
             createOutbound(
               actor,
-              msg(await readMessageLocale(), "taskFailed", {
-                message: event.error,
-              }),
+              formatBotTaskFailureMessage(await readMessageLocale(), event.error),
             ),
           );
           return;

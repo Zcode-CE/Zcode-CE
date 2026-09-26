@@ -5,7 +5,7 @@ import { z } from "zod";
  *
  * 背景与决策见 docs/development/workspace-registry.md：现在可见集合来自客户端设置
  * （lastWorkspaceSession 23 条），而服务端数据侧有 52/53 个 workspace，导致「会话看起来丢了」
- * 与多客户端不一致。本模块只定义**数据形状**与**纯选择规则**，不含任何读写实现，便于两侧复用。
+ * 与多客户端不一致。本模块只定义数据形状与纯选择规则，不含任何读写实现，便于两侧复用。
  */
 
 /** 注册表条目的来源标记（可多源并存，合并时取并集）。 */
@@ -26,6 +26,23 @@ export const workspaceRegistryEntrySchema = z.object({
   lastActivityAt: z.number().int().nonnegative(),
   /** 持久层的可见会话/任务条数（不依赖 runtime，用于「未启动」时也能如实显示有什么）。 */
   sessionCount: z.number().int().nonnegative(),
+  /**
+   * 其中未归档的会话条数 —— 与侧栏会话列表（只列未归档）同一口径。
+   *
+   * 为什么两个口径并存：sessionCount 不过滤 archived 是有意设计（保证「只有归档任务」的
+   * workspace 也在注册表里，见 workspaceRegistryRepo.ts 顶部注释），而侧栏展开后只显示未归档
+   * 会话。若只报 sessionCount，就会出现「说已有 N 个会话、点开是空的」（实测本机 52 个在册
+   * 工作区里 24 个如此）。因此展示用的数字必须取本字段。
+   *
+   * 口径取舍（有意接受，不是漏算）：本字段数的是 archived = 0，含置顶；侧栏 workspace 视图的
+   * 列表走 timeline 口径（!pinned && !archived）。因此用户置顶某会话时，本字段会比该视图的列表多 1。
+   * 不改成排除 pinned 的理由：置顶会话在「置顶区」里本来就可见；反过来若排除 pinned 就会出现
+   * 「注册表说 0 个、展开后置顶区有一条」——把「说多了」换成「说少了」，而说 0 会让用户以为会话
+   * 丢了，正是本能力要消灭的观感（workspace-registry.md §1）。两害相权取其轻。
+   *
+   * 兼容：老库升级后该列为 0，由随后的枚举 upsert 用 tasks 表真实计数覆盖（见 0005 迁移注释）。
+   */
+  activeSessionCount: z.number().int().nonnegative(),
   sources: z.array(workspaceRegistrySourceSchema).min(1),
 });
 

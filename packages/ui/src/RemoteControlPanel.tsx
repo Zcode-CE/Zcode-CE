@@ -28,6 +28,7 @@ import {
   REMOTE_CONTROL_PANEL_TAB_WEB_TEST_ID,
   REMOTE_CONTROL_PANEL_TEST_ID,
   DEFAULT_REMOTE_CONTROL_START_SCOPE,
+  canRenderRemoteControlImBotTab,
   resolveRemoteControlPanelView,
   shouldConfirmBeforeStart,
   withRemoteControlInFlight,
@@ -69,11 +70,17 @@ export interface RemoteControlPanelProps {
   /** 关闭面板；不传则不渲染关闭入口。 */
   onClose?: () => void;
   /**
-   * IM 机器人通道（task-93）。**可选**，不传 ⇒ 该标签页如实显示"本版本尚未提供启用入口"。
+   * IM 机器人通道（task-93）。可选，不传 ⇒ 「IM 机器人」标签页整块不渲染
+   * （标签触发器与内容一起消失，不是渲染成一个点了没反应的按钮）。
    *
    * 为什么可选而不是必填：现有契约是纯注入式的，桌面宿主今天还没有这条通道；
    * 做成必填会逼调用方编一个假的 `onEnable`（切片 1 的教训：空动作必须如实标注，
    * 不能靠一个永远成功的回调掩盖）。
+   *
+   * fix.2 修订：上面这条"可选"的呈现方式变了。原先是"未注入也渲染启用按钮 +
+   * 一句说明"，实测用户点「继续启用」后没有任何下一步（`channel?.onEnable()` 是空操作），
+   * 关掉面板重开又回到同一个确认弹窗。改为按本仓既有纪律整块不渲染 ——
+   * 判据见 {@link canRenderRemoteControlImBotTab}。
    */
   imBot?: RemoteControlImBotChannel | null;
   /**
@@ -107,6 +114,9 @@ export function RemoteControlPanel({
   // 标签页是**面板本地**状态：它不是服务端事实，也不该被当成"用户在设置里选了哪条路径"。
   // 默认值来自 model 的唯一常量（"Web 控制默认开启" = 默认选中这一页）。
   const [activeTab, setActiveTab] = useState<RemoteControlPanelTab>(REMOTE_CONTROL_DEFAULT_TAB);
+  // fix.2：没有真实通道实现 ⇒ 「IM 机器人」这一页整块不渲染（标签与内容一起消失）。
+  // 判据由 model 的唯一所有者给出，组件不自己判一次 —— 两处判定会分家。
+  const showImBotTab = canRenderRemoteControlImBotTab(imBot);
   const view = useMemo(
     () => withRemoteControlInFlight(resolveRemoteControlPanelView(status), inFlight),
     [inFlight, status],
@@ -185,14 +195,17 @@ export function RemoteControlPanel({
             <GlobeIcon aria-hidden="true" className="size-3.5" />
             <span>{t("remotePanel.tab.web")}</span>
           </TabsTrigger>
-          <TabsTrigger
-            value="imBot"
-            data-testid={REMOTE_CONTROL_PANEL_TAB_IM_BOT_TEST_ID}
-            className="flex-none gap-1.5"
-          >
-            <BotIcon aria-hidden="true" className="size-3.5" />
-            <span>{t("remotePanel.tab.imBot")}</span>
-          </TabsTrigger>
+          {/* 能力缺失 ⇒ 连标签触发器都不渲染：留一个点进去空的页签同样是"承诺了不存在的东西"。 */}
+          {showImBotTab ? (
+            <TabsTrigger
+              value="imBot"
+              data-testid={REMOTE_CONTROL_PANEL_TAB_IM_BOT_TEST_ID}
+              className="flex-none gap-1.5"
+            >
+              <BotIcon aria-hidden="true" className="size-3.5" />
+              <span>{t("remotePanel.tab.imBot")}</span>
+            </TabsTrigger>
+          ) : null}
         </TabsList>
 
         {/*
@@ -252,10 +265,17 @@ export function RemoteControlPanel({
           </section>
         </TabsContent>
 
-        {/* IM 机器人页：默认关闭，启用前必须过确认弹窗（三条事实）。 */}
-        <TabsContent value="imBot" className="min-h-0">
-          <RemoteControlImBotTab channel={imBot ?? null} />
-        </TabsContent>
+        {/*
+          IM 机器人页：默认关闭，启用前必须过确认弹窗（三条事实）。
+          fix.2：只在通道真实存在时渲染。showImBotTab 为假时连 TabsContent 都不挂载 ——
+          channel 传进去只会渲染一个没有宿主的「启用」按钮（点击是空操作，见 props 注释）。
+          showImBotTab 为真时 TypeScript 已由类型谓词收窄 imBot，无需再写 ?? null。
+        */}
+        {showImBotTab ? (
+          <TabsContent value="imBot" className="min-h-0">
+            <RemoteControlImBotTab channel={imBot} />
+          </TabsContent>
+        ) : null}
       </Tabs>
 
       <FirstRunConfirmDialog

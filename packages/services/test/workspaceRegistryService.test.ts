@@ -85,6 +85,7 @@ test("默认视图 = 最近活跃窗口 ∪ 置顶；窗口外的条目只在全
         firstSeenAt: now - 2 * DAY,
         lastActivityAt: now - DAY,
         sessionCount: 3,
+        activeSessionCount: 3,
         sources: ["task-index"],
       },
       {
@@ -93,6 +94,7 @@ test("默认视图 = 最近活跃窗口 ∪ 置顶；窗口外的条目只在全
         firstSeenAt: now - 400 * DAY,
         lastActivityAt: now - 200 * DAY,
         sessionCount: 9,
+        activeSessionCount: 9,
         sources: ["task-index"],
       },
       {
@@ -101,6 +103,7 @@ test("默认视图 = 最近活跃窗口 ∪ 置顶；窗口外的条目只在全
         firstSeenAt: now - 400 * DAY,
         lastActivityAt: now - 300 * DAY,
         sessionCount: 1,
+        activeSessionCount: 1,
         sources: ["task-index"],
       },
     ],
@@ -139,6 +142,7 @@ test("坏行被丢弃，且不抛错（一个坏行不得让整个侧栏变空�
         firstSeenAt: 0,
         lastActivityAt: 0,
         sessionCount: 0,
+        activeSessionCount: 0,
         sources: [],
       } as never,
       {
@@ -147,6 +151,7 @@ test("坏行被丢弃，且不抛错（一个坏行不得让整个侧栏变空�
         firstSeenAt: now,
         lastActivityAt: now,
         sessionCount: 1,
+        activeSessionCount: 1,
         sources: ["task-index"],
       },
     ],
@@ -192,6 +197,10 @@ test("列出 50 个工作区不产生任何子进程，且不改动任务行", a
       assert.ok(
         entries.every((entry) => entry.sessionCount === 1),
         "持久层会话数必须来自任务行，不依赖 runtime",
+      );
+      assert.ok(
+        entries.every((entry) => entry.activeSessionCount === 1),
+        "未归档会话数同样来自任务行，且与 sessionCount 一致（这些任务都未归档）",
       );
 
       // 回填幂等：再来一次不得改变行数，也不得改动 tasks 表。

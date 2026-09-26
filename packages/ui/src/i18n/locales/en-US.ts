@@ -1347,9 +1347,6 @@ const enUS: Record<string, string> = {
     "Project removed, but {count} Windows reserved-name file(s) were detected and may affect later folder deletion or renaming: {path}",
   "workspaceSidebar.reconnect": "Reconnect",
   "workspaceSidebar.connecting": "Connecting",
-  "workspaceRuntime.badge.notStarted": "Not started",
-  "workspaceRuntime.badge.starting": "Starting",
-  "workspaceRuntime.badge.failed": "Start failed",
   "workspaceRuntime.starting.title": "Starting workspace…",
   "workspaceRuntime.failed.title": "Failed to start “{workspace}”",
   "workspaceRuntime.failed.reasonUnavailable":
@@ -1400,10 +1397,10 @@ const enUS: Record<string, string> = {
   "remotePanel.imBot.badge.enabling": "Enabling",
   "remotePanel.imBot.badge.enabled": "Enabled",
   "remotePanel.imBot.action.enable": "Enable",
-  // The channel not being injected (today the bot server side has no producer) still renders the
-  // enable button — "we must not ship less" — but the copy must say what clicking actually does.
-  "remotePanel.imBot.state.pendingServer":
-    "The bot channel's server-side capability is not wired in yet: enabling now only records the request, and the bot will not send or receive anything.",
+  // fix.2: the "server-side capability is not wired in yet" notice was removed together with its
+  // only producer — a missing channel now hides the whole tab (canRenderRemoteControlImBotTab in
+  // remoteControlPanelModel.ts), so the key would be unreachable. Keeping it would suggest a path
+  // that no longer exists.
   "remotePanel.imBot.state.enabling": "Enabling…",
   "remotePanel.imBot.state.requested":
     "Enable requested, waiting for the server side; the bot sends and receives nothing until then.",

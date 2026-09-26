@@ -10,6 +10,7 @@ import {
   REMOTE_CONTROL_DEFAULT_TAB,
   REMOTE_CONTROL_IM_BOT_REMINDER_MESSAGE_IDS,
   REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_MESSAGE_ID,
+  canRenderRemoteControlImBotTab,
   canRenderRemoteControlPanel,
   hasUsableRemoteControlLink,
   resolveRemoteControlImBotView,
@@ -70,6 +71,17 @@ const WEB_TAB_SOURCES = {
 const IM_BOT_TAB_SOURCE = {
   name: "src/RemoteControlImBotTab.tsx",
   source: readSource("src/RemoteControlImBotTab.tsx"),
+};
+/**
+ * 去注释的同一份源码。
+ *
+ * 为什么这些断言必须去注释：修复说明里必然会引用被删掉的写法
+ * （"原先写的是 `channel?.onEnable()`，是空操作"）—— 那是给维护者的知识，
+ * 不是实现。不去注释的话，把缺陷记录清楚反而会让断言变红，等于用测试逼人删掉说明。
+ */
+const IM_BOT_TAB_CODE = {
+  name: "src/RemoteControlImBotTab.tsx",
+  source: readSourceWithoutComments("src/RemoteControlImBotTab.tsx"),
 };
 
 test("契约 §4 五条分支各自解析成一档，且都有可操作出口", () => {
@@ -535,31 +547,88 @@ test("默认页是 Web 控制（读法：默认**选中**这一页，不是自�
   assert.match(panel, /shouldConfirmBeforeStart\(DEFAULT_REMOTE_CONTROL_START_SCOPE/);
 });
 
-test("IM 机器人默认关闭：未注入通道时**照样渲染启用按钮**（默认关闭不是靠「没有按钮」）", () => {
-  // 未注入通道 ⇒ disabled 档，且**仍然渲染**启用按钮。
-  const noChannel = resolveRemoteControlImBotView({
-    channel: null,
-    inFlight: false,
-    requested: false,
-  });
-  assert.equal(noChannel.state, "disabled", "未注入通道时默认关闭");
-  assert.equal(noChannel.showEnableAction, true, "默认关闭时仍必须渲染启用按钮");
-  // 但必须如实说明"现在启用会发生什么"（服务端还没接入），否则按钮就是个骗人的动作。
-  assert.equal(noChannel.stateMessageId, "remotePanel.imBot.state.pendingServer");
-
-  // 注入通道且 status=disabled ⇒ 同一档（默认关闭由状态承载），说明可以省略（提醒块已说清）。
+test("IM 机器人默认关闭：通道已注入且 disabled 时照样渲染启用按钮（默认关闭不是靠「没有按钮」）", () => {
+  // 默认关闭由状态承载：宿主注入通道并回传 status=disabled ⇒ 渲染「启用」。
   const injected = resolveRemoteControlImBotView({
     channel: { status: "disabled", onEnable: () => {} },
     inFlight: false,
     requested: false,
   });
   assert.equal(injected.state, "disabled");
-  assert.equal(injected.showEnableAction, true);
+  assert.equal(injected.showEnableAction, true, "默认关闭时仍必须渲染启用按钮");
+  // 提醒块已说清代价，这一档不需要额外说明。
   assert.equal(injected.stateMessageId, null);
 
   // 组件里必须真的渲染按钮，且按钮文案不是"不可用"。
   assert.match(IM_BOT_TAB_SOURCE.source, /view\.showEnableAction \? \(/);
   assert.match(IM_BOT_TAB_SOURCE.source, /REMOTE_CONTROL_IM_BOT_ENABLE_TEST_ID/);
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * fix.2：「IM 机器人」没有真实通道实现 ⇒ 整块不渲染（不是渲染一个点了没反应的按钮）
+ *
+ * 缺陷：channel 恒为 undefined（全仓 imBot= 0 命中），点击走 channel?.onEnable() 空操作；
+ * requested/inFlight/confirmOpen 都是组件局部 state，而 TabsContent 无 forceMount、
+ * 宿主 DialogContent 关闭即卸载 ⇒ 切页/关面板重挂载后三个标记归零，用户又看到「启用」按钮，
+ * 再点又是同一个确认弹窗（docs/development/133-im-bot-approval-loop.md §4.1）。
+ *
+ * 处置依据：本仓既有纪律 —— 能力缺失时不渲染，而不是给一个假按钮
+ * （remoteControlWiring.ts:93-94 的 renderable:false 口径，与 canRenderRemoteControlPanel 同源）。
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+test("IM 机器人：没有真实通道 ⇒ 不渲染（能力缺失不渲染，不是渲染成禁用/空动作）", () => {
+  // 判据本身：null / undefined 都必须判为不可渲染。
+  assert.equal(canRenderRemoteControlImBotTab(null), false);
+  assert.equal(canRenderRemoteControlImBotTab(undefined), false);
+  // 有通道（类型上 onEnable 必填）⇒ 一定有一个真动作可调，可以渲染。
+  assert.equal(canRenderRemoteControlImBotTab({ status: "disabled", onEnable: () => {} }), true);
+  assert.equal(canRenderRemoteControlImBotTab({ status: "enabled", onEnable: () => {} }), true);
+
+  // 面板必须真的用这个判定门控两处：标签触发器与内容。
+  // 只门控内容会留下一个点进去空的页签（同样是承诺了不存在的东西）。
+  assert.match(PANEL_SOURCE.source, /const showImBotTab = canRenderRemoteControlImBotTab\(imBot\)/);
+  assert.match(
+    PANEL_SOURCE.source,
+    /showImBotTab \? \([\s\S]*?REMOTE_CONTROL_PANEL_TAB_IM_BOT_TEST_ID/,
+    "标签触发器必须在门控内",
+  );
+  assert.match(
+    PANEL_SOURCE.source,
+    /showImBotTab \? \([\s\S]*?<RemoteControlImBotTab channel=\{imBot\}/,
+    "标签内容必须在门控内",
+  );
+  // 反向：门控之外不得再出现第二处无条件挂载。
+  const mountSites = PANEL_SOURCE.source.match(/<RemoteControlImBotTab/g) ?? [];
+  assert.equal(mountSites.length, 1, "IM 机器人页只能有一个挂载点，且必须在门控内");
+  assert.equal(
+    /channel=\{imBot \?\? null\}/.test(PANEL_SOURCE.source),
+    false,
+    "不得回退成把 null 通道传进组件（那正是「渲染了却没有动作」的形态）",
+  );
+});
+
+test("IM 机器人：不可达的 pendingServer 档已清干净（文案、状态与组件调用都不留痕迹）", () => {
+  // 那一档整页不渲染 ⇒ 它既没有产出路径，也不该留下"看似有这条路径"的痕迹。
+  assert.equal(
+    "remotePanel.imBot.state.pendingServer" in zhCN,
+    false,
+    "zh-CN 残留 pendingServer 文案",
+  );
+  assert.equal(
+    "remotePanel.imBot.state.pendingServer" in enUS,
+    false,
+    "en-US 残留 pendingServer 文案",
+  );
+  assert.equal(/pendingServer/.test(IM_BOT_TAB_CODE.source), false, "组件不得再引用 pendingServer");
+  // 组件侧也不得再有"通道缺席时静默通过"的可选链。
+  assert.equal(
+    /channel\?\.onEnable\(\)/.test(IM_BOT_TAB_CODE.source),
+    false,
+    "channel 已是必填，不得再写可选链（那等于把「没有动作」重新变成可表达的）",
+  );
+  assert.match(IM_BOT_TAB_CODE.source, /await channel\.onEnable\(\)/);
+  // channel 必填：props 类型上不得再带可选标记。
+  assert.match(IM_BOT_TAB_CODE.source, /^\s{2}channel: RemoteControlImBotChannel;$/m);
 });
 
 test("点击不许静默：确认 → 在途 → 已请求，每一档都有可见文案", () => {

@@ -9,6 +9,7 @@ import {
 import { importLegacyAutomationSelections } from "#src/session/tasksDatabase/provider-selection-v2.js";
 import { OFFICIAL_GLM_SELECTION_MIGRATION_SQL } from "#src/session/tasksDatabase/official-glm-selection-v3.js";
 import { WORKSPACE_REGISTRY_MIGRATION_SQL } from "#src/session/tasksDatabase/workspace-registry-v1.js";
+import { WORKSPACE_REGISTRY_ACTIVE_SESSION_COUNT_MIGRATION_SQL } from "#src/session/tasksDatabase/workspace-registry-v2.js";
 
 // 冻结历史列声明，不能以实时 Repo/schema 代替，否则新版构建会改变已应用 checksum。
 const columns = [
@@ -70,6 +71,12 @@ const definitions = [
     id: "0004_workspace_registry",
     checksumInput: [WORKSPACE_REGISTRY_MIGRATION_SQL],
   },
+  {
+    // 0005：注册表增加未归档会话数（active_session_count），修「说已有 N 个会话、点开是空的」。
+    // 只对 0004 建出的表 ADD COLUMN；兼容策略见 workspace-registry-v2.ts 顶部注释。
+    id: "0005_workspace_registry_active_session_count",
+    checksumInput: [WORKSPACE_REGISTRY_ACTIVE_SESSION_COUNT_MIGRATION_SQL],
+  },
 ] as const;
 
 /**
@@ -87,6 +94,8 @@ export function resolveTaskDatabaseMigrationAction(id: string): (db: DatabaseSyn
   if (id === "0003_official_glm_selection")
     return (db) => db.exec(OFFICIAL_GLM_SELECTION_MIGRATION_SQL);
   if (id === "0004_workspace_registry") return (db) => db.exec(WORKSPACE_REGISTRY_MIGRATION_SQL);
+  if (id === "0005_workspace_registry_active_session_count")
+    return (db) => db.exec(WORKSPACE_REGISTRY_ACTIVE_SESSION_COUNT_MIGRATION_SQL);
   throw new Error("Unknown task database migration id: " + id);
 }
 

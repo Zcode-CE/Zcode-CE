@@ -384,33 +384,47 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
     () => partitionWorkspaceTabsByPurpose(workspaceTabs),
     [workspaceTabs],
   );
-  const workspacePaths = useMemo(
-    () => projectWorkspaceTabs.map((tab) => tab.workspacePath),
-    [projectWorkspaceTabs],
-  );
-  // ── 工作区枚举来源（M1.4）：服务端注册表默认视图 ∪ 本客户端显式列出的 tab ──
-  // 以前侧栏只看 tab store（= 设置里的 lastWorkspaceSession，实测 22 条），而数据侧有 52 个
-  // workspace，于是「会话看起来丢了」。现在枚举来自服务端注册表；设置只保留排序/展开等显示偏好。
+  // fix.2 / Task F1：枚举的唯一来源是服务端注册表，本机 tab 降级为「当前激活项 + 远端连接身份」。
+  //
+  // 以前这里是「本机 tab 并集 注册表默认视图」：同一份数据在不同客户端列出不同集合（实测桌面
+  // 38 行、手机 23 行），且注册表行点击后会被 addTab 物化、下一帧被 tabKeys 过滤掉 ⇒「点击后消失」。
+  // 现在行由注册表决定，因此三端一致、点击不改变行的身份。
   const registry = useWorkspaceRegistry();
   const [showAllRegistryRows, setShowAllRegistryRows] = useState(false);
   const registryEntriesForRows = showAllRegistryRows ? registry.entries : registry.defaultView;
+  // viewOnly tab（点击注册表行时创建、只承载激活态）不得作为「本客户端已打开的工作区」参与枚举：
+  // 它不进设置，若混进 tabs 输入，注册表行会被它认领成可拖拽/可移除的真 tab。
+  const persistedProjectWorkspaceTabs = useMemo(
+    () => projectWorkspaceTabs.filter((tab) => !tab.viewOnly),
+    [projectWorkspaceTabs],
+  );
   const workspaceRows = useMemo(
     () =>
       buildWorkspaceSidebarRows({
-        tabs: projectWorkspaceTabs,
+        tabs: persistedProjectWorkspaceTabs,
         registryEntries: registryEntriesForRows,
         showAll: showAllRegistryRows,
       }),
-    [projectWorkspaceTabs, registryEntriesForRows, showAllRegistryRows],
+    [persistedProjectWorkspaceTabs, registryEntriesForRows, showAllRegistryRows],
   );
-  // 注册表派生行：不是本客户端的 tab，只借用同一套行渲染，绝不写回 tab store / 设置。
-  const registryDerivedRows = useMemo(
-    () => workspaceRows.filter((row) => row.source === "registry"),
+  // 行的两类渲染：有真 tab 的走可拖拽行；纯注册表行只借用同一套行渲染，
+  // 绝不写回 tab store / 设置（见 workspaceSidebarRows.ts 文件头）。
+  const sortableWorkspaceRows = useMemo(
+    () => workspaceRows.filter((row) => row.tab !== null),
     [workspaceRows],
   );
   const hiddenRegistryRowCount = useMemo(
-    () => countHiddenRegistryRows({ tabs: projectWorkspaceTabs, entries: registry.entries }),
-    [projectWorkspaceTabs, registry.entries],
+    () =>
+      countHiddenRegistryRows({
+        entries: registry.entries,
+        listedEntries: registryEntriesForRows,
+      }),
+    [registry.entries, registryEntriesForRows],
+  );
+  // 展开全部 / 全部收起覆盖本次列出的所有行（含纯注册表行），否则注册表行的展开态无从批量切换。
+  const workspacePaths = useMemo(
+    () => workspaceRows.map((row) => row.workspacePath),
+    [workspaceRows],
   );
   const runtimeStateInputs = useMemo(
     () =>
@@ -625,13 +639,16 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
         enabled:
           effectiveTaskViewMode === "workspace" && purposeSectionPreferences.projectsExpanded,
         expandedWorkspacePaths,
-        workspaces: projectWorkspaceTabs,
+        // fix.2 / Task F1：必须是「本次列出的全部行」而不是 projectWorkspaceTabs。
+        // 分页进度只保留给可见且已展开的 workspace（retainWorkspaceTaskVisibleLimits），
+        // 若这里只给 tab，纯注册表行的「显示更多」位置每轮都会被清掉，点了没反应。
+        workspaces: workspaceRows,
       }),
     [
       effectiveTaskViewMode,
       expandedWorkspacePaths,
-      projectWorkspaceTabs,
       purposeSectionPreferences.projectsExpanded,
+      workspaceRows,
     ],
   );
   useEffect(() => {
@@ -679,8 +696,27 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
     }),
   );
   const localeMenuValue = localePreference === "system" ? "system" : localePreference;
+  // fix.2 / Task F1：task scope 覆盖本次列出的全部行（含纯注册表行），不只是本机 tab。
+  //
+  // 为什么必须扩：补列行的 taskItems 以前恒为空数组（132 号报告缺口 A），于是「已有 N 个会话」
+  // 没有可对账的列表、也没有分页。把注册表行作为只读 scope 喂给同一个 hook 后，
+  // items/total/hasMore 自然可用，分页直接复用既有机制，不需要新概念。
+  //
+  // 成本：订阅数从「本机 tab 数」抬到「本次列出条数」。这在 workspace-registry.md 第 3 节已实测
+  // （默认视图 22-28 个订阅 ≈ 服务端 +0.3-0.4 MB、0 子进程、RPC 十几 ms），且第 3.1 节的硬不变式
+  // 保证列表订阅一律 existing-only，不会拉起 Agent runtime。
+  const workspaceTaskListTabs = useMemo(
+    () =>
+      workspaceRows.flatMap((row) => {
+        const renderTab = buildRegistryRowRenderTab(row);
+        // 谓词写成 tab !== null 而不是 isWorkspaceTab：这里的元素类型已经是
+        // WorkspaceTabState | null，用 WindowTabState 的守卫会让 TS 无法收窄。
+        return renderTab ? [renderTab] : [];
+      }),
+    [workspaceRows],
+  );
   const workspaceTaskLists = useWorkspaceTaskLists({
-    workspaceTabs: projectWorkspaceTabs,
+    workspaceTabs: workspaceTaskListTabs,
     activeWorkspacePath: workspacePath,
     activeWorkspaceIdentity: workspaceIdentity,
     sortBy: taskSortBy,
@@ -904,7 +940,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
     collapsedGroupedTaskGroupIds,
   );
   const canToggleAllProjectTaskGroups =
-    !showArchivedTasks && taskOrganizeBy === "project" && projectWorkspaceTabs.length > 0;
+    !showArchivedTasks && taskOrganizeBy === "project" && workspaceRows.length > 0;
   const showToggleAllTaskGroups = canToggleAllProjectTaskGroups || showToggleAllGroupedTaskGroups;
   const canToggleAllTaskGroups = canToggleAllProjectTaskGroups || canToggleAllGroupedTaskGroups;
   const areAllTaskGroupsExpanded =
@@ -1542,9 +1578,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                                 </DropdownMenu>
                               }
                             >
-                              {projectWorkspaceTabs.length === 0 &&
-                              registryDerivedRows.length === 0 &&
-                              hiddenRegistryRowCount === 0 ? (
+                              {workspaceRows.length === 0 && hiddenRegistryRowCount === 0 ? (
                                 <div className="px-3 py-2 text-ui-base text-foreground-subtle">
                                   {intl.formatMessage({
                                     id: "workspaceSidebar.noProjects",
@@ -1559,48 +1593,65 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                                   onDragEnd={handleWorkspaceDragEnd}
                                   onDragCancel={handleWorkspaceDragCancel}
                                 >
+                                  {/*
+                                   * 单一有序列表（fix.2 / Task F1）：顺序完全由 workspaceRows 给出
+                                   * （注册表按最近活动降序，注册表缺口的 tab 追加在后），
+                                   * 不再「tab 一组 + 注册表补列一组」。这正是三端枚举一致、且
+                                   * 点击不再让条目换身份的原因。
+                                   * 有真 tab 的行走可拖拽行；纯注册表行借用同一套行渲染，不可拖拽、不可移除。
+                                   */}
                                   <SortableContext
-                                    items={projectWorkspaceTabs.map((tab) => tab.id)}
+                                    items={sortableWorkspaceRows.flatMap((row) =>
+                                      row.tab ? [row.tab.id] : [],
+                                    )}
                                     strategy={workspaceVerticalListSortingStrategy}
                                   >
                                     <ul data-testid={TID_WORKSPACE_LIST} className="space-y-2 pb-4">
-                                      {projectWorkspaceTabs.map((tab) => {
-                                        const workspaceKey = buildTaskWorkspaceKey(
-                                          tab.workspacePath,
-                                          tab.workspaceIdentity,
+                                      {workspaceRows.map((row) => {
+                                        const renderTab = buildRegistryRowRenderTab(row);
+                                        if (!renderTab) return null;
+                                        // 会话列表与分页对两类行同源：注册表行也走同一个
+                                        // useWorkspaceTaskLists（见 workspaceTaskListTabs），
+                                        // 因此「已有 N 个会话」始终有可对账的列表（132 号报告缺口 A）。
+                                        const taskGroup = workspaceTaskGroupByKey.get(
+                                          row.workspaceKey,
                                         );
-                                        const taskGroup = workspaceTaskGroupByKey.get(workspaceKey);
                                         const taskLoading =
-                                          workspaceTaskLists.loadingByWorkspaceKey[workspaceKey] ??
-                                          false;
+                                          workspaceTaskLists.loadingByWorkspaceKey[
+                                            row.workspaceKey
+                                          ] ?? false;
+                                        const rowTaskItems =
+                                          taskGroup?.items ?? EMPTY_WORKSPACE_TASK_ITEMS;
+                                        const isActiveWorkspace =
+                                          row.workspacePath === workspacePath;
 
-                                        return (
+                                        // 有真 tab 的行保持可拖拽/可移除；纯注册表行不是 tab，
+                                        // 不可拖拽（无 dnd-kit 绑定）、不可移除，点开才启动 runtime。
+                                        return row.tab ? (
                                           <SortableWorkspaceSidebarItem
-                                            key={tab.id}
-                                            tab={tab}
-                                            isActiveWorkspace={tab.workspacePath === workspacePath}
+                                            key={row.workspaceKey}
+                                            tab={row.tab}
+                                            isActiveWorkspace={isActiveWorkspace}
                                             isExpanded={resolveWorkspaceDragExpanded({
                                               activeDragId: activeWorkspaceDragId,
                                               expanded: expandedWorkspacePaths.has(
-                                                tab.workspacePath,
+                                                row.workspacePath,
                                               ),
-                                              tabId: tab.id,
+                                              tabId: row.tab.id,
                                             })}
                                             activateTab={activateTab}
                                             closeTab={closeTab}
                                             toggleWorkspaceExpanded={toggleWorkspaceExpanded}
                                             onSelectTask={onSelectTask}
                                             onStartDraftInWorkspace={onStartDraftInWorkspace}
-                                            taskItems={
-                                              taskGroup?.items ?? EMPTY_WORKSPACE_TASK_ITEMS
-                                            }
+                                            taskItems={rowTaskItems}
                                             taskListLoading={taskLoading}
                                             taskListHasMore={taskGroup?.hasMore ?? false}
                                             taskListHasUnread={taskGroup?.hasUnread ?? false}
                                             taskListLiveWorkflowCount={
                                               taskGroup?.liveWorkflowCount ?? 0
                                             }
-                                            workspaceKey={workspaceKey}
+                                            workspaceKey={row.workspaceKey}
                                             onShowMoreWorkspaceTasks={handleShowMoreWorkspaceTasks}
                                             reconnectingRemoteWorkspaceKeys={
                                               reconnectingRemoteWorkspaceKeys
@@ -1614,34 +1665,16 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                                             onReconnectRemoteWorkspace={onReconnectRemoteWorkspace}
                                             onOpenFileTree={handleOpenWorkspaceFileTree}
                                             runtimeState={
-                                              runtimeStates.get(workspaceKey) ?? "unknown"
+                                              runtimeStates.get(row.workspaceKey) ?? "unknown"
                                             }
-                                            persistedSessionCount={
-                                              workspaceRows.find(
-                                                (row) => row.workspaceKey === workspaceKey,
-                                              )?.persistedSessionCount ?? null
-                                            }
-                                            lastActivityAt={
-                                              workspaceRows.find(
-                                                (row) => row.workspaceKey === workspaceKey,
-                                              )?.lastActivityAt ?? null
-                                            }
+                                            persistedSessionCount={row.persistedSessionCount}
+                                            lastActivityAt={row.lastActivityAt}
                                           />
-                                        );
-                                      })}
-                                      {/*
-                                       * 注册表补列行（M1.4）：数据侧存在、但本客户端设置里没有的 workspace。
-                                       * 不可拖拽（无 dnd-kit 绑定）、不可移除（不是 tab）；点开才启动 runtime，
-                                       * 未启动时按 §3.2 如实显示持久层的会话数与最近活动，而不是「暂无任务」。
-                                       */}
-                                      {registryDerivedRows.map((row) => {
-                                        const renderTab = buildRegistryRowRenderTab(row);
-                                        if (!renderTab) return null;
-                                        return (
+                                        ) : (
                                           <WorkspaceSidebarItem
                                             key={row.workspaceKey}
                                             tab={renderTab}
-                                            isActiveWorkspace={false}
+                                            isActiveWorkspace={isActiveWorkspace}
                                             isExpanded={expandedWorkspacePaths.has(
                                               row.workspacePath,
                                             )}
@@ -1650,9 +1683,13 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                                             toggleWorkspaceExpanded={toggleWorkspaceExpanded}
                                             onSelectTask={onSelectTask}
                                             onStartDraftInWorkspace={onStartDraftInWorkspace}
-                                            taskItems={EMPTY_WORKSPACE_TASK_ITEMS}
-                                            taskListLoading={false}
-                                            taskListHasMore={false}
+                                            taskItems={rowTaskItems}
+                                            taskListLoading={taskLoading}
+                                            taskListHasMore={taskGroup?.hasMore ?? false}
+                                            taskListHasUnread={taskGroup?.hasUnread ?? false}
+                                            taskListLiveWorkflowCount={
+                                              taskGroup?.liveWorkflowCount ?? 0
+                                            }
                                             onShowMoreTasks={() =>
                                               handleShowMoreWorkspaceTasks(row.workspaceKey)
                                             }

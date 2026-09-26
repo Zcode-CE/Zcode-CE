@@ -87,8 +87,30 @@ function buildRestoredRecentProjectPaths(
   return [...new Set([...existingRecent, ...restoredProjects])].slice(0, 10);
 }
 
-function buildDefaultPersistPatch(state: TabStoreState): Partial<AppSettings> {
-  const workspaceTabs = state.tabs.filter(isWorkspaceTab).filter((tab) => !tab.remoteSessionId);
+/**
+ * 默认持久化补丁（导出以便护栏直接断言补丁内容）。
+ *
+ * 导出理由：fix.2 的验收要求「点击注册表行后 lastWorkspaceSession 逐字不变」，
+ * 而该约束的落点就是这个函数。若只能通过 hook 间接验证，断言会退化成源码扫描
+ * （扫 "viewOnly" 字样），无法证明过滤真的生效。导出后可以直接喂一个含 viewOnly tab 的
+ * store 快照，断言补丁里没有它。
+ */
+export function buildDefaultPersistPatch(state: TabStoreState): Partial<AppSettings> {
+  // fix.2 / Task F1：viewOnly tab 不进设置。
+  //
+  // 这是「点击注册表行后 lastWorkspaceSession 逐字不变」护栏的落点：注册表行的点击需要一个 tab
+  // 承载激活态（activeWorkspacePath/activeTabId 被 Root 与多处 hook 读取），但那条工作区不是
+  // 本客户端的显示偏好。写回设置就等于让设置重新参与枚举 —— 正是
+  // workspace-registry.md 第 2.3 节要消灭的第二份真相源，也是「点击后消失」的持久化后果
+  // （131 号报告第 3 节 (d)）。
+  //
+  // 为什么过滤放在这里而不是「点击时跳过写设置」：写入是 300ms 防抖 + 订阅整个 store 的，
+  // 任何一次无关的 tab 变化都会带着它一起落盘。只有让 viewOnly tab 根本不进入 patch，
+  // 才能保证逐字不变。
+  const workspaceTabs = state.tabs
+    .filter(isWorkspaceTab)
+    .filter((tab) => !tab.remoteSessionId)
+    .filter((tab) => !tab.viewOnly);
   const activeIndex = state.activeWorkspacePath
     ? workspaceTabs.findIndex((tab) => tab.workspacePath === state.activeWorkspacePath)
     : 0;

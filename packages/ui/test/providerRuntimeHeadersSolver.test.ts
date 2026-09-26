@@ -390,17 +390,27 @@ test("附件必须同时订阅事件并声明能力，且两者在同一 effect 
     source.includes("onDynamicSessionEvent"),
     "必须订阅 host 的服务事件通道 —— 这是渲染层拿到 providerRuntimeHeaders.request 的唯一路径",
   );
+  // 能力声明必须是事件订阅形态，不能是返回 disposable 的方法调用。
+  // 为什么钉死这一点（ce.3-fix.1 的真实回归）：
+  //   RPC 的 toService 把普通方法名包成 async 并走 channel.call，返回值经 serialize() 的
+  //   JSON 路径，函数会被静默丢弃 —— 客户端拿到 Promise（未 await）或纯对象，
+  //   cleanup 里 .dispose() 抛 "d.dispose is not a function"，整个附件组件被错误边界接管。
+  //   事件通道的 disposable 由 channelClient 在客户端本地构造，不跨 RPC，因此可用。
   assert.ok(
-    source.includes("declareSessionCaptchaCapability"),
-    "必须声明求解能力 —— 否则 host 会以「无能力」快速失败，订阅形同虚设",
+    source.includes("onDynamicSessionCaptchaCapability"),
+    "能力声明必须走事件通道（订阅即声明）—— 返回 disposable 的方法调用无法跨 RPC 序列化",
+  );
+  assert.ok(
+    !source.includes("declareSessionCaptchaCapability"),
+    "不得回退到返回 disposable 的方法调用：RPC 会把函数丢弃，cleanup 时抛 dispose is not a function",
   );
   // 三者在同一个 cleanup 里：缺任何一个都是上面第 3 条泄漏形态。
   const cleanup = source.slice(
     source.indexOf("return () => {"),
-    source.indexOf("return () => {") + 300,
+    source.indexOf("return () => {") + 400,
   );
   assert.ok(cleanup.includes("subscription.dispose()"), "cleanup 必须撤销订阅");
-  assert.ok(cleanup.includes("capability.dispose()"), "cleanup 必须撤销能力声明");
+  assert.ok(cleanup.includes("capabilitySubscription.dispose()"), "cleanup 必须撤销能力声明");
   assert.ok(cleanup.includes("orchestrator.dispose()"), "cleanup 必须停掉编排器");
 });
 
@@ -412,7 +422,7 @@ test("附件只在能求解的分支声明能力（声明即承诺，不能求�
   // 能力判据必须挡在订阅与声明之前：判据若在声明之后，会出现「已声明但下面 return 了」，
   // host 于是转发给一个不会处理的订阅者 ⇒ 悬挂。
   const guardIndex = source.indexOf("canSolveCaptchaInCurrentHost()");
-  const declareIndex = source.indexOf("declareSessionCaptchaCapability");
+  const declareIndex = source.indexOf("onDynamicSessionCaptchaCapability");
   const subscribeIndex = source.indexOf("onDynamicSessionEvent");
   assert.ok(guardIndex >= 0, "必须有能力判据");
   assert.ok(guardIndex < declareIndex, "能力判据必须早于能力声明");

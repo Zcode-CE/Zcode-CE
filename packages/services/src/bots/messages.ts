@@ -104,6 +104,14 @@ const messages = {
     stopSubmitted: "已停止当前任务生成。",
     unknownCommand: "未知命令：**/{command}**",
     taskFailed: "任务失败：{message}",
+    // fix.2：fix.1 的 start-plan 快速失败把稳定码前缀内嵌进 errorMessage，Bot 原来直接透传，
+    // 用户看到 "ZCODE_PROVIDER_RUNTIME_HEADERS_CAPABILITY_MISSING: this client cannot solve ..."。
+    // 两条码的成因不同（本端无订阅者 vs 有订阅者但无法求解验证码），因此给两条不同的可操作文案。
+    // 分流在 taskFailureMessage.ts，按稳定码判定，不按文案匹配。
+    taskFailedProviderRuntimeHeadersUnavailable:
+      "本机没有可用于完成这次安全校验的界面。请在 ZCode 桌面端打开这个会话后重试。",
+    taskFailedProviderRuntimeHeadersCapabilityMissing:
+      "当前渠道需要人工完成一次安全校验，而机器人无法完成。请在 ZCode 桌面端或浏览器界面打开这个会话，完成校验后重试；也可以改用不需要校验的渠道。",
     taskRunning: "当前任务正在运行，稍后再试，或使用 **/停止** 停止当前任务。",
     taskSelectTitle: "当前任务 {task}\n选择任务",
     noHistoryTasks: "当前 workspace 没有历史任务。",
@@ -223,6 +231,12 @@ const messages = {
     stopSubmitted: "Current task generation stopped.",
     unknownCommand: "Unknown command: **/{command}**",
     taskFailed: "Task failed: {message}",
+    // fix.2 — see the zh-CN block: the two stable codes describe different causes, so they get
+    // different actionable copy instead of leaking the raw machine code to the user.
+    taskFailedProviderRuntimeHeadersUnavailable:
+      "This machine has no interface available to complete the security check. Open this session in the ZCode desktop app and try again.",
+    taskFailedProviderRuntimeHeadersCapabilityMissing:
+      "This channel needs a security check completed by a person, which the bot cannot do. Open this session in the ZCode desktop app or a browser to finish the check and retry, or switch to a channel that does not need it.",
     taskRunning:
       "The current task is still running. Try again later, or use **/stop** to stop the current task.",
     taskSelectTitle: "Current task {task}\nSelect task",

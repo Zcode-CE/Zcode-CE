@@ -165,7 +165,7 @@ import type {
   ZCodeAgentReadSessionMessagesParams,
   ZCodeAgentReadSessionParams,
   ZCodeAgentRemovePluginMarketplaceParams,
-  ZCodeAgentDeclareSessionCaptchaCapabilityParams,
+  ZCodeAgentSessionCaptchaCapabilityParams,
   ZCodeAgentRespondProviderRuntimeHeadersParams,
   ZCodeAgentRespondSessionRuntimePreferencesParams,
   ZCodeAgentResumeSessionParams,
@@ -1165,11 +1165,12 @@ export function createZCodeAgentService(
    *   就是一个订阅者，但 Bot 无法渲染/求解验证码。只靠订阅探测会让它绕过判定、
    *   仍然悬挂到 CLI 侧 180s 超时。
    *
-   * 用计数而非 Set：允许多个组件同时声明同一会话（例如会话面板与弹窗各持一份），
-   * 此时只有最后一个撤销者才应移除能力；用 Set 会让先卸载的那个误撤，
-   * 把仍在运行的另一个声明者一起打掉。
+   * 每个会话一个 Emitter：多个组件同时声明同一会话时（例如会话面板与弹窗各持一份），
+   * 只有最后一个退订者才移除能力；用「首个订阅者加入 / 最后一个订阅者离开」两个回调表达，
+   * 不必再手工维护计数（Emitter 自己就持有 listeners 集合）。
    */
-  const captchaCapableSessionSubscriberCounts = new Map<string, number>();
+  const captchaCapabilityEmitters = new Map<string, Emitter<never>>();
+  const captchaCapableSessionKeys = new Set<string>();
   /**
    * 已经记过"首次发放官方身份头"审计日志的 (pluginId, mcpKey, workspaceKey)。
    *
@@ -1719,37 +1720,32 @@ export function createZCodeAgentService(
 
   /** 该会话当前是否至少有一个能求解验证码的声明者。 */
   function hasCaptchaCapableSessionSubscriber(key: string): boolean {
-    return (captchaCapableSessionSubscriberCounts.get(key) ?? 0) > 0;
+    return captchaCapableSessionKeys.has(key);
   }
 
   /**
-   * 登记一次「本会话具备渲染验证码能力」，返回撤销句柄。
+   * 取得该会话的「验证码能力声明」通道。
    *
-   * 计数语义（见 captchaCapableSessionSubscriberCounts 的注释）：
-   * 只有最后一个撤销者才把计数清零。重复 dispose 同一句柄是幂等的 no-op，
-   * 否则重复 dispose 会把别的声明者的额度也扣掉。
+   * 订阅即声明、退订即撤销：能力的存在性完全由 Emitter 的 listeners 集合表达，
+   * 因此不需要独立的计数/集合去同步维护（少一处可能与实际订阅漂移的状态）。
+   * 返回的 Event 载荷为 never：该通道不承载数据。
    */
-  function declareSessionCaptchaCapability(
-    params: ZCodeAgentDeclareSessionCaptchaCapabilityParams,
-  ): IDisposable {
+  function getCaptchaCapabilityEmitter(params: ZCodeAgentSessionCaptchaCapabilityParams) {
     const key = sessionEventKey(params);
-    captchaCapableSessionSubscriberCounts.set(
-      key,
-      (captchaCapableSessionSubscriberCounts.get(key) ?? 0) + 1,
-    );
-    let disposed = false;
-    return {
-      dispose: () => {
-        if (disposed) return;
-        disposed = true;
-        const remaining = (captchaCapableSessionSubscriberCounts.get(key) ?? 0) - 1;
-        if (remaining > 0) {
-          captchaCapableSessionSubscriberCounts.set(key, remaining);
-          return;
-        }
-        captchaCapableSessionSubscriberCounts.delete(key);
+    const existing = captchaCapabilityEmitters.get(key);
+    if (existing) {
+      return existing;
+    }
+    const created = new Emitter<never>({
+      onWillAddFirstListener: () => {
+        captchaCapableSessionKeys.add(key);
       },
-    };
+      onDidRemoveLastListener: () => {
+        captchaCapableSessionKeys.delete(key);
+      },
+    });
+    captchaCapabilityEmitters.set(key, created);
+    return created;
   }
 
   function getSessionEmitter(params: ZCodeAgentSessionTarget) {
@@ -3481,7 +3477,12 @@ export function createZCodeAgentService(
     // 不同步清空会让订阅计数在 disposeAll 之后残留。
     sessionsWithSessionEventSubscriber.clear();
     // 能力声明同理：渲染层不会在 host 退出时逐个 dispose，必须由这里统一清空。
-    captchaCapableSessionSubscriberCounts.clear();
+    // Emitter 同样只清 listeners、不触发 last-listener 回调，所以两处都要清。
+    for (const emitter of captchaCapabilityEmitters.values()) {
+      emitter.dispose();
+    }
+    captchaCapabilityEmitters.clear();
+    captchaCapableSessionKeys.clear();
     sessionRuntimePreferencesRequestEmitter.dispose();
     processResourceSampleEmitter.dispose();
     mcpTelemetryEmitter.dispose();
@@ -5035,8 +5036,8 @@ export function createZCodeAgentService(
       return respondProviderRuntimeHeaders(params);
     },
 
-    declareSessionCaptchaCapability(params) {
-      return declareSessionCaptchaCapability(params);
+    onDynamicSessionCaptchaCapability(params) {
+      return getCaptchaCapabilityEmitter(params).event;
     },
 
     onDynamicSessionEvent(params: ZCodeAgentSessionSubscribeParams) {

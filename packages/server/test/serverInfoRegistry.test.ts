@@ -37,6 +37,7 @@ function buildEntry(index: number, now: number): WorkspaceRegistryEntry {
     firstSeenAt: now - DAY,
     lastActivityAt: now - index * 1_000,
     sessionCount: index + 1,
+    activeSessionCount: index + 1,
     sources: ["task-index"],
   };
 }

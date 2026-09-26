@@ -36,9 +36,15 @@ import {
  * 四条纪律：
  * - **纯 props 驱动**：通道由调用方注入（`imBot`），本组件不读服务、不订阅 IPC ——
  *   与 Web 面同一纪律，因此能在真浏览器里用注入态渲染并做 DOM 断言。
- * - **默认关闭由状态承载，不是靠"没有按钮"**（Lead 拍板）：通道未注入时**照样渲染「启用」**，
- *   否则"同步上游入口"等于只多了一页说明（用户原则：不能少东西）。这与切片 1 同一先例 ——
- *   入口先渲染、动作待接线，**如实标注**而不是藏起来。
+ * - 默认关闭由状态承载，不是靠"没有按钮"（Lead 拍板）：宿主注入通道并回传
+ *   `status: "disabled"` 时照样渲染「启用」，否则"同步上游入口"等于只多了一页说明
+ *   （用户原则：不能少东西）。
+ *   fix.2 修订：这条的边界是"有动作可做时不许少"。原先的写法是"通道未注入也渲染启用 +
+ *   一句说明"，实测那是死路 —— 点击走空操作、重挂载后又回到确认界面
+ *   （docs/development/133-im-bot-approval-loop.md §4.1）。现在没有通道就整页不渲染
+ *   （宿主侧门控，见 remoteControlPanelModel.ts 的 canRenderRemoteControlImBotTab），
+ *   因此本组件的 `channel` 是必填：把"没有宿主"这一态变成不可表达的，
+ *   而不是靠注释提醒后来的人。
  * - **不许静默**：点击 → 确认弹窗（三条事实）→ 确认后立刻进入 `enabling`，
  *   结算后落到 `requested`（"已请求启用，等待服务端就绪"）。任何一步都有可见结果。
  * - **提醒常显**：三条事实在任何状态下都在页面上，不藏在 tooltip 或"了解更多"里。
@@ -48,10 +54,14 @@ import {
  */
 export interface RemoteControlImBotTabProps {
   /**
-   * 调用方注入的通道。**未注入 ≠ 不渲染按钮** —— 未注入表示"服务端能力尚未接入"，
-   * 此时仍然渲染「启用」，但页面上如实说明现在启用只会记下请求（见 model 的 pendingServer 档）。
+   * 调用方注入的通道。必填（fix.2）。
+   *
+   * 原先它是可选的，语义是"未注入 ⇒ 服务端能力尚未接入，但照样渲染启用按钮 + 一句说明"。
+   * 实测那是一个没有宿主的动作：`channel?.onEnable()` 是空操作，用户点「继续启用」后
+   * 看不到任何下一步，切页/关面板重挂载后又回到同一个确认弹窗。
+   * 改为必填 + 宿主侧整页门控后，"渲染了却没有动作"这一态在类型上就不成立。
    */
-  channel?: RemoteControlImBotChannel | null;
+  channel: RemoteControlImBotChannel;
   className?: string;
 }
 
@@ -66,9 +76,10 @@ export function RemoteControlImBotTab({ channel, className }: RemoteControlImBot
   const { intl } = useZCodeIntl();
   const t = useCallback((id: string) => intl.formatMessage({ id }), [intl]);
 
-  // 两个**渲染进程本地**标记，与 Web 面 `inFlight` 同一机制：面板不伪造宿主状态。
-  // `requested` 存在的理由：宿主今天还没有服务端可回传 `status`，若不记住"已经请求过"，
-  // 用户点完确认会看到按钮重新出现 —— 那是静默无反应，正是要避免的形态。
+  // 两个渲染进程本地标记，与 Web 面 `inFlight` 同一机制：面板不伪造宿主状态。
+  // `requested` 存在的理由：`onEnable` 结算后宿主可能尚未回传 `status: "enabled"`，
+  // 若不记住"已经请求过"，用户点完确认会看到按钮重新出现 —— 那是静默无反应，正是要避免的形态。
+  // 注意它只覆盖同一次挂载：宿主回传 `status` 才是跨挂载的真相源（面板不自己宣布已启用）。
   const [inFlight, setInFlight] = useState(false);
   const [requested, setRequested] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -83,9 +94,9 @@ export function RemoteControlImBotTab({ channel, className }: RemoteControlImBot
     setRequested(true);
     setInFlight(true);
     try {
-      // 通道缺席时也**不静默**：仍然进入 enabling → requested 的可见状态链，
-      // 页面上另有 pendingServer 说明"现在启用只会记下请求"。
-      await channel?.onEnable();
+      // fix.2：通道是必填，这里不再有"缺席时静默通过"的分支 —— 能渲染出这个按钮，
+      // 就一定有一个真实动作可调（没有通道时整页不渲染）。
+      await channel.onEnable();
     } finally {
       // 无论宿主是否回传状态，都在途标记必须落地 —— 停在"启用中"会让用户以为卡住了。
       setInFlight(false);
