@@ -348,7 +348,25 @@ try {
 } finally {
   terminal?.kill();
   web?.kill();
-  await rm(directory, { recursive: true, force: true });
+  // ⚠️ 清理失败不得把主结果判红（2026-09-27 修，第四次三 OS 实测暴露）。
+  //
+  // 实测（run 36334691498）：Windows 上 `web.kill()` 之后子进程尚未完全退出，
+  // `node-pty/prebuilds/win32-x64/conpty.node` 仍被占用 ⇒ `rm` 抛
+  // `EPERM: operation not permitted, unlink ...` —— 于是**所有断言都通过之后**脚本仍然红。
+  // 这是 Windows 的文件锁语义（POSIX 允许删除已打开的文件，Windows 不允许），
+  // 与发行包质量无关。
+  //
+  // 与 `packages/adapters/src/pdf/index.ts` 的既有先例同规：
+  // 「清理错误覆盖主错误会丢失已经完成的分类/结果」。这里同理 ——
+  // 清理是**收尾**，不是判据；它失败时如实打印并继续，让断言结果说话。
+  // **但绝不静默**：残留目录路径要打出来，否则会变成磁盘上的隐形垃圾。
+  try {
+    await rm(directory, { recursive: true, force: true });
+  } catch (error) {
+    console.warn(
+      `[smoke] 临时目录清理失败（不影响本次判定）：${directory}\n        ${String(error)}`,
+    );
+  }
 }
 
 /**
