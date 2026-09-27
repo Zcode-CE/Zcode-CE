@@ -474,26 +474,33 @@ POSIX 假设（见 §10.1），那些必须由 `.github/workflows/cross-platform
 | 平台                  | `ubuntu-latest` / `macos-latest` / `windows-latest`（CI runner 镜像）            | **用户机器**（旧内核、不同 shell、企业代理、只读 rootfs）                          |
 | 终端功能              | 只在 Linux 上被 smoke 覆盖                                                       | macOS / Windows 的终端能力**仍需真机验证**（`.reverse/36-ssh/ROADMAP.md` §3 末条） |
 
-**首次实测结果（2026-09-27，run `36332758568`，commit `bb49151`）**：
+**当前实测结果（2026-09-27，run `36337338853`）—— 三 OS 全绿**：
 
-| OS               | 结果           | 说明                                                |
-| ---------------- | -------------- | --------------------------------------------------- |
-| `ubuntu-latest`  | ✅ **success** | 构建 + smoke 全通                                   |
-| `macos-latest`   | ✅ **success** | **首次实测即通过**（此前整列是「未实测」）          |
-| `windows-latest` | ❌ **failure** | 红在 **(A) 构建步骤**（见下），**smoke 根本没跑到** |
+| OS               | 结果           | 耗时  |
+| ---------------- | -------------- | ----- |
+| `ubuntu-latest`  | ✅ **success** | 2m14s |
+| `macos-latest`   | ✅ **success** | 5m18s |
+| `windows-latest` | ✅ **success** | 5m10s |
 
-⇒ **macOS 一列已从「推断」变成「实测通过」**；Windows 红的正是下面预测的 (A)，
-**实测报错与预测的机理逐字一致**：
+⇒ **「能构建 / 能启动 / 能连面板」三列在三个平台上全部从「推断」变成「实测通过」。**
+macOS 此前整列是「未实测」；Windows 经五轮修复后转绿（见下表）。
 
-```
-[zcode] pnpm --filter @zcode/cli... build
-Error: pnpm --filter @zcode/cli... build failed: spawnSync pnpm ENOENT
-  code: 'ENOENT', syscall: 'spawnSync pnpm', path: 'pnpm'
-```
+**Windows 的五轮修复轨迹**（每一轮都由**真实 runner 的结果**定位，不是推测）：
 
-**该缺陷已修**（`199ac9b`：让 `build-zcode.mjs` 的 `run()` 复用 `resolveSpawnRuntimeOptions`）。
-**但修完尚未重跑** —— 下一次 `workflow_dispatch` 才能判定 Windows 是否真的转绿。
-**在重跑之前，Windows 一列仍写作「未通过」**（工作流存在只说明「可测」，不等于「测过了」）。
+| 轮  | Windows 的表现                                      | 修复                                                                    |
+| --- | --------------------------------------------------- | ----------------------------------------------------------------------- |
+| 1   | `Build`：`spawnSync pnpm ENOENT`                    | `199ac9b` 复用 `resolveSpawnRuntimeOptions`（cmd shim）                 |
+| 2   | `Smoke`：`tar: gzip: stdin: unexpected end of file` | `9378191` 用 Node 原生解包替代外部 `tar`（GNU tar 把 `D:\` 当远程归档） |
+| 3   | `Smoke`：权限位 `666 ≠ 755`                         | `05748b7` 三处 POSIX 专属断言按平台分叉                                 |
+| 4   | `Smoke`：清理 `EPERM unlink conpty.node`            | `d0891f9` 清理失败不判红（Windows 文件锁）                              |
+| 5   | **断言全过但 job 挂住 36 分钟**                     | `8651cfa` 断言跑完后显式退出（残留句柄）                                |
+
+**注意第 3 轮的红正是下面 (B) 组预测过的**（连 `0o666` 都预测对了），
+第 4、5 轮则是**预测之外的新发现**（Windows 文件锁与句柄回收语义）。
+⇒ 这份「已知会红的点」清单**方向正确但不完整** —— 实跑才能补全。
+
+**下面两组「已知会红的点」保留为历史记录**：(A) 已修，(B) 已按平台分叉。
+它们记录了**为什么**这三处判据在 Windows 上不成立 —— 改动这段代码前先读它。
 
 **已知会红的点**。按执行顺序有两组 —— **(A) 已由 `199ac9b` 修复并首次实测确认，
 (B) 仍待 Windows 跑到那一步才能观测**：
