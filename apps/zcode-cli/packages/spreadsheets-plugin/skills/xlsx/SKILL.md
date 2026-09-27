@@ -2,7 +2,7 @@
 name: xlsx
 metadata:
   upstream: "@deepseek-ai/dsh-skill-office (MIT)"
-  modified: "ZCode-CE: 工具链由系统 Python(openpyxl/pandas) 改为随包 Node 库(exceljs 4.4.0)；修正校验器相对路径为 ../../scripts/；补充降级边界（重写丢失图表部件）；提权安装场景改为给出确切命令并声明所需权限（引导式授权，见 docs/development/office-plugins.md）"
+  modified: "ZCode-CE: 工具链由系统 Python(openpyxl/pandas) 改为随包 Node 库(exceljs 4.4.0)；修正校验器相对路径为 ../../scripts/；补充降级边界（重写丢失图表部件）；提权安装场景改为给出确切命令并声明所需权限（引导式授权，见 docs/development/office-plugins.md）；视觉检查改为按任务分情况（数据/公式任务跳过且不加未请求的免责声明），补 soffice→pdftoppm→visual-judge 两步链、模型图片能力前置判定与「空白预览=渲染失败」规则"
 description: Read, create, and modify Excel workbooks (.xlsx), including cell values, formulas, formatting, and analysis. Use when an Excel workbook is an input or deliverable.
 ---
 
@@ -90,15 +90,24 @@ node ${ZCODE_SKILL_DIR}/../../scripts/check_office.mjs <workbook.xlsx> --out <ch
 
 It checks ZIP/XML integrity and internal relationships, and reports sheet names, populated-cell counts, and formula counts. Repeated `--contains TEXT` arguments check string cells and sheet names, and `--count N` checks sheet count. `--contains` excludes numeric cells and does not validate formula results; verify those separately by reopening the workbook. The checker does not calculate formulas or judge workbook appearance. Compare relevant values, types, formulas, styles, and totals with the task's source data.
 
-This build has no document-rendering tool, so visual layout cannot be inspected by default. Complete the structural and content checks above, deliver the file, and briefly state that visual layout was not inspected.
+**For data and formula tasks, stop here.** Once the structural and data checks pass, deliver the workbook — skip preview rendering and visual inspection, and do **not** add an unrequested caveat that visual inspection was omitted. Basic styling such as bold headers or number formats does not by itself call for visual inspection.
 
-If the user explicitly asks for a visual check, convert to PDF with LibreOffice when `soffice` is on PATH and let the user review the result:
+Inspect a rendered region only when the task concerns formatting, layout, chart appearance, or printed layout. That takes two steps, because `pdftoppm` reads PDF, not `.xlsx`:
 
 ```bash
-soffice --headless --convert-to pdf report.xlsx
+soffice --headless --convert-to pdf --outdir <out_dir> report.xlsx
+pdftoppm -png -r 150 <out_dir>/report.pdf <out_dir>/page
 ```
 
-Rendering is an **optional enhancement, not a core dependency**: creating and structurally checking this workbook needs nothing beyond the bundled payload. When `soffice` is absent, do not silently skip the check — say plainly that visual layout was not inspected.
+Then dispatch the `spreadsheets:visual-judge` subagent with the page image paths and the user's request. Use that exact subagent type: four office plugins each ship a `visual-judge` agent, so the bare name `visual-judge` is ambiguous in a default install and the Agent tool rejects it. If `visual-judge` is unavailable, read the rendered page images yourself instead — never both. Rendered pages follow the workbook's print settings, so a page is not necessarily a worksheet.
+
+**Read is also wired to Poppler directly.** `Read({ file_path: "<out_dir>/report.pdf", pages: "1-3" })` returns the page images without a separate `pdftoppm` call; it needs a model that accepts both PDF and image input. Reuse images for the same saved workbook and render again only after a source change.
+
+**Establish that the current model accepts images before rendering.** If it does not, finish the structural and data checks and report the requested visual check as unavailable — do not rasterize previews the model cannot read, retry the read, or switch to another model.
+
+**A blank or fully transparent region is a renderer failure, not evidence that the workbook needs fixing.** For a populated range, stop all visual QA for that workbook immediately; do not try a wider range, another sheet, a different resolution, or another output format. Do not create diagnostic workbooks, retry rendering, change print settings, or convert to PDF solely to investigate a failed preview. Preserve the requested workbook changes, finish the structural and data checks, and report the visual check as unavailable.
+
+Rendering is an **optional enhancement, not a core dependency**: creating and structurally checking this workbook needs nothing beyond the bundled payload. When `soffice` or `pdftoppm` is absent, do not silently skip a check the user asked for — say plainly that visual layout was not inspected. The Read tool reports its own install command when Poppler is missing.
 
 If the user wants rendering and `soffice` is missing, **tell them it needs LibreOffice and offer the install** (roughly several hundred MB); the choice is theirs. Do not install it unprompted, and do not block delivery on it. On Linux you usually **cannot install it for them** (no TTY, `sudo` needs a password) — give the command for the user to run.
 
@@ -108,7 +117,7 @@ When you give that command, put it in a **bash code block** and state plainly wh
 sudo apt-get install -y libreoffice
 ```
 
-That is the Debian/Ubuntu form; adapt it to the user's platform and package manager rather than assuming `apt`. Using software they already have (Excel, WPS, LibreOffice) to produce a PDF is a legitimate path; do not steer them away from it.
+That is the Debian/Ubuntu form; adapt it to the user's platform and package manager rather than assuming `apt`. The engine choice is the user's: using software they already have (Excel, WPS, LibreOffice) to produce a PDF is a legitimate path, and refusing the install is a legitimate answer — do not steer them away from either, and do not treat the missing renderer as a reason to block delivery.
 
 Rendered pages follow spreadsheet print settings, so a page is not necessarily a worksheet. LibreOffice preview conversion neither updates the original workbook's cached formulas nor certifies native Excel calculation or appearance.
 

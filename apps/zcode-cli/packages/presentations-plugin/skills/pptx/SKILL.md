@@ -2,7 +2,7 @@
 name: pptx
 metadata:
   upstream: "@deepseek-ai/dsh-skill-office (MIT)"
-  modified: "ZCode-CE: 工具链由系统 Python(python-pptx) 改为随包 Node 库(pptxgenjs 4.0.1)；修正校验器相对路径为 ../../scripts/；补充降级边界；提权安装场景改为给出确切命令并声明所需权限（引导式授权，见 docs/development/office-plugins.md）"
+  modified: "ZCode-CE: 工具链由系统 Python(python-pptx) 改为随包 Node 库(pptxgenjs 4.0.1)；修正校验器相对路径为 ../../scripts/；补充降级边界；提权安装场景改为给出确切命令并声明所需权限（引导式授权，见 docs/development/office-plugins.md）；恢复搬运时丢失的视觉链（soffice→pdftoppm→visual-judge 两步链，官方基线本有 dispatch），补模型图片能力前置判定与「空白预览=渲染失败」规则"
 description: Create, read, edit, and check PowerPoint presentations (.pptx), including slide text, tables, images, and charts. Use when a PPTX file is an input or requested deliverable.
 ---
 
@@ -72,15 +72,22 @@ node ${ZCODE_SKILL_DIR}/../../scripts/check_office.mjs <presentation.pptx> --out
 
 It checks ZIP/XML integrity and internal relationships and reports slide count and extracted text. Use repeated `--contains TEXT` arguments for required slide text and `--count N` for a requested slide count; `--contains` excludes chart text and speaker notes. Reopen the file to check the requested edits, chart data, and notes. Structural success does not establish text fit, alignment, readable contrast, or rendering fidelity.
 
-This build has no document-rendering tool, so visual layout cannot be inspected by default. Complete the structural and content checks above, deliver the file, and briefly state that visual layout was not inspected.
-
-If the user explicitly asks for a visual check, convert to PDF with LibreOffice when `soffice` is on PATH and let the user review the result:
+**Visual QA: render the deck once, then have it judged.** `pdftoppm` reads PDF, not `.pptx`, so this is two steps — LibreOffice converts, then the images are produced:
 
 ```bash
-soffice --headless --convert-to pdf report.pptx
+soffice --headless --convert-to pdf --outdir <out_dir> report.pptx
+pdftoppm -png -r 150 <out_dir>/report.pdf <out_dir>/slide
 ```
 
-Rendering is an **optional enhancement, not a core dependency**: creating and structurally checking this file needs nothing beyond the bundled payload. When `soffice` is absent, do not silently skip the check — say plainly that visual layout was not inspected.
+Then dispatch the `presentations:visual-judge` subagent with the slide image paths and the user's request, and fix the source for any real hit. Use that exact subagent type: four office plugins each ship a `visual-judge` agent, so the bare name `visual-judge` is ambiguous in a default install and the Agent tool rejects it. If `visual-judge` is unavailable, read the rendered slide images yourself instead — never both, and do not call an external VLM for slide QA.
+
+**Read is also wired to Poppler directly.** `Read({ file_path: "<out_dir>/report.pdf", pages: "1-3" })` returns the page images without a separate `pdftoppm` call; it needs a model that accepts both PDF and image input. Reuse images for the same saved deck and render again only after a source change.
+
+**Establish that the current model accepts images before rendering.** If it does not, finish the structural and content checks and report the visual check as unavailable — do not rasterize slides the model cannot read, retry the read, or switch to another model.
+
+**A blank or fully transparent slide is a renderer failure, not a deck defect.** Stop all visual QA for this deck immediately; do not retry with another slide range, resolution, or output format, and do not convert again to investigate. Preserve the requested deck changes and report the visual check as unavailable. Never edit a deck to "fix" a slide that merely failed to render.
+
+Rendering is an **optional enhancement, not a core dependency**: creating and structurally checking this file needs nothing beyond the bundled payload. When `soffice` or `pdftoppm` is absent, do not silently skip the check — say plainly that visual layout was not inspected. The Read tool reports its own install command when Poppler is missing.
 
 If the user wants rendering and `soffice` is missing, **tell them it needs LibreOffice and offer the install** (roughly several hundred MB); the choice is theirs. Do not install it unprompted, and do not block delivery on it. On Linux you usually **cannot install it for them** (no TTY, `sudo` needs a password) — give the command for the user to run.
 
@@ -90,7 +97,7 @@ When you give that command, put it in a **bash code block** and state plainly wh
 sudo apt-get install -y libreoffice
 ```
 
-That is the Debian/Ubuntu form; adapt it to the user's platform and package manager rather than assuming `apt`. Using software they already have (Word, WPS, Pages) to produce a PDF is a legitimate path; do not steer them away from it.
+That is the Debian/Ubuntu form; adapt it to the user's platform and package manager rather than assuming `apt`. The engine choice is the user's: using software they already have (PowerPoint, Keynote, WPS) to export a PDF is a legitimate path, and refusing the install is a legitimate answer — do not steer them away from either, and do not treat the missing renderer as a reason to block delivery.
 
 LibreOffice previews do not certify pixel-identical PowerPoint output, animation, or media playback.
 

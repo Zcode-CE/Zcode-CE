@@ -152,17 +152,57 @@ node scripts/licenses.mjs check      # 检查：输入哈希 + 许可分桶
 
 三个插件目录结构一致，差异只在技能与插件清单；下表按 `documents` 列文件，其余两个同名。
 
-| 文件                                             | 来源                             | 许可                   | 本地改动                                                                                                                                                                                                                                                                 | 跟进方式                                                      |
-| ------------------------------------------------ | -------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
-| `skills/{docx,pptx,xlsx}/SKILL.md`               | `derived-from-dsh`               | MIT                    | frontmatter `metadata.modified`：工具链由**系统 Python(python-docx) 改为随包 Node 库**（docx 9.7.1 / pptxgenjs 4.0.1 / exceljs 4.4.0）；校验器相对路径修正为 `../../scripts/`；补充降级边界；**提权安装场景给出确切命令并声明所需权限**（引导式授权，task-71，见 §7ter） | 上游同名文件每次发版都 diff；**不能整体覆盖**（我们已改口径） |
-| `agents/visual-judge.md`                         | `self`                           | 随本仓库               | 本项目独立实现（**四份逐字节相同**：documents / presentations / spreadsheets / **pdf**）                                                                                                                                                                                 | 不跟上游                                                      |
-| `scripts/check_office.py`                        | `derived-from-dsh`（**已分叉**） | MIT                    | 追加式安全修复：成员白名单、4 个 `MAX_*` 预算、`PackageBudget`、分块解析、`except` 补 `LookupError`（见 §7）                                                                                                                                                             | 上游更新需按 §4 手工合并；改一处同步三处                      |
-| `scripts/check_office.mjs` + `scripts/lib/*.mjs` | `self`                           | 随本仓库               | 本轮 Node 重写 的 Node 重写（主路径）：契约与 .py 逐项一致；按 `apps/zcode-cli/AGENTS.md` 的 400 行上限拆成 10 个文件（见 §7bis）                                                                                                                                        | 不跟上游；但**必须与 .py 保持契约一致**，改一边核对另一边     |
-| `test/checkOffice.test.mjs`（仅 documents）      | `self`                           | 随本仓库               | 上述安全修复的回归测试；本轮 Node 重写 起**两条实现路径同型断言**（4 条预算用例 × 2 路径）                                                                                                                                                                               | 不跟上游；改动脚本行为时要同步                                |
-| `.zcode-plugin/plugin.json`、`package.json`      | `self`                           | 随本仓库               | ZCode 插件清单与包元数据（本仓库布局，非上游布局）                                                                                                                                                                                                                       | 不跟上游                                                      |
-| `LICENSE.dsh`                                    | `upstream-dsh` 的许可文本副本    | MIT（© 2026 DeepSeek） | 无                                                                                                                                                                                                                                                                       | 上游许可变更时同步                                            |
+| 文件                                             | 来源                             | 许可                   | 本地改动                                                                                                                                                                                                                                                                                                      | 跟进方式                                                      |
+| ------------------------------------------------ | -------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `skills/{docx,pptx,xlsx}/SKILL.md`               | `derived-from-dsh`               | MIT                    | frontmatter `metadata.modified`：工具链由**系统 Python(python-docx) 改为随包 Node 库**（docx 9.7.1 / pptxgenjs 4.0.1 / exceljs 4.4.0）；校验器相对路径修正为 `../../scripts/`；补充降级边界；**提权安装场景给出确切命令并声明所需权限**（引导式授权，task-71，见 §7ter）；**视觉检查链**（task-13，见 §6bis） | 上游同名文件每次发版都 diff；**不能整体覆盖**（我们已改口径） |
+| `agents/visual-judge.md`                         | `self`                           | 随本仓库               | 本项目独立实现（**四份逐字节相同**：documents / presentations / spreadsheets / **pdf**）                                                                                                                                                                                                                      | 不跟上游                                                      |
+| `scripts/check_office.py`                        | `derived-from-dsh`（**已分叉**） | MIT                    | 追加式安全修复：成员白名单、4 个 `MAX_*` 预算、`PackageBudget`、分块解析、`except` 补 `LookupError`（见 §7）                                                                                                                                                                                                  | 上游更新需按 §4 手工合并；改一处同步三处                      |
+| `scripts/check_office.mjs` + `scripts/lib/*.mjs` | `self`                           | 随本仓库               | 本轮 Node 重写 的 Node 重写（主路径）：契约与 .py 逐项一致；按 `apps/zcode-cli/AGENTS.md` 的 400 行上限拆成 10 个文件（见 §7bis）                                                                                                                                                                             | 不跟上游；但**必须与 .py 保持契约一致**，改一边核对另一边     |
+| `test/checkOffice.test.mjs`（仅 documents）      | `self`                           | 随本仓库               | 上述安全修复的回归测试；本轮 Node 重写 起**两条实现路径同型断言**（4 条预算用例 × 2 路径）                                                                                                                                                                                                                    | 不跟上游；改动脚本行为时要同步                                |
+| `test/skillVisualChain.test.mjs`（仅 documents） | `self`                           | 随本仓库               | 视觉检查链的静态护栏（task-13，见 §6bis）：两步链、dispatch 名、引擎存在性、空白预览语义、模型能力门禁、xlsx 分情况、frontmatter 同步                                                                                                                                                                         | 不跟上游；改技能视觉段或改 Poppler/Read 装配点时要同步        |
+| `.zcode-plugin/plugin.json`、`package.json`      | `self`                           | 随本仓库               | ZCode 插件清单与包元数据（本仓库布局，非上游布局）                                                                                                                                                                                                                                                            | 不跟上游                                                      |
+| `LICENSE.dsh`                                    | `upstream-dsh` 的许可文本副本    | MIT（© 2026 DeepSeek） | 无                                                                                                                                                                                                                                                                                                            | 上游许可变更时同步                                            |
 
 **机器可读登记**：`third-party/copied-components.json` 的 `DeepSeek Harness skill-office` 条目 —— `roots` 覆盖三个插件目录，`license: MIT`，`scope` 里写明技能目录改名（`assets/`→`skills/`）与 `visual-judge.md` 属独立实现；`locallyModifiedFiles` 列出 §7 的分叉文件。**改本文档时同步检查该条目。**
+
+## 6bis. 视觉检查链：Office→PDF→页图→`visual-judge`（task-13）
+
+**背景（实测，非推断）**：CE **本来就有一条端到端的视觉检查通路**，只是技能文本不知道它 ——
+
+| 环节         | 落在哪里                                                                                     | 来源                                                 |
+| ------------ | -------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Office→PDF   | 系统 LibreOffice `soffice --headless --convert-to pdf`                                       | 用户自装，**不分发**（AGENTS.md 允许的可选增强）     |
+| PDF→页图     | `adapters/src/pdf/index.ts`（Poppler `pdftoppm` 适配器）                                     | **上游开源基线 `872ad96` 继承**，CE 文档此前从未记录 |
+| 接在 Read 上 | `core/src/tool/handlers/read.ts` 的 PDF 分支；`bootstrap/src/app/create-app.ts` **默认装配** | 同上                                                 |
+| 页图评审     | `agents/visual-judge.md`（四插件各一份，逐字节相同）                                         | 本项目自研                                           |
+
+**因此这条路线新增随包体积 0、许可义务 0**：Poppler 适配器已在代码里，技能层是纯 Markdown，办公载荷已在包里。
+
+**三份技能改了什么**（`docx` / `pptx` / `xlsx` 的「Check and deliver」段）：
+
+1. 删掉 **「本 build 没有渲染工具」**（与事实不符 —— 该表述是 CE 搬运时丢链的残留），改为两步链：
+   `soffice --headless --convert-to pdf --outdir <out_dir> <file>` → `pdftoppm -png -r 150 <out_dir>/<stem>.pdf <out_dir>/<prefix>`，
+   再 dispatch 视觉评审；并写明 Read 也可直接读该 PDF 的 `pages` 拿页图（省掉 `pdftoppm` 这一趟）。
+2. **dispatch 名必须是 `<plugin>:visual-judge`**（`documents:` / `presentations:` / `spreadsheets:`）。
+   依据（实测）：四个办公插件（documents / pdf / presentations / spreadsheets）都是 `defaultEnabled: true` 且各带一份 `visual-judge.md`，
+   `bootstrap/src/subagents.ts` 对 bare name 记 `agent_ambiguous_name` **且不注册裸名** ⇒ 技能里写裸 `visual-judge` 会让 Agent 工具在
+   `core/src/subagent/runner.ts` 抛 `UNKNOWN_AGENT_TYPE`。**官方基线的 pptx 技能写的正是裸名，照抄会失败。**
+3. **模型能力前置判定**（硬门禁）：`read.ts` 的 PDF 分支要求 `supportsPdf`，而 `read-pdf.ts` 在 `supportsImage === false` 时**直接拒绝 `pages`**；
+   `adapters/src/model/model.ts` 还会在发请求前对含 image block 的请求抛 `invalidRequest`。技能因此要求先确认当前模型接受图片输入，
+   否则完成结构检查、如实说明视觉检查不可用，**不生成读不了的预览、不重试、不换模型**。
+4. **空白预览语义**（DSH rc.2 的 A2）：**空白/全透明页 = 渲染器失败，不是文档缺陷** ⇒ 立即停止该文档全部视觉 QA，
+   不得换页范围/分辨率/格式重试，不得造诊断文档或为调查再转 PDF，保留已请求的改动并如实报告视觉检查不可用。
+   **没有这条时**，模型会把渲染器故障误判成文档缺陷，去改一份本来正确的文档。
+5. **xlsx 按任务分情况**：数据/公式任务**跳过**视觉检查，且**不加未被请求的「未做视觉检查」免责声明**（原表述对纯数据任务是用户可见噪声）；
+   基础样式（粗体表头/数字格式）本身不触发视觉检查；只有排版/布局类任务才渲图检查。
+6. **引擎选择权属于用户**（AGENTS.md）：**不照搬**官方那种「必须装 LibreOffice、不许用 PowerPoint/Keynote 替代、下载大不是跳过的理由」的口径 ——
+   官方禁止用户拒绝，我们保留拒绝权；缺渲染器时**如实说明未做，不静默降级**。
+
+**与上游的分叉点（跟进时勿合错）**：官方 3.14.3 的 pptx 技能**本来**就 dispatch `visual-judge` 且写着同一条两步链 ——
+**CE 搬运时丢了它**，本单元是**恢复 + 适配**，不是新增。但官方的 dispatch 用裸名、且强制安装口径，这两点**我们有意分叉**，合并上游时不要覆盖。
+
+**回归护栏**：`test/skillVisualChain.test.mjs`（仅 documents 一份，按 §4.5 的同型惯例）。它是**静态断言**，
+不能替代端到端实跑（`soffice` → `pdftoppm` → 非空白页图）—— 那一步的证据在实跑记录里。
 
 ## 7. `scripts/check_office.py` 的分叉记录
 
@@ -263,7 +303,9 @@ node scripts/licenses.mjs check      # 检查：输入哈希 + 许可分桶
 3. **`check_office.py` 专项**：用 §4 的命令比 `def`/`class`/`MAX_*` 清单。若上游也加了资源预算，逐项对齐语义（别直接覆盖我们的 4 个预算常量）；两边都加了同类逻辑时，取更严格的一侧并在 `Local changes` 记录取舍。
    **改完 `.py` 后必须同步 `.mjs`**（反之亦然）：两者是同一契约的两份实现（见 §7bis）。改完跑 `test/checkOffice.test.mjs`，其中的「三份逐字节一致」用例会抓住漏同步；契约层面的回归用差分对比（拿同一份输入分别跑两份实现，逐项比对输出与退出码）。
 4. **技能文本**：只在「载荷已就位」或「确认上游改动与载荷无关」时才改；改完同步 frontmatter 的 `modified` 描述。
-5. **收尾**：`node scripts/licenses.mjs notices` → `node scripts/licenses.mjs check`；跑 `apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs`；更新本文档 §6/§7 的**哈希与字节数**（它们都是快照值）。
+   **视觉段有两条有意分叉，合并上游时不要覆盖**（详见 §6bis 末段）：① dispatch 名必须用 `<plugin>:visual-judge`，官方基线的裸名在默认安装下会报 `UNKNOWN_AGENT_TYPE`；
+   ② 不跟官方的「必须安装 LibreOffice」口径，我们保留用户的拒绝权（AGENTS.md）。
+5. **收尾**：`node scripts/licenses.mjs notices` → `node scripts/licenses.mjs check`；跑 `apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs` 与 `test/skillVisualChain.test.mjs`；更新本文档 §6/§7 的**哈希与字节数**（它们都是快照值）。
 6. **不要**把本仓库的自研文件（`visual-judge.md`、Node 工具、测试）当成上游文件覆盖。
 
 ## 10. 快照与漂移
