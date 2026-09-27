@@ -474,7 +474,29 @@ POSIX 假设（见 §10.1），那些必须由 `.github/workflows/cross-platform
 | 平台                  | `ubuntu-latest` / `macos-latest` / `windows-latest`（CI runner 镜像）            | **用户机器**（旧内核、不同 shell、企业代理、只读 rootfs）                          |
 | 终端功能              | 只在 Linux 上被 smoke 覆盖                                                       | macOS / Windows 的终端能力**仍需真机验证**（`.reverse/36-ssh/ROADMAP.md` §3 末条） |
 
-**已知会红的点（预期，不是噪音）**。按执行顺序有两组：
+**首次实测结果（2026-09-27，run `36332758568`，commit `bb49151`）**：
+
+| OS               | 结果           | 说明                                                |
+| ---------------- | -------------- | --------------------------------------------------- |
+| `ubuntu-latest`  | ✅ **success** | 构建 + smoke 全通                                   |
+| `macos-latest`   | ✅ **success** | **首次实测即通过**（此前整列是「未实测」）          |
+| `windows-latest` | ❌ **failure** | 红在 **(A) 构建步骤**（见下），**smoke 根本没跑到** |
+
+⇒ **macOS 一列已从「推断」变成「实测通过」**；Windows 红的正是下面预测的 (A)，
+**实测报错与预测的机理逐字一致**：
+
+```
+[zcode] pnpm --filter @zcode/cli... build
+Error: pnpm --filter @zcode/cli... build failed: spawnSync pnpm ENOENT
+  code: 'ENOENT', syscall: 'spawnSync pnpm', path: 'pnpm'
+```
+
+**该缺陷已修**（`199ac9b`：让 `build-zcode.mjs` 的 `run()` 复用 `resolveSpawnRuntimeOptions`）。
+**但修完尚未重跑** —— 下一次 `workflow_dispatch` 才能判定 Windows 是否真的转绿。
+**在重跑之前，Windows 一列仍写作「未通过」**（工作流存在只说明「可测」，不等于「测过了」）。
+
+**已知会红的点**。按执行顺序有两组 —— **(A) 已由 `199ac9b` 修复并首次实测确认，
+(B) 仍待 Windows 跑到那一步才能观测**：
 
 **(A) 构建步骤本身（在 smoke 之前）** —— `scripts/build-zcode.mjs` 用裸 `spawnSync("pnpm", …)`
 （`build-zcode.mjs:126` 的 `run()`，无 `shell: true`）调 `pnpm` 四次（`:171` `pnpm --filter @zcode/cli... build`、
