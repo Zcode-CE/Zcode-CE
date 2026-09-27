@@ -23,24 +23,25 @@ export const CLAUDE_PLUGINS_OFFICIAL_MARKETPLACE_ID = "claude-plugins-official";
  *
  * Settings 三类资源发现共用；集合内容与官方发行版**完全一致**（10 项）。
  *
- * ⚠️ 其中 2 项在本仓库没有实体，因此当前是**无效条目**：`image-search`、`pdf`。
+ * ⚠️ 其中 1 项在本仓库没有实体，因此当前是**无效条目**：`image-search`。
  *
  * （fix.3 前这里是 5 项 —— `skill-creator`、`plugin-creator`、`zcode-guide` 曾同样无实体，
- * 本轮已按上游 MIT 原样搬入，见 docs/development/official-diff.md。）
+ * 本轮已按上游 MIT 原样搬入；`pdf` 曾同样在列，2026-09-23（`665c2e6`）已由本仓库自研
+ * MIT 实现补齐实体。见 docs/development/official-diff.md。）
  *
- * 这不是本仓库删除了声明，而是这两项的**实体不适于随本仓库分发**：`pdf` 官方授权仅限
- * 非商业使用；`image-search` 的能力在官方服务端且需官方账号鉴权，本地实现无意义。
- * 注意这两项都**不是**「仅分发编译产物」—— 真正只发编译产物的是 `android-emulator` 与
+ * 这不是本仓库删除了声明，而是这一项的**实体不适于随本仓库分发**：`image-search` 的能力
+ * 在官方服务端且需官方账号鉴权，本地实现无意义。
+ * 注意它**不是**「仅分发编译产物」—— 真正只发编译产物的是 `android-emulator` 与
  * `ios-simulator`，而它们本就不在本名单内。判定链是
  * `candidate.defaultEnabled || DEFAULT_ENABLED.has(pluginId)` —— 没有 candidate
  * 时这段逻辑不会执行，所以无效条目**不产生运行时错误**，只是不生效。
  *
- * 保留它们而不是删除，是为了与上游保持一致：这些能力将来可能补齐
- * （PDF 与会话迁移已在 README 的后续计划里），删除声明会让后续同步上游时产生冲突。
+ * 保留它而不是删除，是为了与上游保持一致：该能力将来可能补齐，删除声明会让后续同步
+ * 上游时产生冲突。
  */
 export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set([
   "browser-use@zcode-plugins-official",
-  // 名单里仍有 2 项本仓库无实体（image-search、pdf），保留是为与上游保持一致；
+  // 名单里仍有 1 项本仓库无实体（image-search），保留是为与上游保持一致；
   // 判定链见上方 doc comment —— 无 candidate 时不执行，不产生运行时错误。
   "image-search@zcode-plugins-official",
   "documents@zcode-plugins-official",

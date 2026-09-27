@@ -489,8 +489,9 @@ CLI 侧过去从不写这个字段，于是 `zcode -p "/workflow …"` 一直可
 | 解包级验证 | `scripts/zcode-distribution-smoke.mjs`：解包后在隔离环境跑 `--web`，验 `/` 壳、`/api/server-info`、WebSocket、优雅退出                                                                                                                                                               |
 
 **分发状态（如实记录）**：`pnpm build:zcode` 能构建这个发行包，发布流水线里的 `headless-server-package`
-job（`.github/workflows/release.yml`）也会构建它、跑 smoke 并挂 workflow artifact；tag 发版时**顺带**挂到 Release
-（`continue-on-error`，失败不影响发版）。该 job 需要仓库变量 `ZCODE_DIST_BASE_URL`，**未配置时跳过而不是失败**。
+job（`.github/workflows/release.yml`）也会构建它、跑 smoke 并挂 workflow artifact；tag 发版时**顺带**挂到 Release。
+**挂载失败会让流水线变红**（2026-09-25 订正：此前该步骤用 `continue-on-error`，现已移除 —— 挂不上 Release 说明用户拿不到这个包，属交付终点失败，不得吞掉；见根 `AGENTS.md` 的派单硬规则与 `release.yml` 的注释）。
+该 job 需要仓库变量 `ZCODE_DIST_BASE_URL`，**未配置时跳过而不是失败**。
 ⇒ 现状是"构建与挂载都通，但默认不启用"，而不是"代码有、用户拿不到"。
 
 **未验证**：手机与桌面**同时**连同一会话的并发语义没有测（见[网页远控](web-remote-control.md) §8）。

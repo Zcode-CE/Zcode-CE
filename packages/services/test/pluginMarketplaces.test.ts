@@ -42,9 +42,11 @@ test("公开商店分段只含官方市场，社区目录不进该分段", () =>
 });
 
 test("默认启用集合与官方发行版逐项一致", () => {
-  // 这 10 项必须与官方发行版的集合完全相同；其中 5 项在本仓库没有实体
-  // （官方授权限制或仅分发编译产物），属于无效条目而非错误 —— 判定链在
-  // 没有 candidate 时不会执行。删除它们会让后续同步上游时产生冲突。
+  // 这 10 项必须与官方发行版的集合完全相同；其中 1 项在本仓库没有实体
+  // （image-search：能力在官方服务端且需官方账号鉴权），属于无效条目而非错误 ——
+  // 判定链在没有 candidate 时不会执行。删除它会让后续同步上游时产生冲突。
+  // 口径与 packages/shared/src/plugin-marketplaces.ts 的 doc comment 一致。
+  // 注意「仅分发编译产物」的是 android-emulator 与 ios-simulator，它们本就不在本名单内。
   assert.deepEqual(
     [...DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS].sort(),
     [

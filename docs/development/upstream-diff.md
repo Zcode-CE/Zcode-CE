@@ -147,17 +147,42 @@ git merge upstream/main
 `packages/desktop` 使用 `tsc -b`，改用 `tsc -p <cfg> --noEmit` 或
 `scripts/desktop-typecheck-baseline.sh`。
 
-技术债 #3 的当前基线（`bash scripts/desktop-typecheck-baseline.sh head`，2026-09-22 实测）：
-**main 1 项、renderer 90 项**——剩下的错误集中在 `packages/services` 的
-`TS2591`（缺 `@types/node` 上下文）等第三方源码，不是 desktop 自身代码。
-改动 desktop 后跑 `... diff` 只报**新增**错误。
+技术债 #3 已修完，**这里不抄数字**（同 #5 的理由：写死必然过期）。取当前值：
+
+```bash
+bash scripts/desktop-typecheck-baseline.sh current   # 结果写在 .reverse/16-typecheck-baseline/current.*.txt
+bash scripts/desktop-typecheck-baseline.sh diff      # 只报相对 HEAD 的新增（改动 desktop 后跑这条）
+```
+
+**2026-09-27 复核**：`tsc -p packages/desktop/tsconfig.main.json --noEmit` 与
+`tsc -p packages/desktop/tsconfig.renderer.json --noEmit` **均 exit 0、0 个 error TS**。
+（复核方式：先确认 tsc 真的在检查这些文件 —— 往 `src/main/` 与 `src/renderer/src/` 各放一个
+故意的类型错误，两边都如期报 `TS2322`，再删掉。）
+⚠️ **本段此前写的「main 1 项、renderer 90 项」是 2026-09-22 的旧快照**；
+`ce03e36`（main 77→0）与 `5cbe4cd`（renderer 114→0）在**同一天稍晚**就把它们清干净了，
+这里没跟着改。另注意 `.reverse/16-typecheck-baseline/current.*.counts` 是**修之前**的快照
+（mtime 09-22 00:24，早于 `5cbe4cd` 03:29 / `ce03e36` 03:35）—— **别拿它当当前值**。
 
 技术债 #5 的两级判定：
 
 ```bash
-node scripts/licenses.mjs check           # 基础检查，当前通过
-node scripts/licenses.mjs check --strict  # 发布前必须通过，当前**不通过**
+node scripts/licenses.mjs check           # 基础检查（新鲜度 + 材料档位）
+node scripts/licenses.mjs check --strict  # 发布前必须通过
 ```
+
+⚠️ **基础检查今天就是红的**（2026-09-27 实测，exit 1）：
+
+```text
+Error: Third-party input changed: package.json. Run node scripts/licenses.mjs notices
+```
+
+根因是 `8b3e459`（fix.1）与 `6d754dc`（fix.2）两次只改 `package.json` 的 `version` 一行，
+而没有同批重生成 notices（`third-party/inventory.json` 最后一次重生成是 `fa7c2a6`）。
+**本段此前写「基础检查，当前通过」** —— 那是 ce.3 tag 时刻的状态，两次 bump 之后就失效了。
+⇒ 别把「基础检查通过」当默认前提，先跑一遍；重生成见 `docs/operations/release.md` §「发布一个版本」第 1 步。
+
+**这个门禁没有 CI 兜底**（`licenses:check` 不在 `ci.yml`、也不在 `release.yml`，理由见 `docs/operations/release.md` 的本地预检一节）——
+它红了不会有流水线报出来，只有人手动跑才会发现。
 
 基础检查通过**不等于**合规完成 —— `--strict` 还会列出待补齐材料
 （如 `@trycua/cua-driver-*`、`@ubjs/*` 的版本级许可材料，以及 Skia / QuickJS-NG

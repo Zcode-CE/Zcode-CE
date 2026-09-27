@@ -181,7 +181,8 @@ electron-builder 会为每个平台生成更新清单与差分块，**必须一�
 Error: Third-party input changed: package.json. Run node scripts/licenses.mjs notices
 ```
 
-⇒ 版本号变更必须与重生成通知放进**同一个提交**，否则 CI 会在 tag 上红在这一步：
+⇒ 版本号变更必须与重生成通知放进**同一个提交**，否则许可门禁立刻失败 ——
+**而这一步没有 CI 兜底**（原因见下），漏了不会有人提醒你：
 
 ```bash
 node -e "console.log(require('./package.json').version)"  # 确认改完之后的版本号
@@ -190,15 +191,25 @@ pnpm licenses:notices   # 重新生成 THIRD-PARTY-NOTICES.md 与 third-party/in
 
 ### 2. 本地预检
 
-发布前至少确认这几项通过（CI 也会跑，本地先跑能省一轮往返）：
+发布前至少确认这几项通过。**前四项 CI 也会跑**（`ci.yml` 的 verify job），本地先跑能省一轮往返；
+**最后一项 `pnpm licenses:check` CI 刻意不跑，只有本地手动跑这一条路**：
 
 ```bash
 pnpm fmt:check
 pnpm lint
 pnpm typecheck
 pnpm test
-pnpm licenses:check
+pnpm licenses:check   # ⚠️ CI 不跑这一项，必须本地手动跑
 ```
+
+> **为什么 `licenses:check` 不进 CI**：它比对的平台包集合与 runner 平台相关，在 CI 环境会因平台差异
+> 产生与改动无关的失败（`.github/workflows/ci.yml` 里那行注释写的就是这个理由；`release.yml` 同样没有它）。
+> **代价必须说清**：这个门禁**没有任何自动护栏** —— 它红了不会有流水线报出来，只有人手动跑才会发现。
+> 本项目已经踩过：`8b3e459`（fix.1，2026-09-26）与 `6d754dc`（fix.2，2026-09-27）两次只改 `package.json` 的
+> `version` 一行（`git show --stat` 均为 `package.json | 2 +-`）而没有同批重生成 notices
+> （`third-party/inventory.json` 最后一次重生成是 `fa7c2a6`，2026-09-25）。
+> ⇒ **门禁从 fix.1 起就是红的，直到人工盘点才发现** —— 没有任何流水线报过它。
+> ⇒ **发布前必须手动跑，不要假设 CI 拦得住。**
 
 > `pnpm licenses:check` 的 `--strict` 模式**当前不通过**，基础检查通过不代表合规完成。
 > 阻断项分两类：材料档位判据不满足（`publisher-declared-standard-terms` 的四条判据缺一），

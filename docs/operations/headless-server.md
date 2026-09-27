@@ -192,7 +192,9 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
 
 ## 7. 「ce.3 发版时的发布清单」（已批准，本轮不执行）
 
-> 前提：真正打 tag 发 release 时才做；**失败不得阻塞 tag 发版**（job 独立、`continue-on-error` 或仅 tag/dispatch 触发）。
+> 前提：真正打 tag 发 release 时才做；**失败不得阻塞 tag 发版**（job 独立、仅 tag/dispatch 触发）。
+> **将来真做时也不得用 `continue-on-error`** —— 理由是它与 §7.1 第 5 条那次订正完全相同：
+> 交付终点（推 registry）失败被吞掉后，CI 全绿而产物根本不存在，**误报成功比误报失败更危险**。
 > 下面每一步都写成照着做即可的动作。
 
 ### 7.1 npm
@@ -300,14 +302,17 @@ staging 根下也不存在 `install.sh` / `latest.json`；
    **令牌必须由运行方注入**（`--token=<值>` 或令牌文件 `ZCODE_SERVER_AUTH_TOKENS_FILE`），**不要**打进镜像；
    用 `alpine` 基础镜像必须先自装 musl 版 **Node ≥24**，且**终端功能不可用**（见 §10 的 `Alpine / musl` 一行）。
 3. 凭据：ghcr 用内置 `GITHUB_TOKEN`（需 `packages: write` 权限）；若推别的 registry，加 `REGISTRY_USERNAME`/`REGISTRY_TOKEN` secrets。
-4. CI job 形态：job `publish-docker-headless`，条件同 npm；步骤：build → `docker tag` → `docker push` 两个 tag（`:<版本>` 与 `:latest`）。`continue-on-error: true`。
+4. CI job 形态：job `publish-docker-headless`，条件同 npm；步骤：build → `docker tag` → `docker push` 两个 tag（`:<版本>` 与 `:latest`）。
+   **不设 `continue-on-error`**：镜像推不上去就是交付终点失败，必须让流水线变红（与 §7.1 第 5 条同一纪律）。
 5. 发布后验证：`docker run --rm <镜像>:<版本> --help` 退出码 0；再 `docker run --rm -p 3030:3030 <镜像>:<版本> --web --host 0.0.0.0 --token <临时>` 后 `curl -sI localhost:3030/` → 200、`curl -sI localhost:3030/api/server-info` 无 token → 401。
 6. 回滚：删除该 tag（ghcr 网页或 `gh api -X DELETE`）；`:latest` 指回上一个版本。
 
 ### 7.3 两者共同的注意事项
 
 - **不要**把凭据写进镜像层、命令行参数（会进进程列表/镜像历史）或日志。
-- 发布 job 必须与 tag 发版解耦或 `continue-on-error`：registry 故障不该让"安装包已经好了"的发版失败。
+- 发布 job 必须与 tag 发版**解耦**：registry 故障不该让"安装包已经好了"的发版失败。
+  **但解耦不等于吞失败** —— 不得用 `continue-on-error`（或任何等价物）：它会把"镜像/npm 包根本没发出去"伪装成成功，
+  而**误报成功比误报失败更危险**（实测先例见 §7.1 第 5 条：`ENEEDAUTH` 导致 npm 发布失败而 CI 全绿、registry 上根本没有这个包）。
 - 发布前先跑既有 smoke（见 §8）；发布后在干净环境复核 §7.1/§7.2 的验证命令。
 
 ---
@@ -373,8 +378,14 @@ smoke-exit=0
 
 ## 9. 已知限制与未验证项
 
-- **未对外发布**：发布流水线仍只**构建 + 冒烟 + 挂 workflow artifact**，不推 npm / 不推 Docker 镜像。**本地 Docker 资产已提供**（仓库根 `Dockerfile` + `compose.yaml`，由用户自行 `docker build`，见 [headless-server-docker.md](./headless-server-docker.md)）；§7 的 registry 发布步骤仍未执行。
-  **npm 侧的发布形态已预演验证**（3.14.3-ce.3，本地 `npm pack` + 真装真跑 + `publish --dry-run`，**未真发**），包描述、体积与全部实测数据见 §7.1 末「实测结论」；Docker 侧仍只到「本地 `docker build`」。
+- **npm 已发布，Docker 镜像未发布**（两个渠道状态不同，不要合并读）：
+  - **npm**：`zcode-ce@3.14.3-ce.3` **已于 2026-09-25T22:44:50Z 真发**（核对：`npm view zcode-ce version` ⇒ `3.14.3-ce.3`），
+    发布流水线 `release.yml` 的 `headless-server-package` job 内含 `Stage npm package` / `Publish to npm` / `Verify npm package` 三步，
+    tag 推送即执行（**不再有 `continue-on-error`**，见 §7.1 第 5 条）。包描述、体积与全部实测数据见 §7.1 末「实测结论」——
+    注意那张表的标题写的是「发布预演」，那是**真发之前**那次本地预演的记录，标题保留原样作为历史。
+  - **Docker 镜像**：**不发布**。`release.yml` 里**没有**任何 docker job（`grep -n docker .github/workflows/release.yml` 0 命中），
+    §7.2 的 registry 发布步骤仍未执行。**本地 Docker 资产已提供**（仓库根 `Dockerfile` + `compose.yaml`，
+    由用户自行 `docker build`，见 [headless-server-docker.md](./headless-server-docker.md)），Docker 侧只到「本地 `docker build`」。
 - **依赖载荷托管位置**：本仓库发布时托管在社区 CDN（`ZCODE_CDN_BASE_URL`，见
   [remote-assets-cdn.md](./remote-assets-cdn.md)）；`--base-url` 指向的依赖由部署方决定，
   自建者不配就仍是占位/官方默认。**npm 形态不需要它**（见 §2 的例外）。
@@ -405,9 +416,22 @@ smoke-exit=0
 
 **Node 版本下限（实测 + 与仓库一致）**：需 **Node ≥24**。下限不足时可能在**打印启动横幅之后**才失败，例如 Node 20.19.5 在导入期硬失败（`SyntaxError: … fs/promises does not provide an export named glob`；agent 另报 `No such built-in module: node:sqlite`），Node 22.16.0 服务端可全通但不满足本版声明。musl 上的获取方式（实测）：Alpine 3.24 `apk add nodejs` → **v24.18.1**（已满足）；其它镜像可用 unofficial-builds 的 `linux-x64-musl` 24.x（24.0.0 / 24.9.0 / 24.14.0 / 24.18.1 实测均 HTTP 200）。
 
-**没有守卫时的现象（保留作对照，也正是本版要消灭的）**：直接执行 glibc 的 `node` 载荷 → `sh: …: not found`（缺 `/lib64/ld-linux-x86-64.so.2`）；装 `gcompat`+`libstdc++` 后 → `Error relocating … fcntl64: symbol not found`，退出码 **127**；改用 musl 的 node 启动，`pty.node` 能被加载，但**建终端时段错误**（**139**）并带走整个进程。
+**历史对照：没有守卫时的现象**（这三种失效形态正是本版加守卫要消灭的对象，**不是本版现状**）：直接执行 glibc 的 `node` 载荷 → `sh: …: not found`（缺 `/lib64/ld-linux-x86-64.so.2`）；装 `gcompat`+`libstdc++` 后 → `Error relocating … fcntl64: symbol not found`，退出码 **127**；改用 musl 的 node 启动，`pty.node` 能被加载，但**建终端时段错误**（**139**）并带走整个进程。有守卫之后走的是上面那条「输出 `BLOCKED` + 可操作提示 + 正常退出」的路。
 
-**远端工作区另有一套守卫**：远端必须是 glibc，连接时在部署资产之前就拦断 —— 口径见 [remote-workspace.md §7](../development/remote-workspace.md) 第 8 条；本页讲的是**本机**（CLI / 无头 server）这条路径，今天没有运行时守卫，只能靠本文档说清。核实方式：看构建期裁剪原生载荷的脚本 `packages/desktop/scripts/node-pty-package-assets.mjs`（它按当前平台拷贝预编译产物），以及本页 §10 的支持矩阵。
+**本机路径也有运行时守卫**（2026-09-24 `b77fe21` 落地）：`packages/services/src/terminal/localLibcSupport.ts` 的
+`assertLocalTerminalNativeSupported()`，由 `terminalService.ts` 在**第一次原生 `dlopen` / `spawn` 之前**调用 ——
+命中 musl 时给出可操作错误并正常退出，而不是让原生 fork 段错误带走整个进程。判据（为什么必须前置而不是
+「打日志后继续」）写在 `terminalService.ts` 的调用点注释里：musl 能成功装载 glibc 的 `pty.node`，
+所以 `import("node-pty")` 的 `.catch` 不会触发，失败发生在更晚的 spawn。**为什么非要前置**：段错误不可捕获、
+是进程级死亡 —— 用户看到的是「服务莫名其妙没了」，而不是一条错误信息。
+
+**远端工作区另有一套守卫**：远端必须是 glibc，连接时在部署资产之前就拦断 —— 口径见
+[remote-workspace.md §7](../development/remote-workspace.md) 第 8 条。
+
+**核实本机守卫的方式**：读 `terminalService.ts` 的调用点（`assertLocalTerminalNativeSupported` 的前置位置与理由）
+与 `packages/services/test/terminalMuslGuard.test.ts`（含 musl/glibc 两种快照的断言），
+以及构建期裁剪原生载荷的脚本 `packages/desktop/scripts/node-pty-package-assets.mjs`（它按当前平台拷贝预编译产物），
+以及本页 §10 的支持矩阵。
 
 ### 10.1 ⚠️ Windows 上没有 SIGHUP（照抄 `kill -HUP` 会打死服务）
 
