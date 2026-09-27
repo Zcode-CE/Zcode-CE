@@ -9,6 +9,7 @@ import { join, resolve } from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
+import { extractTarGz } from "./tar-extract.mjs";
 
 const exec = promisify(execFile);
 const archive = process.argv[2];
@@ -30,7 +31,17 @@ try {
   // 解包（非 root）会按 umask 抹掉包内记录的权限位（实测 umask 077 ⇒ bin/zcode.mjs 700、旁路 600）。
   // 这里要判的是**构建期 chmod 记录的**权限，而不是评审人机器的 umask，所以先固定成 CI 的 022。
   process.umask(0o022);
-  await exec("tar", ["-xzf", resolve(archive), "-C", directory]);
+  // 用 Node 原生解包，不用外部 `tar`（2026-09-27 修）。
+  //
+  // 为什么：Windows runner 上的 `tar` 是 GNU tar，它把 `D:\a\...` 当成**远程归档**语法
+  // （`host:path`）⇒ stdin 为空 ⇒ `gzip: stdin: unexpected end of file`。
+  // 实测（run 36333516677）：Windows 的 smoke 正是红在这里。
+  // 纯 Node 解包既跨平台又零外部依赖，与本仓「核心能力零外部依赖」的口径一致。
+  //
+  // 一处**有意的差异**：本实现忠实恢复 tar 里记录的权限位，而 GNU tar 会受调用方 umask 影响
+  // 把 `666` 落成 `644`。因此下面那条 `bin/zcode.mjs == 755` 的断言语义不变
+  // （755 & ~umask(022) 仍是 755），但若将来有文件以 666 入包，本实现不会替它"纠正"。
+  await extractTarGz(resolve(archive), directory);
   // 权限位断言（task-61 F1）：必须在**解包产物**上判。
   // 为什么重要：`cp` 会用进程 umask（task-49 实测抽出过 600）；600 在单用户机器上跑得动，
   // 但 root 安装后普通用户 import 不了 ⇒ 启动即崩。而本脚本下面用 `process.execPath` 启动入口，
