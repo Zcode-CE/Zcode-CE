@@ -399,16 +399,48 @@ smoke-exit=0
 
 ## 10. 平台支持矩阵（未实测的不要当已验证）
 
-| 平台                                          | 能构建                                                   | 能启动 `--web`            | 能连面板  | 终端功能                                             | 令牌轮换（`SIGHUP`）                                                        |
-| --------------------------------------------- | -------------------------------------------------------- | ------------------------- | --------- | ---------------------------------------------------- | --------------------------------------------------------------------------- |
-| **Linux-x64（glibc）**                        | ✅ 已实测                                                | ✅ 已实测                 | ✅ 已实测 | ✅ 已实测                                            | ✅ 已实测                                                                   |
-| **Alpine / musl**                             | ❌ 本版不发布 musl 平台类                                | ✅ **已实测**（Node ≥24） | ✅ 已实测 | ❌ **不可用**（拦断 + 可操作错误，实测无段错误）     | ✅ 已实测                                                                   |
-| **Docker（`node:24-slim` 内，本版本地构建）** | ✅ 已实测（`docker build -f Dockerfile dist/zcode`）     | ✅ 已实测                 | ✅ 已实测 | ✅ 已实测（容器内 pty 可开）                         | ✅ 已实测（送给 server 进程；`docker kill -s HUP` 到不了，见 docker 页 §6） |
-| Linux-arm64                                   | 推断                                                     | 推断                      | 推断      | 推断                                                 | 推断                                                                        |
-| macOS-x64 / arm64                             | **未知**（未在 mac 上构建过）                            | 推断（`node-pty` 懒加载） | 推断      | **需改**：包内没有 darwin 原生载荷                   | 推断可用（mac 有 SIGHUP）                                                   |
-| **Windows-x64 / arm64**                       | **未知**（`install.sh` 是 POSIX 脚本 ⇒ 只能走 npm 形态） | 推断                      | 推断      | **需改**：无 win32 原生载荷 + 服务端终端是 Unix 形态 | ❌ **不成立**（见下）                                                       |
+**本表的「未实测」现在有了一条可执行的路径**：`.github/workflows/cross-platform.yml` 在
+`ubuntu-latest` / `macos-latest` / `windows-latest` 上各跑一次
+`node scripts/build-zcode.mjs --allow-placeholder-base-url` + 既有 smoke
+（构建 → 解包 → 真跑 TUI 与 `--web` 面板）。它**不进每个 PR**（`workflow_dispatch` + 每日 `schedule`），
+理由见 [ci.md](./ci.md) 的「跨平台实测」。**它不设 `continue-on-error`**：某个 OS 跑不通就让它红，
+那是本工作流要产出的信息本身。
 
-证据：`node-pty` 上游发 5 个平台的预编译，而**我们的包内只保留 Linux（glibc）**（构建按当前平台裁剪）；远程工作区组件清单也只有 `linux-x64/arm64` + `darwin-x64/arm64` —— 那属于**远程工作区运行时**，与本机 CLI 的原生依赖是两件事。
+⚠️ **该工作流在真实 runner 上的首次结果尚未观测**（Actions 只能在 GitHub runner 上执行，本地无法跑工作流）。
+因此下表的 macOS / Windows 两行**在拿到那次的运行结论之前，仍必须读作「未实测」**——
+工作流存在只说明「可测」，不等于「测过了」。
+
+| 平台                                          | 能构建                                                                                   | 能启动 `--web`            | 能连面板  | 终端功能                                                              | 令牌轮换（`SIGHUP`）                                                        |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------- | --------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **Linux-x64（glibc）**                        | ✅ 已实测                                                                                | ✅ 已实测                 | ✅ 已实测 | ✅ 已实测                                                             | ✅ 已实测                                                                   |
+| **Alpine / musl**                             | ❌ 本版不发布 musl 平台类                                                                | ✅ **已实测**（Node ≥24） | ✅ 已实测 | ❌ **不可用**（拦断 + 可操作错误，实测无段错误）                      | ✅ 已实测                                                                   |
+| **Docker（`node:24-slim` 内，本版本地构建）** | ✅ 已实测（`docker build -f Dockerfile dist/zcode`）                                     | ✅ 已实测                 | ✅ 已实测 | ✅ 已实测（容器内 pty 可开）                                          | ✅ 已实测（送给 server 进程；`docker kill -s HUP` 到不了，见 docker 页 §6） |
+| Linux-arm64                                   | 推断                                                                                     | 推断                      | 推断      | 推断                                                                  | 推断                                                                        |
+| macOS-x64 / arm64                             | **未知**（未在 mac 上构建过；跨平台工作流已可测，结果未观测）                            | 推断（`node-pty` 懒加载） | 推断      | 推断（**darwin 原生载荷在包内**，见下）                               | 推断可用（mac 有 SIGHUP）                                                   |
+| **Windows-x64 / arm64**                       | **未知**（`install.sh` 是 POSIX 脚本 ⇒ 只能走 npm 形态；跨平台工作流已可测，结果未观测） | 推断                      | 推断      | 推断（**win32 原生载荷在包内**，但服务端终端与信号另有 Windows 分支） | ❌ **不成立**（见 §10.3）                                                   |
+
+**⚠️ 订正（2026-09-27，实测解包产物）**：本表此前写「包内**没有** darwin 原生载荷」「**无** win32 原生载荷」，
+**那是错的** —— 实测 `dist/zcode/releases/3.14.3-ce.3/zcode-3.14.3-ce.3.tar.gz`（`tar -tzf` 列目录）：
+
+| 载荷                        | 包内实际存在的平台目录                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------- |
+| `node-pty/prebuilds/`       | `darwin-arm64` `darwin-x64` `linux-arm64` `linux-x64` `win32-arm64` `win32-x64`（6 个全在） |
+| `@mbears/opentui-core-`     | 同上 6 个平台目录全在（`opentui.dll` / `koffi.node` 等）                                    |
+| `koffi/build/koffi/`        | `darwin_arm64` `darwin_x64` `linux_arm64` `linux_x64` `win32_arm64` `win32_x64`             |
+| `unsafe-pointer/prebuilds/` | 同上 6 个平台目录全在                                                                       |
+
+原因不在「按当前平台裁剪」，而在 **`pnpm-workspace.yaml` 的 `supportedArchitectures`**
+（`os: [current, darwin, linux, win32]` / `cpu: [current, x64, arm64]`）—— `pnpm install` 会把
+**全部 6 个平台**的原生包都装进 `node_modules`，打包脚本再整份拷走。
+`scripts/zcode-distribution/assets.mjs` 里对 `supportedTargets` 的循环（`stageTuiRuntime`）
+同样会为 6 个 target 各 stage 一份。
+⇒ **「原生载荷缺失」不再是 macOS / Windows 的第一障碍**；真正的未知项是构建链与 smoke 里的
+POSIX 假设（见 §10.1），那些必须由 `.github/workflows/cross-platform.yml` 实测才能定论。
+
+**⚠️ 未覆盖：包内同时带着一份「本机编出来的」`build/Release/pty.node`（见 §10.2）。**
+
+远程工作区组件清单只有 `linux-x64/arm64` + `darwin-x64/arm64` —— 那属于**远程工作区运行时**，
+与本机 CLI 的原生依赖是两件事（`win32` 远程组件仍缺，见 `.reverse/36-ssh/ROADMAP.md` 阶梯 ⑤）。
 
 **musl 上的边界（为什么服务能跑、终端不行）**：上游 `node-pty` 的预编译**没有 musl 变体**，所以终端这一项在本版不可用；服务与面板不依赖它，因此可用。**这不是我们的取舍**，三条上游事实：① 上游 `node-pty` 的预编译**没有 musl 变体**（只有 glibc 的 `linux-x64`/`linux-arm64` 等）；② 官方发行版的资产集同样只有 `platformArch` 维度、**没有 `-musl` 平台类**，其 Linux 侧原生载荷是单份 glibc 二进制；③ 官方对「没有该平台预编译」的处置只是终端不可用，用户看不到 libc 层面的说明。⇒ 因此本版把 `Alpine / musl` 明确列为**不成立**，而不是「未实测」。
 
@@ -433,7 +465,100 @@ smoke-exit=0
 以及构建期裁剪原生载荷的脚本 `packages/desktop/scripts/node-pty-package-assets.mjs`（它按当前平台拷贝预编译产物），
 以及本页 §10 的支持矩阵。
 
-### 10.1 ⚠️ Windows 上没有 SIGHUP（照抄 `kill -HUP` 会打死服务）
+### 10.1 三 OS 实测能测到什么、测不到什么（`.github/workflows/cross-platform.yml`）
+
+| 事项                  | 该工作流覆盖                                                                     | **不**覆盖                                                                         |
+| --------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 构建                  | `node scripts/build-zcode.mjs --allow-placeholder-base-url` 在三个 OS 上真跑一遍 | 发布构建（平台化 seed、远程资产装配、安装包生成）—— 那是 `release.yml`             |
+| 启动 `--web` / 连面板 | 既有 smoke：解包后起服务、`/` 壳、`/api/server-info`、WebSocket、优雅退出        | 真实终端交互（conpty / spawn-helper）、浏览器端到端、反代与 TLS                    |
+| 平台                  | `ubuntu-latest` / `macos-latest` / `windows-latest`（CI runner 镜像）            | **用户机器**（旧内核、不同 shell、企业代理、只读 rootfs）                          |
+| 终端功能              | 只在 Linux 上被 smoke 覆盖                                                       | macOS / Windows 的终端能力**仍需真机验证**（`.reverse/36-ssh/ROADMAP.md` §3 末条） |
+
+**已知会红的点（预期，不是噪音）**。按执行顺序有两组：
+
+**(A) 构建步骤本身（在 smoke 之前）** —— `scripts/build-zcode.mjs` 用裸 `spawnSync("pnpm", …)`
+（`build-zcode.mjs:126` 的 `run()`，无 `shell: true`）调 `pnpm` 四次（`:171` `pnpm --filter @zcode/cli... build`、
+`:180` `pnpm exec tsc -b`、`:186` `pnpm --filter @zcode/server build`、`:187` `pnpm --filter @zcode/web build`）。
+
+- 机理：Windows 上 libuv 的 `path_search_walk_ext` 对**不带扩展名**的命令名**只试 `.com` 与 `.exe`**
+  （[libuv `src/win/process.c`](https://github.com/libuv/libuv/blob/v1.x/src/win/process.c) 原文注释
+  _"Try .com extension" / "Try .exe extension"_），而 `pnpm` 在 Windows 上由 npm 以 `pnpm.cmd` 形式提供。
+- **本仓已经知道这件事**：`scripts/spawn-command.mjs:6-21` 的 `resolveSpawnRuntimeOptions()` 注释写着
+  「Windows runner 上 bare `pnpm` / `npm` 实际也是通过 cmd shim 提供」并因此返回 `{ shell: true }`。
+  它被 `packages/desktop/scripts/bundle.mjs`、`scripts/third-party-npm.mjs`、
+  `apps/zcode-cli/packages/cli/scripts/build-sea.mjs` 复用 —— **但 `scripts/build-zcode.mjs` 没有复用**。
+- **诚实标注**：这条**未在 Windows 上实测**（本地只有 Linux），属**高置信度推断**；但 `pnpm install` 那一步
+  不受影响 —— 它是 workflow 的 `run:` 步骤，由 pwsh 解析，pwsh 会走 `PATHEXT`。差异只出在 Node 的 `spawnSync`。
+- 修法（**不属本单元**）：让 `build-zcode.mjs` 的 `run()` 复用 `resolveSpawnRuntimeOptions`。
+  另外 `build-zcode.mjs:281` 的 `tar` 在 Windows 上把 `D:\…` 当**远程归档**（GNU tar 报
+  `Cannot connect to D:`；bsdtar 不支持远程归档、按字面量处理）—— 是否出问题取决于 runner 上哪个 `tar` 先命中 PATH，**未验证**。
+
+**(B) smoke 步骤** —— 两处**只在 POSIX 成立**的断言，Windows 上必然失败，失败在**第一处**
+（`scripts/zcode-distribution-smoke.mjs:40`）：
+
+1. **解包后的执行位**：`assertMode(bin/zcode.mjs, 0o755)` 与旁路模块 `0o644`。Windows 文件系统没有
+   执行位概念，Node 的 `stat().mode` 对普通文件恒为 `0o666`（只读为 `0o444`）⇒ `0o755` 永不成立。
+   **改判据也修不好**：Windows 上「可执行」不由位表达。
+2. **`SIGTERM` ⇒ 退出码 143**（`smoke:168,178`）：`143 = 128 + SIGTERM(15)` 是 POSIX 语义。
+   Windows 上 `process.kill(pid, "SIGTERM")` 落到 `TerminateProcess`，`node-pty` 的 Windows 终端
+   报的是退出码而非信号 ⇒ 拿不到 143。同一原因也会让 `web.kill("SIGTERM")` 后的
+   `assert.deepEqual([0, null])`（`smoke:248-249`）失败。
+
+⇒ 本工作流在 Windows 上**预期红**。**不要用 `continue-on-error` 把它变绿**：那会把
+「Windows 上这套 smoke 还没打通」伪装成「Windows 可用」。要让它绿，得先让 smoke 的判据按平台分叉
+（属 `.reverse/36-ssh/ROADMAP.md` 阶梯 ② 之后的工作），而不是放宽断言。
+
+### 10.2 ⚠️ 包内同时带着一份「本机编出来的」`node-pty/build/Release/pty.node`
+
+**实测（`dist/zcode/releases/3.14.3-ce.3/zcode-3.14.3-ce.3.tar.gz`，解 node-pty 子树后用仓库自带的
+fail-closed 护栏判）**：包内 `node_modules/node-pty/` 下同时存在两份来源不同的 `pty.node`：
+
+| 路径                           | 大小     | sha256（前 12 位） | 来源                                             |
+| ------------------------------ | -------- | ------------------ | ------------------------------------------------ |
+| `build/Release/pty.node`       | 75 888 B | `7be4058f232b`     | **本机构建时 `node-gyp` 编出来的**（ELF x86-64） |
+| `prebuilds/linux-x64/pty.node` | 75 976 B | `ce00b69d6524`     | `@lydell/node-pty-linux-x64` 的预编译产物        |
+
+**为什么这是缺陷**：`node-pty` 的原生模块加载顺序是
+`["build/Release", "build/Debug", "prebuilds/<platform>-<arch>"]`（`node_modules/node-pty/lib/utils.js:19`）
+—— **`build/Release` 优先于 `prebuilds/`**。于是运行时会静默加载那份**我们没验证过**的本地编译产物。
+
+**这条护栏仓库里已经有，但没接到无头链上**：`packages/desktop/scripts/node-pty-package-assets.mjs`
+的 `assertPackagedNodePtyPayloadVerified()` 正是为这件事写的（fail-closed：产物里出现
+`build/Release/pty.node` 就抛错），它被**桌面端**（`electron-builder.config.js`）与
+**`packages/zcode-server-cli` 的 stage** 调用，而 `scripts/build-zcode.mjs` 的
+`scripts/zcode-distribution/assets.mjs` **没有引用它**。
+
+**实测复核命令**（只解 node-pty 子树，约 2 MB，不解整包）。**前提是先按 §8 构建出当前版本的产物**：
+`VERSION` 取的是 `package.json` 的版本，没有对应 tarball 时 `tar` 会以 status 2 失败，不会静默通过：
+
+```bash
+# 版本目录这一层不能省（同 §8 的说明：releases/*.tar.gz 少一层会匹配不到）。
+VERSION="$(node -p "require('./package.json').version")"
+WORK=$(mktemp -d)
+tar -xzf "dist/zcode/releases/$VERSION/zcode-$VERSION.tar.gz" -C "$WORK" zcode/node_modules/node-pty
+node -e "import('./packages/desktop/scripts/node-pty-package-assets.mjs').then(({assertPackagedNodePtyPayloadVerified:a})=>{
+  a({ nodePtyPackageRoot: process.argv[1] + '/zcode/node_modules/node-pty', platformKey: 'linux-x64' });
+})" "$WORK"
+rm -rf "$WORK"
+```
+
+实测输出（2026-09-27，本机 Linux x64）：
+
+```text
+分发产物内不得包含 node-pty 的 build/Release/pty.node：…/zcode/node_modules/node-pty/build/Release/pty.node
+原因：node-pty 的加载顺序是 [build/Release, build/Debug, prebuilds/<platform>-<arch>]
+（node-pty/lib/utils.js:19），build/Release 优先于 prebuilds ⇒ 运行时会静默加载这份
+未经我们验证的原生模块（与打包恢复进来的那一份版本/校验和都不同）。
+```
+
+**现状与影响边界（如实声明，不要夸大）**：两份都是 **linux-x64** 的 ELF，因此**今天 Linux 上跑得动**
+（smoke 常绿），失败只在「换了内核 / 不同 glibc / 特定交互」时才可能显形 —— 属最难排查的一类静默失效。
+**本版未修**（不属本单元范围）；修法是让 `scripts/zcode-distribution/assets.mjs` 复用
+`assertPackagedNodePtyPayloadVerified`，并剔除 `build/`。
+⚠️ 这也说明：`build/Release/pty.node` 的存在**不影响** macOS / Windows 那两格 —— 在那些平台上
+`build/Release/` 里没有对应文件（它是为宿主平台编的），加载顺序会落到 `prebuilds/<platform>-<arch>`。
+
+### 10.3 ⚠️ Windows 上没有 SIGHUP（照抄 `kill -HUP` 会打死服务）
 
 令牌文件的轮换靠 `SIGHUP`（`packages/server/src/entry-http.ts`）。Windows **没有这个信号**，而且**对进程发 SIGHUP 的语义是终止进程** ⇒ 在 Windows 上执行 `kill -HUP <pid>` 不是"重载令牌"，而是**把服务杀掉**。
 

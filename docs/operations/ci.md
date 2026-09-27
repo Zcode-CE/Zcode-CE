@@ -1,7 +1,7 @@
 # 持续集成与发布构建
 
-本仓库用 GitHub Actions 承担两件事：日常校验（`ci.yml`）与发布打包（`release.yml`）。
-两者都在 `.github/workflows/` 下，无需自建 runner。
+本仓库用 GitHub Actions 承担三件事：日常校验（`ci.yml`）、发布打包（`release.yml`）、
+跨平台实测（`cross-platform.yml`）。三者都在 `.github/workflows/` 下，无需自建 runner。
 
 ## 为什么发布必须走 CI
 
@@ -202,7 +202,41 @@ permissions:
 使用 Actions 自带的 `secrets.GITHUB_TOKEN`，不需要额外 PAT。构建步骤显式注入
 `GH_TOKEN`，因为 electron-builder 的 GitHub publisher 读的是这个变量名。
 
+## `cross-platform.yml` — 跨平台实测（三 OS 构建 + smoke）
+
+把 macOS / Windows 的「**能构建 / 能启动 / 能连面板**」从**推断**变成**实测**，而不需要我们自己
+拥有 mac/Windows 硬件。依据：[`.reverse/36-ssh/ROADMAP.md` §1](../../.reverse/36-ssh/ROADMAP.md)
+的阶梯 ①（最便宜，且是 ②③④⑤ 的前置）。
+
+| 项   | 值                                                                                                                                                                                       |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 触发 | `workflow_dispatch`（手动）+ `schedule`（每日 03:00 UTC 漂移检测）                                                                                                                       |
+| 矩阵 | `ubuntu-latest` / `macos-latest` / `windows-latest`，`fail-fast: false`                                                                                                                  |
+| 步骤 | checkout → pnpm → node 24.14.0 → `pnpm install --frozen-lockfile` → `node scripts/build-zcode.mjs --allow-placeholder-base-url` → `node scripts/zcode-distribution-smoke.mjs <精确路径>` |
+| 超时 | `timeout-minutes: 60`                                                                                                                                                                    |
+
+**为什么单独一个 workflow**（既不并进 `ci.yml`，也不并进 `release.yml`）：
+
+- 并进 `ci.yml` ⇒ **每个 PR** 都要在 mac/Windows runner 上跑一遍完整构建 + 解包 + smoke，成本过高。
+  `.reverse/45-release/CE3-CHECKLIST.md` §1 的 F2-M 已定口径：**nightly 或发布前，不进每个 PR**。
+- 并进 `release.yml` ⇒ 只有打 tag 才知道结果，而那时已经在发版路径上（红会卡住发版）。
+
+**为什么用 `--allow-placeholder-base-url` 而不是 `pnpm build:zcode`**：后者要求仓库变量
+`ZCODE_DIST_BASE_URL`，缺失时直接抛错；本工作流不发布，也不该依赖该变量是否存在。
+占位基址只写进 `install.sh` 与 `latest.json`，**包体与之无关**（该不变式由
+`scripts/test/installScriptBaseUrl.test.mjs` 钉住，见 [headless-server.md](./headless-server.md) §2 的例外）。
+
+**不设 `continue-on-error`**：某个 OS 跑不通就让它红 —— 那是本工作流要产出的信息本身。
+已知 Windows 上会红（smoke 的 POSIX 专属断言：执行位 755、`SIGTERM` ⇒ 143），
+根因与处置口径见 [headless-server.md](./headless-server.md) §10.1。
+
+**本地无法验证的部分**：GitHub Actions 只能在 GitHub 的 runner 上执行，**本地无法运行工作流本身**。
+本工作流已做的本地核对只有：YAML 可解析（`yaml.parse`）、步骤/矩阵形状断言、以及
+`scripts/test/releaseWorkflowReleasePaths.test.mjs`（它会扫描**所有** workflow，确认
+`dist/zcode/releases/` 引用都带版本目录）。**三个 OS 上的真实结果尚未观测**，需 push 后在 Actions 页面确认。
+
 ## 本地无法验证的部分
 
 GitHub Actions 只能在 GitHub 的 runner 上执行，**本地无法运行**。因此工作流文件的改动
-只能做 YAML 语法校验与命令级核对，真实运行结果需要在第一次打 tag 时确认。
+只能做 YAML 语法校验与命令级核对，真实运行结果需要在第一次打 tag 时确认
+（`cross-platform.yml` 则是第一次 `workflow_dispatch` / nightly）。

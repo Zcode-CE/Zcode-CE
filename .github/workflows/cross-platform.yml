@@ -1,0 +1,113 @@
+# 无头发行包的跨平台实测：Linux / macOS / Windows 三 OS **构建 + 跑既有 smoke**。
+#
+# 依据：.reverse/36-ssh/ROADMAP.md §1 的阶梯 ① —— 不需要我们拥有 mac/Windows 硬件，
+# 就能把「能构建 / 能启动 / 能连面板」三列从**推断**变成**实测**。
+#
+# 为什么单独一个 workflow（既不并进 ci.yml，也不并进 release.yml）：
+#   · 并进 ci.yml ⇒ 每个 PR 都要在 mac/Windows runner 上跑一遍完整构建 + 解包 + smoke，
+#     成本过高。CE3-CHECKLIST §1 的 F2-M 已定口径：**nightly 或发布前，不进每个 PR**。
+#   · 并进 release.yml ⇒ 只有打 tag 才知道结果，而那时已经在发版路径上（红会卡住发版）。
+#   · 因此用 workflow_dispatch（随时手动实测）+ schedule（每日漂移检测）。
+#
+# ⚠️ 本 workflow **不设 continue-on-error**（根 AGENTS.md 硬规则）：交付终点失败必须让流水线变红。
+#    某个 OS 必然失败时，让它红，把根因写进 docs/operations/headless-server.md §10
+#    与 .reverse/36-ssh/ROADMAP.md，而不是掩盖。
+#
+# ⚠️ 与 ci.yml / release.yml 不同：本 workflow 的**首次真实结果尚未观测**（Actions 只能在 GitHub
+#    runner 上跑，本地无法执行工作流本身）。在第一次跑出结果之前，macOS / Windows 的三列
+#    仍必须写作「未实测」—— 本文件的存在只是把「能不能测」变成「测了没有」。
+
+name: Cross-platform
+
+on:
+  # 手动触发：落地后立刻实测一次，不必等 nightly、也不必打 tag。
+  workflow_dispatch:
+  # 每日漂移检测：构建链或打包脚本回归时，第二天就能看见，而不是等下次发版。
+  schedule:
+    - cron: "0 3 * * *"
+
+permissions:
+  contents: read
+
+# 同一 ref 重复触发时串行化；手动重跑取消上一次未完成的，避免两个三 OS 构建同时占 runner。
+concurrency:
+  group: cross-platform-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-smoke:
+    name: build + smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    # 三 OS 各跑一次完整 build:zcode（web/server/agent 构建 + 打包）+ smoke。
+    # 卡死时要能被自动掐断，而不是占着 runner 直到默认的 6 小时上限。
+    timeout-minutes: 60
+    strategy:
+      # 一个平台失败**不应**阻止另外两个平台出结果：本 job 的产出就是「三个 OS 各自到底行不行」，
+      # 连坐取消等于把实测变回没测。
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # 不传 version：读取根 package.json 的 "packageManager": "pnpm@10.33.2"。
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      # 报告**实际测到的是哪个 platform/arch**：文档矩阵的列名是「macOS-x64 / arm64」
+      # 「Windows-x64 / arm64」，而 macos-latest 指向哪个镜像会随时间漂移 ——
+      # 不打印就只能靠猜，矩阵里那一格也就无法归因。
+      - name: Report runner platform
+        run: node -e "console.log('runner platform=' + process.platform + ' arch=' + process.arch)"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # --allow-placeholder-base-url：本 workflow 不发布，也不需要真实托管地址。
+      # 占位基址只写进 install.sh 与 latest.json，包体与之无关（见 headless-server.md §2 的例外，
+      # 该不变式由 scripts/test/installScriptBaseUrl.test.mjs 钉住）。
+      #
+      # 不用 pnpm build:zcode：那要求 ZCODE_DIST_BASE_URL，本 workflow 不该依赖仓库变量是否存在
+      # （缺失时那个 npm script 会直接抛 "Configure ZCODE_DIST_BASE_URL in .env or pass --base-url"）。
+      - name: Build distribution package
+        run: node scripts/build-zcode.mjs --allow-placeholder-base-url
+
+      # 打到最终消费点：在隔离目录里解包，真跑 TUI 与 --web 面板
+      # （/ 壳、/api/server-info、WebSocket、优雅退出、权限位）。
+      #
+      # 路径用**精确的版本目录**现算，不用 glob：releases/ 下是 releases/<版本>/<文件> 两层，
+      # 少写一层匹配不到（tar 会把字面量当文件名，status 2）；补成 releases/*/*.tar.gz 又会连
+      # 历史版本一起匹配 —— smoke 只读 argv[2] 且 glob 按字典序 ⇒ 可能「测旧版、发新版」。
+      # 同一条不变式由 scripts/test/releaseWorkflowReleasePaths.test.mjs 守着。
+      #
+      # shell: bash 是刻意的：Git Bash 在三个 runner 上都有，用同一个 shell 才能让三份结果可比，
+      # 也避免 pwsh 与 bash 在变量展开/退出码上的差异混进「平台差异」里。
+      #
+      # ⚠️ 该脚本含 POSIX 专属断言（143 = 128+SIGTERM、解包后执行位必须是 755）。
+      #    在 Windows 上**预期会红** —— 那是本 workflow 要暴露的真实结果，不是要绕过的噪音。
+      #    ⚠️ 而且 Windows 很可能在**更早的 Build distribution package 步骤**就挂：
+      #    scripts/build-zcode.mjs 的 run() 用裸 spawnSync("pnpm", …)（无 shell:true），
+      #    而 Windows 上 pnpm 由 npm 以 pnpm.cmd 提供，libuv 对无扩展名的命令名只试 .com/.exe。
+      #    本仓 scripts/spawn-command.mjs 的 resolveSpawnRuntimeOptions 正是为这件事写的，
+      #    但 build-zcode.mjs 没有复用它。详见 docs/operations/headless-server.md §10.1。
+      - name: Smoke test unpacked package
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          TARBALL="dist/zcode/releases/$VERSION/zcode-$VERSION.tar.gz"
+          if [ ! -f "$TARBALL" ]; then
+            echo "::error::构建后找不到 $TARBALL —— 不把「没东西可测」伪装成通过"
+            exit 1
+          fi
+          echo "::notice::smoke 目标：$TARBALL"
+          node scripts/zcode-distribution-smoke.mjs "$TARBALL"
