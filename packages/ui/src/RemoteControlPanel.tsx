@@ -13,6 +13,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { cn } from "@/components/lib/utils.js";
 import { RemoteControlConnectionSection } from "@/RemoteControlConnectionSection.js";
+import { RemoteControlDevicesSection } from "@/RemoteControlDevicesSection.js";
+import { RemoteControlServiceSection } from "@/RemoteControlServiceSection.js";
 import { RemoteControlImBotTab } from "@/RemoteControlImBotTab.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import {
@@ -22,6 +24,7 @@ import {
   REMOTE_CONTROL_PANEL_SAFETY_TEST_ID,
   REMOTE_CONTROL_PANEL_SERVICE_PLANE_TEST_ID,
   REMOTE_CONTROL_PANEL_START_TEST_ID,
+  REMOTE_CONTROL_PORT_INVALID_TEST_ID,
   REMOTE_CONTROL_PANEL_STOP_TEST_ID,
   REMOTE_CONTROL_PANEL_TABS_TEST_ID,
   REMOTE_CONTROL_PANEL_TAB_IM_BOT_TEST_ID,
@@ -29,10 +32,12 @@ import {
   REMOTE_CONTROL_PANEL_TEST_ID,
   DEFAULT_REMOTE_CONTROL_START_SCOPE,
   canRenderRemoteControlImBotTab,
+  parseRemoteControlPort,
   resolveRemoteControlPanelView,
   shouldConfirmBeforeStart,
   withRemoteControlInFlight,
   type RemoteControlConnectionInfo,
+  type RemoteControlConnectionsSnapshotOrUnknown,
   type RemoteControlImBotChannel,
   type RemoteControlPanelBranch,
   type RemoteControlPanelStatus,
@@ -43,27 +48,45 @@ import {
 /**
  * 远程控制面板（ce.3 · 切片 3）。
  *
- * **措辞红线（用户已纠正，不得回退）**：面板说的是「在这台机器上开一个可被浏览器访问的
- * 工作台」，手机/另一台设备用浏览器操作**这台机器上的工作台**。**不得**写成
- * 「控制桌面端 / 接管桌面会话」—— 桌面端已连的远端 SSH/Docker 目标**不会**共享给浏览器
+ * 措辞红线（用户已纠正，不得回退）：面板说的是「在这台机器上开一个可被浏览器访问的
+ * 工作台」，手机/另一台设备用浏览器操作这台机器上的工作台。不得写成
+ * 「控制桌面端 / 接管桌面会话」—— 桌面端已连的远端 SSH/Docker 目标不会共享给浏览器
  * （那是窗口内连接注册表），承诺它是承诺一个不存在的能力。
  *
  * 三个结构性约束：
- * - **纯 props 驱动**：本组件不读任何服务、不订阅 IPC、不拼令牌。带令牌的链接只从
+ * - 纯 props 驱动：本组件不读任何服务、不订阅 IPC、不拼令牌。带令牌的链接只从
  *   `connection` 进来（切片 4 接 `webService:connectionInfo`），因此能在真浏览器里
  *   用注入态渲染并做 DOM 断言（切片 1 已用同一办法）。
- * - **能力缺失 ⇒ 不渲染**：由调用方用 `canRenderRemoteControlPanel` 门控整块；
- *   本组件**没有** "disabled" 分支 —— 禁用按钮会承诺一个不存在的动作。
- * - **二维码只在有链接时出现**：没拿到 `linkWithToken` 就不渲染二维码区域。
+ * - 能力缺失 ⇒ 不渲染：由调用方用 `canRenderRemoteControlPanel` 门控整块；
+ *   本组件没有 "disabled" 分支 —— 禁用按钮会承诺一个不存在的动作。
+ * - 二维码只在有链接时出现：没拿到 `linkWithToken` 就不渲染二维码区域。
  */
 export interface RemoteControlPanelProps {
   status: RemoteControlPanelStatus;
   /** 带令牌的链接；`null` = 当前没有可派发的链接（此时不渲染二维码）。 */
   connection?: RemoteControlConnectionInfo | null;
   /** 契约 §5 `webService:start`。首次确认弹窗由本组件负责（决策①）。 */
-  onStart: (options: { scope: RemoteControlStartScope }) => void | Promise<void>;
+  onStart: (options: {
+    scope: RemoteControlStartScope;
+    /** 缺省 = 自动选空闲端口（spec §3.3 的默认）。 */
+    port?: number;
+  }) => void | Promise<void>;
   /** 契约 §5 `webService:stop`。 */
   onStop: () => void | Promise<void>;
+  /**
+   * 已连设备读面（ce.4）。`null` = 读不到（与「空数组 = 暂无设备」严格区分，
+   * 见 remoteControlPanelModel.ts 的 RemoteControlConnectionsSnapshotOrUnknown）。
+   */
+  connections?: RemoteControlConnectionsSnapshotOrUnknown;
+  /**
+   * 断开动作（spec §6.4）。不传 ⇒ 断开按钮不渲染（能力缺失 ⇒ 不渲染）。
+   */
+  onRevokeConnection?: (input: { id: string } | { all: true }) => void | Promise<void>;
+  /**
+   * 令牌轮换（spec §6.4）。桌面专属：不传 ⇒ 整块不渲染。
+   * 这是"Web 面板不暴露轮换入口"（决策④）的可执行形式。
+   */
+  onRotateToken?: () => void | Promise<void>;
   /** 用户已确认过「对局域网开放」的后果（决策①：只确认一次）。 */
   lanExposureConfirmed?: boolean;
   onLanExposureConfirmed?: () => void;
@@ -98,6 +121,9 @@ export function RemoteControlPanel({
   connection,
   onStart,
   onStop,
+  connections,
+  onRevokeConnection,
+  onRotateToken,
   lanExposureConfirmed = false,
   onLanExposureConfirmed,
   onClose,
@@ -108,10 +134,10 @@ export function RemoteControlPanel({
   const { intl } = useZCodeIntl();
   const t = useCallback((id: string) => intl.formatMessage({ id }), [intl]);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  // 在途标记是**渲染进程本地**状态：start 最长可等 15s（WEB_SERVICE_READY_TIMEOUT_MS），
+  // 在途标记是渲染进程本地状态：start 最长可等 15s（WEB_SERVICE_READY_TIMEOUT_MS），
   // 期间必须让用户看出"正在开启"，而不是停在一个禁用的"开启"按钮上。
   const [inFlight, setInFlight] = useState<"starting" | "stopping" | null>(null);
-  // 标签页是**面板本地**状态：它不是服务端事实，也不该被当成"用户在设置里选了哪条路径"。
+  // 标签页是面板本地状态：它不是服务端事实，也不该被当成"用户在设置里选了哪条路径"。
   // 默认值来自 model 的唯一常量（"Web 控制默认开启" = 默认选中这一页）。
   const [activeTab, setActiveTab] = useState<RemoteControlPanelTab>(REMOTE_CONTROL_DEFAULT_TAB);
   // fix.2：没有真实通道实现 ⇒ 「IM 机器人」这一页整块不渲染（标签与内容一起消失）。
@@ -122,14 +148,43 @@ export function RemoteControlPanel({
     [inFlight, status],
   );
 
-  const startService = useCallback(async () => {
-    setInFlight("starting");
-    try {
-      await onStart({ scope: DEFAULT_REMOTE_CONTROL_START_SCOPE });
-    } finally {
-      setInFlight(null);
-    }
-  }, [onStart]);
+  // 监听范围与端口是面板本地状态（不是服务端事实）：它们表达"下次开启用什么"。
+  // 运行中改它们不会生效（服务已在跑），因此 RemoteControlServiceSection 在运行中把两者锁定，
+  // 只留"一键切回环"这一个真能生效的动作 —— 见该组件注释。
+  const [scope, setScope] = useState<RemoteControlStartScope>(DEFAULT_REMOTE_CONTROL_START_SCOPE);
+  const [port, setPort] = useState("");
+  // 端口非法时拒绝启动（fail-closed）：静默退回自动选端口会让用户以为指定生效了，
+  // 而复制出去的链接与他预期不符。
+  const [portInvalid, setPortInvalid] = useState(false);
+
+  const startService = useCallback(
+    async (overrideScope?: RemoteControlStartScope) => {
+      const requestedScope = overrideScope ?? scope;
+      const parsedPort = parseRemoteControlPort(port);
+      if (parsedPort === null) {
+        setPortInvalid(true);
+        return;
+      }
+      setPortInvalid(false);
+      setInFlight("starting");
+      try {
+        await onStart({
+          scope: requestedScope,
+          ...(parsedPort === undefined ? {} : { port: parsedPort }),
+        });
+      } finally {
+        setInFlight(null);
+      }
+    },
+    [onStart, port, scope],
+  );
+
+  // 一键切回环：明确地"用回环重开"，而不是改一个不生效的下拉框。
+  const switchToLoopback = useCallback(async () => {
+    setScope("loopback");
+    await onStop();
+    await startService("loopback");
+  }, [onStop, startService]);
 
   const runPrimaryAction = useCallback(async () => {
     if (view.primaryAction === "stop") {
@@ -141,13 +196,14 @@ export function RemoteControlPanel({
       }
       return;
     }
-    // start / retry 共用同一条路：先过决策①的确认门（只在**首次**对局域网开放时弹）。
-    if (shouldConfirmBeforeStart(DEFAULT_REMOTE_CONTROL_START_SCOPE, lanExposureConfirmed)) {
+    // start / retry 共用同一条路：先过决策①的确认门（只在首次对局域网开放时弹）。
+    // 判据读的是用户实际选的 scope，不是常量 —— 用户切到"仅本机"后不该再被拦一次。
+    if (shouldConfirmBeforeStart(scope, lanExposureConfirmed)) {
       setConfirmOpen(true);
       return;
     }
     await startService();
-  }, [lanExposureConfirmed, onStop, startService, view.primaryAction]);
+  }, [lanExposureConfirmed, onStop, scope, startService, view.primaryAction]);
 
   const confirmStart = useCallback(async () => {
     setConfirmOpen(false);
@@ -209,7 +265,7 @@ export function RemoteControlPanel({
         </TabsList>
 
         {/*
-          Web 控制页：**现有面板内容原样搬进来，一个元素都没改**。
+          Web 控制页：现有面板内容原样搬进来，一个元素都没改。
           这是"不能少东西"的可执行证据 —— 切片 3 的全部 data-testid 与根属性保持原值，
           旧探针不重写一行也应仍全绿（实测见回传）。
         */}
@@ -236,8 +292,49 @@ export function RemoteControlPanel({
             />
           </section>
 
+          {/*
+            服务面控件（监听范围 / 端口 / 令牌轮换，ce.4）。running 时监听范围与端口被锁定
+            （改了不生效，允许改就是承诺一个不存在的动作），只留"一键切回环"。
+            令牌轮换不在此限：它是运行中才有意义的动作。
+          */}
+          <RemoteControlServiceSection
+            scope={scope}
+            onScopeChange={setScope}
+            port={port}
+            onPortChange={setPort}
+            running={view.branch === "running"}
+            loopback={status.loopback}
+            onRotateToken={onRotateToken}
+            onSwitchToLoopback={switchToLoopback}
+          />
+
+          {/*
+            端口非法时如实说清并停在这里（fail-closed）：静默退回"自动选端口"会让用户
+            以为指定生效了，而实际起的端口与他预期不符 —— 复制出去的链接也就是错的。
+          */}
+          {portInvalid ? (
+            <p
+              data-testid={REMOTE_CONTROL_PORT_INVALID_TEST_ID}
+              className="text-ui-base text-destructive"
+            >
+              {t("remotePanel.listen.portInvalid")}
+            </p>
+          ) : null}
+
           {/* 失败块与连接面（地址/链接/二维码/复制）原样搬进 RemoteControlConnectionSection。 */}
           <RemoteControlConnectionSection view={view} connection={connection} />
+
+          {/*
+            已连设备（ce.4）。放在连接面之后、安全提示之前：它回答的是
+            "现在谁连着"，紧接着"怎么让别人连进来"读下来最顺。
+            读不到（null）与空数组由该组件自己区分，面板不替它判一次（两个所有者会分家）。
+          */}
+          {view.showConnection ? (
+            <RemoteControlDevicesSection
+              connections={connections ?? null}
+              onRevoke={onRevokeConnection}
+            />
+          ) : null}
 
           {/* 常驻安全提示：不可关闭（spec §3.6 / §3.5 危险品口径）。 */}
           <section
@@ -332,7 +429,7 @@ function PrimaryActionButton({
 /**
  * 首次启动确认弹窗（决策①）。
  *
- * 复用既有 `Dialog` 原语（与 `ConfirmDialog` 同一套），但**不走 `confirmDialogStore`**：
+ * 复用既有 `Dialog` 原语（与 `ConfirmDialog` 同一套），但不走 `confirmDialogStore`：
  * 那个 store 是全局单例、同时只允许一个待决请求，而面板自己需要持有"确认后要做什么"的
  * 局部状态。两者混用会让面板的确认在别处弹窗打开时被静默 dismiss。
  */

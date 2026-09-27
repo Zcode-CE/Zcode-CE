@@ -20,14 +20,15 @@ import {
   withRemoteControlInFlight,
   type RemoteControlPanelStatus,
 } from "../src/remoteControlPanelModel.js";
+import { resolveRemoteControlEntryStatus } from "../src/remoteControlWiring.js";
 
 /**
  * 远程控制面板（ce.3 · 切片 3）的模型级回归。
  *
- * 这些断言钉住三件只会在**运行时**才暴露的事：
- * 1. 契约 §4 的**五条失败分支各自有「用户能做什么」**（不是只显示错误码）；
- * 2. **能力缺失 ⇒ 不渲染**（规则②：返回 false，而不是"渲染成禁用"）；
- * 3. **没有带令牌链接就不渲染二维码**（否则等于给用户一个假入口）。
+ * 这些断言钉住三件只会在运行时才暴露的事：
+ * 1. 契约 §4 的五条失败分支各自有「用户能做什么」（不是只显示错误码）；
+ * 2. 能力缺失 ⇒ 不渲染（规则②：返回 false，而不是"渲染成禁用"）；
+ * 3. 没有带令牌链接就不渲染二维码（否则等于给用户一个假入口）。
  *
  * 运行：cd packages/ui && node --import tsx --test test/remoteControlPanel.test.ts
  */
@@ -41,7 +42,7 @@ function readSource(relativePath: string): string {
 /**
  * 去掉注释后再扫描。
  *
- * 为什么必须去注释：措辞红线的**规则本身**要在源码注释里写明「不得写成控制桌面端」，
+ * 为什么必须去注释：措辞红线的规则本身要在源码注释里写明「不得写成控制桌面端」，
  * 而注释不是用户可见文案。不去注释的话，把红线记录清楚反而会让断言变红 ——
  * 那会逼着后来的人删掉说明，等于用测试抹掉知识。
  */
@@ -57,7 +58,7 @@ function status(partial: Partial<RemoteControlPanelStatus>): RemoteControlPanelS
 
 /**
  * task-93：面板加标签页后触到仓库的 `max-lines` 上限，连接面（地址/链接/二维码/复制）
- * 原样拆进了 `RemoteControlConnectionSection`。源码级断言因此按**判定的所有者**分文件扫，
+ * 原样拆进了 `RemoteControlConnectionSection`。源码级断言因此按判定的所有者分文件扫，
  * 而不是写死一个文件名 —— 写死文件名时，把判定搬走就静默绕过了断言。
  */
 const PANEL_SOURCE = {
@@ -185,7 +186,7 @@ test("stale 的三个 reason 给不同的下一步", () => {
 });
 
 test("不存在永不触发的分支：starting/stopping 既不是协议状态、也不是面板档位", () => {
-  // task-83 同批发现：主进程的 statusFromProbe **从不产出** starting/stopping
+  // task-83 同批发现：主进程的 statusFromProbe 从不产出 starting/stopping
   // （start/stop 同步等到最终态才返回，IPC 也只在动作之后广播一次）⇒ 为它们写分支就是死分支。
   const modelSource = readSource("src/remoteControlPanelModel.ts");
   const branchUnion =
@@ -220,7 +221,7 @@ test("在途反馈由渲染进程本地承载（不是伪造的协议状态）",
   const stopping = withRemoteControlInFlight(running, "stopping");
   assert.equal(stopping.badgeMessageId, "remotePanel.badge.stopping");
   assert.equal(stopping.primaryAction, "none");
-  // 在途**不改分支**：连接面/二维码仍由真实状态决定（否则会短暂隐藏链接）。
+  // 在途不改分支：连接面/二维码仍由真实状态决定（否则会短暂隐藏链接）。
   assert.equal(stopping.branch, "running");
   assert.equal(stopping.showConnection, true);
 
@@ -266,7 +267,7 @@ test("规则②：面板组件里不存在 disabled 形式的服务面控件", (
     false,
     "不得把能力缺失表达成 disabled",
   );
-  // primaryAction === "none" 时必须**不渲染**按钮（不是渲染成禁用）。
+  // primaryAction === "none" 时必须不渲染按钮（不是渲染成禁用）。
   assert.match(source, /if \(view\.primaryAction === "none"\) return null;/);
 });
 
@@ -291,7 +292,7 @@ test("没有带令牌链接 ⇒ 不渲染二维码", () => {
 });
 
 test("空白链接与「没有链接」同等对待（qrcode 会把纯空白编码成一张正常码）", () => {
-  // 实测：qrcode 对 "   " 会产出一张 len≈971 的**看起来正常**的二维码（不是报错）。
+  // 实测：qrcode 对 "   " 会产出一张 len≈971 的看起来正常的二维码（不是报错）。
   // 所以空白链接必须被判定为"没有可用链接"，否则用户会拿到一个扫了没用的假入口。
   assert.equal(hasUsableRemoteControlLink(null), false);
   assert.equal(hasUsableRemoteControlLink(undefined), false);
@@ -302,12 +303,12 @@ test("空白链接与「没有链接」同等对待（qrcode 会把纯空白编�
     hasUsableRemoteControlLink({ url: "http://x", linkWithToken: "http://x/?token=t" }),
     true,
   );
-  // 链接行与二维码必须读**同一个**判定：组件里不得再出现第二处 link 存在性判断。
+  // 链接行与二维码必须读同一个判定：组件里不得再出现第二处 link 存在性判断。
   //
   // task-93：链接行与二维码搬进了 RemoteControlConnectionSection（面板加标签页后触到
-  // max-lines 上限，拆出的是**独立的一件事**）。断言跟着**判定的所有者**走，不是跟着文件名走 ——
+  // max-lines 上限，拆出的是独立的一件事）。断言跟着判定的所有者走，不是跟着文件名走 ——
   // 这里同时扫两个文件，比原来更强：无论判定将来搬到哪，都只能有一处。
-  // 判定必须**恰好一处**（跨两个文件一起数）：搬文件不能变成多一处或零处。
+  // 判定必须恰好一处（跨两个文件一起数）：搬文件不能变成多一处或零处。
   const linkSites = [WEB_TAB_SOURCES, PANEL_SOURCE].flatMap(
     (file) => file.source.match(/hasUsableRemoteControlLink\(connection\)/g) ?? [],
   );
@@ -320,7 +321,7 @@ test("空白链接与「没有链接」同等对待（qrcode 会把纯空白编�
 });
 
 test("二维码判定与链接判定同源（防止再次出现两个所有者）", () => {
-  // 判定点计数跨**全部**相关文件（task-93 拆分后必须一起扫，否则搬到另一个文件就绕过了断言）。
+  // 判定点计数跨全部相关文件（task-93 拆分后必须一起扫，否则搬到另一个文件就绕过了断言）。
   const qrDecisionSites = [WEB_TAB_SOURCES, PANEL_SOURCE].flatMap(
     (file) => file.source.match(/shouldRenderQrCode\(/g) ?? [],
   );
@@ -445,27 +446,58 @@ test("WorkspaceSidebar 的入口按能力门控（web 上不渲染）+ 打开的
   assert.match(source, /<RemoteControlPanelHost/);
 });
 
-test("入口状态只含可达取值：waiting 已删（连接面 ce.4 才有数据源）", () => {
-  // ce.3 硬规矩：产不出来的取值要么删、要么给出产出路径。
-  // waiting 需要"有没有设备连进来"，而连接面按契约 §7 延后到 ce.4
-  // （web-service/** 里 0 处 connections）⇒ 今天没有产出路径，故删。
+test("入口状态只含可达取值：waiting 已在 ce.4 加回，且三个取值都有产出路径", () => {
+  // 本测试在切片 4 断言的是反面（"waiting 已删"），因为当时连接面延后到 ce.4、它没有数据源。
+  // ce.4 连接面落地后按原计划加回 ⇒ 断言翻转，但判据没变：产不出来的取值要么删、
+  // 要么给出产出路径（CE3-CHECKLIST §16 规矩 A）。下面逐条走过三个取值的产出路径。
   const entrySource = readSource("src/RemoteControlEntryButton.tsx");
   const statusUnion =
     entrySource.match(/export type RemoteControlEntryStatus =([^;]+);/)?.[1] ?? "";
-  assert.equal(/waiting/.test(statusUnion), false, "入口状态不得含 waiting");
-  assert.equal(
-    /remotePanel\.entry\.status\.waiting/.test(entrySource),
-    false,
-    "入口不得再引用 waiting 文案键",
-  );
-  // 不可达的文案键也必须清掉（否则留下"看似有这条路径"的痕迹）。
-  assert.equal("remotePanel.entry.status.waiting" in zhCN, false, "zh-CN 残留 waiting 文案键");
-  assert.equal("remotePanel.entry.status.waiting" in enUS, false, "en-US 残留 waiting 文案键");
-  // 两个可达取值的文案必须齐备。
-  for (const key of ["remotePanel.entry.status.off", "remotePanel.entry.status.running"]) {
+  for (const value of ["off", "running", "waiting"]) {
+    assert.ok(statusUnion.includes('"' + value + '"'), "入口状态缺少可达取值：" + value);
+  }
+  // 文案键必须齐备（三个取值都要有中英文案）。
+  for (const key of [
+    "remotePanel.entry.status.off",
+    "remotePanel.entry.status.running",
+    "remotePanel.entry.status.waiting",
+  ]) {
     assert.equal(typeof zhCN[key], "string", "zh-CN 缺文案：" + key);
     assert.equal(typeof enUS[key], "string", "en-US 缺文案：" + key);
   }
+  // 产出路径逐条（这是"不留死分支"的可执行形式）：
+  const base = { adopted: false, loopback: true } as const;
+  const empty = { connections: [], revision: 1 };
+  const one = {
+    connections: [
+      {
+        id: "c1",
+        address: "192.168.1.20",
+        role: "terminal-client" as const,
+        userAgent: "Mozilla/5.0",
+        connectedAt: 1_760_000_000_000,
+      },
+    ],
+    revision: 2,
+  };
+  // waiting：服务在跑 且 确定 0 台。
+  assert.equal(resolveRemoteControlEntryStatus({ ...base, state: "running" }, empty), "waiting");
+  // running：服务在跑 且有设备。
+  assert.equal(resolveRemoteControlEntryStatus({ ...base, state: "running" }, one), "running");
+  // running：服务在跑 但读不到连接数 ⇒ 不宣称"没人连着"（见下一条测试）。
+  assert.equal(resolveRemoteControlEntryStatus({ ...base, state: "running" }, null), "running");
+  // off：服务没在跑。
+  assert.equal(resolveRemoteControlEntryStatus({ ...base, state: "stopped" }, empty), "off");
+  assert.equal(resolveRemoteControlEntryStatus({ ...base, state: "stopped" }, one), "off");
+  assert.equal(
+    resolveRemoteControlEntryStatus(
+      { ...base, state: "failed", error: { code: "port-taken", message: "x" } },
+      empty,
+    ),
+    "off",
+  );
+  // 反向：不传连接数时不得产出 waiting（缺省 = 读不到，不是"0 台"）。
+  assert.equal(resolveRemoteControlEntryStatus({ ...base, state: "running" }), "running");
 });
 
 test("接线层：令牌只从 connectionInfo 走，且不 import 任何 React/组件", () => {
@@ -480,7 +512,7 @@ test("接线层：令牌只从 connectionInfo 走，且不 import 任何 React/�
 
 test("接线 hook：靠 changed 广播回显，不轮询", () => {
   const source = readSource("src/hooks/useRemoteControlWiring.ts");
-  // 契约 §5：入口据此回显，**不轮询**。
+  // 契约 §5：入口据此回显，不轮询。
   assert.equal(/setInterval|setTimeout\(.*refresh/.test(source), false, "不得轮询状态");
   assert.match(source, /onWebServiceChanged/);
   assert.match(source, /getWebServiceConnectionInfo/);
@@ -492,11 +524,11 @@ test("接线 hook：靠 changed 广播回显，不轮询", () => {
 /* ════════════════════════════════════════════════════════════════════════════
  * task-93：一个入口 + 两个标签页（「Web 控制」默认开启 / 「IM 机器人」默认关闭）
  *
- * 这一组断言钉住四件事，每件都对应一条**用户已拍板的产品规则**：
- *  ① 两条路径**都在**（"不能少东西"）—— Web 面原有的全部 testid 与根属性一个不少；
- *  ② **默认页是 Web 控制**（"Web 控制默认开启" = 默认选中这一页，**不是**自动起服务）；
- *  ③ **IM 机器人默认关闭**，且**照样渲染「启用」**（默认关闭由状态承载，不是靠"没有按钮"）；
- *  ④ 启用前**必须提醒**（三条事实），点击**不许静默**（确认 → enabling → requested 可见状态链）。
+ * 这一组断言钉住四件事，每件都对应一条用户已拍板的产品规则：
+ *  ① 两条路径都在（"不能少东西"）—— Web 面原有的全部 testid 与根属性一个不少；
+ *  ② 默认页是 Web 控制（"Web 控制默认开启" = 默认选中这一页，不是自动起服务）；
+ *  ③ IM 机器人默认关闭，且照样渲染「启用」（默认关闭由状态承载，不是靠"没有按钮"）；
+ *  ④ 启用前必须提醒（三条事实），点击不许静默（确认 → enabling → requested 可见状态链）。
  * ════════════════════════════════════════════════════════════════════════════ */
 
 test("两条路径都在：Web 面原有的 testid 与根属性一个不少（「不能少东西」的可执行形式）", () => {
@@ -512,7 +544,7 @@ test("两条路径都在：Web 面原有的 testid 与根属性一个不少（�
   }
   assert.match(panel, /data-remote-control-branch=\{view\.branch\}/);
   assert.match(panel, /data-remote-control-loopback=\{status\.loopback \? "true" : "false"\}/);
-  // 连接面的 testid 搬到了拆分文件里，但必须**仍然存在**（搬走 ≠ 消失）。
+  // 连接面的 testid 搬到了拆分文件里，但必须仍然存在（搬走 ≠ 消失）。
   for (const testId of [
     "REMOTE_CONTROL_PANEL_CONNECTION_TEST_ID",
     "REMOTE_CONTROL_PANEL_LINK_TEST_ID",
@@ -537,14 +569,17 @@ test("默认页是 Web 控制（读法：默认**选中**这一页，不是自�
     false,
     "不得把默认页写成 IM 机器人",
   );
-  // 「默认开启」**不得**实现成自动启动服务面：面板里不存在"挂载即 start"的效果。
+  // 「默认开启」不得实现成自动启动服务面：面板里不存在"挂载即 start"的效果。
   assert.equal(
     /useEffect\(\(\) => \{\s*void startService/.test(panel),
     false,
     "默认页不得自动起服务（那是对局域网静默开放）",
   );
   // 服务面仍要用户点：主操作按钮与决策①的首次确认必须都在。
-  assert.match(panel, /shouldConfirmBeforeStart\(DEFAULT_REMOTE_CONTROL_START_SCOPE/);
+  // ce.4 起确认门读的是用户实际选的 scope（不是常量）：用户切到「仅本机」后
+  // 不该再被拦一次。断言因此跟着判定走 —— 写死常量会在用户可切换后变成假红。
+  assert.match(panel, /shouldConfirmBeforeStart\(scope, lanExposureConfirmed\)/);
+  assert.match(panel, /DEFAULT_REMOTE_CONTROL_START_SCOPE/);
 });
 
 test("IM 机器人默认关闭：通道已注入且 disabled 时照样渲染启用按钮（默认关闭不是靠「没有按钮」）", () => {
@@ -639,7 +674,7 @@ test("点击不许静默：确认 → 在途 → 已请求，每一档都有可�
   assert.equal(enabling.state, "enabling");
   assert.equal(enabling.showEnableAction, false, "在途期间不得留下可点的启用按钮");
 
-  // 请求结算但宿主仍未回传 enabled ⇒ 明确说"已请求，等待服务端就绪"，**不得**谎报已启用。
+  // 请求结算但宿主仍未回传 enabled ⇒ 明确说"已请求，等待服务端就绪"，不得谎报已启用。
   const requested = resolveRemoteControlImBotView({ channel, inFlight: false, requested: true });
   assert.equal(requested.state, "requested");
   assert.equal(requested.badgeMessageId, "remotePanel.imBot.badge.disabled", "不得显示已启用");
@@ -682,14 +717,14 @@ test("启用前提醒：三条事实常显，且确认弹窗里再列一次", ()
     assert.equal(typeof enUS[key], "string", "en-US 缺提醒文案：" + key);
     assert.notEqual(zhCN[key], "", "zh-CN 空提醒文案：" + key);
   }
-  // 提醒必须由**同一个常量**驱动（组件与断言不会分家）。
+  // 提醒必须由同一个常量驱动（组件与断言不会分家）。
   assert.match(IM_BOT_TAB_SOURCE.source, /REMOTE_CONTROL_IM_BOT_REMINDER_MESSAGE_IDS\.map/);
   // 提醒块常显（不在任何条件分支里）。
   assert.match(IM_BOT_TAB_SOURCE.source, /data-testid=\{REMOTE_CONTROL_IM_BOT_NOTICE_TEST_ID\}/);
   // 点击启用先过确认弹窗（不直接调 onEnable）。
   assert.match(IM_BOT_TAB_SOURCE.source, /onClick=\{\(\) => setConfirmOpen\(true\)\}/);
   assert.match(IM_BOT_TAB_SOURCE.source, /REMOTE_CONTROL_IM_BOT_CONFIRM_TEST_ID/);
-  // 三条事实的**内容**必须说清事实本身（外部账号 / 第三方平台 / 平台侧记录）。
+  // 三条事实的内容必须说清事实本身（外部账号 / 第三方平台 / 平台侧记录）。
   const zhText = REMOTE_CONTROL_IM_BOT_REMINDER_MESSAGE_IDS.map((k) => zhCN[k]).join(" | ");
   assert.ok(/外部账号/.test(zhText), "提醒必须点明需要外部账号");
   assert.ok(/第三方/.test(zhText), "提醒必须点明经过第三方平台");
@@ -717,7 +752,7 @@ test("生效时机常显：新增/启用渠道要重启才生效（spec §10 P4�
 });
 
 test("命名红线：UI 里不得出现「自托管」；两条路径的名字不得互相顶掉", () => {
-  // 用户拍板：**UI 里不出现「自托管」** —— 那是实现方式，不是用户能做的事。
+  // 用户拍板：UI 里不出现「自托管」 —— 那是实现方式，不是用户能做的事。
   // 扫全部用户可见文案（zh 的值 + en 的值），不只看 remotePanel.* ——
   // 这样将来有人把「自托管」写进别的命名空间也会被抓到。
   const offenders = Object.entries(zhCN)
@@ -727,7 +762,7 @@ test("命名红线：UI 里不得出现「自托管」；两条路径的名字�
   const enOffenders = Object.entries(enUS)
     .filter(([, value]) => typeof value === "string" && /self-hosted|self hosted/i.test(value))
     .map(([key]) => key);
-  // 唯一允许的例外：反馈渠道那几句说的是**用户的**自托管 tracker（GitLab/Gitea/自建），
+  // 唯一允许的例外：反馈渠道那几句说的是用户的自托管 tracker（GitLab/Gitea/自建），
   // 与远控无关。用前缀排除而不是写死键名 —— 写死键名会在渠道改名时变成假红。
   assert.deepEqual(
     enOffenders.filter((key) => !key.startsWith("settings.feedback.")),
@@ -735,7 +770,7 @@ test("命名红线：UI 里不得出现「自托管」；两条路径的名字�
     "EN 文案不得用 self-hosted 指代我们的远控：" + enOffenders.join(", "),
   );
 
-  // 两条路径的名字必须都在，且**不得互相顶掉**（"他们的思路都不一样"）。
+  // 两条路径的名字必须都在，且不得互相顶掉（"他们的思路都不一样"）。
   assert.equal(zhCN["remotePanel.tab.web"], "Web 控制");
   assert.equal(zhCN["remotePanel.tab.imBot"], "IM 机器人");
   assert.equal(enUS["remotePanel.tab.web"], "Web control");

@@ -1370,17 +1370,19 @@ const enUS: Record<string, string> = {
   "workspaceSidebar.hideSidebar": "Toggle sidebar",
   "workspaceSidebar.toggleSidebar": "Toggle sidebar",
   // Remote control (ce.3 · slice 1 entry / slice 3 panel). Copy follows spec §3.6.1: short phrases.
-  // Wording red line: this opens a browser-reachable workbench **on this machine**; it is NOT
+  // Wording red line: this opens a browser-reachable workbench on this machine; it is NOT
   // "control the desktop app / take over the desktop session" — remote SSH/Docker targets the
   // desktop already has are not shared with the browser, so the UI must not promise them.
   "remotePanel.entry.title": "Remote control",
   "remotePanel.entry.status.off": "Off",
   "remotePanel.entry.status.running": "Running",
-  // "remotePanel.entry.status.waiting" removed together with the entry's waiting state
-  // (ce.3 rule: no unreachable values or copy keys). Add it back with the connection plane.
+  // Restored in ce.4: once the connection plane landed, waiting finally has a producer —
+  // "service is running AND zero connected devices" (GET …/connections returns an empty array).
+  // Same meaning as upstream webRemoteControl.statusDetail.idle; wording is our own.
+  "remotePanel.entry.status.waiting": "Waiting for connection",
   "remotePanel.title": "Remote control",
   "remotePanel.subtitle": "Scan or open the link to use the workbench on this machine",
-  // Tabs (task-93): two **different** remote paths, side by side rather than merged.
+  // Tabs (task-93): two different remote paths, side by side rather than merged.
   // Naming red line: never call our path "self-hosted" in the UI — that is an implementation
   // detail, not a user capability. The umbrella name stays "Remote control"; the two paths are
   // "Web control" (a browser drives the workbench on this machine) and "Chat bot" (you talk to a
@@ -1466,6 +1468,34 @@ const enUS: Record<string, string> = {
   "remotePanel.action.copyLink": "Copy link",
   "remotePanel.action.copied": "Copied",
   "remotePanel.action.copyFailed": "Copy failed",
+  // ce.4 connection plane: the token-rotation entry appears on the DESKTOP panel only
+  // (spec §6.5 decision ④). The UI gates it on "does the host provide the action" —
+  // absent means NOT rendered (not rendered as a disabled button).
+  "remotePanel.action.rotateToken": "Rotate token",
+  "remotePanel.action.rotatingToken": "Rotating…",
+  // Listen scope (spec §3.3): defaults to the local network, with a one-click switch back to loopback.
+  "remotePanel.listen.label": "Listen on",
+  "remotePanel.listen.loopback": "This machine only",
+  "remotePanel.listen.lan": "Local network",
+  "remotePanel.listen.portAuto": "Pick a free port",
+  "remotePanel.listen.customPort": "Custom port",
+  "remotePanel.listen.portLabel": "Port",
+  "remotePanel.listen.portPlaceholder": "Empty = pick a free port",
+  "remotePanel.listen.portInvalid":
+    "The port must be an integer from 1 to 65535; leave it empty to pick a free port.",
+  // Connected devices (spec §3.3 / §6.4). Empty and unreadable are two different facts:
+  // an empty array means nobody is connected; unreadable (null) means unknown, so we claim nothing.
+  "remotePanel.devices.title": "Connected devices",
+  "remotePanel.devices.empty": "No devices yet",
+  "remotePanel.devices.unknown": "Connected devices are not readable right now.",
+  "remotePanel.devices.revokeOne": "Disconnect",
+  "remotePanel.devices.revokeAll": "Disconnect all",
+  "remotePanel.devices.column.address": "Address",
+  "remotePanel.devices.column.role": "Role",
+  "remotePanel.devices.column.connectedAt": "Connected at",
+  "remotePanel.devices.column.userAgent": "Client",
+  "remotePanel.devices.role.terminalClient": "Browser",
+  "remotePanel.devices.role.trustedHost": "Trusted host",
   "remotePanel.connection.title": "How to connect",
   "remotePanel.connection.audience": "Phones and computers",
   "remotePanel.connection.linkPending": "Preparing the link…",
@@ -1484,6 +1514,25 @@ const enUS: Record<string, string> = {
   "remotePanel.confirm.startLan.body":
     "Once on, anyone on the same network can try to connect to the workbench on this machine.\nThe token is the only barrier: whoever has it can run commands and read or write files on this machine.",
   "remotePanel.confirm.startLan.continue": "Continue",
+  // Second confirmation for ce.4 write actions (spec §6.3).
+  "remotePanel.confirm.stop.title": "Stop the service?",
+  "remotePanel.confirm.stop.body":
+    "Every connected device will be disconnected and must scan or open the link again.",
+  "remotePanel.confirm.rotateToken.title": "Rotate the token?",
+  "remotePanel.confirm.rotateToken.body":
+    "Old links and QR codes stop working immediately, and everyone must reconnect.",
+  "remotePanel.confirm.revokeOne.title": "Disconnect this device?",
+  "remotePanel.confirm.revokeOne.body":
+    "That device is disconnected and must scan or open the link again.",
+  "remotePanel.confirm.revokeAll.title": "Disconnect all devices?",
+  "remotePanel.confirm.revokeAll.body":
+    "Every connected device will be disconnected and must scan or open the link again.",
+  // Always-on danger notice (spec §3.5; cannot be dismissed).
+  "remotePanel.danger.credentials": "Links and QR codes are credentials — do not share them.",
+  "remotePanel.danger.sharedToken":
+    "The token is a shared secret; rotating it reconnects everyone.",
+  "remotePanel.danger.noTls":
+    "Plain http is for trusted local networks only; use a TLS reverse proxy or tunnel across networks.",
   "workspaceSidebar.resizeSidebar": "Resize sidebar",
   "workspaceSidebar.toggleArchivedTasks": "Archived",
   "workspaceSidebar.showFileTree": "Show files",

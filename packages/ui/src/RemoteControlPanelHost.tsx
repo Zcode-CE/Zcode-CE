@@ -65,8 +65,14 @@ export function RemoteControlPanelHost({
           connection={wiring.panel.connection}
           lanExposureConfirmed={wiring.lanExposureConfirmed}
           onLanExposureConfirmed={wiring.confirmLanExposure}
+          connections={wiring.panel.connections}
           onStart={(options) => wiring.actions.start(options)}
           onStop={() => wiring.actions.stop()}
+          // 三个连接面动作各自透传：缺省即"该能力不存在" ⇒ 对应区块不渲染。
+          // 这是"Web 面板不暴露令牌轮换入口"（spec §6.5 决策④）的可执行形式 ——
+          // Web 客户端不提供 rotateWebServiceToken ⇒ 这里就是 undefined ⇒ 入口不出现。
+          onRevokeConnection={wiring.connections.revoke}
+          onRotateToken={wiring.connections.rotateToken}
         />
       </DialogContent>
     </Dialog>

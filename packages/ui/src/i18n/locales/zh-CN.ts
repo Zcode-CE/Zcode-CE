@@ -1277,17 +1277,19 @@ const zhCN: Record<string, string> = {
   "workspaceSidebar.hideSidebar": "隐藏侧边栏",
   "workspaceSidebar.toggleSidebar": "切换侧边栏",
   // 远控（ce.3 · 切片 1 入口 / 切片 3 面板）。文案按 spec §3.6.1：短语式、不写解释性长句。
-  // 措辞红线：说的是「在这台机器上开一个可被浏览器访问的工作台」，**不是**「控制桌面端 /
+  // 措辞红线：说的是「在这台机器上开一个可被浏览器访问的工作台」，不是「控制桌面端 /
   // 接管桌面会话」—— 桌面端已连的远端 SSH/Docker 目标不会共享给浏览器，不得在 UI 里承诺。
   "remotePanel.entry.title": "远程控制",
   "remotePanel.entry.status.off": "未开启",
   "remotePanel.entry.status.running": "运行中",
-  // "remotePanel.entry.status.waiting" 已随入口的 waiting 状态一并删除（ce.3 硬规矩：
-  // 不留不可达的取值与文案键）。连接面落地（ce.4）时与状态一起加回。
+  // ce.4 加回：连接面落地后 waiting 第一次有了产出路径 ——
+  // 「服务在跑 且 已连设备数为 0」（连接面契约 §6.4 的 GET …/connections 返回空数组）。
+  // 与官方 webRemoteControl.statusDetail.idle「等待连接。」同义（文案自研，不搬原句）。
+  "remotePanel.entry.status.waiting": "等待连接",
   "remotePanel.title": "远程控制",
   "remotePanel.subtitle": "扫码或打开链接，即可操作这台机器上的工作台",
-  // ── 标签页共存（task-93）：两条**不同的**远控路径，命名必须让人一眼看出是两件事 ──
-  // 命名红线：UI 里**不得出现「自托管」** —— 那是实现方式，不是用户能做的事。
+  // ── 标签页共存（task-93）：两条不同的远控路径，命名必须让人一眼看出是两件事 ──
+  // 命名红线：UI 里不得出现「自托管」 —— 那是实现方式，不是用户能做的事。
   // 伞名仍是「远程控制」；两条路径叫「Web 控制」（浏览器操作这台机器的工作台）
   // 与「IM 机器人」（在聊天软件里跟机器人对话）。注意别与侧栏已有的
   // `remote.trigger`「远程连接」（我连出去）撞名 —— 那一个方向相反。
@@ -1342,7 +1344,7 @@ const zhCN: Record<string, string> = {
   "remotePanel.advice.failed.spawnFailed": "服务进程没能启动。查看日志后重试。",
   "remotePanel.advice.failed.probeTimeout": "服务未在预期时间内就绪。重试，或查看日志。",
   "remotePanel.advice.failed.tokenUnreadable": "令牌文件读不到。检查文件权限后重试。",
-  // 措辞修正（服务端本批加固后）：**不得**再把「仅本机」当成无令牌时的兜底 ——
+  // 措辞修正（服务端本批加固后）：不得再把「仅本机」当成无令牌时的兜底 ——
   // 一旦配置里出现可信代理/登记域名这类「会被外部访问」的信号，回环绑定同样拒绝启动
   // （packages/server/src/exposureGate.ts）。承诺「换回环就能用」是承诺一个不存在的出路。
   "remotePanel.advice.failed.nonLoopbackWithoutToken":
@@ -1355,6 +1357,33 @@ const zhCN: Record<string, string> = {
   "remotePanel.action.copyLink": "复制链接",
   "remotePanel.action.copied": "已复制",
   "remotePanel.action.copyFailed": "复制失败",
+  // ce.4 连接面：令牌轮换入口只在桌面面板出现（spec §6.5 决策④）。UI 侧按
+  // 「宿主是否提供该动作」门控 —— 不提供就不渲染（不是渲染成禁用按钮）。
+  "remotePanel.action.rotateToken": "轮换令牌",
+  "remotePanel.action.rotatingToken": "轮换中…",
+  // 监听范围（spec §3.3）：默认「本机所在的局域网」，一键切回环。
+  "remotePanel.listen.label": "监听范围",
+  "remotePanel.listen.loopback": "仅本机",
+  "remotePanel.listen.lan": "本机所在的局域网",
+  "remotePanel.listen.portAuto": "自动选择端口",
+  "remotePanel.listen.customPort": "指定端口",
+  "remotePanel.listen.portLabel": "端口",
+  "remotePanel.listen.portPlaceholder": "留空 = 自动选择空闲端口",
+  // 端口非法时拒绝启动并说清（不静默退回自动选端口：那会让用户以为指定生效了）。
+  "remotePanel.listen.portInvalid": "端口需要是 1-65535 之间的整数；留空则自动选择空闲端口。",
+  // 已连设备（spec §3.3 / §6.4）。空态与"读不到"是两个不同的事实：
+  // 空数组 = 确实没人连着；读不到（null）= 不知道，不宣称任何结论。
+  "remotePanel.devices.title": "已连设备",
+  "remotePanel.devices.empty": "暂无设备",
+  "remotePanel.devices.unknown": "暂时读不到已连设备。",
+  "remotePanel.devices.revokeOne": "断开",
+  "remotePanel.devices.revokeAll": "全部断开",
+  "remotePanel.devices.column.address": "地址",
+  "remotePanel.devices.column.role": "角色",
+  "remotePanel.devices.column.connectedAt": "连接时间",
+  "remotePanel.devices.column.userAgent": "客户端",
+  "remotePanel.devices.role.terminalClient": "浏览器",
+  "remotePanel.devices.role.trustedHost": "受信主机",
   "remotePanel.connection.title": "连接方式",
   "remotePanel.connection.audience": "手机、电脑都能连",
   "remotePanel.connection.linkPending": "链接准备中…",
@@ -1370,6 +1399,19 @@ const zhCN: Record<string, string> = {
   "remotePanel.confirm.startLan.body":
     "开启后，同网段任何人都可以尝试连接这台机器上的工作台。\n令牌是唯一屏障：拿到令牌就等于能在这台机器上执行命令、读写文件。",
   "remotePanel.confirm.startLan.continue": "继续",
+  // ce.4 写动作的二次确认（spec §6.3）。危险动作一律二次确认。
+  "remotePanel.confirm.stop.title": "停止服务？",
+  "remotePanel.confirm.stop.body": "所有已连设备都会断开，需要重新扫码或打开链接才能回来。",
+  "remotePanel.confirm.rotateToken.title": "轮换令牌？",
+  "remotePanel.confirm.rotateToken.body": "轮换后旧链接与二维码立即失效，所有人需重新连接。",
+  "remotePanel.confirm.revokeOne.title": "断开这台设备？",
+  "remotePanel.confirm.revokeOne.body": "该设备上的页面会断开，需要重新扫码或打开链接才能回来。",
+  "remotePanel.confirm.revokeAll.title": "断开全部设备？",
+  "remotePanel.confirm.revokeAll.body": "所有已连设备都会断开，需要重新扫码或打开链接才能回来。",
+  // 常驻危险提示（spec §3.5 危险品口径，不可关闭）。
+  "remotePanel.danger.credentials": "链接与二维码本身就是凭据，不要公开分享。",
+  "remotePanel.danger.sharedToken": "令牌是共享密钥，轮换后所有人需重连。",
+  "remotePanel.danger.noTls": "明文 http 仅限可信局域网，跨网请放在 TLS 反代或隧道之后。",
   "workspaceSidebar.resizeSidebar": "调整侧边栏宽度",
   "workspaceSidebar.toggleArchivedTasks": "归档",
   "workspaceSidebar.showFileTree": "查看文件",
@@ -4840,7 +4882,7 @@ const zhCN: Record<string, string> = {
     "运行记录来自本项目的工作流日志，重启后仍然保留；「查看实例」会回到发起它的对话并打开实例详情。",
   "workflows.hub.history.tokens": "{tokens} tokens",
   // 中枢的产物条：详情页头部那条「最近产物」。
-  // 取的是**最近一次 completed run** 的产物，所以措辞不能读成"这个工作流的产物"。
+  // 取的是最近一次 completed run 的产物，所以措辞不能读成"这个工作流的产物"。
   "workflows.hub.artifacts.latest": "最近产物",
   "workflows.hub.reason.invalid_name": "名字不合法",
   "workflows.hub.reason.not_found": "文件不存在",
@@ -5076,10 +5118,10 @@ const zhCN: Record<string, string> = {
   "chat.toolCall.workflow.run.result.stoppedTitle": "实例已停止",
   "chat.toolCall.workflow.run.result.noError": "没有记录到错误详情。",
   // Artifacts 区（用户面产物）：与上面那个「结果」
-  // **不是同一件事**——`result.title`（结果）是脚本的顶层返回值（给模型的），这一节（产物）
-  // 是脚本用 `artifact.*` 交付给**用户**的产出。两者在屏幕上必须可区分，措辞刻意不重叠。
+  // 不是同一件事——`result.title`（结果）是脚本的顶层返回值（给模型的），这一节（产物）
+  // 是脚本用 `artifact.*` 交付给用户的产出。两者在屏幕上必须可区分，措辞刻意不重叠。
   "chat.toolCall.workflow.run.artifacts.title": "产物",
-  // 折叠 aria-label。这一节**默认展开**（产物是交付物，紧贴图之下常开）。
+  // 折叠 aria-label。这一节默认展开（产物是交付物，紧贴图之下常开）。
   "chat.toolCall.workflow.run.artifacts.expand": "展开产物",
   "chat.toolCall.workflow.run.artifacts.collapse": "收起产物",
   // 六个 kind 词 = facade `artifact.*` 的六个成员。file/markdown 是内容产物（有字节与版本），
@@ -5103,7 +5145,7 @@ const zhCN: Record<string, string> = {
   "chat.toolCall.workflow.run.artifacts.copy": "复制",
   "chat.toolCall.workflow.run.artifacts.copied": "已复制",
   "chat.toolCall.workflow.run.artifacts.openInBrowser": "在浏览器中打开",
-  // 打开的是**工作区里的原文件**，不是这一版被钉住的字节（协议不给 renderer store 路径）。
+  // 打开的是工作区里的原文件，不是这一版被钉住的字节（协议不给 renderer store 路径）。
   // 卡上必须写明这件事，否则用户会以为自己在看历史版本。
   "chat.toolCall.workflow.run.artifacts.openInBrowserNote":
     "打开的是工作区里的那一份，不是这一版钉住的字节。",
@@ -5172,7 +5214,7 @@ const zhCN: Record<string, string> = {
   "chat.toolCall.workflow.run.actor.notStarted.body":
     "这个子代理还没有被问过任何问题。它的首个步骤一派发，会话记录就会出现在这里。",
   // 逐条引擎事件的标签（`workflowRunEventLines` 的词汇表）。run 侧板的事件日志区已撤走，
-  // 分区自己的表头与空/错文案随之删除；这一族**保留**——它是
+  // 分区自己的表头与空/错文案随之删除；这一族保留——它是
   // journal 事件的展示规则，回放导出桶（replay.ts）仍在静态数据上用它。
   "chat.toolCall.workflow.run.event.runStarted": "实例启动",
   "chat.toolCall.workflow.run.event.actorCreated": "创建子代理",
@@ -5209,7 +5251,7 @@ const zhCN: Record<string, string> = {
   "chat.toolCall.workflow.run.concurrency.cooldown": "冷却至 {time}",
   // 子代理模型：只在这次 run 被指定过模型时在场。
   // 详情侧板摘要行的第一段——这一行本来就是「这条 run 的几个数」，模型是它的第一个词。
-  // `{model}` 是**解析过的模型名**（describeWorkflowSubagentModel），不是规范串：规范串里的
+  // `{model}` 是解析过的模型名（describeWorkflowSubagentModel），不是规范串：规范串里的
   // providerId 可能是一个 UUID，它只住在 tooltip 里。
   "chat.toolCall.workflow.run.subagentModel.label": "子代理 {model}",
   // 模型名 + 思考强度：确认窗与 tooltip 说整句，卡与侧板只取模型名。
@@ -5418,7 +5460,7 @@ const zhCN: Record<string, string> = {
   "chat.permission.allowCommand": "始终允许此命令",
   "chat.permission.allowForProject": "始终允许本项目",
   // ── task-73「工具与权限」：批准范围可视化（settings.toolPolicy.* 与本块同属 task-73）──
-  // 用户必须能看出这次「记住」覆盖多大范围。无 ruleContent 的规则匹配该工具的**全部调用**，
+  // 用户必须能看出这次「记住」覆盖多大范围。无 ruleContent 的规则匹配该工具的全部调用，
   // 原实现把它从可视化里静默剔除（安全审计 task-72 的 P1，三层 UI 兜底全部失效）。
   "chat.permission.ruleScope.anyToolCommand": "{toolName} 的任意命令",
   "chat.permission.cua.allowForProject": "始终允许本项目中的电脑控制",
@@ -5509,7 +5551,7 @@ const zhCN: Record<string, string> = {
   // 原文案「后续相同命令不再询问」读起来像"这次"或"同一个请求"，而实际授予的是
   // 「本项目内、匹配该规则的请求，永久」。前缀规则的范围更大（npm install:* 覆盖任意包），
   // 无 ruleContent 的规则更是整个工具。弹窗里前缀/精确/任意三种范围现在会内联展示，
-  // 这三条 description 是**没有规则可视化时**的兜底，必须自己说清范围与持久性。
+  // 这三条 description 是没有规则可视化时的兜底，必须自己说清范围与持久性。
   "chat.permission.allowAlways.description.command": "本项目内，后续相同命令不再询问",
   "chat.permission.allowAlways.description.file": "本项目内，后续相同文件操作不再询问",
   "chat.permission.allowAlways.description.generic": "本项目内，此类权限请求之后都不再询问",
