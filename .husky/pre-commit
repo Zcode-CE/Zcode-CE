@@ -1,0 +1,11 @@
+# 提交前：本次暂存的文件若落在许可清单的登记输入内，则要求 third-party/inventory.json 同批暂存。
+#
+# 为什么装在 pre-commit 而不是 pre-push：
+# 「改动必须与重生成 notices 同批提交」这条规则在本轮被违反了四次（8b3e459 / 6d754dc /
+# 633f3a0 / 2e28efc），而第四次恰恰发生在"加防复发护栏"的那个提交里 —— 它把检查接进了
+# verify:pre-push，但 git commit 不触发 pre-push。护栏装在了"推代码"这一步，而事故发生在
+# "写提交"这一步：装错位置等于没装。
+#
+# 本钩子只判定**暂存集**，因此不受工作区里他人未提交改动的影响（本仓是多 agent 并行）。
+# 逃生阀：SKIP_LICENSES_INPUTS_CHECK=1 git commit ...
+node scripts/check-staged-licenses-inputs.mjs
