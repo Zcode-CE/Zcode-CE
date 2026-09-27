@@ -77,7 +77,7 @@ export const clientHelloSchema = z
       .object({
         workspaceHookReviewUi: z.boolean().optional(),
         /**
-         * 本客户端认得 `workflowRun.*` 增量。⚠ 声明规则是**单向**的：客户端只有在 Host 的
+         * 本客户端认得 `workflowRun.*` 增量。⚠ 声明规则是单向的：客户端只有在 Host 的
          * hello 里见到 `workflowRunDeltas === true` 时才能带上这个键——这个 capabilities 对象
          * 是 `.strict()` 的，老 Host 见到不认识的键会整条 clientHello 解析失败、连接握不上手。
          */
@@ -429,7 +429,7 @@ export const v4ConversationSubscribeParamsSchema = subscribeParamsSchema.extend(
   // 仅供 host→CLI cold resume 使用；live conversation 不消费该 hint。
   resumeThoughtLevel: z.string().trim().min(1).optional(),
   /**
-   * 这条订阅收不收 `workflowRun.*` 键级增量。与 `clientMode` 同族：由**可信 host** 从该连接的
+   * 这条订阅收不收 `workflowRun.*` 键级增量。与 `clientMode` 同族：由可信 host 从该连接的
    * clientHello 注入，面向 UI 的 subscribe 选不了它——一个客户端能不能认得增量是连接的事实，
    * 不是某一次订阅可以自选的口味。缺席 = 按旧消费者处理（整键 patch + 旧界裁剪）。
    */
@@ -594,7 +594,7 @@ export type V4ConversationFileChangesResult = z.infer<typeof v4ConversationFileC
 // ── workflow run 事件日志──
 // 形态与 rows/range、plans 同族：只读、无状态、超时重发安全。cursor = journal sequence
 // （`appendEvent` 单调分配），在 workflowRuns[].lastEventSequence 抬升时重取。
-// 刻意**不是** v4 command：command 的 ACK 结果是 commandResultSchema 那个封闭的「变更结果」
+// 刻意不是 v4 command：command 的 ACK 结果是 commandResultSchema 那个封闭的「变更结果」
 // 判别联合，把一页只读事件塞进去等于把读放进写的词汇表，还要白背 baseRevision/幂等那套机制。
 export const v4ConversationWorkflowRunEventsParamsSchema = z
   .object({
@@ -627,19 +627,19 @@ export const v4ConversationWorkflowRunEventsResultSchema = z
     hasMore: z.boolean(),
   })
   .strict();
-// **刻意不带 `atSeq` / `atLogEpoch`**，尽管同族的 rows/range 与 plans 都带。
+// 刻意不带 `atSeq` / `atLogEpoch`，尽管同族的 rows/range 与 plans 都带。
 //
-// 那两个字段在同族里是**陈旧读防护**：它们读的是 conversation projection，而 projection 的
+// 那两个字段在同族里是陈旧读防护：它们读的是 conversation projection，而 projection 的
 // `rowId` 只在一个 log epoch 内有意义（重建 / fork / rewind 会重新编号），所以读端的契约是
 // "atLogEpoch ≠ store 当前 epoch → 整个结果丢弃"。
 //
-// 本 query 读的是 **journal**（`dwf_event`），它与 conversation log 无关，且 cursor 永不失效：
+// 本 query 读的是 journal（`dwf_event`），它与 conversation log 无关，且 cursor 永不失效：
 // journal 的 JournalStorePort 契约要求 sequence 只追加、
 // 跨 resume 从既有最大值继续、既不重置也不复用，既有条目的编号不变。也就是说一个
 // `(runId, sequence)` cursor 永远有效——没有任何"陈旧"可供防护。
 //
 // 更要紧的是：带上 `atLogEpoch` 不是无害的对称。按同族的读端契约，一次与 run 完全无关的
-// 会话 rewind（epoch 变化）会让详情页把**合法的** journal 页整页丢掉。宁可少一个字段，
+// 会话 rewind（epoch 变化）会让详情页把合法的 journal 页整页丢掉。宁可少一个字段，
 // 也不要携带一个在这里定义不出正确语义的字段。
 export type V4ConversationWorkflowRunEventsResult = z.infer<
   typeof v4ConversationWorkflowRunEventsResultSchema

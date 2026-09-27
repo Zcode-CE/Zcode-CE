@@ -3,25 +3,25 @@
 // ============================================================
 // 淘汰规则是纯函数，不读取时钟或执行 I/O。表外条目的分阶段计数由 workflow-runs-unlisted.ts 维护。
 //
-// 为什么要腾位。触界的老语义是**拒新**，而读面画的是「此刻哪些子代理在跑」——于是一个宽
+// 为什么要腾位。触界的老语义是拒新，而读面画的是「此刻哪些子代理在跑」——于是一个宽
 // fan-out 的 run 跑过 1024 之后，新起的子代理一个都进不来，run 卡与站点花名册永远停在最早
-// 那批**已经结束**的身上，恰好把这个特性存在的理由抹掉。腾位把它反过来：终态的条目让位。
+// 那批已经结束的身上，恰好把这个特性存在的理由抹掉。腾位把它反过来：终态的条目让位。
 //
 // 只淘汰终态条目还不够：一个阶段可能
-// 在头几秒里把**全部** actor-created 与**全部** node-queued 发完，头 1024 条还排着队就把两张表
+// 在头几秒里把全部 actor-created 与全部 node-queued 发完，头 1024 条还排着队就把两张表
 // 塞满，一条终态都没有，于是后面 976 个连人带活全被拒；调度器随后按 FIFO 派活，从第 1025 个
-// 开始每一个**正在跑**的子代理都不在表上。一个子代理变重要是在它**被派活**的那一刻，不是在
+// 开始每一个正在跑的子代理都不在表上。一个子代理变重要是在它被派活的那一刻，不是在
 // 它入队的那一刻——所以 `node-dispatched` 也是一次入座机会（下面的 activation）。
 //
-// 表内优先级从高到低，按这个子代理**此刻**在做什么：**在跑**（有节点处于 dispatched /
-// executing / waiting / repairing / nudged）> **空闲**（一条在跑的都没有、还有排着队的：它在
-// 等槽位）> **已完成**（全部已结算）。三条不变量约束了谁可以让位，每一条都对应一个看得见的后果：
+// 表内优先级从高到低，按这个子代理此刻在做什么：在跑（有节点处于 dispatched /
+// executing / waiting / repairing / nudged）> 空闲（一条在跑的都没有、还有排着队的：它在
+// 等槽位）> 已完成（全部已结算）。三条不变量约束了谁可以让位，每一条都对应一个看得见的后果：
 //   1. 在跑的条目绝不让位——正在跑的那些正是要留住的东西；
-//   2. 一个 actor 绝不比它最后一个**已列**节点活得久：actor 三态由它名下的节点派生
+//   2. 一个 actor 绝不比它最后一个已列节点活得久：actor 三态由它名下的节点派生
 //      （workflow-runs-actor-status.ts），没有节点的 actor 会派生成 waiting，在读面上是一枚
 //      永远不会动的 pending 徽章。所以走的时候是整组走（actor + 它全部节点），而带不进自己
 //      那条节点的已完成 actor 干脆不上表（孤儿规则）；
-//   3. 让位的条目**仍然可数**：run 级两个计数器（workflow-runs-caps.ts）之外，再按**出生阶段**
+//   3. 让位的条目仍然可数：run 级两个计数器（workflow-runs-caps.ts）之外，再按出生阶段
 //      记一格（workflow-runs-unlisted.ts）——读面是按站画的。
 
 import {
@@ -54,7 +54,7 @@ interface Candidate {
   failed: boolean;
 }
 
-/** 一个**非 live 组**：一个 actor 加上它名下的全部已列节点（下标），以及它属于哪一类。 */
+/** 一个非 live 组：一个 actor 加上它名下的全部已列节点（下标），以及它属于哪一类。 */
 interface Group extends Candidate {
   nodeIndexes: number[];
   /** 名下节点全部已结算：这个子代理的活干完了。 */
@@ -65,7 +65,7 @@ interface Group extends Candidate {
   zeroNode: boolean;
 }
 
-/** 一个离场的子代理在它那一格上的增量（`phaseName` 是它的**出生**阶段）。 */
+/** 一个离场的子代理在它那一格上的增量（`phaseName` 是它的出生阶段）。 */
 interface EvictedAgent {
   phaseName: string | undefined;
   actors: number;
@@ -79,7 +79,7 @@ export interface WorkflowNodeSeating {
   run: WorkflowRunState;
   /** 这条实例可以进节点表吗（false = 照旧拒新，调用方按被拒计数）。 */
   admitNew: boolean;
-  /** 这一次把一条**表外**实例放回了节点表（调用方据此把 nodesUnlisted 减 1）。 */
+  /** 这一次把一条表外实例放回了节点表（调用方据此把 nodesUnlisted 减 1）。 */
   activated: boolean;
 }
 
@@ -92,16 +92,16 @@ function isFailed(node: WorkflowRunNode): boolean {
 }
 
 /**
- * 这条事件可以往表里放一个**新键**吗——以及同理，可以给 `nodesUsed` 加一步吗。
+ * 这条事件可以往表里放一个新键吗——以及同理，可以给 `nodesUsed` 加一步吗。
  *
- * **只有溢出过的 run（`truncated`）才收紧**，`live` 传的是那条收紧后的条件（抬过水位的出生
+ * 只有溢出过的 run（`truncated`）才收紧，`live` 传的是那条收紧后的条件（抬过水位的出生
  * 事件，或下面的 activation）。界之下一律放行，与腾位改造之前逐字相同。
  *
- * 为什么收紧：腾位是第一件让表**变短**的事，于是一个空出来的位子可能把一条早已计进
+ * 为什么收紧：腾位是第一件让表变短的事，于是一个空出来的位子可能把一条早已计进
  * `nodesUnlisted` 的实例放回来（重放的事件，或者 `queued` 被拒之后才到的中间相位），那条实例
  * 就既列又计，总数说假话。
  *
- * 为什么不把它推广到所有 run：归约**照常施加**水位之下的事件（它只是不肯把水位拉回去），而
+ * 为什么不把它推广到所有 run：归约照常施加水位之下的事件（它只是不肯把水位拉回去），而
  * CLI 的冷物化把 journal 重放与在线事件喂进同一个归约。真要是在线事件先给一条 run 开了头，
  * 它整段 journal 前缀就全在水位之下——无差别收紧会让那条 run 的卡片空着。这两处窟窿都以
  * 「此前发生过拒绝或淘汰」为前提，也就是 `truncated`，所以按它收口不动界下的任何一条路径。
@@ -111,10 +111,10 @@ export function admitsNewEntry(run: WorkflowRunState, live: boolean): boolean {
 }
 
 /**
- * actor 表满时给一个**活的新人**腾位：淘汰一个已完成组。表没满、新人其实已在表里、或者一个
+ * actor 表满时给一个活的新人腾位：淘汰一个已完成组。表没满、新人其实已在表里、或者一个
  * 已完成组都没有时，原样返回（调用方随后照旧 upsert，触界仍然是拒新）。
  *
- * 出生只挤得动**已完成**的：一个还排着队的新人凭什么把另一个还排着队的挤掉——两个都没开工，
+ * 出生只挤得动已完成的：一个还排着队的新人凭什么把另一个还排着队的挤掉——两个都没开工，
  * 换谁上表都是同一条没有信息量的记录。空闲组只在 activation（真的开工了）面前让位。
  */
 export function withRoomForActor(
@@ -172,11 +172,11 @@ export function seatWorkflowNode(
 }
 
 /**
- * node 表满时给一个**活的新人**腾位：先淘汰一个已结算的游离节点（world-read 不属于任何人的组，
+ * node 表满时给一个活的新人腾位：先淘汰一个已结算的游离节点（world-read 不属于任何人的组，
  * 淘汰它只少一行），没有就淘汰一个已完成组。同样在腾不出位时原样返回。
  *
- * `owner` 是这条新节点所属的 actor。**它自己那个组绝不当受害者**：一个连做三次 ask 的子代理
- * 在第四次撞上满表时，它前三次的组看上去「已完成」，淘汰掉就等于把这个**正在被派活**的子代理
+ * `owner` 是这条新节点所属的 actor。它自己那个组绝不当受害者：一个连做三次 ask 的子代理
+ * 在第四次撞上满表时，它前三次的组看上去「已完成」，淘汰掉就等于把这个正在被派活的子代理
  * 从 actor 表上摘掉——新节点留在表里，指着一个不在表上的 actor，于是它一枚徽章都没有。
  * 一个刚拿到活的组，按定义就不是完成了的。
  */
@@ -195,13 +195,13 @@ function withRoomForNode(
 }
 
 /**
- * **派发即入座。** 一条带着出生事实的 `node-dispatched`（引擎在派发那一刻重发这条实例的
+ * 派发即入座。 一条带着出生事实的 `node-dispatched`（引擎在派发那一刻重发这条实例的
  * `node-queued` 与它子代理的 `actor-created` 携带过的同一份事实）把表外的实例放回节点表，
  * 需要时连它的子代理一起放回 actor 表。
  *
- * 腾位的顺序是「先 actor 位、后节点位」，两步各自判各自的：为 actor 位淘汰掉一个**组**会连着
- * 空出至少一行节点，而淘汰一个**零节点** actor 一行都不空——所以第二步照样要重新看一眼表长。
- * 腾不出位就整条拒绝（此前那步淘汰随之作废，返回的是原样的 run），**不**只把节点放进去——
+ * 腾位的顺序是「先 actor 位、后节点位」，两步各自判各自的：为 actor 位淘汰掉一个组会连着
+ * 空出至少一行节点，而淘汰一个零节点 actor 一行都不空——所以第二步照样要重新看一眼表长。
+ * 腾不出位就整条拒绝（此前那步淘汰随之作废，返回的是原样的 run），不只把节点放进去——
  * 一条指着表外 actor 的节点恰好是这条规则要消灭的东西。
  */
 function activateInstance(
@@ -222,7 +222,7 @@ function activateInstance(
   if (!nodeListed && next.nodes.length >= limits.maxNodes) {
     // 顺位：自己名下最老的那条已结算节点 > 已结算的游离节点 > 别人的组。先丢自己的历史，
     // 是因为丢它只少一行、而且 actor 还在表上（徽章不动）——一个子代理在拿走别人那一行之前
-    // 先交出自己的。少了这一条，一个连做 k 次 ask 的子代理会被**自己**已经跑完的那些活挡在
+    // 先交出自己的。少了这一条，一个连做 k 次 ask 的子代理会被自己已经跑完的那些活挡在
     // 表外：它们既不是可淘汰的组（自己那个组不当受害者），又占着位子。
     const own = ownSettledNodes(next, actor)[0];
     if (own !== undefined) next = evictSingleNode(next, own, limits);
@@ -248,7 +248,7 @@ function activateInstance(
 }
 
 /**
- * 一个**被拒的** `actor-created`：run 级没有 actor 计数器，它唯一的痕迹就是自己那一格。
+ * 一个被拒的 `actor-created`：run 级没有 actor 计数器，它唯一的痕迹就是自己那一格。
  * 这一格随后可加可减——它说的是「此刻不在表上的子代理数」，不是历史累计。
  */
 export function absorbRefusedActor(
@@ -263,10 +263,10 @@ export function absorbRefusedActor(
 }
 
 /**
- * 一条**出生即结算**的节点被拒之表外（缓存命中的 `node-settled`，它自己就是出生事件）：
+ * 一条出生即结算的节点被拒之表外（缓存命中的 `node-settled`，它自己就是出生事件）：
  * 记进它出生阶段那一格，并按孤儿规则把它那个一条已列节点都没有的 actor 一起摘掉。
  *
- * actor 本来就不在表上时**只**记节点那一格：那个子代理早已作为 `actors` 计在**它自己**的出生
+ * actor 本来就不在表上时只记节点那一格：那个子代理早已作为 `actors` 计在它自己的出生
  * 阶段上，而节点的阶段戳未必是同一个；何况一个有两次缓存命中的子代理会因此被记两次「已结束」。
  * 记不准的归属不如不记——它仍然是个未列出的子代理，读面把它算作 pending，直到它重新上表。
  * run 级两个计数器不在这里加——那是 `countUnlistedInstance` 的活，两处加会翻倍。
@@ -305,7 +305,7 @@ export function absorbRefusedSettledNode(
 }
 
 /**
- * 新一世的两张表。**溢出过的 run 从空表重开**：重臂会把整段脚本前缀再发一遍，而只有空表才能
+ * 新一世的两张表。溢出过的 run 从空表重开：重臂会把整段脚本前缀再发一遍，而只有空表才能
  * 让每条实例在这一世要么被列、要么被计，恰好一次。留着一张缺过条目的表则两头都算——前缀里
  * 那条被淘汰的实例先进了 `nodesUnlisted`，重发时又落回表里。
  *
@@ -322,7 +322,7 @@ export function workflowRunTablesForNewLife(run: WorkflowRunState): {
 /**
  * 一次 activation 的组受害者：已完成组 > 空闲组 > 零节点 actor。`owner` 那个组永远排除在外。
  *
- * `allowZeroNode` 只有 **actor 位**那一支传 true：一个零节点 actor 走了只空出一个 actor 位、
+ * `allowZeroNode` 只有 actor 位那一支传 true：一个零节点 actor 走了只空出一个 actor 位、
  * 一行节点都不空，拿它去顶节点位会让调用方以为腾到了位子，实际那条节点仍然进不去。
  */
 function pickGroupVictim(
@@ -333,7 +333,7 @@ function pickGroupVictim(
   const groups = spareGroups(run, owner);
   return (
     pickVictim(groups.filter((group) => group.finished)) ??
-    // 空闲组取表内**最靠后**的：FIFO 下最后建出来的那个最后才轮到派活，它的位子最不急着用。
+    // 空闲组取表内最靠后的：FIFO 下最后建出来的那个最后才轮到派活，它的位子最不急着用。
     groups.filter((group) => group.idle).at(-1) ??
     // 零节点 actor 同理取最靠后的，而且是最后一档：它没有节点、没有分数、表里也没有历史，
     // 淘汰它读者看不见任何损失，而它自己下一次被派活时会带着事实回来。少了这一档，一次
@@ -367,7 +367,7 @@ function pickVictim<T extends Candidate>(candidates: readonly T[]): T | undefine
   let bestCrowd = crowd.get(best.phaseName ?? "") ?? 0;
   for (const candidate of pool) {
     const size = crowd.get(candidate.phaseName ?? "") ?? 0;
-    // 只在**严格**更拥挤时换人，于是同分时留下的是表内最靠前的那个。
+    // 只在严格更拥挤时换人，于是同分时留下的是表内最靠前的那个。
     if (size > bestCrowd) {
       best = candidate;
       bestCrowd = size;
@@ -377,10 +377,10 @@ function pickVictim<T extends Candidate>(candidates: readonly T[]): T | undefine
 }
 
 /**
- * 表里全部**非 live** 的组，按 actor 表序。有至少一条已列节点是成组的前提——一个还没拿到活的
+ * 表里全部非 live 的组，按 actor 表序。有至少一条已列节点是成组的前提——一个还没拿到活的
  * actor 不是任何人的候选（它的 `node-queued` 可能正在路上）。
  *
- * 分两类，按这个子代理**此刻**在做什么：一条排队中的节点都没有 = 它的活干完了（finished）；
+ * 分两类，按这个子代理此刻在做什么：一条排队中的节点都没有 = 它的活干完了（finished）；
  * 有排队中的节点 = 它在等槽位（idle），名下另有几条已结算的 ask 不改变这件事。一个连做三次
  * ask 的子代理跑完第一次、第二次还排着队时正是后者——按「全部节点都排着队」认它，它就成了
  * 一个既不 live 又谁都淘汰不动的组，于是一张塞满这种组的表会把真正在跑的新人挡在门外，
@@ -431,7 +431,7 @@ function looseSettledNodes(run: WorkflowRunState): Candidate[] {
 }
 
 /**
- * 新人**自己**名下已结算的节点，按表序（最靠前 = 最老的那次 ask）。
+ * 新人自己名下已结算的节点，按表序（最靠前 = 最老的那次 ask）。
  *
  * 不走 {@link pickVictim}：这一类里的取舍不是「哪个最该走」而是「哪段历史最旧」，而最旧的那条
  * 恰好是读者最不会回头找的。整组仍然绝不当受害者——这里丢的是行，不是人。
@@ -456,7 +456,7 @@ function instanceKey(ref: InstanceRef): string {
   return `${ref.siteId}\0${ref.ordinal}`;
 }
 
-/** 整组离场：actor 与它全部节点在**同一次**归约里从两张表上消失，其余条目保序。 */
+/** 整组离场：actor 与它全部节点在同一次归约里从两张表上消失，其余条目保序。 */
 function evictGroup(
   run: WorkflowRunState,
   group: Group,
@@ -487,7 +487,7 @@ function evictGroup(
 /**
  * 单独一行节点离场：一条已结算的游离节点，或者新人自己名下最老的那条已结算节点。
  *
- * 两处用同一条记账，因为它们对**人**的账毫无影响：没有 actor 离场，所以只有节点那三笔
+ * 两处用同一条记账，因为它们对人的账毫无影响：没有 actor 离场，所以只有节点那三笔
  * （run 级两个计数器 + 这条节点出生阶段那一格的 `settled`）。
  */
 function evictSingleNode(
@@ -506,7 +506,7 @@ function evictSingleNode(
 /**
  * 被淘汰的条目记进 run 级两个计数器与各自的出生阶段那一格。
  *
- * `nodesUnlisted` 按淘汰掉的**全部**节点加，`nodesUnlistedSettled` 只按其中**已结算**的那些：
+ * `nodesUnlisted` 按淘汰掉的全部节点加，`nodesUnlistedSettled` 只按其中已结算的那些：
  * 一个空闲组走的时候带的是还排着队的节点，它们还没结算，算进去会让完成度虚高。
  */
 function withUnlistedEvictions(

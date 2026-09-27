@@ -1053,7 +1053,7 @@ export class ProductProjection {
    * 隔离 snapshot 与 reducer 的各类 side-map；拒绝时当前实例完全不变，客户端仍可从
    * 最后一个可传输 snapshot 恢复。
    *
-   * `accept` 同时拿到这条事件**实际产出**的 delta：有些事件类别可以只按 delta 的字节数给出
+   * `accept` 同时拿到这条事件实际产出的 delta：有些事件类别可以只按 delta 的字节数给出
    * 一个可靠上界，不必把整份候选快照再序列化一遍（publisher 的 ingest 快路径）。传的是实际
    * 产出而不是预演，正是因为预演算不准——投影在 reducer 之上还叠了 subagent 镜像与命令
    * actions 的 materialization，少算一条就把 16MiB 闸门算松了。
@@ -2242,7 +2242,7 @@ export class ProductProjection {
    * 消失」；一条 controlOnly 轮一旦收口，会话已有一段持久化的可见历史，再叫 draft 就与
    * 冷恢复矛盾——store 种子会给它一个终态 phase，而活投影却停在 draft。中枢直接启动
    * 的会话只有一条 controlOnly 启动轮，活投影 phase 恒为 draft，sessions-index 摘要因此被 task-index
-   * syncer 当 draft 丢弃，侧栏要等重启才出现。所以 controlOnly 收口只在**会话仍是 draft**时推进 phase
+   * syncer 当 draft 丢弃，侧栏要等重启才出现。所以 controlOnly 收口只在会话仍是 draft时推进 phase
    * （成功 → completedSuccess，取消 → completedInterrupted，失败 → error）；非 draft 会话上的控制轮
    * 照旧不碰 session control（goal 的可见 query 轮不得伪造 running / 工时，见 onTurnStarted）。
    */
@@ -4331,9 +4331,9 @@ export class ProductProjection {
     const workflowRuns = reduceWorkflowRunsState(prior, envelope);
     // null = 语义无变化（无效事件或同一条事件重放）：不产 delta，revision 不抬。
     if (workflowRuns === null) return [];
-    // 发**差**而不是整键：一条引擎事件只动一个节点，整键重发是每事件 O(N) 字节、一条 run
+    // 发差而不是整键：一条引擎事件只动一个节点，整键重发是每事件 O(N) 字节、一条 run
     // 全程 O(N²)（workflow-runs-delta.ts 的文件头讲了这笔账怎么变成节点上界和 UI 卡死的）。
-    // `applyAll(prior, diff(prior, next))` 与 next **逐字节**一致是增量协议的契约，
+    // `applyAll(prior, diff(prior, next))` 与 next 逐字节一致是增量协议的契约，
     // 所以 applyEventInternal 把这串 delta 应用回去之后，this.snapshot.workflowRuns 仍是 next。
     return diffWorkflowRunsState(prior, workflowRuns);
   }

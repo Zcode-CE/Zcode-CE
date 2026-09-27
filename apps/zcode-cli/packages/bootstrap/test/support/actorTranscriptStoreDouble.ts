@@ -3,7 +3,7 @@
 // ============================================================
 //
 // 为什么必须是「替身」而不是随便一个 Map：本文件的判据 2 断言的是
-// **顺序不变式**（种子前缀占据前 messageCount 个下标），而顺序恰恰是
+// 顺序不变式（种子前缀占据前 messageCount 个下标），而顺序恰恰是
 // adapters 的 SQL 语义决定的，不是 seedActorTranscript 决定的。
 // 用一个按插入顺序返回的假 store，判据 2 就变成同义反复（恒真）。
 //
@@ -20,7 +20,7 @@
 //   select  order by sequence is null, sequence, time_created, rowid
 //
 // 那个 `else excluded.sequence` 分支正是本缺陷的机制：种子消息 id 是新铸的，
-// 于是被赋 `max(sequence)+1`，排在目标会话自己那条历史**之后**。
+// 于是被赋 `max(sequence)+1`，排在目标会话自己那条历史之后。
 //
 // 只实现 seedActorTranscript 需要的那三个方法（messages / saveMessage / savePart），
 // 并额外记调用次数供判据 1 使用。

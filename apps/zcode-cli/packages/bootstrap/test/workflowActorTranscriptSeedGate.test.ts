@@ -19,18 +19,18 @@ import {
  * 缺陷背景（.reverse/98-ce4/PROTOCOL-V4-LANDING.md §④.7，已用 HEAD 真实代码实测复现）：
  * `inFlight.messageBoundary` 取自前驱会话此刻的消息条数，是导入缓存里**唯一一个不是 journal
  * 事实**的数。它在两次构建之间变大时，修订 run 的一次普通「停止 → resume」就会带着更大的 M
- * 再次调进 `seedActorTranscript`；若目标会话此时已有**自己的** live 消息、但总数仍 < M，
- * 老规则会去重抄 0..M-1 —— 前 N 条是对既有种子 id 的 upsert（无害），而 N..M-1 是**新 id**，
- * 于是前驱的消息被追加到本会话自己的历史**之后**。
+ * 再次调进 `seedActorTranscript`；若目标会话此时已有自己的 live 消息、但总数仍 < M，
+ * 老规则会去重抄 0..M-1 —— 前 N 条是对既有种子 id 的 upsert（无害），而 N..M-1 是新 id，
+ * 于是前驱的消息被追加到本会话自己的历史之后。
  *
  * 机制在 `packages/adapters/src/storage/session-store/repositories/messages.ts:77`：
  *   insert 时 sequence = (select coalesce(max(sequence), -1) + 1 from message where session_id = ?)
- * 所以种子拿到的是**比既有历史更大的** sequence；`messages()` 按
+ * 所以种子拿到的是比既有历史更大的 sequence；`messages()` 按
  * `order by sequence is null, sequence, time_created, rowid`（:230）返回 ⇒ 模型看到的
- * 上下文**前后颠倒**，且**全程无异常、无日志**。这就是「静默的上下文错乱」。
+ * 上下文前后颠倒，且全程无异常、无日志。这就是「静默的上下文错乱」。
  *
  * 为什么必须单测而不是只靠端到端：三个错误方向（跳过条件写反 ⇒ 正常续跑不再复制、
- * 门只看条数 ⇒ 装了别的内容也照抄、跳过不留日志 ⇒ 回归时无迹可寻）**都不报错**，
+ * 门只看条数 ⇒ 装了别的内容也照抄、跳过不留日志 ⇒ 回归时无迹可寻）都不报错，
  * 只在真实使用里表现为「子代理读到一段不属于它的、颠倒的上文」。
  *
  * 运行：cd apps/zcode-cli/packages/bootstrap && node --import tsx \
@@ -85,7 +85,7 @@ function createStore(targetExisting: readonly ReturnType<typeof userMessage>[]) 
   })();
 }
 
-/** 场景 A：目标会话已经有**自己的** 1 条消息（id 不是种子 id），且 1 < 3。 */
+/** 场景 A：目标会话已经有自己的 1 条消息（id 不是种子 id），且 1 < 3。 */
 function ownHistory(): ReturnType<typeof userMessage>[] {
   return [userMessage({ id: "msg_own-0", sessionID: TARGET, created: 2_000 })];
 }
@@ -105,7 +105,7 @@ async function runScenario(
   logger?: ReturnType<typeof createFakeLogger>["logger"],
 ) {
   const before = await store.messages({ sessionID: TARGET });
-  // 计数器里已经含**建 store 时**写源会话的那几次，所以只取本次场景的增量：
+  // 计数器里已经含建 store 时写源会话的那几次，所以只取本次场景的增量：
   // 「写了几条」必须从调用点算起，否则判据 1 会被自己的夹具污染成恒真。
   const messagesBefore = store.saveMessageCalls.length;
   const partsBefore = store.savePartCalls.length;
@@ -126,7 +126,7 @@ async function runScenario(
 }
 
 /**
- * 判据 2：顺序不变式（**不依赖实现**，只依赖 store 的真实排序语义）。
+ * 判据 2：顺序不变式（不依赖实现，只依赖 store 的真实排序语义）。
  *
  * 「前驱消息被追加到本会话历史之后」这个现象的直接表述是：**任何一条种子消息都不允许
  * 出现在某条非种子消息之后**；且只要种子在场，第 i 条种子就必须落在下标 i。
@@ -201,7 +201,7 @@ test("判据2：种子前缀必须占据前 messageCount 个下标，绝不追�
   const store = await createStore(ownHistory());
   const { after } = await runScenario(store);
 
-  // 目标会话自己的那条历史必须**原样**留在下标 0，且没有被种子挤到后面。
+  // 目标会话自己的那条历史必须原样留在下标 0，且没有被种子挤到后面。
   assert.equal(String(after[0]!.info.id), "msg_own-0", "既有历史必须仍在最前");
   assertSeedOrderInvariant(after, "A：已有自己的消息");
 });

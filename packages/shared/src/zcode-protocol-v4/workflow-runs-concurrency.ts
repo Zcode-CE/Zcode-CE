@@ -52,7 +52,7 @@ export function reduceConcurrencyChanged(
 }
 
 /**
- * `run-started` → `run.concurrency.limit`：本 run **自己的**那条界。载荷带引擎的
+ * `run-started` → `run.concurrency.limit`：本 run 自己的那条界。载荷带引擎的
  * `caps.maxConcurrency` 与 CLI 在铸载荷那一刻算出的 `concurrencyCeiling`（天花板是进程事实，
  * 不是引擎事实，所以它由 CLI 拼进载荷，与 `resumedFrom` 同一先例）。
  *
@@ -92,7 +92,7 @@ export function reduceRunStartedConcurrency(
 }
 
 /**
- * `run-caps-changed` → `run.concurrency.limit`：run **在飞时**它自己的那条界被改了。只改 `max_concurrency` 的修订就地生效——不停这次 run、
+ * `run-caps-changed` → `run.concurrency.limit`：run 在飞时它自己的那条界被改了。只改 `max_concurrency` 的修订就地生效——不停这次 run、
  * 不另起一次——引擎改完 caps 发这条事件，载荷与 `run-started` 同形（引擎的 `caps.maxConcurrency`
  * 加 CLI 拼进来的 `concurrencyCeiling`）。所以这里与 `reduceRunStartedConcurrency` 读同两个字段、
  * 守同一条「只在低于天花板时记」：同一个数经两条路进来不能得出两份读数。
@@ -101,7 +101,7 @@ export function reduceRunStartedConcurrency(
  * `run.concurrencyCeiling` 上了，所以这条事件比 `run-started` 多一层退路；两个都没有才无从判断
  * 这个数是否被压低，什么都不改。`caps` 读不动同理。
  *
- * 升回天花板要把 `limit` **摘掉**而不是写成天花板：跑在天花板上的 run 按协议没有自己的界。摘完
+ * 升回天花板要把 `limit` 摘掉而不是写成天花板：跑在天花板上的 run 按协议没有自己的界。摘完
  * 若共享桶那一侧也无话可说（cap 在水位上、不在冷却），整个 `concurrency` 键随之缺席——与一个
  * 从没被压低过的 run 逐字节相同。本来就没有 `limit` 时一个字不动（幂等的支点）。
  */

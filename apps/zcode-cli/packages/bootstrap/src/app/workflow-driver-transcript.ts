@@ -22,21 +22,21 @@ import type { AgentRuntimeWorkflowDriverDeps, SessionState } from "./workflow-dr
  * 分歧 actor 的转录截断（amend-resume）：把源会话的前 N 条消息复制进刚铸的会话，再让 runtime
  * 以这段上文开场。
  *
- * 顺序是**载荷性**的，三步一步都不能换位：
+ * 顺序是载荷性的，三步一步都不能换位：
  *   1. 工厂已返回 ⇒ 会话行已落库（`message.session_id` 对 `session(id)` 有 FK，先复制必失败）；
- *   2. 复制到**持久层**而不是内存 history——两个读者依赖落库的那一份：本 run 的重水化，
- *      以及**将来对本 run 的修订**（链行走会把这个会话当作转录源读）；
+ *   2. 复制到持久层而不是内存 history——两个读者依赖落库的那一份：本 run 的重水化，
+ *      以及将来对本 run 的修订（链行走会把这个会话当作转录源读）；
  *   3. 重水化走既有的 `resumeFromStore`（与 resume 重挂同一条机器），绝不另造一条水化路径。
  *      此刻会话行与消息都刚落好，所以这里不复制 launch 侧那条 `SessionNotFound → 全新`
  *      的降级分支：那条分支的成因是"会话被清理"，而在这里它只可能意味着接线错了，该大声失败。
  *
- * 第 3 步的**条件**：真复制了就必须水化；一条没抄（跳过）且 journal 已记下这个会话 id，
+ * 第 3 步的条件：真复制了就必须水化；一条没抄（跳过）且 journal 已记下这个会话 id，
  * 说明 runtime 工厂刚才已经按 resume 路径重挂过了（launch 的 attachActorSession），再水化一次
  * 只会多发一条 SessionResumed、多跑一轮 SessionStart 钩子。两个条件都不成立的情形（跳过复制
  * 且 journal 无记录 = 上一世崩在复制与 putActor 之间）仍要水化，否则 runtime 会带着一个装满
  * 消息的会话从空上下文开跑。
  *
- * 这个条件对 {@link seedActorTranscript} 的**两种**跳过都成立，不必分辨是哪一种：两者的判据
+ * 这个条件对 {@link seedActorTranscript} 的两种跳过都成立，不必分辨是哪一种：两者的判据
  * 都是「目标会话已经有自己的内容」，而 `attachActorSession` 决定要不要重挂用的是同一个谓词
  * （journal 上有没有这个 actor 的 sessionId），所以两处永远同时成立或同时不成立。
  */
@@ -93,12 +93,12 @@ export async function countSessionTranscript(
 /**
  * 把消息数边界补写进这个 ask 的 journal 行（`NodeRecord.messageBoundary`）。
  *
- * 与 stats 回填**同族**：引擎结算时写下的记录不含本字段（它是 driver 拥有的事实），所以这里
+ * 与 stats 回填同族：引擎结算时写下的记录不含本字段（它是 driver 拥有的事实），所以这里
  * 走同一套读改写——`getNode` 拿到刚结算的整条记录，只加边界再 `putNode`，status / result /
  * actorSeq / inputHash / stats 一个不动。写在结算之后是必须的：引擎的结算是整条替换，写在
  * 它之前会被抹掉。
  *
- * 每个 ask 都写，不区分具名/匿名、修订/普通 run：**匿名与否是导入时才判定的**，而任何 run
+ * 每个 ask 都写，不区分具名/匿名、修订/普通 run：匿名与否是导入时才判定的，而任何 run
  * 都是未来修订的潜在前驱。代价是每 ask 一次小写入。
  *
  * 两处早退各有理由：记录不在（run 已被清理）无处可写；`currentInstance` 已经换人说明这个会话

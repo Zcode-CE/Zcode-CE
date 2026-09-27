@@ -1940,7 +1940,7 @@ const ToolCallRowView = memo(function ToolCallRowView({
     );
   }
   // 就地生效的修订：只改并发上限、run 又在飞时这次调用
-  // 不编译、不铸新 run，结果只有一句话。判据全在已经上线的字段上——入参的形状、**没有** display、
+  // 不编译、不铸新 run，结果只有一句话。判据全在已经上线的字段上——入参的形状、没有 display、
   // 成功且非错误；工具的结构化输出不过 v4，而三处 create_workflow display schema 都是冻结字段集
   // 的 `.strict()`，多一个键会让旧端把整条工具结果丢掉，所以这条路不新增任何协议字段。
   // 退回真修订的那一条（run 已结算）两条判据都不成立：它有 display，也铸出一条按 toolCallId

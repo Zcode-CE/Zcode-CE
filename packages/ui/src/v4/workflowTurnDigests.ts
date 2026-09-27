@@ -8,7 +8,7 @@ import { readWorkflowName } from "@/ToolCallBlocks/renderers/createWorkflowInput
 import type { AssistantWorkRow } from "@/v4/conversationTurnFlowItems.js";
 
 /**
- * 轮尾 run 卡的解析：这一轮里哪些**来源**点名了
+ * 轮尾 run 卡的解析：这一轮里哪些来源点名了
  * 一条 run。纯函数，照 `resolveCronAutomationTurnCards` 的同一条缝。
  *
  * 三种来源，一条规则——凡点名了 runId 的来源都出一张卡：
@@ -19,11 +19,11 @@ import type { AssistantWorkRow } from "@/v4/conversationTurnFlowItems.js";
  * - ResumeWorkflowRun 行：display 载荷带 runId（投影的 toolCallId 跨 resume 沿用发起行，按 toolCallId
  *   永远查不到）。
  *
- * 图是 run 的属性：按 run 的**发起** toolCallId 到宿主建的图表里取，不问卡挂在哪种行上——resume 行
+ * 图是 run 的属性：按 run 的发起 toolCallId 到宿主建的图表里取，不问卡挂在哪种行上——resume 行
  * 因此与发起行同一张图。联接不到活投影（淘汰 / 冷恢复）的来源仍出卡，`summary` 缺席，卡退成中性
  * 单行。同一轮里同 run 只出一张（首见来源）。
  *
- * 一个例外：**就地生效的设置轮**（`rowOnly`）点名了一条 run，却既没启动它也没恢复它——它只是改了
+ * 一个例外：就地生效的设置轮（`rowOnly`）点名了一条 run，却既没启动它也没恢复它——它只是改了
  * 那条 run 的并发上限。那条 run 的卡已经在它启动的那一轮里，所以这条来源只出上方那一行。
  */
 export interface WorkflowTurnDigest {
@@ -42,7 +42,7 @@ export interface WorkflowTurnDigest {
    */
   settings?: { amend: WorkflowSettingsAmendMeta; at?: number };
   /**
-   * **只出那一行、不出卡**：就地生效的设置轮（只改并发上限、run 仍在运行，`amend` 不带 `predecessorRunId`）。它点名的 run 没有被替代、身份没变，
+   * 只出那一行、不出卡：就地生效的设置轮（只改并发上限、run 仍在运行，`amend` 不带 `predecessorRunId`）。它点名的 run 没有被替代、身份没变，
    * 卡已经在它启动的那一轮里——这里再画一张会读成第二次运行。恒与 `settings` 同在。
    */
   rowOnly?: true;
@@ -74,7 +74,7 @@ export function resolveWorkflowTurnDigests(
   if (launch !== undefined) {
     // 就地生效的设置轮：`amend` 不带 predecessorRunId（缺席即「没有前驱、改的就是自己」，
     // workflow-row-meta.ts）。它是唯一一个点名了 run 却不是「启动 / 恢复了它」的来源，所以
-    // **不占**这一轮的出卡名额——同一轮里真的发起了这条 run 的来源照常出它的卡。
+    // 不占这一轮的出卡名额——同一轮里真的发起了这条 run 的来源照常出它的卡。
     const rowOnly = launch.amend !== undefined && launch.amend.predecessorRunId === undefined;
     if (!rowOnly) seen.add(launch.runId);
     digests.push({

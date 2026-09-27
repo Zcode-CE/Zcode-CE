@@ -2,16 +2,16 @@
 /**
  * 办公技能「视觉检查链」的回归测试（task-13）。
  *
- * 为什么需要它：CE 从 DSH 官方基线搬运 pptx 技能时**丢了视觉链** —— 官方
+ * 为什么需要它：CE 从 DSH 官方基线搬运 pptx 技能时丢了视觉链 —— 官方
  * `presentations-plugin/skills/pptx/SKILL.md` 本有 `soffice --headless --convert-to pdf`
  * → `pdftoppm -png -r 150` → dispatch `visual-judge` 三步，CE 的三份办公技能却都写成
- * 「本 build 没有渲染工具」，只把 PDF 交给用户看。**这个缺陷没有任何测试能抓到**：
+ * 「本 build 没有渲染工具」，只把 PDF 交给用户看。这个缺陷没有任何测试能抓到：
  * 技能是 Markdown，删掉一段不报错、不失败，只是模型从此不再做视觉检查。
  *
- * 断言打在**最终消费点**：不是「技能文件里有某句话」，而是
+ * 断言打在最终消费点：不是「技能文件里有某句话」，而是
  *   ① 三份技能都写出了可执行的两步链与 dispatch 目标；
- *   ② dispatch 用的名字是**运行时真正注册的**那个（不是想当然的 bare name）；
- *   ③ 技能命令调用的引擎在**随包源码里真的存在**（技能与载荷配套）。
+ *   ② dispatch 用的名字是运行时真正注册的那个（不是想当然的 bare name）；
+ *   ③ 技能命令调用的引擎在随包源码里真的存在（技能与载荷配套）。
  *
  * ② 的依据（实测，非推断）：四个办公插件（documents/presentations/spreadsheets/pdf）
  * 都是 `defaultEnabled: true` 且各带一份 `agents/visual-judge.md` ⇒ 默认安装下
@@ -23,7 +23,7 @@
  * 由 `bootstrap/src/app/create-app.ts` 默认装配）与 `core/src/tool/handlers/read.ts` 的
  * PDF 分支。它们被删掉时技能会指挥模型做做不到的事，所以必须一并钉住。
  *
- * 本文件是静态断言：它**不能**替代端到端实跑（soffice→pdftoppm→非空白页图），
+ * 本文件是静态断言：它不能替代端到端实跑（soffice→pdftoppm→非空白页图），
  * 那一步的证据在 `.reverse/98-ce4/IMPL-OFFICE-VISUAL.md` 的实跑记录里。
  */
 import assert from "node:assert/strict";

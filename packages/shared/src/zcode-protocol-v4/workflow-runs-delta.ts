@@ -1,22 +1,22 @@
 // ============================================================
 // workflowRuns 的键级增量：diff（生产侧）、apply（消费侧）与规范键序
 // ============================================================
-// 为什么存在：`workflowRuns` 是一个**高频**状态键，而 `state.updated` 的语义是键级整体替换。
+// 为什么存在：`workflowRuns` 是一个高频状态键，而 `state.updated` 的语义是键级整体替换。
 // 一条引擎事件只改一个节点，却要把整张表重发一遍——每事件 O(N) 字节、一条 run 全程 O(N²)。
 // 节点/子代理被压在 256 上、宽 fan-out 一撞界就静默丢实例，根子都在这里。本模块把「这一步
-// 改了什么」算出来，让线上的字节数与**改动量**成正比，而不是与状态大小成正比。
+// 改了什么」算出来，让线上的字节数与改动量成正比，而不是与状态大小成正比。
 //
 // 三条结构性事实，读下面的代码前先知道，否则几处会像兜底：
-//   1. reducer 只在表满时**淘汰**终态条目，绝不重排（workflow-runs-eviction.ts）。所以 diff 的
+//   1. reducer 只在表满时淘汰终态条目，绝不重排（workflow-runs-eviction.ts）。所以 diff 的
 //      快路径仍然是按下标对齐比较，只在对不齐时才退到键化路径算出「哪些走了」；真遇到重排
 //      它认不出来，只能整键重发（见 RESYNC）。
-//   2. reducer 只给**变化的那条 run** 造新对象，其余 run 与未改动的条目保持引用不变。所以
+//   2. reducer 只给变化的那条 run 造新对象，其余 run 与未改动的条目保持引用不变。所以
 //      diff 的第一道闸是引用比较，深比较只发生在真正动过的那条 run 上。
 //   3. 正确性绝不依赖引用：引用相等只是快路径，不等时一律退回结构比较。
 //
 // 契约：对任意一对 reducer 产出的 (prior, next)，
 // `JSON.stringify(applyAll(带 prior 的快照, diff(prior, next)).workflowRuns) === JSON.stringify(next)`
-// ——**逐字节**，不只是深相等。键序因此是本模块的一等公民，见 {@link canonicalWorkflowRun}。
+// ——逐字节，不只是深相等。键序因此是本模块的一等公民，见 {@link canonicalWorkflowRun}。
 
 import type {
   ConversationDelta,
@@ -35,10 +35,10 @@ import {
 } from "./workflow-runs.js";
 
 /**
- * run 对象的**规范键序** = `workflowRunSchema` 的声明序。
+ * run 对象的规范键序 = `workflowRunSchema` 的声明序。
  *
  * 逐字节一致里唯一不靠「值相等」保证的一环就是键序：reducer 用 `{...run, 新键: v}` 推进状态，
- * 新出现的可选键（reports / phases / concurrency…）因此按**到达顺序**缀在对象尾部，而 apply
+ * 新出现的可选键（reports / phases / concurrency…）因此按到达顺序缀在对象尾部，而 apply
  * 重建 run 时没有那段历史。两边各自按这张表重排一次，序就对齐了——这也是为什么 reducer 的
  * 出口同样要走一遍本函数（那是一处，不是两处）。
  *
@@ -53,8 +53,8 @@ export const WORKFLOW_RUN_HEADER_KEYS: readonly WorkflowRunHeaderKey[] = WORKFLO
 );
 
 /**
- * header 里的**必填**键，同样从 schema 派生（`safeParse(undefined)` 通过 = 可缺省）。
- * 它只用在一处：判一条 `workflowRun.updated` 的 header 够不够格让一条未知 run **出生**。
+ * header 里的必填键，同样从 schema 派生（`safeParse(undefined)` 通过 = 可缺省）。
+ * 它只用在一处：判一条 `workflowRun.updated` 的 header 够不够格让一条未知 run 出生。
  */
 const runShape = workflowRunSchema.shape as unknown as Record<
   string,
@@ -93,7 +93,7 @@ export function canonicalWorkflowRun(run: WorkflowRunState): WorkflowRunState {
  * JSON 值的结构相等。reducer 的幂等判据（原来是整条 run 的 `JSON.stringify` 比对，每事件
  * O(N) 字节）与 diff 的「这个键/条目变了吗」共用这一份，两处判据不会再各说各话。
  *
- * 与 `JSON.stringify` 的差别只有两处，两处都是**更**准确：键序不参与判定；`undefined` 值的键
+ * 与 `JSON.stringify` 的差别只有两处，两处都是更准确：键序不参与判定；`undefined` 值的键
  * 与缺席等同（stringify 也会丢掉它们）。
  */
 export function jsonValueEqual(a: unknown, b: unknown): boolean {
@@ -123,10 +123,10 @@ export function workflowRunUnchanged(previous: WorkflowRunState, next: WorkflowR
 }
 
 /**
- * 一条 header 够不够格让**未知 run 出生**：必填键一个不缺。
+ * 一条 header 够不够格让未知 run 出生：必填键一个不缺。
  *
  * 只有 diff 的「诞生」分支会造出完整 header——已有 run 的增量里 `runId` 永远不变、因此永远不在
- * patch 里，于是若干条增量合并（coalesce 规则 6）也**拼不出**一条完整 header。这条不变量是
+ * patch 里，于是若干条增量合并（coalesce 规则 6）也拼不出一条完整 header。这条不变量是
  * 合并规则得以成立的支点：合并不会把两条对未知 run 的 no-op 变成一次凭空出生。
  */
 export function isCompleteWorkflowRunHeader(header: unknown): boolean {
@@ -236,11 +236,11 @@ interface EntryDiff<T> {
 /**
  * 两张实例表之间的变化。`undefined` = 无变化，`null` = 认不出的结构变化（整键重发）。
  *
- * 快路径按**下标对齐**比较：reducer 的常态是追加与原地更新，这条路径上未改动的条目只做一次
+ * 快路径按下标对齐比较：reducer 的常态是追加与原地更新，这条路径上未改动的条目只做一次
  * 指针比较。第一次对不齐（下标处身份不同，或 prior 比 next 长）说明有条目走了——那是腾位
  * （workflow-runs-eviction.ts），于是退到键化路径把「哪些走了」算出来。
  *
- * 键化路径仍然要求**幸存者按下标对齐**：删除之外的顺序变化这个模型表达不了（协议里没有
+ * 键化路径仍然要求幸存者按下标对齐：删除之外的顺序变化这个模型表达不了（协议里没有
  * 条目移动语法），只能整键重发。
  */
 function diffWorkflowRunEntries<T extends { siteId: string; ordinal: number }>(
@@ -299,7 +299,7 @@ function diffWorkflowRunEntriesByKey<T extends { siteId: string; ordinal: number
 /**
  * `workflowRun.updated` 的应用。
  *
- * 容器 revision 取 **max**：coalesce 允许把靠后的 op 合并到靠前的位置上（规则 6），于是输出序列
+ * 容器 revision 取 max：coalesce 允许把靠后的 op 合并到靠前的位置上（规则 6），于是输出序列
  * 的最后一条不一定携带最高 revision。revision 按契约单调，max 让「合并前后终态逐字节一致」这条
  * 定律不依赖 op 的位置。
  *
@@ -362,7 +362,7 @@ export function applyWorkflowRunRemoved(
 }
 
 /**
- * 按 (siteId, ordinal) 摘掉条目；一条都没命中时返回**同一个数组**（未提到的表要保住引用）。
+ * 按 (siteId, ordinal) 摘掉条目；一条都没命中时返回同一个数组（未提到的表要保住引用）。
  * 未命中的键是定义明确的 no-op：合并把两条 op 的删除取了并集，其中一些在这个客户端手上
  * 根本没到过。
  */
@@ -379,7 +379,7 @@ function removeWorkflowRunEntries<T extends { siteId: string; ordinal: number }>
 /**
  * 按 (siteId, ordinal) upsert：已有键原地替换、新键追加到尾部。
  *
- * 客户端**绝不**施加任何上界（maxNodes / maxActors / maxRuns）：只有生产者有资格淘汰，而且
+ * 客户端绝不施加任何上界（maxNodes / maxActors / maxRuns）：只有生产者有资格淘汰，而且
  * 淘汰必须说出来（`workflowRun.removed` / `removedActors` / `removedNodes`）。客户端自行裁剪
  * 只会让两侧悄悄分叉。
  */
@@ -406,7 +406,7 @@ function upsertWorkflowRunEntries<T extends { siteId: string; ordinal: number }>
 /**
  * 一条 `workflowRun.updated` 的四张条目表都在线上界之内吗。
  *
- * 真正会超界的是**两张删除表**。合并出来的 upsert 表自己就有界：按合并规则，先者 upsert 的键
+ * 真正会超界的是两张删除表。合并出来的 upsert 表自己就有界：按合并规则，先者 upsert 的键
  * 凡被后者删掉的都已去掉，所以留下的每一个键在这条 op 施加完之后都还在表里，而表本身 ≤ 界。
  * 删除表没有这条护栏——合并分不出「窗口里刚出生又被淘汰的键」和「客户端早就拿着的键」，
  * 每次淘汰都让出一个位子，一个够宽的 flush 窗口里被删掉的不同键因此可以多于 1024 条。
@@ -415,7 +415,7 @@ function upsertWorkflowRunEntries<T extends { siteId: string; ordinal: number }>
  * 超界载荷会让整个 patch 解析失败、整帧被丢；publisher 的两道限制（500 op / 1 MiB）在这个
  * 量级上都不会响。四张表都查是因为这道闸很便宜，而且不该依赖上面那条论证一直成立。
  *
- * 合并是**优化**，所以拒绝合并永远是安全的：两条 op 各自都在界内，逐条投递的终态一个字节都不差。
+ * 合并是优化，所以拒绝合并永远是安全的：两条 op 各自都在界内，逐条投递的终态一个字节都不差。
  */
 export function workflowRunUpdateWithinWireBounds(
   delta: WorkflowRunUpdatedDelta,
@@ -497,7 +497,7 @@ function mergeRemovedRefs(
 /**
  * 条目表按键后来者覆盖、按首次出现保序；两侧都没有条目时返回 undefined（键不建）。
  *
- * **先者 upsert 的键凡是被后者删掉的一律去掉**：顺序施加时它先进表、再被后者摘走，所以合并后
+ * 先者 upsert 的键凡是被后者删掉的一律去掉：顺序施加时它先进表、再被后者摘走，所以合并后
  * 的 op 里根本不该有它。若后者又把同一个键加了回来，它只在后者的表里出现一次，于是落在表尾
  * ——顺序施加得到的正是这个位置。
  */

@@ -337,7 +337,7 @@ export class ConversationTopicPublisher {
    * 一个订阅者的快照帧：profile 决定行可见性，能力位决定 `workflowRuns` 发全量还是旧界。
    *
    * 快照与增量必须同一档：一个收着旧界整键 patch 的客户端，如果快照里突然来了 512 个节点，
-   * 它的 `.max(256)` 会让**整帧**解析失败（已知键上的解析错误不会只剥掉一个键）。
+   * 它的 `.max(256)` 会让整帧解析失败（已知键上的解析错误不会只剥掉一个键）。
    */
   private getWireSnapshotForSubscription(subscription: Subscription): ConversationSnapshot {
     const snapshot = this.getWireSnapshotForProfile(subscription.profile);
@@ -347,9 +347,9 @@ export class ConversationTopicPublisher {
   }
 
   /**
-   * 一批 delta 的**每订阅者**编码：profile 过滤 + 旧消费者的整键折叠。
+   * 一批 delta 的每订阅者编码：profile 过滤 + 旧消费者的整键折叠。
    *
-   * 折叠取的是**当前**投影状态，所以恢复回放上历史增量会折成终态——中间态被跳过，终态一致，
+   * 折叠取的是当前投影状态，所以恢复回放上历史增量会折成终态——中间态被跳过，终态一致，
    * 与 coalesce 的既有行为同规（conversation-workflow-run-deltas.ts 的文件头）。
    */
   private encodeDeltasForSubscription(
@@ -560,7 +560,7 @@ export class ConversationTopicPublisher {
         // dwf 快路径：这条事件只产键级增量时，它们的字节数就是快照增长的上界（一条 upsert
         // 最多把自己那点内容加进去，removed 只会让快照变小），不必把整份快照再序列化一遍
         // ——那一次 JSON.stringify 是每条引擎事件都要付的 MB 级开销，也是这次改造的另一半。
-        // 判据用的是**实际产出**而不是预演，所以 diff 退化出的整键 patch 自然落回精确路径。
+        // 判据用的是实际产出而不是预演，所以 diff 退化出的整键 patch 自然落回精确路径。
         const growth = workflowRunDeltaGrowthUpperBound(produced);
         if (growth !== null && this.wireSnapshotBytesUpperBound + growth <= projectionLimit) {
           nextUpperBound = this.wireSnapshotBytesUpperBound + growth;

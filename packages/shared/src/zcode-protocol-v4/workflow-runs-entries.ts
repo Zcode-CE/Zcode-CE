@@ -7,7 +7,7 @@
 import { WORKFLOW_RUNS_LIMITS, type WorkflowRunActor } from "./workflow-runs.js";
 
 /**
- * 一个 actor 条目的铸造。两处调用必须**逐字同形**：`actor-created`，以及带出生事实的
+ * 一个 actor 条目的铸造。两处调用必须逐字同形：`actor-created`，以及带出生事实的
  * `node-dispatched`（workflow-runs-eviction.ts 的 activation）——同一个子代理按到达路径长出
  * 两种条目，就是两条会在冷回放里对不上的记录。
  *
@@ -37,7 +37,7 @@ export function boundedActorName(name: string | undefined): string | undefined {
 
 /**
  * 实例出生阶段名的线上界。与 {@link boundedActorName}
- * 同族、同理由，但**直接截断、不加省略号**——这个字段不是给人读的文本而是一个关联键，
+ * 同族、同理由，但直接截断、不加省略号——这个字段不是给人读的文本而是一个关联键，
  * UI 的 `phaseNameMatches` 正是按前缀把截断的名字关联回 display 阶段。
  */
 export function boundedPhaseName(name: string | undefined): string | undefined {

@@ -16,21 +16,21 @@ import {
 } from "@zcode/shared/zcode-protocol-v4";
 
 /**
- * 协议 v4 workflowRuns 键级增量的**黄金测试**。
+ * 协议 v4 workflowRuns 键级增量的黄金测试。
  *
  * 为什么必须自补：上游 `workflow-runs-delta.ts` 把契约写在文件头 ——
  *
  *   `JSON.stringify(applyAll(带 prior 的快照, diff(prior, next)).workflowRuns) === JSON.stringify(next)`
  *
- * ——**逐字节**，不只是深相等（键序因此是一等公民）。但上游**没有带任何 protocol-v4 测试**
+ * ——逐字节，不只是深相等（键序因此是一等公民）。但上游没有带任何 protocol-v4 测试
  * （穷尽核实：`git ls-tree -r upstream/main -- packages/shared/test` 里 v4/protocol 命中 0）。
  * 这条契约一旦被违反，表现是「消费侧状态与生产侧静默分叉」——面板显示旧值、增量对不上，
- * 而两边都不报错。所以这里用**真实 reducer 产出**的状态转移来钉住它。
+ * 而两边都不报错。所以这里用真实 reducer 产出的状态转移来钉住它。
  *
  * 三条断言面（对应上游文件头的三条结构性事实）：
- *   A. 逐字节往返：reducer 产出的任意 (prior, next) 对，diff→apply 必须回到 next 的**字节**。
+ *   A. 逐字节往返：reducer 产出的任意 (prior, next) 对，diff→apply 必须回到 next 的字节。
  *   B. 键序规范：run 对象的键序必须等于 `workflowRunSchema` 的声明序（唯一不靠值相等保证的一环）。
- *   C. 旧消费者裁剪：超界的 run 必须先过 `clampWorkflowRunsForLegacy`，否则老对端**整帧丢**。
+ *   C. 旧消费者裁剪：超界的 run 必须先过 `clampWorkflowRunsForLegacy`，否则老对端整帧丢。
  *
  * 运行：cd packages/shared && node --import tsx --test test/protocolV4WorkflowRunsGolden.test.ts
  */
@@ -110,7 +110,7 @@ function replay(script: WorkflowRunProgressEnvelope[]): WorkflowRunsState[] {
  * 按 delta 契约施加一次 diff 到 prior 上（apply 侧的生产语义）。
  *
  * 两个易错点（都是实测踩出来的，写在这里免得下一个人重踩）：
- *   · `diffWorkflowRunsState` 返回的是**delta 事件数组**（`WorkflowRunDelta[]`），
+ *   · `diffWorkflowRunsState` 返回的是delta 事件数组（`WorkflowRunDelta[]`），
  *     不是 `{updated, removed}` 对象；
  *   · `applyWorkflowRunUpdated` / `applyWorkflowRunRemoved` 接收并返回**整个
  *     `WorkflowRunsState`**（它们自己管 revision 与 runs），不是 runs 数组。

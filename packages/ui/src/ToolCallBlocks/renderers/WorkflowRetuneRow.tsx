@@ -6,7 +6,7 @@
 // 会显示编译校验结果，使一次并发设置变更看起来像重新编译和启动了工作流。
 //
 // 画的就是 GUI「配置」留下的那条设置行（`WorkflowSettingsChangeRow`），一字不差——同一件事由谁
-// 发起不该有两种读法。唯一的差别是它**可点**：工具行是模型这一步的落点，用户从这里回到那条 run。
+// 发起不该有两种读法。唯一的差别是它可点：工具行是模型这一步的落点，用户从这里回到那条 run。
 
 import type { WorkflowSettingsAmendMeta } from "@zcode/shared/zcode-protocol-v4";
 import { WorkflowSettingsChangeRow } from "@/components/workflow-timeline/WorkflowSettingsChangeRow.js";
@@ -15,7 +15,7 @@ import { WorkflowSettingsChangeRow } from "@/components/workflow-timeline/Workfl
  * 入参里那个数 → 设置轮那一块元数据。两者本来就是同一件事的两种记法（GUI 走轮元数据，工具走
  * 入参），映射到同一个形状之后措辞只剩一份实现。
  *
- * `requested` 是**模型发出的、未经钳制**的数（readWorkflowRetuneCall），而 CLI 会把它钳进
+ * `requested` 是模型发出的、未经钳制的数（readWorkflowRetuneCall），而 CLI 会把它钳进
  * `[1, 天花板]`。所以这里把天花板一起交给措辞规则：`workflowSettingsChangeSegments` 对
  * `to >= ceiling` 与 `to` 缺席一视同仁，都念「上限恢复为本机默认」——这正是钳制之后的真相
  * （钳到天花板 = 这条 run 没有自己的界）。于是行上永远不会出现一个大于本机上限的数。
