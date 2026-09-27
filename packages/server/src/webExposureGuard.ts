@@ -311,10 +311,10 @@ export function createCrossSiteGuard(options: CrossSiteGuardOptions): Middleware
     const requestPath = new URL(c.req.url).pathname;
     // 保护面判定必须在这里做（2026-09-27 修）。
     //
-    // 此前本中间件直接调 evaluateRequestOrigin，**跳过了 shouldGuardRequest**，
-    // 于是它对**所有方法**都做来源判定 ⇒ 跨源 GET 会被 403，而文件头第 1 条与
+    // 此前本中间件直接调 evaluateRequestOrigin，跳过了 shouldGuardRequest，
+    // 于是它对所有方法都做来源判定 ⇒ 跨源 GET 会被 403，而文件头第 1 条与
     // docs/development/web-remote-control.md §4.1 都写明「读方法 GET/HEAD 不在保护面内」。
-    // 后果是**口径漂移**：纯函数与测试按"先问在不在保护面"判定（webOriginGuard.test.ts:204
+    // 后果是口径漂移：纯函数与测试按"先问在不在保护面"判定（webOriginGuard.test.ts:204
     // 的注释警告的正是这件事），而真实中间件比它更严 —— 读面被误伤。
     //
     // 方向上是"过严"而非"过松"，所以没有安全缺口；但它会让跨源 GET 拿到 403 而不是
