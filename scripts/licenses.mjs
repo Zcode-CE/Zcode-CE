@@ -127,11 +127,17 @@ const WEAK_ALLOW = [[/^lightningcss/, "当前仅构建依赖；进入生产图�
 const PROD_WEAK_ALLOW = [
   [
     /^@ubjs\/(?:core|node)(?:-|$)/,
-    "@ubjs/* 是 MPL-2.0（uniffi N-API 运行时），原样分发未修改；源码见 pinned 上游 tag，许可材料已登记",
+    // 源码可提供这条是**独立核实过**的，不是继承自上游自述：pinned tag 0.31.0-3 可达，
+    // 且实际分发的 .node 二进制对应源码就在该 tag 的 runtimes/napi/（Cargo.toml/build.rs/src/lib.rs）。
+    // 核实记录写在 third-party/npm-overrides.json 各条的 reviewEvidence.result 里。
+    "@ubjs/* 是 MPL-2.0（uniffi N-API 运行时），原样分发未修改；源码见 pinned 上游 tag（已独立核实可达且覆盖实际分发的二进制来源），MPL-2.0 全文随 THIRD-PARTY-NOTICES.md 分发，许可材料已登记",
   ],
   [
     /^@trycua\/cua-driver(?:-|$)/,
-    "平台包声明 MIT AND MPL-2.0，MPL 部分仅覆盖 node runtime 垫片（包内 node-runtime-NOTICE.md 有说明）；原样分发未修改，许可材料已登记",
+    // 注意：**平台包声明的是 MIT AND MPL-2.0**，不是 MIT —— MPL 部分覆盖随包分发的
+    // cua_driver_node_runtime.node（包内 node-runtime-NOTICE.md 自述）。登记表此前把 7 条
+    // 全记成 MIT，等于把这个义务藏掉；已按已发布物订正为 MIT AND MPL-2.0。
+    "平台包声明 MIT AND MPL-2.0，MPL 部分覆盖随包分发的 cua_driver_node_runtime.node（包内 node-runtime-NOTICE.md 有说明）；原样分发未修改，MPL-2.0 全文随 THIRD-PARTY-NOTICES.md 分发，许可材料已登记",
   ],
 ];
 function weakAllowReason(r) {

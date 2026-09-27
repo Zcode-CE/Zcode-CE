@@ -1,6 +1,7 @@
 import { readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { collectNpmNotices, hashBytes } from "./third-party-npm.mjs";
+import { SHIPPED_STANDARD_TEXTS } from "./third-party-evidence-tiers.mjs";
 import {
   noticesFileName,
   readNativeSearchNotices,
@@ -131,6 +132,14 @@ export async function generateThirdPartyNotices(root = repositoryRoot) {
     "Apache-2.0 licensed components",
     "Apache License, Version 2.0",
   );
+  // 同一个道理：@ubjs/* 与 @trycua/cua-driver* 的上游许可材料里只有 MPL-2.0 的
+  // Exhibit A 短通知（192 B）或 MIT 全文，MPL 全文并未随包分发。MPL 的义务不止保留通知，
+  // 还有源码可提供，所以这里把全文一并随包分发，让判据 (乙) 能核到"我们确实分发了全文"。
+  // 表在 third-party-evidence-tiers.mjs 的 SHIPPED_STANDARD_TEXTS（唯一所有者），不在这里重复列。
+  for (const [identifier, file] of Object.entries(SHIPPED_STANDARD_TEXTS)) {
+    if (file === "scripts/license-texts/Apache-2.0.txt") continue;
+    addText(await readInput(file), `${identifier} licensed components`, identifier);
+  }
   const patches = [];
   for (const [name, file] of Object.entries(pkg.pnpm?.patchedDependencies ?? {})) {
     patches.push({ package: name, file, sha256: hashBytes(await readInput(file)) });

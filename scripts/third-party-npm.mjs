@@ -4,6 +4,15 @@ import { readFile, readdir, realpath } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { promisify } from "node:util";
 import { resolveSpawnRuntimeOptions } from "./spawn-command.mjs";
+import {
+  EVIDENCE_TIERS,
+  PINNED_UPSTREAM_CLAUSES,
+  SHIPPED_STANDARD_TEXTS,
+  STANDARD_CLAUSES,
+  declaredLicenseText,
+  mentionsIdentifier,
+  publisherSubjectText,
+} from "./third-party-evidence-tiers.mjs";
 
 const exec = promisify(execFile);
 export const hashBytes = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -212,103 +221,13 @@ export function missingProductionPackages(required, installed) {
 }
 
 /**
- * 许可材料证据档位表。
- *
- * **fail-closed**：只有在本表里显式登记为 `blocking: false`、**且**运行时判据核对全部通过的
- * 档位才不阻断发布门禁。未登记的 `evidenceKind`（含拼写错误）一律按阻断处理。
- *
- * 档位语义与判据见 `third-party/README.md`：
- * - `publisher-declared-standard-terms`：发布者**已发布**的 SPDX 声明 + 对应**标准未修改**条款文本
- *   + 已发布的发布者版权主体 + 已记录的出处与版本锁定。四条同时成立才非阻断。
- *   非阻断**不等于**"材料齐全"，只表示"我们不再把发布者已发布的声明当作缺失"。
- * - `pinned-upstream-license-file`：登记的是**上游仓库**里 pin 住的许可文件。材料性质与上面那档不同，
- *   本次实现**刻意**未重新分档（保持阻断），见 third-party/README.md 的说明。
- * - `incomplete-unverified`：声明缺失、含糊，或文本是自定义条款 ⇒ 阻断。
- */
-export const EVIDENCE_TIERS = new Map([
-  ["publisher-declared-standard-terms", { blocking: false, guard: "published-declaration" }],
-  ["pinned-upstream-license-file", { blocking: true, guard: null }],
-  ["incomplete-unverified", { blocking: true, guard: null }],
-]);
-
-/**
- * 每个 SPDX 标识对应的**标准条款片段**（逐行照抄，避免跨行断句）。
- *
- * 判据 (b) 只核对"我们随包分发的通知文本里确实包含该标识的标准条款"。
- * 它**不能**证明文本未被改动过——那是人工复核的职责；但它能拦住"换成自定义文案"
- * 这类会让门禁静默变绿的情况。**没有表项的标识一律判为无法核对 ⇒ 阻断**（fail-closed）。
- */
-const STANDARD_CLAUSES = new Map([
-  [
-    "MIT",
-    [
-      "Permission is hereby granted, free of charge, to any person obtaining a copy",
-      'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR',
-    ],
-  ],
-  [
-    "ISC",
-    [
-      "Permission to use, copy, modify, and/or distribute this software for any",
-      "purpose with or without fee is hereby granted, provided that the above",
-    ],
-  ],
-  [
-    "BSD-3-Clause",
-    [
-      "Redistribution and use in source and binary forms, with or without",
-      "3. Neither the name of the copyright holder nor the names of its contributors",
-      'THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"',
-    ],
-  ],
-  [
-    "BSD-2-Clause",
-    [
-      "Redistribution and use in source and binary forms, with or without",
-      'THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"',
-    ],
-  ],
-  [
-    "Apache-2.0",
-    [
-      'Licensed under the Apache License, Version 2.0 (the "License");',
-      "http://www.apache.org/licenses/LICENSE-2.0",
-    ],
-  ],
-]);
-
-const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
-
-function declaredLicenseText(value) {
-  if (typeof value === "string") return value.trim();
-  if (Array.isArray(value)) return value.map(declaredLicenseText).filter(Boolean).join(" OR ");
-  return value?.type?.trim() ?? "";
-}
-
-function publisherSubjectText(value) {
-  if (typeof value === "string") return value.trim();
-  if (Array.isArray(value)) return value.map(publisherSubjectText).filter(Boolean).join(", ");
-  if (value && typeof value === "object") return String(value.name ?? "").trim();
-  return "";
-}
-
-/** 某个标识是否以独立词出现（避免 MIT 命中 MIT/X11 之外的同名子串）。 */
-function mentionsIdentifier(text, identifier) {
-  if (!text) return false;
-  return new RegExp(
-    `(?:^|[^A-Za-z0-9.-])${escapeRegExp(identifier)}(?:[^A-Za-z0-9.-]|$)`,
-    "u",
-  ).test(text);
-}
-
-/**
  * 核对"发布者声明档"的四条判据。
  *
  * 输入刻意分成两类，避免**循环论证**：
  * - `publishedNotices`：来自**已发布包目录**的成员（README 许可段、包内 LICENSE），它才代表"发布者已发布"；
  * - `record.file`：我们自己登记的文本，只用来核对判据 (b)，**不**用来证明声明或版权主体存在。
  */
-export function assessOverrideMaterials(key, record, { pkg, notices }) {
+export function assessOverrideMaterials(key, record, { pkg, notices, shippedTexts = "" }) {
   const tier =
     record.evidenceKind ?? (record.acceptedMissingNotice ? "accepted-missing-notice" : "unknown");
   const policy = EVIDENCE_TIERS.get(tier) ?? { blocking: true, guard: null };
@@ -320,6 +239,92 @@ export function assessOverrideMaterials(key, record, { pkg, notices }) {
   const missing = [];
   const declared = declaredLicenseText(record.license);
   const artifactDeclaration = declaredLicenseText(pkg.license) || declaredLicenseText(pkg.licenses);
+
+  if (policy.guard === "pinned-upstream-file") {
+    // 这一档问的是："上游确实发布过一份许可文件，且它覆盖了已发布物声明的每一个标识。"
+    //
+    // 判据 (甲)：上游发布了许可文件 —— 我们登记的快照就是它的逐字节副本。
+    // 必须与 refs/source 对上，否则"pinned"二字不成立（拿一个匿名文本当上游文件是自证）。
+    const refs = record.refs ?? [];
+    if (!record.file || !record.sha256)
+      missing.push("(甲) no upstream licence file snapshot is recorded (file + sha256)");
+    if (!record.source)
+      missing.push("(甲) no provenance source recorded for the upstream licence file");
+    if (!refs.length) missing.push("(甲) no upstream version pin recorded (refs is empty)");
+    else if (record.source && !refs.some((ref) => record.source.includes(ref)))
+      missing.push(
+        "(甲) the recorded source does not reference the pinned ref (" +
+          refs.join(", ") +
+          ") — a snapshot that cannot be tied to the pinned tag is self-assertion",
+      );
+    if (!(record.reviewEvidence?.upstreamLicenseFiles ?? []).length)
+      missing.push(
+        "(甲) reviewEvidence.upstreamLicenseFiles does not name the upstream licence file",
+      );
+
+    // 判据 (乙)：已发布物声明的每一个标识，其标准条款都在我们分发的内容里。
+    //
+    // 为什么逐标识而不是只看 record.license：@trycua 的平台包在已发布物里声明的是
+    // "MIT AND MPL-2.0"，而 override 一度只记成 "MIT" —— 只看 record 会把 MPL 义务藏掉。
+    // 所以这里以已发布物为准，并要求 record 与它一致；不一致就是登记缺陷，不是放行理由。
+    const splitIds = (value) =>
+      value
+        .split(/\s+(?:AND|OR)\s+/iu)
+        .map((part) => part.trim())
+        .filter(Boolean);
+    const artifactIds = splitIds(artifactDeclaration);
+    if (!artifactIds.length)
+      missing.push("(乙) the published artifact declares no licence identifier");
+    const declaredIds = splitIds(declared);
+    if (
+      artifactIds.length &&
+      (declaredIds.length !== artifactIds.length ||
+        !declaredIds.every((id) => artifactIds.includes(id)))
+    )
+      missing.push(
+        "(乙) the recorded licence (" +
+          (declared || "none") +
+          ") does not match the published declaration (" +
+          artifactDeclaration +
+          ") — fix the record rather than the criterion",
+      );
+    const comparable = shippedTexts ? noticeText + "\n" + shippedTexts : noticeText;
+    for (const id of artifactIds) {
+      const clauses = PINNED_UPSTREAM_CLAUSES.get(id);
+      if (!clauses) {
+        missing.push("(乙) identifier " + id + " has no comparable standard-clause table entry");
+        continue;
+      }
+      for (const clause of clauses)
+        if (!comparable.includes(clause))
+          missing.push(
+            "(乙) neither the snapshot nor the shipped standard texts contain the " +
+              id +
+              " clause: " +
+              clause.slice(0, 56),
+          );
+    }
+
+    // 判据 (丙)：发布者版权主体可核（只认已发布物与上游文件原文，不认我们写的说明）。
+    const subject =
+      publisherSubjectText(pkg.author) ||
+      publisherSubjectText(pkg.contributors) ||
+      publisherSubjectText(pkg.maintainers) ||
+      (/\bcopyright\b/iu.test(publishedText) || /\bcopyright\b/iu.test(noticeText)
+        ? "licence text copyright line"
+        : "");
+    if (!subject)
+      missing.push(
+        "(丙) neither the published artifact nor the upstream licence file carries a copyright subject",
+      );
+
+    // 判据 (丁)：出处与内容锁定。
+    if (!record.source) missing.push("(丁) no provenance source recorded");
+    if (!record.file || !record.sha256)
+      missing.push("(丁) no content pin recorded (file + sha256)");
+    if (!(record.reviewEvidence?.checkedOn ?? record.reviewEvidence?.result))
+      missing.push("(丁) no review evidence recorded (checkedOn / result)");
+  }
 
   if (policy.guard === "published-declaration") {
     // (a) 已发布物里声明了 SPDX 标识
@@ -393,6 +398,21 @@ export function assessOverrideMaterials(key, record, { pkg, notices }) {
 }
 
 export async function collectNpmNotices(root, overrides) {
+  // 随包分发的标准条款全文：判据 (乙) 要能核到"我们确实分发了全文"，
+  // 而不是只看上游快照里有没有（@ubjs 的快照只有 192 B 的 Exhibit A）。
+  const shippedTexts = (
+    await Promise.all(
+      Object.values(SHIPPED_STANDARD_TEXTS).map(async (file) => {
+        try {
+          return await readFile(join(root, file), "utf8");
+        } catch (error) {
+          if (error.code === "ENOENT")
+            throw new Error(`Missing shipped standard licence text: ${file}`);
+          throw error;
+        }
+      }),
+    )
+  ).join("\n");
   root = await realpath(root);
   const { required, projects } = await readWorkspaceProductionGraph(root);
   // 修复：标识门禁和声明生成必须扫描同一安装集合，避免嵌套版本只进声明、不进门禁。
@@ -424,7 +444,9 @@ export async function collectNpmNotices(root, overrides) {
       missing.push(key);
     // 分档判定：只对登记了 evidenceKind 的条目做，判据核对不通过会被升级为阻断。
     if (override?.evidenceKind)
-      overrideAssessments.push(assessOverrideMaterials(key, override, { pkg, notices }));
+      overrideAssessments.push(
+        assessOverrideMaterials(key, override, { pkg, notices, shippedTexts }),
+      );
     packages.push({
       ...item,
       license:

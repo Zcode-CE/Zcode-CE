@@ -469,10 +469,10 @@
     "sha256": "c0779290c1d4783169aa3dbfb55feb505e563ef8a004bbf55298ceffcfbda8d9",
     "source": "https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md",
     "evidenceKind": "pinned-upstream-license-file",
-    "license": "MIT",
+    "license": "MIT AND MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive carries no standalone LICENSE; the publisher declares MIT and the pinned upstream LICENSE.md is preserved as the copyright and permission notice.",
+      "result": "The versioned npm archive carries no standalone LICENSE; the published package.json declares MIT AND MPL-2.0 (the MPL part covers the bundled cua_driver_node_runtime.node, as the in-package node-runtime-NOTICE.md states), and the pinned upstream LICENSE.md is preserved as the MIT copyright and permission notice. NOTE: that in-package notice names scripts/build-node-runtime.mjs as the build script, but that path is 404 at the pinned tag; the real path is libs/cua-driver/scripts/build-node-runtime.mjs (verified 2026-09-27).",
       "upstreamLicenseFiles": ["LICENSE.md"]
     }
   },
@@ -484,10 +484,10 @@
     "sha256": "c0779290c1d4783169aa3dbfb55feb505e563ef8a004bbf55298ceffcfbda8d9",
     "source": "https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md",
     "evidenceKind": "pinned-upstream-license-file",
-    "license": "MIT",
+    "license": "MIT AND MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive carries no standalone LICENSE; the publisher declares MIT and the pinned upstream LICENSE.md is preserved as the copyright and permission notice.",
+      "result": "The versioned npm archive carries no standalone LICENSE; the published package.json declares MIT AND MPL-2.0 (the MPL part covers the bundled cua_driver_node_runtime.node, as the in-package node-runtime-NOTICE.md states), and the pinned upstream LICENSE.md is preserved as the MIT copyright and permission notice. NOTE: that in-package notice names scripts/build-node-runtime.mjs as the build script, but that path is 404 at the pinned tag; the real path is libs/cua-driver/scripts/build-node-runtime.mjs (verified 2026-09-27).",
       "upstreamLicenseFiles": ["LICENSE.md"]
     }
   },
@@ -499,10 +499,10 @@
     "sha256": "c0779290c1d4783169aa3dbfb55feb505e563ef8a004bbf55298ceffcfbda8d9",
     "source": "https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md",
     "evidenceKind": "pinned-upstream-license-file",
-    "license": "MIT",
+    "license": "MIT AND MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive carries no standalone LICENSE; the publisher declares MIT and the pinned upstream LICENSE.md is preserved as the copyright and permission notice.",
+      "result": "The versioned npm archive carries no standalone LICENSE; the published package.json declares MIT AND MPL-2.0 (the MPL part covers the bundled cua_driver_node_runtime.node, as the in-package node-runtime-NOTICE.md states), and the pinned upstream LICENSE.md is preserved as the MIT copyright and permission notice. NOTE: that in-package notice names scripts/build-node-runtime.mjs as the build script, but that path is 404 at the pinned tag; the real path is libs/cua-driver/scripts/build-node-runtime.mjs (verified 2026-09-27).",
       "upstreamLicenseFiles": ["LICENSE.md"]
     }
   },
@@ -514,10 +514,10 @@
     "sha256": "c0779290c1d4783169aa3dbfb55feb505e563ef8a004bbf55298ceffcfbda8d9",
     "source": "https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md",
     "evidenceKind": "pinned-upstream-license-file",
-    "license": "MIT",
+    "license": "MIT AND MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive carries no standalone LICENSE; the publisher declares MIT and the pinned upstream LICENSE.md is preserved as the copyright and permission notice.",
+      "result": "The versioned npm archive carries no standalone LICENSE; the published package.json declares MIT AND MPL-2.0 (the MPL part covers the bundled cua_driver_node_runtime.node, as the in-package node-runtime-NOTICE.md states), and the pinned upstream LICENSE.md is preserved as the MIT copyright and permission notice. NOTE: that in-package notice names scripts/build-node-runtime.mjs as the build script, but that path is 404 at the pinned tag; the real path is libs/cua-driver/scripts/build-node-runtime.mjs (verified 2026-09-27).",
       "upstreamLicenseFiles": ["LICENSE.md"]
     }
   },
@@ -529,10 +529,10 @@
     "sha256": "c0779290c1d4783169aa3dbfb55feb505e563ef8a004bbf55298ceffcfbda8d9",
     "source": "https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md",
     "evidenceKind": "pinned-upstream-license-file",
-    "license": "MIT",
+    "license": "MIT AND MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive carries no standalone LICENSE; the publisher declares MIT and the pinned upstream LICENSE.md is preserved as the copyright and permission notice.",
+      "result": "The versioned npm archive carries no standalone LICENSE; the published package.json declares MIT AND MPL-2.0 (the MPL part covers the bundled cua_driver_node_runtime.node, as the in-package node-runtime-NOTICE.md states), and the pinned upstream LICENSE.md is preserved as the MIT copyright and permission notice. NOTE: that in-package notice names scripts/build-node-runtime.mjs as the build script, but that path is 404 at the pinned tag; the real path is libs/cua-driver/scripts/build-node-runtime.mjs (verified 2026-09-27).",
       "upstreamLicenseFiles": ["LICENSE.md"]
     }
   },
@@ -544,10 +544,10 @@
     "sha256": "c0779290c1d4783169aa3dbfb55feb505e563ef8a004bbf55298ceffcfbda8d9",
     "source": "https://raw.githubusercontent.com/trycua/cua/cua-driver-rs-v0.28.2/LICENSE.md",
     "evidenceKind": "pinned-upstream-license-file",
-    "license": "MIT",
+    "license": "MIT AND MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive carries no standalone LICENSE; the publisher declares MIT and the pinned upstream LICENSE.md is preserved as the copyright and permission notice.",
+      "result": "The versioned npm archive carries no standalone LICENSE; the published package.json declares MIT AND MPL-2.0 (the MPL part covers the bundled cua_driver_node_runtime.node, as the in-package node-runtime-NOTICE.md states), and the pinned upstream LICENSE.md is preserved as the MIT copyright and permission notice. NOTE: that in-package notice names scripts/build-node-runtime.mjs as the build script, but that path is 404 at the pinned tag; the real path is libs/cua-driver/scripts/build-node-runtime.mjs (verified 2026-09-27).",
       "upstreamLicenseFiles": ["LICENSE.md"]
     }
   },
@@ -562,7 +562,7 @@
     "license": "MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive contains no standalone complete LICENSE; the publisher's declared license identifier and the pinned upstream license file are preserved instead. The dependency is redistributed unmodified, so the MPL-2.0 source-availability obligation is met by the upstream release the pinned version was built from.",
+      "result": "The versioned npm archive contains no standalone complete LICENSE; it ships only the MPL-2.0 Exhibit A short notice (192 B). The pinned upstream LICENSE at tag 0.31.0-3 is byte-identical to the recorded snapshot, and the MPL-2.0 full text is shipped alongside in THIRD-PARTY-NOTICES.md. The MPL source-availability obligation was verified independently on 2026-09-27 rather than inherited: the pinned tag resolves (0.31.0-3 -> commit dcb5c4ab2350d57f6d26f5fa81a99c77ed86d449) and the Rust source of the distributed binaries is present in that tag at runtimes/napi/ (Cargo.toml, build.rs, src/lib.rs). The dependency is redistributed unmodified.",
       "upstreamLicenseFiles": ["LICENSE"]
     }
   },
@@ -577,7 +577,7 @@
     "license": "MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive contains no standalone complete LICENSE; the publisher's declared license identifier and the pinned upstream license file are preserved instead. The dependency is redistributed unmodified, so the MPL-2.0 source-availability obligation is met by the upstream release the pinned version was built from.",
+      "result": "The versioned npm archive contains no standalone complete LICENSE; it ships only the MPL-2.0 Exhibit A short notice (192 B). The pinned upstream LICENSE at tag 0.31.0-3 is byte-identical to the recorded snapshot, and the MPL-2.0 full text is shipped alongside in THIRD-PARTY-NOTICES.md. The MPL source-availability obligation was verified independently on 2026-09-27 rather than inherited: the pinned tag resolves (0.31.0-3 -> commit dcb5c4ab2350d57f6d26f5fa81a99c77ed86d449) and the Rust source of the distributed binaries is present in that tag at runtimes/napi/ (Cargo.toml, build.rs, src/lib.rs). The dependency is redistributed unmodified.",
       "upstreamLicenseFiles": ["LICENSE"]
     }
   },
@@ -592,7 +592,7 @@
     "license": "MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive contains no standalone complete LICENSE; the publisher's declared license identifier and the pinned upstream license file are preserved instead. The dependency is redistributed unmodified, so the MPL-2.0 source-availability obligation is met by the upstream release the pinned version was built from.",
+      "result": "The versioned npm archive contains no standalone complete LICENSE; it ships only the MPL-2.0 Exhibit A short notice (192 B). The pinned upstream LICENSE at tag 0.31.0-3 is byte-identical to the recorded snapshot, and the MPL-2.0 full text is shipped alongside in THIRD-PARTY-NOTICES.md. The MPL source-availability obligation was verified independently on 2026-09-27 rather than inherited: the pinned tag resolves (0.31.0-3 -> commit dcb5c4ab2350d57f6d26f5fa81a99c77ed86d449) and the Rust source of the distributed binaries is present in that tag at runtimes/napi/ (Cargo.toml, build.rs, src/lib.rs). The dependency is redistributed unmodified.",
       "upstreamLicenseFiles": ["LICENSE"]
     }
   },
@@ -607,7 +607,7 @@
     "license": "MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive contains no standalone complete LICENSE; the publisher's declared license identifier and the pinned upstream license file are preserved instead. The dependency is redistributed unmodified, so the MPL-2.0 source-availability obligation is met by the upstream release the pinned version was built from.",
+      "result": "The versioned npm archive contains no standalone complete LICENSE; it ships only the MPL-2.0 Exhibit A short notice (192 B). The pinned upstream LICENSE at tag 0.31.0-3 is byte-identical to the recorded snapshot, and the MPL-2.0 full text is shipped alongside in THIRD-PARTY-NOTICES.md. The MPL source-availability obligation was verified independently on 2026-09-27 rather than inherited: the pinned tag resolves (0.31.0-3 -> commit dcb5c4ab2350d57f6d26f5fa81a99c77ed86d449) and the Rust source of the distributed binaries is present in that tag at runtimes/napi/ (Cargo.toml, build.rs, src/lib.rs). The dependency is redistributed unmodified.",
       "upstreamLicenseFiles": ["LICENSE"]
     }
   },
@@ -622,7 +622,7 @@
     "license": "MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive contains no standalone complete LICENSE; the publisher's declared license identifier and the pinned upstream license file are preserved instead. The dependency is redistributed unmodified, so the MPL-2.0 source-availability obligation is met by the upstream release the pinned version was built from.",
+      "result": "The versioned npm archive contains no standalone complete LICENSE; it ships only the MPL-2.0 Exhibit A short notice (192 B). The pinned upstream LICENSE at tag 0.31.0-3 is byte-identical to the recorded snapshot, and the MPL-2.0 full text is shipped alongside in THIRD-PARTY-NOTICES.md. The MPL source-availability obligation was verified independently on 2026-09-27 rather than inherited: the pinned tag resolves (0.31.0-3 -> commit dcb5c4ab2350d57f6d26f5fa81a99c77ed86d449) and the Rust source of the distributed binaries is present in that tag at runtimes/napi/ (Cargo.toml, build.rs, src/lib.rs). The dependency is redistributed unmodified.",
       "upstreamLicenseFiles": ["LICENSE"]
     }
   },
@@ -637,7 +637,7 @@
     "license": "MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive contains no standalone complete LICENSE; the publisher's declared license identifier and the pinned upstream license file are preserved instead. The dependency is redistributed unmodified, so the MPL-2.0 source-availability obligation is met by the upstream release the pinned version was built from.",
+      "result": "The versioned npm archive contains no standalone complete LICENSE; it ships only the MPL-2.0 Exhibit A short notice (192 B). The pinned upstream LICENSE at tag 0.31.0-3 is byte-identical to the recorded snapshot, and the MPL-2.0 full text is shipped alongside in THIRD-PARTY-NOTICES.md. The MPL source-availability obligation was verified independently on 2026-09-27 rather than inherited: the pinned tag resolves (0.31.0-3 -> commit dcb5c4ab2350d57f6d26f5fa81a99c77ed86d449) and the Rust source of the distributed binaries is present in that tag at runtimes/napi/ (Cargo.toml, build.rs, src/lib.rs). The dependency is redistributed unmodified.",
       "upstreamLicenseFiles": ["LICENSE"]
     }
   },
@@ -652,7 +652,7 @@
     "license": "MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive contains no standalone complete LICENSE; the publisher's declared license identifier and the pinned upstream license file are preserved instead. The dependency is redistributed unmodified, so the MPL-2.0 source-availability obligation is met by the upstream release the pinned version was built from.",
+      "result": "The versioned npm archive contains no standalone complete LICENSE; it ships only the MPL-2.0 Exhibit A short notice (192 B). The pinned upstream LICENSE at tag 0.31.0-3 is byte-identical to the recorded snapshot, and the MPL-2.0 full text is shipped alongside in THIRD-PARTY-NOTICES.md. The MPL source-availability obligation was verified independently on 2026-09-27 rather than inherited: the pinned tag resolves (0.31.0-3 -> commit dcb5c4ab2350d57f6d26f5fa81a99c77ed86d449) and the Rust source of the distributed binaries is present in that tag at runtimes/napi/ (Cargo.toml, build.rs, src/lib.rs). The dependency is redistributed unmodified.",
       "upstreamLicenseFiles": ["LICENSE"]
     }
   },
@@ -667,7 +667,7 @@
     "license": "MPL-2.0",
     "reviewEvidence": {
       "checkedOn": "2026-09-21",
-      "result": "The versioned npm archive contains no standalone complete LICENSE; the publisher's declared license identifier and the pinned upstream license file are preserved instead. The dependency is redistributed unmodified, so the MPL-2.0 source-availability obligation is met by the upstream release the pinned version was built from.",
+      "result": "The versioned npm archive contains no standalone complete LICENSE; it ships only the MPL-2.0 Exhibit A short notice (192 B). The pinned upstream LICENSE at tag 0.31.0-3 is byte-identical to the recorded snapshot, and the MPL-2.0 full text is shipped alongside in THIRD-PARTY-NOTICES.md. The MPL source-availability obligation was verified independently on 2026-09-27 rather than inherited: the pinned tag resolves (0.31.0-3 -> commit dcb5c4ab2350d57f6d26f5fa81a99c77ed86d449) and the Rust source of the distributed binaries is present in that tag at runtimes/napi/ (Cargo.toml, build.rs, src/lib.rs). The dependency is redistributed unmodified.",
       "upstreamLicenseFiles": ["LICENSE"]
     }
   },
