@@ -52,11 +52,10 @@ const root = resolve(import.meta.dirname, "..");
 
 /** 暂存文件名列表（`--diff-filter=d` 排除本次删除的文件）。 */
 function stagedFiles() {
-  const out = execFileSync(
-    "git",
-    ["diff", "--cached", "--name-only", "--diff-filter=d"],
-    { cwd: root, encoding: "utf8" },
-  );
+  const out = execFileSync("git", ["diff", "--cached", "--name-only", "--diff-filter=d"], {
+    cwd: root,
+    encoding: "utf8",
+  });
   return out.split("\n").filter(Boolean);
 }
 
@@ -93,6 +92,7 @@ function main() {
       "各 workspace 的 package.json，以及插件 skill roots 内的技能正文与测试文件）。",
       "改了其中任何一个而不重生成清单，许可门禁就会立刻变红 ——",
       "这条规则在本轮被违反了四次（8b3e459 / 6d754dc / 633f3a0 / 2e28efc）。",
+      "四次里三次由队友发现 —— 自检不可靠时，交叉复核是唯一有效的兜底。",
       "",
       "判据是「你改的文件是否落在 inventory.inputs 里」，不是「你觉得与依赖有没有关系」。",
       "",
