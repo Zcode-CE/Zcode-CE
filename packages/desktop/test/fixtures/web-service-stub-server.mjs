@@ -105,7 +105,14 @@ const server = createServer(async (req, res) => {
 
   if (url.pathname === "/api/remote-control/rotate-token" && req.method === "POST") {
     const body = await readBody(req);
-    record({ method: req.method, path: url.pathname, query: url.search, status: 200, body });
+    // 可配置的状态码：task-16 实测「没有配置文件令牌的部署」下 rotate-token 返回 409
+    // （不是静默 no-op、也不是 200）。替身要能复现这条，否则 main 侧的错误语义没被测过。
+    const status = Number(process.env.REMOTE_CONTROL_ROTATE_STATUS) || 200;
+    record({ method: req.method, path: url.pathname, query: url.search, status, body });
+    if (status !== 200) {
+      json(res, status, { error: "rotate-token unavailable in this deployment" });
+      return;
+    }
     json(res, 200, { rotatedAt: 1_700_000_000_000 });
     return;
   }

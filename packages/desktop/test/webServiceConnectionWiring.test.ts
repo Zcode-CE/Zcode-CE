@@ -72,7 +72,7 @@ async function withHarness(
     call: (channel: string, ...args: unknown[]) => Promise<unknown>;
     requests: () => Promise<RecordedRequest[]>;
   }) => Promise<void>,
-  options: { connectionsJson?: string } = {},
+  options: { connectionsJson?: string; rotateStatus?: number } = {},
 ): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "zcode-connwiring-"));
   const statePath = join(dir, "web-service.json");
@@ -85,6 +85,7 @@ async function withHarness(
     stopGraceMs: 3_000,
     recordPath,
     ...(options.connectionsJson ? { connectionsJson: options.connectionsJson } : {}),
+    ...(options.rotateStatus ? { rotateStatus: options.rotateStatus } : {}),
   });
   const ipcMain = createFakeIpcMain();
   const controller = createWebServiceController(real.deps);
@@ -241,6 +242,64 @@ test("★令牌不跨 IPC 边界：连接面载荷逐字段穷尽核对，没有
         },
       ]),
     },
+  );
+});
+
+test("★生产形态：workspace 省略时解析成功（升级时刻服务端不知道工作区）", async () => {
+  // task-16 实测确认：服务端大概率省略 workspace —— 客户端是连上之后才按 server-info
+  // 选工作区的，升级时刻服务端并不知道它选了哪个，而 task-16 不编假值。
+  //
+  // 这条为什么必须单独钉：本文件里"成功路径"的 fixture 一直带着 workspace
+  // （令牌不变式那条用的就是带 workspace 的行），于是最可能的真实形态从没被测过。
+  // 若 parser 把 workspace 当必填（或 UI 侧解析器如此），生产上会整份判成"不知道" ⇒
+  // 设备清单永远不显示，而本地测试全绿。这正是"中间产物全绿、最终消费点失败"。
+  await withHarness(
+    async (harness) => {
+      const port = await pickFreePort();
+      await harness.call(WEB_SERVICE_CHANNELS.start, { scope: "loopback", port });
+      const payload = (await harness.call(WEB_SERVICE_CHANNELS.connections)) as {
+        connections: Record<string, unknown>[];
+        revision: number;
+      } | null;
+      assert.ok(payload, "省略 workspace 是合法载荷，不得整份判成不知道");
+      assert.equal(payload.connections.length, 1);
+      const [row] = payload.connections;
+      assert.equal(row?.id, "conn-no-ws");
+      assert.equal(row?.role, "terminal-client");
+      assert.equal(row?.connectedAt, 1_700_000_000_000, "epoch 毫秒原样透传");
+      // workspace 缺失时不得被补成空串/undefined 键 —— 那会让 UI 显示一个空工作区。
+      assert.equal("workspace" in (row ?? {}), false, "缺失就是缺失，不得补键");
+    },
+    {
+      connectionsJson: JSON.stringify([
+        {
+          id: "conn-no-ws",
+          address: "10.1.2.3",
+          role: "terminal-client",
+          userAgent: "Mozilla/5.0 (Android)",
+          connectedAt: 1_700_000_000_000,
+        },
+      ]),
+    },
+  );
+});
+
+test("★rotate-token 返回 409 ⇒ 上抛且带状态码（不静默当成功）", async () => {
+  // task-16 实测：没有配置文件令牌的部署下 rotate-token 返回 409，
+  // 不是静默 no-op、也不是 200。桌面 spawn 走 ZCODE_SERVER_AUTH_TOKENS_FILE（service.ts:264），
+  // 所以正常桌面链路可轮换；但 409 这条路径必须让 UI 看到失败 ——
+  // 静默成功会让面板宣称"已轮换、所有人需重连"，而令牌其实没动（用户以为旧链接失效了，其实没有）。
+  await withHarness(
+    async (harness) => {
+      const port = await pickFreePort();
+      await harness.call(WEB_SERVICE_CHANNELS.start, { scope: "loopback", port });
+      await assert.rejects(
+        () => harness.call(WEB_SERVICE_CHANNELS.rotateToken),
+        /rotate token failed \(HTTP 409\)/,
+        "必须上抛且带上状态码，便于归因",
+      );
+    },
+    { rotateStatus: 409 },
   );
 });
 

@@ -197,6 +197,8 @@ export function createRealDeps(input: {
   connectionsJson?: string;
   /** 替身服务把每次请求记到这个文件（一行一条 JSON），供测试断言"写动作走了哪个端点"。 */
   recordPath?: string;
+  /** 替身服务对 rotate-token 返回的状态码（缺省 200）。用来复现"无配置文件令牌"部署的 409。 */
+  rotateStatus?: number;
 }): RealDepsHarness {
   const children: ChildProcess[] = [];
   let spawns = 0;
@@ -242,6 +244,9 @@ export function createRealDeps(input: {
             ? { REMOTE_CONTROL_CONNECTIONS_JSON: input.connectionsJson }
             : {}),
           ...(input.recordPath ? { REMOTE_CONTROL_RECORD_FILE: input.recordPath } : {}),
+          ...(input.rotateStatus
+            ? { REMOTE_CONTROL_ROTATE_STATUS: String(input.rotateStatus) }
+            : {}),
         },
         stdio: "ignore",
       });
