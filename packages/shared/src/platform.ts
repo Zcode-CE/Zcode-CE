@@ -469,6 +469,64 @@ export interface WebServiceConnectionInfoPayload {
   linkWithToken: string;
 }
 
+/** 连接角色（spec §6.4）：手机/浏览器面板是 terminal-client，桌面自身的 host attachment 是 trusted-host。 */
+export type RemoteControlConnectionRole = "terminal-client" | "trusted-host";
+
+/**
+ * 一条已建立的连接（spec §6.4）。
+ *
+ * 字段口径（都是服务端算好的事实，不在传输层做格式化）：
+ * - `connectedAt` 是 epoch 毫秒，与同契约的 `WebServiceStatusPayload.startedAt` 同口径；
+ *   显示成什么格式是 UI 的事（locale 相关），IPC 只传事实。
+ * - `workspace` 可选：不是每条连接都绑定了工作区。
+ *
+ * 本结构里没有、也永远不会有令牌字段（契约 §5 的令牌不变式）：
+ * 它是"谁连着"的事实，不是凭据。加字段前先读 `ipc.ts` 文件头。
+ */
+export interface RemoteControlConnection {
+  /** 服务端生成、含随机量、不可猜 —— 撤销时用它指名（spec §6.4）。 */
+  id: string;
+  address: string;
+  role: RemoteControlConnectionRole;
+  userAgent: string;
+  connectedAt: number;
+  workspace?: string;
+}
+
+/**
+ * `getWebServiceConnections` 的返回（spec §6.4 的 200 响应）。
+ *
+ * `connections: []` 与 `null` 是两个不同的事实，不能混用：
+ * - `{ connections: [], revision }` = 确定 0 台设备（UI 显示"等待连接"）；
+ * - `null` = 不知道（服务没在跑 / 读失败 / 鉴权失败）。
+ *
+ * 若把空数组也返回成 `null`，UI 就无法区分"确实没人连"与"读不到"，
+ * 只能靠默认值假装其中之一 —— 那正是本仓禁止的静默降级。
+ * `revision` 是同一份快照的版本号，供去重/轮询；它不含任何可反推令牌的信息。
+ */
+export interface RemoteControlConnectionsPayload {
+  connections: RemoteControlConnection[];
+  revision: number;
+}
+
+/**
+ * 断开连接的动作载荷（spec §6.4）：恰好是 `{ id }` 或 `{ all: true }` 之一。
+ *
+ * 同时给或都不给 ⇒ 服务端 400（不做"就近猜一个"的兜底：那会让"断开全部"变成
+ * "断开某一个"或反之，而这两者的后果差一个数量级）。
+ */
+export type RemoteControlRevokeRequest = { id: string } | { all: true };
+
+/** `revokeWebServiceConnection` 的返回。幂等：不存在/已断开的 id ⇒ `{ revoked: 0 }`。 */
+export interface RemoteControlRevokeResult {
+  revoked: number;
+}
+
+/** `rotateWebServiceToken` 的返回：轮换完成时刻（epoch 毫秒）。旧令牌立即失效。 */
+export interface RemoteControlRotateTokenResult {
+  rotatedAt: number;
+}
+
 export interface EmbeddedBrowserOpenUrlRequest {
   url: string;
   disposition: "default" | "foreground-tab" | "background-tab" | "new-window" | "other";
@@ -627,6 +685,36 @@ export interface IPlatformService {
 
   /** 订阅探活结论变化（入口据此回显，**不轮询**），返回 disposer。 */
   onWebServiceChanged?(handler: (status: WebServiceStatusPayload) => void): () => void;
+
+  /**
+   * 连接面（谁连着）三条可选方法（spec §6.4）。
+   *
+   * 为什么可选（与上面五条同一判据，不是照抄）：这套能力描述的是"别的设备怎么连到
+   * 这台桌面"，只有桌面主进程才既持有服务端进程的 host/port 与令牌文件，又处在
+   * 渲染进程的可信侧。Web 客户端本身就是那个"别的设备"，让它去列/断开连接会构成
+   * 提权面（决策④：Web 面板只显示连接面，令牌轮换归桌面）。所以 Web 端不实现，
+   * UI 侧按"能力缺失 ⇒ 不渲染"处理。
+   *
+   * 三个方法分档探测，不合成一档：UI 分别用它们门控各自的区块（设备清单 /
+   * 断开按钮 / 轮换入口）。合成一档的话，任一方法缺失会让整个面板消失 ——
+   * 而"面板整个不渲染且无报错"正是本仓记过的最难归因的静默失效形态。
+   *
+   * 令牌不变式：这三条载荷里都不含令牌。main 侧为了请求本机服务端会在
+   * 进程内部带上令牌（那是 main 的实现细节），令牌不跨 IPC 边界 ——
+   * 它仍然只经 `getWebServiceConnectionInfo` 交给渲染进程。
+   */
+  getWebServiceConnections?(): Promise<RemoteControlConnectionsPayload | null>;
+
+  /**
+   * 断开连接（spec §6.4）。载荷恰好是 `{ id }` 或 `{ all: true }` 之一。
+   * 语义上只断连接，绝不停止服务进程（规则③：读=连接清单，写=只有撤销类动作）。
+   */
+  revokeWebServiceConnection?(
+    input: RemoteControlRevokeRequest,
+  ): Promise<RemoteControlRevokeResult>;
+
+  /** 轮换服务端令牌（桌面专属，决策④）。轮换后所有已连设备立即失效。 */
+  rotateWebServiceToken?(): Promise<RemoteControlRotateTokenResult>;
 
   /** 订阅当前窗口内远程连接过程日志，返回 disposer */
   onRemoteConnectionLog(handler: (entry: RemoteConnectionRuntimeLog) => void): () => void;

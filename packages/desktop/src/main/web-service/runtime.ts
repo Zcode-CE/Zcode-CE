@@ -102,6 +102,16 @@ async function pickFreePort(preferred: number): Promise<number> {
 export function createWebServiceRuntime(options: WebServiceRuntimeOptions): {
   paths: WebServiceRuntimePaths;
   controller: WebServiceController;
+  /**
+   * 本次运行时实际使用的令牌文件路径。
+   *
+   * 为什么要暴露出来：连接面（main 侧请求本机服务端）也要读同一个令牌文件，
+   * 而"令牌文件在哪"的唯一所有者是本函数（`options.tokenPath ?? resolveWebServiceTokenPath()`）。
+   * 让调用方各自再解析一次会产生第二个解析点 —— 一旦有人给 runtime 传了自定义
+   * `tokenPath`，两处就会指向不同文件，而失败形态是"连接面永远读不到令牌 ⇒ 永远返回
+   * 不知道"，不报错、只是设备清单恒为空。
+   */
+  tokenPath: string;
 } {
   const paths = resolveWebServiceRuntimePaths(options);
   const statePath = options.statePath ?? resolveWebServiceStatePath();
@@ -210,5 +220,5 @@ export function createWebServiceRuntime(options: WebServiceRuntimeOptions): {
     ...(options.now ? { now: options.now } : {}),
   });
 
-  return { paths, controller };
+  return { paths, controller, tokenPath };
 }

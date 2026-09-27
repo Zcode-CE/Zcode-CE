@@ -13,7 +13,7 @@ export function createDesktopPlatform(options: {
     selectFile: () => window.zcode.selectFile(),
     selectFiles: () => window.zcode.selectFiles?.() ?? Promise.resolve([]),
     createTempTextAttachment: (payload) => window.zcode.createTempTextAttachment(payload),
-    // 本地 Web 服务（远程控制，契约 §5）。preload 已暴露这五条；这里把它们映射进
+    // 本地 Web 服务（远程控制，契约 §5）。preload 已暴露这八条；这里把它们映射进
     // IPlatformService —— 少这一步的话 `window.zcode` 有、`IPlatformService` 没有，
     // UI 侧的能力探测会判成"能力缺失"⇒ 入口与面板在**桌面端也不渲染**（静默失效）。
     getWebServiceStatus: () => window.zcode.getWebServiceStatus(),
@@ -21,6 +21,23 @@ export function createDesktopPlatform(options: {
     stopWebService: () => window.zcode.stopWebService(),
     getWebServiceConnectionInfo: () => window.zcode.getWebServiceConnectionInfo(),
     onWebServiceChanged: (handler) => window.zcode.onWebServiceChanged(handler),
+    // 连接面三条（谁连着）。与上面五条分开映射：UI 侧分档探测，各自门控自己的区块
+    // （设备清单 / 断开按钮 / 轮换入口）。缺任何一条只会让对应区块不出现，不会让整个面板消失。
+    //
+    // 用条件定义而不是无条件转发（与上面的 printPageToPdf / getDesktopWindowChromeState 同一写法）：
+    // 无条件的箭头函数会让 IPlatformService 上永远有这个方法，于是 UI 的能力探测恒判成
+    // "有能力"，而真正调用时抛 "window.zcode.xxx is not a function" —— 那比不渲染更糟
+    // （面板出现了、点一下才炸）。旧 preload（开发态 HMR、升级后未重启的窗口）确实缺这三条，
+    // 所以这里必须让缺失如实反映成 undefined。
+    getWebServiceConnections: window.zcode.getWebServiceConnections
+      ? () => window.zcode.getWebServiceConnections()
+      : undefined,
+    revokeWebServiceConnection: window.zcode.revokeWebServiceConnection
+      ? (input) => window.zcode.revokeWebServiceConnection(input)
+      : undefined,
+    rotateWebServiceToken: window.zcode.rotateWebServiceToken
+      ? () => window.zcode.rotateWebServiceToken()
+      : undefined,
     onRemoteConnectionLog: (handler) => window.zcode.onRemoteConnectionLog(handler),
     onRemoteSessionClosed: (handler) => window.zcode.onRemoteSessionClosed(handler),
     activateOrSetWorkspace: (path) =>

@@ -71,6 +71,7 @@ import {
 } from "@zcode/shared";
 import { logger } from "./logger.js";
 import { registerWebServiceIpc } from "./web-service/ipc.js";
+import { createWebServiceConnectionPlane } from "./web-service/remoteControlClient.js";
 import { createWebServiceRuntime } from "./web-service/runtime.js";
 import { markMainLaunchAppReady } from "./desktopLaunchMarks.js";
 import { createCuaPipFocusRouter, resolveCuaPipWindowKey } from "./cuaPipFocusRouter.js";
@@ -2018,9 +2019,16 @@ app.whenReady().then(async () => {
     childEnv: { ELECTRON_RUN_AS_NODE: "1" },
     onChildOutput: (chunk, stream) => logger.info(`[web-service:${stream}] ${chunk.trimEnd()}`),
   });
+  // 连接面（谁连着）：main 侧带上令牌去请求本机服务端的 HTTP 端点（spec §6.4）。
+  // 令牌不跨 IPC 边界 —— 只有结果（已由 remoteControlClient 逐字段重建）转给渲染进程。
+  const webServiceConnectionPlane = createWebServiceConnectionPlane({
+    status: () => webServiceRuntime.controller.status(),
+    tokenPath: webServiceRuntime.tokenPath,
+  });
   registerWebServiceIpc({
     ipcMain,
     controller: webServiceRuntime.controller,
+    connectionPlane: webServiceConnectionPlane,
     broadcast: (channel, payload) => {
       for (const win of BrowserWindow.getAllWindows()) {
         if (!win.isDestroyed()) {

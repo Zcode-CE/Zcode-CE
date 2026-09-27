@@ -197,6 +197,26 @@ export const PlatformChannels = {
   WebServiceConnectionInfo: "webService:connectionInfo",
   /** Main → Renderer：探活结论变化时的广播（入口据此回显，**不轮询**）。 */
   WebServiceChanged: "webService:changed",
+  /**
+   * 连接面（谁连着）三条通道（spec §6.4）。读一条、写两条。
+   *
+   * 与上面五条的差别：那五条描述的是服务面（进程/监听/端口/令牌），
+   * 这三条描述的是连接面（哪些客户端连在这个服务上）。spec §3.5 把两面分给不同渲染面
+   * （Web 面板只看连接面，桌面面板两面都有），所以通道也分开 —— 合成一条会让
+   * "Web 面板不提供令牌轮换"这条决策失去可断言的边界。
+   *
+   * 令牌不变式对本组同样成立：WebServiceConnections 的载荷是服务端连接清单，
+   * 不含令牌；main 侧为了请求服务端会在进程内部带上令牌，但它不跨 IPC 边界。
+   */
+  WebServiceConnections: "webService:connections",
+  /** Renderer → Main：断开连接。载荷恰好是 { id } 或 { all: true } 之一（spec §6.4）。 */
+  WebServiceRevokeConnection: "webService:revokeConnection",
+  /**
+   * Renderer → Main：轮换服务端令牌（spec §6.4 的桌面面板专属写动作，决策④）。
+   *
+   * 轮换会让所有已连设备立即失效，所以它只由桌面面板触发；Web 面板不暴露该入口。
+   */
+  WebServiceRotateToken: "webService:rotateToken",
   /** Renderer → Main：从用户目录加载 CLI MCP 配置 */
   LoadMcpFromUserDirectory: "zcode:load-mcp-from-user-directory",
   /** Renderer → Main：保存 CLI MCP 配置到用户目录 */

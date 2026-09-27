@@ -189,6 +189,14 @@ export function createRealDeps(input: {
   staticRoot?: string;
   readyTimeoutMs?: number;
   stopGraceMs?: number;
+  /**
+   * 替身服务的连接清单返回值（JSON 字面量）。连接面测试用它逐档构造
+   * 空态 / 带多余字段 / 畸形行，而不改成假 fetch ——
+   * 接线正确性只有打到真实 HTTP 才谈得上验过。
+   */
+  connectionsJson?: string;
+  /** 替身服务把每次请求记到这个文件（一行一条 JSON），供测试断言"写动作走了哪个端点"。 */
+  recordPath?: string;
 }): RealDepsHarness {
   const children: ChildProcess[] = [];
   let spawns = 0;
@@ -227,7 +235,14 @@ export function createRealDeps(input: {
     spawnChild: ({ entryPath, env }) => {
       spawns += 1;
       const child = spawn(process.execPath, [entryPath], {
-        env: { ...process.env, ...env },
+        env: {
+          ...process.env,
+          ...env,
+          ...(input.connectionsJson
+            ? { REMOTE_CONTROL_CONNECTIONS_JSON: input.connectionsJson }
+            : {}),
+          ...(input.recordPath ? { REMOTE_CONTROL_RECORD_FILE: input.recordPath } : {}),
+        },
         stdio: "ignore",
       });
       children.push(child);

@@ -35,6 +35,10 @@ import type {
   SSHConfigAliasOption,
   WebServiceConnectionInfoPayload,
   WebServiceStatusPayload,
+  RemoteControlConnectionsPayload,
+  RemoteControlRevokeRequest,
+  RemoteControlRevokeResult,
+  RemoteControlRotateTokenResult,
   // 遥测已移除（P1）：RendererTelemetryEventPayload / RendererActionTraceBatchV1 /
   // RendererActionTraceConfigV1 / TelemetryRendererContext 已随 shared 模块删除。
   // RendererHeapSample 保留 —— 它是本地内存诊断，非上报。
@@ -117,9 +121,9 @@ declare global {
        */
       getPathForFile?(file: unknown): string | null;
       /**
-       * 本地 Web 服务（远程控制）五条通道（契约 §5）。preload 通过 contextBridge 暴露，
-       * `desktopPlatform.ts` 再映射进 `IPlatformService`（两处都要有：少一处会让
-       * UI 的能力探测把**桌面端**也判成"能力缺失"，入口与面板静默不渲染）。
+       * 本地 Web 服务（远程控制）八条通道（契约 §5）：服务面五条 + 连接面三条。
+       * preload 通过 contextBridge 暴露，`desktopPlatform.ts` 再映射进 `IPlatformService`
+       * （两处都要有：少一处会让 UI 的能力探测把**桌面端**也判成"能力缺失"，入口与面板静默不渲染）。
        * 令牌不变式：带令牌链接**只**经 `getWebServiceConnectionInfo`。
        */
       getWebServiceStatus(): Promise<WebServiceStatusPayload>;
@@ -131,6 +135,14 @@ declare global {
       getWebServiceConnectionInfo(): Promise<WebServiceConnectionInfoPayload | null>;
       /** 订阅探活结论变化（入口据此回显，不轮询），返回 disposer */
       onWebServiceChanged(handler: (status: WebServiceStatusPayload) => void): () => void;
+      /** 读已连设备清单（连接面）。null = 不知道（服务没在跑/读失败），空数组 = 确定 0 台。 */
+      getWebServiceConnections(): Promise<RemoteControlConnectionsPayload | null>;
+      /** 断开连接：载荷恰好 `{ id }` 或 `{ all: true }` 之一。 */
+      revokeWebServiceConnection(
+        input: RemoteControlRevokeRequest,
+      ): Promise<RemoteControlRevokeResult>;
+      /** 轮换服务端令牌（桌面专属）：轮换后所有已连设备立即失效。 */
+      rotateWebServiceToken(): Promise<RemoteControlRotateTokenResult>;
       /** 订阅当前窗口内远程连接过程日志，返回 disposer */
       onRemoteConnectionLog(handler: (entry: RemoteConnectionRuntimeLog) => void): () => void;
       /** 订阅远程 workspace session 关闭事件，返回 disposer */
