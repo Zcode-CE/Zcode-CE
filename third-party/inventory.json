@@ -327,7 +327,7 @@
     "apps/zcode-cli/packages/zcode-guide-plugin/skills/zcode-configuration-guide/SKILL.md": "c173c54d3d125e5a3228f01a154c6a55e760dce07835226f0fa8dea644b0570d",
     "apps/zcode-cli/tools/prompt-trajectory/package.json": "7f161fc87f36691f01eb8c2034bd89cf28107da36db02bc20e76f059edd36af6",
     "apps/zcode-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
-    "package.json": "b556d7f1fa096380f724f9f7b6ffa80a026303b2a405ce7a746fe59c9c574ef7",
+    "package.json": "44f20cba546ec472e7ce5c8e7dbbe34ce3411f5efb16388ae637d6f32dff880c",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
     "packages/desktop/package.json": "bafff01fd85e4b57e32d0c3bc5acf2bceb6b90744dce35b9b1466c3626e9d9d3",
     "packages/desktop/src/renderer/public/material-icons/3d.svg": "9527b849f0fba57ca7640e2717b3a19cb5f5e046712cbbd8b75d73af338c68fb",
@@ -1509,13 +1509,13 @@
     "packages/services/src/bots/botRemoteRuntimeServices.ts": "74bfcb89b3ddb3f8c1ffa30f3a17d12cc542ecc0b52673ff793900e82260fe59",
     "packages/services/src/bots/botRemoteWorkspaceBridge.ts": "740b0cf99acc93d3d901919d4ef2652ebf06279ae445d2476c88a106286a1ae7",
     "packages/services/src/bots/bots.ts": "01764678a4aff2c3fcc8732ae7cf4fa945ea639cf5cd23c331a4d0ac08750fcc",
-    "packages/services/src/bots/botsService.ts": "77245a3b956f03e45209d0a208adbe8efa26f5d704571ac2c5352f67398fa675",
+    "packages/services/src/bots/botsService.ts": "a0e195d98d792e419c46e33a0075ff431955958883ea409cdebce4fa098884b9",
     "packages/services/src/bots/channelRuntime.ts": "1e2f5b1f3c86e223f039a91bab01121dbc263ce93724438c13b2249e1b147f74",
     "packages/services/src/bots/commandOrder.ts": "5bd3200e30f1458351b355d97328763496c798f4959326c27e581b7fba5f0a72",
     "packages/services/src/bots/commandParser.ts": "bc592f34c14b6f73d5b1ab2c913c0c77c99138f1e043cdb18187143fd069b8ff",
     "packages/services/src/bots/config.ts": "be93598984c0e73e129a0f1135d9baf490d6207ffa91dd804df58d6afa3fc542",
     "packages/services/src/bots/feishuChannelRuntime.ts": "aab47c1a41c7e2e921cc6d5374ac56bdac2ef2d1d989710b7ed00fd3fd9bd111",
-    "packages/services/src/bots/messages.ts": "08a7922b317e877b02032f8c525af75df9bbe8c803ad5534b3c200060a1881f3",
+    "packages/services/src/bots/messages.ts": "9ccb13a86ed74e78ee34de7a0408be1eeb40c937e887e03676c082033a1989fd",
     "packages/services/src/bots/modelSelectionHelpers.ts": "1b8279ecc7e2ee11980346cadc088eaa3f38d2ac3b51c283bb9a709dbe70b051",
     "packages/services/src/bots/providers/feishuAppRegistration.ts": "7a6a1919de4d0f9f862e4755f25a9383f4f3e73b80d0e86f1727930b77486978",
     "packages/services/src/bots/providers/feishuProvider.ts": "d7e23cb0afe57b6d6630770b5c2f54a15e176725720afba42e2bfaa0c1c7c2d4",
@@ -1529,6 +1529,7 @@
     "packages/services/src/bots/repo.ts": "0e1489d2c452d4c4463f155823dcffb9a445ab74122a3e8d977124fe0a37f9b1",
     "packages/services/src/bots/statusFormatting.ts": "f645bb81625ab71504cffa14438b153ed6d3f13fcdcfbd584e653e9513d01369",
     "packages/services/src/bots/storageMigration.ts": "d6b806bd77f4f3ba070559c6bc48bd64e20848c14a0639fefb95c3d1bf96baf6",
+    "packages/services/src/bots/taskFailureMessage.ts": "ca18d0f1372daf9ed0d673b54f02222f3ab8eb346fca4170283efc818467b30d",
     "packages/services/src/bots/telegramChannelRuntime.ts": "92936b803880362960acbfbcc78b3bed8e85dee7c6a95ef49a49a306c7075028",
     "packages/services/src/bots/weixinChannelRuntime.ts": "701c2482365fabb20503a4681dd7cfa560b9137e7f8678077cc0e4b6516cd876",
     "packages/services/src/bots/workspaceHelpers.ts": "2681a2c8cb2a7c11d44920060bb60af3d45a1fb28389bf5079940898fade0871",
@@ -31031,7 +31032,7 @@
         },
         {
           "file": "packages/services/src/bots/botsService.ts",
-          "sha256": "77245a3b956f03e45209d0a208adbe8efa26f5d704571ac2c5352f67398fa675"
+          "sha256": "a0e195d98d792e419c46e33a0075ff431955958883ea409cdebce4fa098884b9"
         },
         {
           "file": "packages/services/src/bots/channelRuntime.ts",
@@ -31055,7 +31056,7 @@
         },
         {
           "file": "packages/services/src/bots/messages.ts",
-          "sha256": "08a7922b317e877b02032f8c525af75df9bbe8c803ad5534b3c200060a1881f3"
+          "sha256": "9ccb13a86ed74e78ee34de7a0408be1eeb40c937e887e03676c082033a1989fd"
         },
         {
           "file": "packages/services/src/bots/modelSelectionHelpers.ts",
@@ -31108,6 +31109,10 @@
         {
           "file": "packages/services/src/bots/storageMigration.ts",
           "sha256": "d6b806bd77f4f3ba070559c6bc48bd64e20848c14a0639fefb95c3d1bf96baf6"
+        },
+        {
+          "file": "packages/services/src/bots/taskFailureMessage.ts",
+          "sha256": "ca18d0f1372daf9ed0d673b54f02222f3ab8eb346fca4170283efc818467b30d"
         },
         {
           "file": "packages/services/src/bots/telegramChannelRuntime.ts",
