@@ -516,6 +516,45 @@ test("真实服务端：安全响应头打到静态壳、API 401 与 WS 拒绝�
   }
 });
 
+/**
+ * 保护面判定的**真实中间件**口径（2026-09-27 修）。
+ *
+ * 缺陷：`createCrossSiteGuard` 曾直接调 `evaluateRequestOrigin`，**跳过 `shouldGuardRequest`**，
+ * 于是它对**所有方法**做来源判定 ⇒ 跨源 `GET` 被 403。而文件头第 1 条与
+ * `docs/development/web-remote-control.md` §4.1 都写明「读方法 GET/HEAD 不在保护面内」。
+ *
+ * **为什么必须有这条测试**：既有用例矩阵（「五档 × 八端点」）是**按"先问在不在保护面"**写的
+ * （见本文件 :204 的注释，它警告的正是这种漂移），所以**纯函数与测试都说 GET 放行，
+ * 而真实中间件拒绝** —— 测试抓不到，因为它走的是纯函数而非中间件。
+ * ⇒ 判据必须打在**真实服务端**上，这正是本仓「验证打到最终消费点」的实例。
+ *
+ * 反向验证：把 `if (!shouldGuardRequest(...))` 那三行去掉 ⇒ 本条变红（GET 会拿到 403）。
+ */
+test("真实服务端：跨源 GET 不在保护面内（读面放行），而跨源 POST 仍被拒", async () => {
+  const fixture = await createFixture();
+  try {
+    await withServer({ authToken: TOKEN, staticRoot: fixture.staticRoot }, async (baseUrl) => {
+      // 跨源 GET：按设计放行（跨站读受浏览器同源策略约束，本服务不发 CORS 头 ⇒ 无可被跨站利用的读面）
+      const crossSiteGet = await fetch(baseUrl + "/api/server-info", {
+        headers: { Origin: CROSS_SITE_ORIGIN },
+      });
+      assert.notEqual(
+        crossSiteGet.status,
+        403,
+        "跨源 GET 不在保护面内 —— 403 意味着中间件跳过了 shouldGuardRequest 的保护面判定",
+      );
+      // 对照：跨源 POST 必须在保护面内且被拒（证明上一条不是因为 guard 整个失效）
+      const crossSitePost = await fetch(baseUrl + "/api/rpc-host-capability", {
+        method: "POST",
+        headers: { Origin: CROSS_SITE_ORIGIN },
+      });
+      assert.equal(crossSitePost.status, 403, "跨源 POST 必须仍被拒（否则是 guard 整个失效）");
+    });
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("真实服务端：跨源白名单生效后，登记来源可 POST、未登记来源仍被拒", async () => {
   const fixture = await createFixture();
   try {

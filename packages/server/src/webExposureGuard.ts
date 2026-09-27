@@ -308,10 +308,26 @@ export interface CrossSiteGuardOptions {
 export function createCrossSiteGuard(options: CrossSiteGuardOptions): MiddlewareHandler {
   const once = new Set<string>();
   return async (c, next) => {
+    const requestPath = new URL(c.req.url).pathname;
+    // 保护面判定必须在这里做（2026-09-27 修）。
+    //
+    // 此前本中间件直接调 evaluateRequestOrigin，**跳过了 shouldGuardRequest**，
+    // 于是它对**所有方法**都做来源判定 ⇒ 跨源 GET 会被 403，而文件头第 1 条与
+    // docs/development/web-remote-control.md §4.1 都写明「读方法 GET/HEAD 不在保护面内」。
+    // 后果是**口径漂移**：纯函数与测试按"先问在不在保护面"判定（webOriginGuard.test.ts:204
+    // 的注释警告的正是这件事），而真实中间件比它更严 —— 读面被误伤。
+    //
+    // 方向上是"过严"而非"过松"，所以没有安全缺口；但它会让跨源 GET 拿到 403 而不是
+    // 按设计放行（跨站读本就受浏览器同源策略约束，且本服务不发 CORS 头）。
+    // 修法：把保护面判定提到最前，与 evaluateUpgradeOrigin 同口径。
+    if (!shouldGuardRequest(c.req.method, requestPath)) {
+      await next();
+      return;
+    }
     const decision = evaluateRequestOrigin(
       {
         method: c.req.method,
-        pathname: new URL(c.req.url).pathname,
+        pathname: requestPath,
         originHeader: c.req.header("origin"),
         hostHeader: c.req.header("host"),
         protocol: new URL(c.req.url).protocol,
@@ -329,7 +345,6 @@ export function createCrossSiteGuard(options: CrossSiteGuardOptions): Middleware
       await next();
       return;
     }
-    const requestPath = new URL(c.req.url).pathname;
     // 审计埋点：**先记事件、再做"只告警一次"的降噪** —— 审计与告警是两条流，
     // 告警（warn）要防刷屏，审计要能计数（由 auditLog 的合并策略负责，不在这里丢）。
     options.onReject?.({
