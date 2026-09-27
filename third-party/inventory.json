@@ -255,7 +255,7 @@
     "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md": "9bc8ca5ed65a4b470432a652797460b464bc005a0b489c73d02cdf9ea94da4bb",
     "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "6197dfe9c2481378c3de489a8566b3840ae4941aa334ef83e6ace50b8bd7bded",
     "apps/zcode-cli/packages/documents-plugin/test/checkOfficePrefix.test.mjs": "de63355f4bfe5a897706bb044c16e419c289b38b2e8b5ef2b731f43900258b98",
-    "apps/zcode-cli/packages/documents-plugin/test/skillVisualChain.test.mjs": "5cf1e48c629fb8b0298883efa3f9d07a556d52483a78f78024ab32cb5e54029d",
+    "apps/zcode-cli/packages/documents-plugin/test/skillVisualChain.test.mjs": "e2943c0df55fc9d6de451e19f555b1dce8adf5c8f731071aa20bb3c095d4a646",
     "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "f8dab813c3b9f236b593d4d04f1b78e511e15d586cb7dcdd74147e7d1c22ec5c",
     "apps/zcode-cli/packages/dynamic-workflow/package.json": "aac5891463ddeb419ff6f73fc95b7c407964b06f8aeff66b6a9ba4d999164f99",
     "apps/zcode-cli/packages/i18n/package.json": "025e4620d80f39cac3df06249866fcaed531615b6b8a4c4a727c4557066f7b1b",
@@ -30591,7 +30591,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/test/skillVisualChain.test.mjs",
-          "sha256": "5cf1e48c629fb8b0298883efa3f9d07a556d52483a78f78024ab32cb5e54029d"
+          "sha256": "e2943c0df55fc9d6de451e19f555b1dce8adf5c8f731071aa20bb3c095d4a646"
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/.zcode-plugin/plugin.json",
