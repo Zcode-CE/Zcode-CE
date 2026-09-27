@@ -89,7 +89,13 @@ export async function extractTarGz(archivePath, targetDirectory) {
       // 实测：发行包里有 13 条（数量正好等于首版实现"缺失"的文件数）—— 我第一版误以为
       // 「本仓库不产出」而直接跳过，于是那 13 个超长路径文件被静默丢弃。
       // 这正是本仓反复记的形态：**未验证的假设写成注释，然后照着它跳过**。
-      pendingLongName = buffer.toString("utf8", dataStart, dataEnd).replace(/\0+$/u, "");
+      // 去掉尾部 NUL 填充：**不用正则** —— 匹配 NUL 会触发 lint 的
+      // `no-control-regex`（本仓基线是「0 error / 84 warning」，新代码不该加 warning）。
+      // 按码点从尾部裁更直白，也不依赖正则语义。
+      const rawLongName = buffer.toString("utf8", dataStart, dataEnd);
+      let longNameEnd = rawLongName.length;
+      while (longNameEnd > 0 && rawLongName.charCodeAt(longNameEnd - 1) === 0) longNameEnd -= 1;
+      pendingLongName = rawLongName.slice(0, longNameEnd);
       continue;
     }
 
