@@ -48,16 +48,36 @@ try {
   // 并不需要执行位、Node 以属主身份读 600 也照样成功 ⇒ 少了这层断言就抓不到这类回归。
   // 名单从包里 `bin/runner-*.mjs` 现读（不写死），新增旁路模块时不会留下过期的断言清单。
   const binDir = join(root, "bin");
-  const runnerEntryMode = await assertMode(join(binDir, "zcode.mjs"), 0o755);
   const sidecarNames = (await readdir(binDir)).filter((name) => /^runner-.+\.mjs$/u.test(name));
   assert.ok(
     sidecarNames.length > 0,
     "bin/ 下没有 runner-*.mjs 旁路模块：runner.mjs 拆分后的结构依赖缺失（打包拷贝清单漏了？）",
   );
-  for (const name of sidecarNames) await assertMode(join(binDir, name), 0o644);
-  console.log(
-    `permissions: zcode.mjs=${runnerEntryMode.toString(8)}, sidecars=${sidecarNames.length}x644`,
-  );
+  // ⚠️ 平台分叉（2026-09-27 修，首次三 OS 实测暴露）。
+  //
+  // 权限位断言**只在 POSIX 上有意义**：Windows 文件系统没有执行位概念，
+  // Node 的 `stat().mode` 对普通文件恒为 `0o666`（只读为 `0o444`）⇒ `0o755` 永不成立。
+  // 实测（run 36334203353）：Windows 上断言失败 `actual: 438 (0o666), expected: 493 (0o755)`。
+  //
+  // **不是放宽断言**：Windows 上「可执行」不由位表达，改判据也修不好这条。
+  // 因此这里**按平台跳过**，但**必须显式打印出来** —— 静默跳过等于把
+  // 「Windows 上没验权限」伪装成「验过了」，那正是本仓禁止的形态。
+  //
+  // POSIX 上断言**保持严格**：它抓的是「root 安装后非 root 用户 import 失败 ⇒ 启动即崩」
+  // 这类单用户机器上不可见的回归（见下方注释）。
+  const posixPermissions = process.platform !== "win32";
+  if (posixPermissions) {
+    const runnerEntryMode = await assertMode(join(binDir, "zcode.mjs"), 0o755);
+    for (const name of sidecarNames) await assertMode(join(binDir, name), 0o644);
+    console.log(
+      `permissions: zcode.mjs=${runnerEntryMode.toString(8)}, sidecars=${sidecarNames.length}x644`,
+    );
+  } else {
+    console.log(
+      `permissions: SKIPPED on ${process.platform} —— 该平台没有执行位概念，` +
+        `stat().mode 对普通文件恒为 666；这一项在本平台未验证（不是通过）`,
+    );
+  }
   await mkdir(workspace);
   await exec(process.execPath, [runner, "--help"], { cwd: workspace, env });
   // --version 的首行必须是**纯版本号**且等于分发包 package.json 的版本（第二行是身份标注，不参与比较）。
@@ -186,7 +206,27 @@ try {
   // 被信号终止 ⇒ 128 + 信号号（SIGTERM=15 ⇒ 143）。这里断言的是"**干净地**被终止"，
   // 而不是"退出码恰好为 0"：后者要求 TUI 走完应用层的优雅退出，而那条路径只能靠按键触发，
   // 在 pty 上不可靠（见上）。**断言仍然有牙齿**：挂死会超时、残留会在这里暴露。
-  assert.equal(tuiExit.exitCode, 143, screen);
+  // ⚠️ 平台分叉（2026-09-27 修，与上面的权限位断言同批）。
+  //
+  // `143 = 128 + SIGTERM(15)` 是 **POSIX 语义**。Windows 上 `process.kill(pid, "SIGTERM")`
+  // 落到 `TerminateProcess`，拿不到 143 —— 这不是被测代码的问题，是平台的信号模型不同。
+  //
+  // **本步骤在 Windows 上要证明的东西不变**（「能被干净终止、不挂死、无残留」）：
+  // 上面那个 `Promise.race` 的超时仍然有效（挂死会抛），所以这里跳过的是
+  // 「退出码恰好 143」这一条**POSIX 专属**的判据，不是整个终止性检查。
+  // 与权限位那条同规：**显式打印跳过**，不静默。
+  if (process.platform === "win32") {
+    assert.ok(
+      typeof tuiExit.exitCode === "number" || tuiExit.signal !== undefined,
+      `TUI 未被干净终止（exitCode=${String(tuiExit.exitCode)}, signal=${String(tuiExit.signal)}）\n${screen}`,
+    );
+    console.log(
+      "tui exit code: SKIPPED the POSIX 143 assertion on win32 —— 该平台无 128+signal 语义；" +
+        "「不挂死、无残留」仍由上面的超时与进程回收覆盖",
+    );
+  } else {
+    assert.equal(tuiExit.exitCode, 143, screen);
+  }
   terminal = undefined;
 
   let webOutput = "";
@@ -257,7 +297,22 @@ try {
   await once(socket, "close");
   const exited = once(web, "exit");
   web.kill("SIGTERM");
-  assert.deepEqual(await exited, [0, null]);
+  // ⚠️ 平台分叉（2026-09-27 修）：`[0, null]` = 「退出码 0 且**没有被信号杀死**」，是 POSIX 语义。
+  // Windows 上 `kill` 走 `TerminateProcess`，进程不会走应用层优雅退出 ⇒ 拿到的是退出码而非 signal。
+  // 判据的**意图**（服务收到终止请求后干净退出、无残留）在 Windows 上同样要成立，
+  // 只是表达形式不同：接受「退出码是数字」即可，但**拒绝挂死**（由 `once` 之后的超时兜底）。
+  const webExit = await exited;
+  if (process.platform === "win32") {
+    assert.ok(
+      typeof webExit[0] === "number" || webExit[1] !== null,
+      `web 未被干净终止：exit=${JSON.stringify(webExit)}`,
+    );
+    console.log(
+      `web exit: SKIPPED the POSIX [0, null] assertion on win32 (got ${JSON.stringify(webExit)})`,
+    );
+  } else {
+    assert.deepEqual(webExit, [0, null]);
+  }
   web = undefined;
 
   // 安全不变式 ②：非回环 + 无令牌必须**拒绝启动**（退出码非 0 的数字），且日志给出可操作原因。
