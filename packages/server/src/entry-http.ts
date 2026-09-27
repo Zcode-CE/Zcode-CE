@@ -161,6 +161,10 @@ async function main(): Promise<void> {
     ...(staticRoot ? { staticRoot, spaFallback: true } : {}),
     ...(authEnabled ? { authRequired: true } : {}),
     ...(tokenSource ? { tokenSource } : {}),
+    // 令牌轮换（spec §6.4 的 rotate-token）只在"令牌来自文件"时可用：
+    // 显式 env 令牌不随重载变化，那种部署下轮换会让旧令牌继续可用（安全错觉）。
+    // 判定与理由的唯一所有者在 http.ts 的 tokenRotation 构造处，这里只传路径。
+    ...(authTokensFilePath ? { tokenFilePath: authTokensFilePath } : {}),
     ...(trustedOrigins.length > 0 ? { trustedOrigins } : {}),
     ...(trustedProxies.length > 0 ? { trustedProxies } : {}),
     ...(trustedHosts.length > 0 ? { trustedHosts } : {}),

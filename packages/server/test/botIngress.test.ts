@@ -693,6 +693,11 @@ test("A13：http.ts 的中间件注册点集合等于字面量白名单", async 
   const allowed = new Map<string, number>([
     ["get *", 1],
     ["get /api/server-info", 1],
+    // 连接面（谁连着）三条：读清单 / 撤销 / 轮换令牌（spec §6.4）。
+    // 三条都已在 ROUTE_POLICY 里标为 protected，且落在 /api 前缀内（令牌白名单）。
+    ["get /api/remote-control/connections", 1],
+    ["post /api/remote-control/connections/revoke", 1],
+    ["post /api/remote-control/rotate-token", 1],
     ["get /ws", 1],
     ["get /ws/host", 1],
     ["get /ws/remote/:id", 1],

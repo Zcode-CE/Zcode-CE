@@ -65,6 +65,12 @@ import {
   refusalSignals,
 } from "./exposureGate.js";
 import { createAuditLog, type AuditLog } from "./auditLog.js";
+import {
+  createRemoteControlConnectionRegistry,
+  REMOTE_CONTROL_REVOKED_CLOSE_CODE,
+  type RemoteControlConnectionRegistry,
+} from "./remoteControlConnections.js";
+import { createAuthTokenRotation, type AuthTokenRotation } from "./authToken.js";
 
 function wrapWebSocket(ws: WebSocket): ISocket {
   const onData = new Emitter<VSBuffer>();
@@ -115,13 +121,18 @@ const warn = (...args: unknown[]) =>
 /** 连接级审计所需的上下文（在 upgrade gate 里算好，避免这一层再依赖中间件状态）。 */
 interface ConnectionAuditContext {
   audit: AuditLog;
-  activeConnections: Map<
-    string,
-    { role: string; peer: string; authenticated: boolean; startedAt: number }
-  >;
+  /**
+   * 连接登记表（连接面的唯一真相源，见 remoteControlConnections.ts）。
+   *
+   * 它同时承担两件事，这正是把它放在这里的理由：连接清单要能被面板读到，
+   * 而并发上限要数同一批连接 —— 两份状态迟早会分家（清单说 3 条、计数说 4 条）。
+   */
+  connections: RemoteControlConnectionRegistry;
   peer: string;
   path: string;
   authenticated: boolean;
+  /** 升级请求的 User-Agent（连接清单的字段之一；缺失时写空串）。 */
+  userAgent: string;
   tokenLabel?: string;
 }
 
@@ -134,16 +145,32 @@ function setupChannelServer(
   const socket = wrapWebSocket(ws);
   // 连接级审计（B1）：建立与断开各一条，close 带存活时长与连接 id（可把 open/close 配对）。
   // 注意：**不写令牌**，只写标签；不写查询串（`?token=` 会进浏览器历史，进审计等于多一处落盘）。
-  const connectionId = randomUUID();
   const startedAt = Date.now();
   const role = clientMode === "desktop-continuous" ? "trusted-host-relay" : "terminal-client";
+  // 连接登记：连接面的 id 就是审计里的 connectionId（同一个编号，两处不会对不上）。
+  // 登记在审计之前：这样"清单里有、审计里没有"不可能发生。
+  //
+  // 撤销用的关闭动作交给登记表持有：撤销时它先摘除条目再调这里，
+  // 于是"已断开"与"已从清单移除"是同一个瞬间，不会出现清单里还在、实际已断的窗口。
+  // 关闭码取私有区间的 4001，让客户端能把"被撤销"与"网络断开"区分开（后者才该重连）。
+  const connectionId = auditContext
+    ? auditContext.connections.register({
+        address: auditContext.peer,
+        // 连接清单的角色口径（spec §6.4 的 role）与审计口径不同：
+        // 审计沿用既有的 trusted-host-relay / terminal-client，而契约只要
+        // terminal-client / trusted-host 两档。转换只在这里发生一次。
+        role: clientMode === "desktop-continuous" ? "trusted-host" : "terminal-client",
+        userAgent: auditContext.userAgent,
+        close: () => {
+          try {
+            ws.close(REMOTE_CONTROL_REVOKED_CLOSE_CODE, "Revoked by the remote control panel");
+          } catch {
+            // 对端已断开时 close 会抛错；撤销的语义是"它已经不在表里了"，不必上抛。
+          }
+        },
+      })
+    : randomUUID();
   if (auditContext) {
-    auditContext.activeConnections.set(connectionId, {
-      role,
-      peer: auditContext.peer,
-      authenticated: auditContext.authenticated,
-      startedAt,
-    });
     auditContext.audit.record({
       kind: "audit:ws-open",
       peer: auditContext.peer,
@@ -185,7 +212,8 @@ function setupChannelServer(
   services.exposeOnChannelServer(server, overrides);
   socket.onClose(() => {
     if (auditContext) {
-      auditContext.activeConnections.delete(connectionId);
+      // 注销是幂等的：撤销路径已经摘除过条目，这里会成为一次 no-op（不重复推进 revision）。
+      auditContext.connections.unregister(connectionId);
       auditContext.audit.record({
         kind: "audit:ws-close",
         peer: auditContext.peer,
@@ -265,6 +293,21 @@ export interface HttpServerOptions {
   botIngress?: { enabled: boolean; maxBodyBytes?: number };
   /** bot 入站面的限流桶（测试可注入短窗口）。缺省用默认阈值。 */
   botIngressThrottle?: AuthThrottle;
+  /**
+   * 令牌文件路径（ZCODE_SERVER_AUTH_TOKENS_FILE）。给了它、且 tokenSource 支持 reload 时，
+   * 本函数会据此提供 POST /api/remote-control/rotate-token 的轮换能力。
+   *
+   * 为什么不在本函数里从环境变量读：与 host/trustedOrigins 等一致 ——
+   * 「读环境」是入口（entry-http.ts）的职责，这里只接收已解析的值。
+   */
+  tokenFilePath?: string;
+  /**
+   * 令牌轮换实现（测试注入点）。缺省由 tokenFilePath + tokenSource.reload 构造。
+   *
+   * 不提供时该端点返回 409 而不是静默 no-op：面板会宣称"已轮换、所有人需重连"，
+   * 而令牌其实没动 —— 那是安全错觉，比报错更糟。
+   */
+  tokenRotation?: AuthTokenRotation;
 }
 
 function readTrimmedEnv(name: string): string | undefined {
@@ -544,6 +587,21 @@ export const ROUTE_POLICY: readonly RoutePolicyEntry[] = [
     note: "签发 trusted-host ticket（提权面）",
   },
   { path: "/api/connect-remote", policy: "protected", note: "让服务端出网建连接（SSRF 面）" },
+  {
+    path: "/api/remote-control/connections",
+    policy: "protected",
+    note: "已连设备清单：含对端地址与客户端标识，是「谁连着」的事实（spec §6.4）",
+  },
+  {
+    path: "/api/remote-control/connections/revoke",
+    policy: "protected",
+    note: "断开连接的写动作（踢人下线），spec §6.4",
+  },
+  {
+    path: "/api/remote-control/rotate-token",
+    policy: "protected",
+    note: "轮换令牌：旧令牌立即失效，是今天唯一的撤销杠杆（spec §6.4 决策④）",
+  },
   { path: "/api", prefix: true, policy: "protected", note: "API 命名空间整体受保护" },
   { path: "/ws", policy: "protected", note: "agent 级 RPC 通道（terminal-client 角色）" },
   { path: "/ws/host", policy: "protected", note: "需一次性 ticket，拿 desktop-continuous 角色" },
@@ -835,6 +893,24 @@ export function createHttpServer(
       }
     : undefined;
   const tokenSource = options.tokenSource ?? explicitTokenSource;
+  /**
+   * 令牌轮换能力：只有"令牌来自文件"时才有意义。
+   *
+   * 为什么必须排除显式 env 令牌：reload 按设计只替换"文件那一部分"，
+   * ZCODE_SERVER_AUTH_TOKEN 不随重载变化（authToken.ts 文件头）。
+   * 若那种部署也放行轮换，端点会返回 200 而旧令牌仍然可用 —— 正是要避免的安全错觉。
+   * 这里在构造阶段就判定，运行期只判"有没有"（单一判据，不会两处不一致）。
+   */
+  const tokenRotation =
+    options.tokenRotation ??
+    (options.tokenFilePath &&
+    typeof (tokenSource as { reload?: unknown } | undefined)?.reload === "function"
+      ? createAuthTokenRotation({
+          filePath: options.tokenFilePath,
+          reload: () =>
+            (tokenSource as unknown as { reload(): { ok: boolean; error?: string } }).reload(),
+        })
+      : undefined);
   const trustedOrigins = parseTrustedOrigins(options.trustedOrigins?.join(","));
   const trustedProxies = options.trustedProxies ?? [];
   // Host 白名单（G6）：默认 = 回环各形态 + 本机网卡地址 + 实际监听地址；运维显式登记追加其后。
@@ -889,11 +965,15 @@ export function createHttpServer(
   }
   const maxConcurrentConnections =
     options.maxConcurrentConnections ?? DEFAULT_MAX_CONCURRENT_CONNECTIONS;
-  /** 当前活跃的 WebSocket 连接（含即将升级的），用于并发上限与 close 事件配对。 */
-  const activeConnections = new Map<
-    string,
-    { role: string; peer: string; authenticated: boolean; startedAt: number }
-  >();
+  /**
+   * 当前活跃的 WebSocket 连接 —— 连接面（谁连着）的唯一真相源。
+   *
+   * 修改前这里是一个只服务并发上限计数的 Map：它存的 role/peer/authenticated/startedAt
+   * 四个字段没有任何读取点（全仓只读 .size），而 /api/server-info 也不含连接 ——
+   * 于是"已连设备清单 / 断开某人"在服务端没有数据可依（spec §2.2）。
+   * 现在同一份状态既供并发上限、又供连接面 API，不再有第二份连接状态。
+   */
+  const connectionRegistry = createRemoteControlConnectionRegistry();
   // 运行期暴露面告警：只在首次遇到「非回环对端 + 非 TLS」时提示一次（不拒绝请求）。
   let plainHttpPeerWarned = false;
   app.use("*", async (c, next) => {
@@ -1112,6 +1192,125 @@ export function createHttpServer(
   app.post("/api/rpc-host-capability", (c) => c.json(hostCapabilities.issue()));
 
   /**
+   * 连接面（spec §3.4 / §6.4）：读清单、撤销、轮换令牌。
+   *
+   * 三条都在 /api 前缀内 ⇒ 落在令牌白名单里（isTokenProtectedPath），
+   * 且都经来源校验中间件 —— 不新造第二套判定。
+   *
+   * 关于跨源读：修复后的来源中间件对 GET 不做判定（读方法不在保护面内），
+   * 所以"跨源 GET 不得泄露连接清单"靠的是不发 CORS 头 + 浏览器同源策略 ——
+   * 跨源 fetch 拿不到响应体（浏览器拦住），而不是靠服务端 403。
+   * 这与既有的 /api/server-info 同一形态，不是本切片新引入的性质。
+   */
+
+  /**
+   * 读：当前连接清单。
+   *
+   * 空数组 = 确定 0 台设备（不用 404）：404 会让面板无法区分"没人连"与"这个端点不存在"，
+   * 而前者是正常状态。revision 单调递增，供面板去重与轮询。
+   */
+  app.get("/api/remote-control/connections", (c) => c.json(connectionRegistry.snapshot()));
+
+  /**
+   * 写：撤销连接。参数恰好是 { id } 或 { all: true } 之一。
+   *
+   * 语义边界（spec §6.4 规则③）：只断连接，绝不停止服务进程、不触碰服务面。
+   * 本函数里没有任何进程/监听/端口操作，可被接口审计核对。
+   */
+  app.post("/api/remote-control/connections/revoke", async (c) => {
+    let rawBody: unknown;
+    try {
+      rawBody = await c.req.json();
+    } catch {
+      return c.json({ error: "Invalid request body: expected a JSON object" }, 400);
+    }
+    if (typeof rawBody !== "object" || rawBody === null || Array.isArray(rawBody)) {
+      return c.json({ error: "Invalid request body: expected a JSON object" }, 400);
+    }
+    const body = rawBody as { id?: unknown; all?: unknown };
+    const hasId = typeof body.id === "string" && body.id.length > 0;
+    const hasAll = body.all === true;
+    // 恰好其一。同时给或都不给 ⇒ 400：不做"就近猜一个"的兜底 ——
+    // 那会让"断开全部"变成"断开某一个"或反之，两者后果差一个数量级。
+    if (hasId === hasAll) {
+      return c.json(
+        {
+          error: "Invalid request body: provide exactly one of { id: string } or { all: true }",
+        },
+        400,
+      );
+    }
+    if (hasAll) {
+      const revoked = connectionRegistry.revokeAll();
+      audit.record({
+        kind: "audit:connections-revoked",
+        peer: resolvePeerAddress(c, trustedProxies) ?? "unknown",
+        path: "/api/remote-control/connections/revoke",
+        reason: "面板撤销全部连接",
+        revoked,
+      });
+      return c.json({ revoked });
+    }
+    const revoked = connectionRegistry.revoke(body.id as string);
+    audit.record({
+      kind: "audit:connections-revoked",
+      peer: resolvePeerAddress(c, trustedProxies) ?? "unknown",
+      path: "/api/remote-control/connections/revoke",
+      // 记目标 id：撤销是"谁被踢下线"的问题，没有它就答不上来。
+      // 该 id 是服务端生成的随机值，不含令牌、也不可反推令牌（spec §6.4）。
+      connectionId: body.id as string,
+      reason: "面板撤销指定连接",
+      revoked,
+    });
+    return c.json({ revoked });
+  });
+
+  /**
+   * 写（桌面面板专属）：轮换令牌。旧令牌立即失效。
+   *
+   * 为什么只有服务端进程能做：令牌校验读的是本进程内的集合，
+   * 只有"替换文件 + 本进程 reload"才能让旧令牌立刻失效（不必重启）。
+   *
+   * 端点本身对 Web 与桌面是同一个（服务端无法区分调用方）；
+   * "Web 面板不暴露此入口"由客户端侧保证（决策④）：
+   * Web 平台实现不提供 rotateWebServiceToken 能力 ⇒ 组件不渲染该入口。
+   * 这里如实记录这条边界，避免后来者以为服务端能分辨调用方。
+   */
+  app.post("/api/remote-control/rotate-token", async (c) => {
+    if (!tokenRotation) {
+      // fail-loud：没有可轮换的令牌源（例如只配了显式 env 令牌）时不能静默 no-op ——
+      // 面板会宣称"已轮换、所有人需重连"，而令牌其实没动（安全错觉）。
+      return c.json(
+        {
+          error:
+            "Token rotation is unavailable: this server was not started with a token file " +
+            "(ZCODE_SERVER_AUTH_TOKENS_FILE). Rotate the explicit token by restarting with a new one.",
+        },
+        409,
+      );
+    }
+    try {
+      const rotatedAt = await tokenRotation.rotate();
+      audit.record({
+        kind: "audit:token-rotated",
+        peer: resolvePeerAddress(c, trustedProxies) ?? "unknown",
+        path: "/api/remote-control/rotate-token",
+        reason: "面板轮换令牌（旧令牌立即失效）",
+        tokenCount: tokenSource?.snapshot().count ?? 0,
+      });
+      return c.json({ rotatedAt });
+    } catch (error) {
+      return c.json(
+        {
+          error:
+            "Token rotation failed: " + (error instanceof Error ? error.message : String(error)),
+        },
+        500,
+      );
+    }
+  });
+
+  /**
    * 组装连接级审计上下文。
    *
    * 在 `createEvents(c)` 里调用（那时还能拿到 Hono `Context`）：令牌标签 / 是否已鉴权来自
@@ -1129,10 +1328,13 @@ export function createHttpServer(
     const auth = perRequestAuth.get(c);
     return {
       audit,
-      activeConnections,
+      connections: connectionRegistry,
       peer: auth?.peer ?? peer,
       path: requestUrl.pathname,
       authenticated: auth?.authenticated ?? !tokenSource?.enabled,
+      // User-Agent 是连接清单的字段之一（spec §6.4）。它是客户端自述、可伪造，
+      // 所以只作展示与排障用，绝不参与任何判定。缺失时写空串（契约要求它是 string）。
+      userAgent: c.req.header("user-agent") ?? "",
       ...(auth?.tokenLabel ? { tokenLabel: auth.tokenLabel } : {}),
     };
   };
@@ -1392,7 +1594,7 @@ export function createHttpServer(
     //    语义：拒绝**新**连接（403 + 明确原因），已建立的连接不受影响；不做排队
     //    （排队等于让攻击者用队首阻塞合法用户）。检查放在来源判定**之前**：
     //    连接洪水的第一诉求是"立刻止血"，而不是先给每个请求算一遍来源。
-    if (activeConnections.size >= maxConcurrentConnections) {
+    if (connectionRegistry.size() >= maxConcurrentConnections) {
       if (!connectionLimitWarned) {
         connectionLimitWarned = true;
         warn(
@@ -1406,7 +1608,7 @@ export function createHttpServer(
         peer: upgradePeer,
         path: pathname,
         reason: "活跃连接数达到上限",
-        connections: activeConnections.size,
+        connections: connectionRegistry.size(),
         maxConnections: maxConcurrentConnections,
       });
       rejectedUpgradeSockets.add(socket);

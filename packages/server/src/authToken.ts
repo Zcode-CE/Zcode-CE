@@ -1,5 +1,6 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { chmod, rename, writeFile } from "node:fs/promises";
 
 /**
  * 鉴权令牌的**加载、匹配与热重载**（task-35 / A4）。
@@ -239,6 +240,72 @@ function constantTimeEqualHex(a: string, b: string): boolean {
     diff |= a.charCodeAt(index) ^ b.charCodeAt(index);
   }
   return diff === 0;
+}
+
+/** 轮换时生成的新令牌字节数：32 字节 = 256 bit（spec §6.5 判据①要求 >= 128 bit）。 */
+export const ROTATED_TOKEN_BYTES = 32;
+
+export interface AuthTokenRotation {
+  /** 生成新令牌、原子替换令牌文件、热重载；返回轮换完成时刻（epoch 毫秒）。 */
+  rotate(): Promise<number>;
+}
+
+export interface AuthTokenRotationOptions {
+  /** 令牌文件路径（ZCODE_SERVER_AUTH_TOKENS_FILE）。 */
+  filePath: string;
+  /** 热重载入口（createAuthTokenStore 的 reload）。 */
+  reload: () => { ok: boolean; error?: string };
+  /** 令牌生成器（测试注入；缺省 32 字节 CSPRNG 的 base64url）。 */
+  generate?: () => string;
+  now?: () => number;
+}
+
+/**
+ * 令牌轮换（spec §6.4 的 POST /api/remote-control/rotate-token）。
+ *
+ * 语义：旧令牌立即失效。做法是「原子替换令牌文件 + 热重载」——
+ * 校验永远读当前集合，不存在旧集合的缓存副本（见 createAuthTokenStore 的不变式 1），
+ * 所以替换 + reload 之后旧令牌立刻打不通，不需要重启进程。
+ *
+ * 为什么必须原子（临时文件 + rename）：直接覆写会让「写到一半」的窗口里文件是半截令牌。
+ * 更糟的是 reload 读到一个格式非法的文件时会按既有约定保持上一份集合 ——
+ * 于是轮换看起来成功了，实际旧令牌还在用。rename 是原子的，读到的要么是旧内容、要么是新内容。
+ *
+ * 为什么这里只写令牌文件、不碰 ZCODE_SERVER_AUTH_TOKEN：显式 env 令牌是
+ * 「运维手上那把钥匙」，reload 按设计不替换它（authToken.ts 文件头）。
+ * 因此「有 env 令牌时轮换无法让旧令牌全部失效」这一条不能静默发生，
+ * 由调用方在提供轮换能力之前就判定（见 entry-http.ts 的 tokenRotation 构造条件）。
+ *
+ * 轮换不断开已建立的连接：spec §6.4 只写「旧令牌立即失效」，
+ * 而 §3.2 规则④的「轮换 + 断开全部」是两个独立动作。需要踢下线时由面板另发 revoke。
+ */
+export function createAuthTokenRotation(options: AuthTokenRotationOptions): AuthTokenRotation {
+  const now = options.now ?? Date.now;
+  const generate =
+    options.generate ?? (() => randomBytes(ROTATED_TOKEN_BYTES).toString("base64url"));
+
+  return {
+    async rotate() {
+      const token = generate();
+      // 写裸令牌一行：与 desktop 的 ensureWebServiceToken 同格式（标签留空，
+      // 标签只用于日志，我们没有需要标的设备）。
+      const temporaryPath =
+        options.filePath + ".tmp-" + String(process.pid) + "-" + Date.now().toString(36);
+      await writeFile(temporaryPath, token + "\n", { mode: 0o600 });
+      try {
+        await chmod(temporaryPath, 0o600);
+      } catch {
+        // Windows 语义不同；护栏是"以 0600 创建"（与 desktop 的 token.ts 同口径）。
+      }
+      await rename(temporaryPath, options.filePath);
+      const result = options.reload();
+      if (!result.ok) {
+        // 文件已是新令牌、内存仍是旧集合 ⇒ 这种不一致必须报错，不能让调用方以为轮换成功。
+        throw new Error("令牌文件已替换，但热重载失败：" + (result.error ?? "未知原因"));
+      }
+      return now();
+    },
+  };
 }
 
 /** 从文件读出令牌记录（启动期用；失败即抛错，由调用方 fail-closed 处理）。 */

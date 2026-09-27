@@ -57,7 +57,13 @@ export type AuditEventKind =
   | "audit:bot-callback"
   | "audit:bot-auth-failure"
   | "audit:bot-ban"
-  | "audit:bot-rejected";
+  | "audit:bot-rejected"
+  // ── 连接面（谁连着）的写动作（spec §6.4 的 revoke / rotate-token）。
+  //    撤销与轮换都是"改变谁能继续访问"的动作，必须能事后回答
+  //    "谁在什么时候踢掉了谁" —— 这正是审计存在的理由（web-remote-control.md §9.1）。
+  //    读动作（GET connections）不记：它是高频轮询，记账本只会淹掉真事件。
+  | "audit:connections-revoked"
+  | "audit:token-rotated";
 
 export interface AuditEvent {
   kind: AuditEventKind;
@@ -84,6 +90,8 @@ export interface AuditEvent {
   /** 并发上限：当前连接数与上限。 */
   connections?: number;
   maxConnections?: number;
+  /** 撤销连接：本次实际断开的连接数（0 = 幂等命中，目标本就不在）。 */
+  revoked?: number;
 }
 
 export interface AuditLogOptions {
@@ -161,6 +169,10 @@ export function createAuditLog(options: AuditLogOptions = {}): AuditLog {
     kind === "audit:ws-open" ||
     kind === "audit:ws-close" ||
     kind === "audit:token-reload" ||
+    // 连接面的写动作是"操作者主动做的事"、不是安全拒绝 ⇒ info
+    // （拒绝类事件才用 warn；审计本身不制造 error，见文件头）。
+    kind === "audit:connections-revoked" ||
+    kind === "audit:token-rotated" ||
     // bot 入站的成功路径是正常生命周期（凭据已通过）⇒ info；
     // 其余 bot 事件（失败/封禁/拒绝）走默认的 warn。
     kind === "audit:bot-callback"
