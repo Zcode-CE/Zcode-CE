@@ -160,8 +160,10 @@ bash scripts/desktop-typecheck-baseline.sh diff      # 只报相对 HEAD 的新�
 故意的类型错误，两边都如期报 `TS2322`，再删掉。）
 ⚠️ **本段此前写的「main 1 项、renderer 90 项」是 2026-09-22 的旧快照**；
 `ce03e36`（main 77→0）与 `5cbe4cd`（renderer 114→0）在**同一天稍晚**就把它们清干净了，
-这里没跟着改。另注意 `.reverse/16-typecheck-baseline/current.*.counts` 是**修之前**的快照
-（mtime 09-22 00:24，早于 `5cbe4cd` 03:29 / `ce03e36` 03:35）—— **别拿它当当前值**。
+这里没跟着改。另注意旧快照 `.reverse/16-typecheck-baseline/current.*.counts`（mtime 09-22 00:24，
+早于 `5cbe4cd` 03:29 / `ce03e36` 03:35，**修之前**的值）已于 2026-10-03 随该目录归档到
+`.reverse/archive/16-typecheck-baseline/`——**别拿它当当前值**；脚本下次运行会在
+`.reverse/16-typecheck-baseline/` 重新生成。
 
 技术债 #5 的两级判定：
 

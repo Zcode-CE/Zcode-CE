@@ -13,7 +13,7 @@ import { parse } from "yaml";
  * 退化了 workflow 仍然绿、仍然跑，但产出的东西不再是当初要的那份证据：
  *
  *   1. **触发时机**：一旦有人加上 `pull_request`，它就变成每个 PR 都跑三个 OS 的完整构建。
- *      `.reverse/45-release/CE3-CHECKLIST.md` §1 的 F2-M 已定口径「nightly 或发布前，不进每个 PR」，
+ *      `.reverse/archive/45-release/CE3-CHECKLIST.md` §1 的 F2-M 已定口径「nightly 或发布前，不进每个 PR」，
  *      成本回归不会报错，只会让流水线变慢、信号变噪。
  *   2. **`continue-on-error`**：根 AGENTS.md 的硬规则 —— 交付终点失败必须让流水线变红。
  *      加一个 `continue-on-error` 会让「Windows 上这套 smoke 还没打通」伪装成「Windows 可用」，

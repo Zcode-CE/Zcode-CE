@@ -1,7 +1,7 @@
 # 欠账台账（Backlog）
 
 > **用途**：唯一汇总处。任何"未做 / 排后续 / 有意不做"的东西都记在这里 —— 否则它会散落在 release-notes、分析报告、清单、issue 里，**然后被漏掉**。
-> **建立原因**：2026-09-24 汇总本批欠账时发现它们散落在**四处**（release-notes 的已知限制、`.reverse/90-upstream-v3143/` 的建议序、`.reverse/45-release/CE3-CHECKLIST.md`、`.reverse/92-copy-format/`），**没有一处能看到全貌**。
+> **建立原因**：2026-09-24 汇总本批欠账时发现它们散落在**四处**（release-notes 的已知限制、`.reverse/90-upstream-v3143/` 的建议序、`.reverse/archive/45-release/CE3-CHECKLIST.md`、`.reverse/92-copy-format/`），**没有一处能看到全貌**。
 
 ## 记录格式
 
