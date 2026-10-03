@@ -1,8 +1,49 @@
 # Spec：start-plan 验证码挑战链路（captcha challenge）+ 切渠道队列授权位复位
 
-- 状态：待实现（ce.3-fix.1）
+- 状态：**已实现（3.14.3-ce.4 至 ce.5 逐步落地，2026-10-03 修复 issue #3 的 webview 时序 bug）**
 - 背景与证据：[126 根因报告](./126-start-plan-3007-root-cause.md)、[127 粘滞机制](./127-session-scoped-sticky-provider-failure.md)、[128 参考项目对照](./128-reference-proxy-parity.md)、[129 缺陷扫描](./129-ce-defect-scan.md)
 - 影响范围：协议契约（shared）、host 服务（services）、agent 运行时（zcode-cli）、UI（ui）
+
+## 落地状态（2026-10-03 核对，按本 spec 章节逐条）
+
+| spec 章节                | 内容                                                 | 落地证据                                                                                                                                                                                 |
+| ------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §4.1                     | 协议枚举放宽 + 可选 `runtimeProviderHeaders`         | `packages/shared/src/zcode-protocol/index.ts` 的 `captcha-retry` 与响应分支；agent 侧 reason 类型见下                                                                                    |
+| §4.2                     | host 转发守卫（非 start-plan 才短路）                | `packages/services/src/zcode-agent/zcodeAgentService.ts`（`accountAccess.mode !== "start-plan"`，附官方偏移注释）                                                                        |
+| §4.3                     | 渲染层应答入口 + 白名单头合并 + 幂等                 | `respondProviderRuntimeHeaders` + `mergeProviderRuntimeHeaders`（host 侧）；UI 侧 `respondToHost`                                                                                        |
+| §4.4                     | 无渲染层场景（订阅者/能力声明双判据快速失败）        | host 两道判据（无订阅者 / 无能力声明）；UI 侧 `onDynamicSessionCaptchaCapability` 声明 + `canSolveCaptchaInCurrentHost` 守卫                                                             |
+| §4.5                     | agent 单次 3007 重试（拦截点在分类器之前，不改码表） | `apps/zcode-cli/packages/adapters/src/model/captcha-retry.ts`、`runner-runtime-headers.ts`（reason 放宽）、`runner-generate.ts` / `runner-stream.ts` 接入                                |
+| §4.6                     | 切渠道复位会话队列授权位（三条路径共判据）           | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/queue-held-reset.ts` + `turn-model.ts`/`model-config.ts`/`session-flow.ts` 三处接入                                             |
+| 渲染层求解（§4.1 第①段） | 桌面 webview + Web/手机远控主世界                    | `packages/ui/src/v4/providerRuntimeCaptchaSolver.ts`、`ProviderRuntimeHeadersCaptchaAttachment.tsx`、`providerRuntimeHeadersSolver.ts`；**2026-10-03 修复桌面 webview 时序 bug（见下）** |
+
+## 已修复的真实缺陷：桌面 webview 时序（issue #3，2026-10-03）
+
+用户报告（Arch + 3.14.3-ce.4）：`verify: The WebView must be attached to the DOM and the dom-ready
+event emitted before this method can be called.`，同时 `Turn execution failed ... reason=unknown
+retryable=false`。两个报错是同一条链路的两端，归因链：
+
+1. v4 桌面求解路径的 `<webview>` **没有 src**，`solveCaptchaInWebview` 在 React 挂载拿到 ref 后
+   **立即** `webview.loadURL(url)`。Electron 守卫（官方 docs/api/webview-tag.md「The webview
+   element must be loaded before using the methods」；官方 spec 的「throws a custom error when an
+   API method is called before the event is emitted」）在 attach 与首次 dom-ready 之前调用
+   webview 方法会**同步抛**该错误。
+2. 错误经编排器收敛为 `{ ok:false, failureStage:"verify", reason:<Electron 原文> }`，UI 侧应答
+   `errorMessage = "verify: The WebView must be attached..." `（与用户报错逐字吻合）。
+3. host 收到 `headersApplied:false` 原样回 agent；agent 侧 `runner-runtime-headers.ts` 的
+   `headersApplied:false` 分支抛 `RuntimeHeadersRefreshError`（既非业务码也非鉴权码）⇒
+   分类为 `reason=unknown retryable=false`（用户报错的第二段）。
+
+修复形态与 claim 平面（`ManualClaimCaptchaDialog`）逐字一致：
+
+- 宿主页由 `<webview src={hostUrl}>` 在 attach 时自动加载（data: URL 宿主页含 SDK script 标签）；
+- `solveCaptchaInWebview` 只等待「webview 方法可用」（探测式 + 超时），**从不调用 loadURL**；
+- 等待与 SDK 就绪轮询都用 try/catch 容忍守卫的同步抛错（`promise.catch` 接不住同步 throw）。
+
+回归测试：`packages/ui/test/providerRuntimeCaptchaWebviewTiming.test.ts`（守卫错误吸收、
+ensureHostPageReady 注入、超时快速失败、源码防回退断言）。
+
+> 注意：claim 平面（`ManualClaimCaptchaDialog`）从一开始就是 src + dom-ready + executeJavaScript
+> 的形态，**没有**这个 bug；修复只落在 v4 模型请求平面。
 
 ---
 

@@ -69,6 +69,7 @@ import {
   solveCaptchaInBrowser,
   solveCaptchaInWebview,
 } from "@/v4/providerRuntimeCaptchaSolver.js";
+import { buildManualClaimCaptchaHostPageUrl } from "@/settings/manualClaimCaptchaPage.js";
 import {
   createProviderRuntimeHeadersOrchestrator,
   providerRuntimeHeadersDedupKey,
@@ -111,6 +112,10 @@ export function ProviderRuntimeHeadersCaptchaAttachment({
   sessionIdRef.current = sessionId;
   // 桌面端求解期间打开承载 webview 的对话框；null 表示当前无求解。
   const [solveDialogOpen, setSolveDialogOpen] = useState(false);
+  // 宿主页 data: URL：与 claim 平面同构。webview 的 src 只在首挂时被 Electron 读取，
+  // locale 变化不会重载（Electron 行为，见 UnifiedBrowserView.tsx 的同类注释），
+  // SDK 界面文案语言因此可能在切换语言后的一次求解内不更新 —— 非关键路径，可接受。
+  const hostUrl = buildManualClaimCaptchaHostPageUrl({ lang: locale });
 
   const orchestrator = useMemo(
     () =>
@@ -310,10 +315,14 @@ export function ProviderRuntimeHeadersCaptchaAttachment({
           </DialogDescription>
         </DialogHeader>
         {/* webview 必须可见：SDK 的 popup 挑战渲染在 guest 页面内，隐藏容器里用户看不到它。
-            宿主页是 data: URL，与 claim 平面同一形态（已被 will-attach-webview 白名单放行）。 */}
+            宿主页是 data: URL，与 claim 平面同一形态（已被 will-attach-webview 白名单放行）。
+            src 承载宿主页（含 SDK script 标签）：Electron 在 attach 时读取 src 并自动加载，
+            dom-ready 后 executeJavaScript 才可用——求解侧只等待就绪，绝不调用 loadURL
+            （issue #3：attach/dom-ready 之前调 webview 方法会同步抛守卫错误）。 */}
         <webview
           ref={webviewRef}
           partition="zcode-provider-runtime-captcha"
+          src={hostUrl}
           className="h-[420px] w-full rounded-lg border border-border bg-background"
           data-testid="provider-runtime-captcha-webview"
         />

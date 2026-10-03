@@ -293,11 +293,31 @@ export async function solveCaptchaInBrowser(options: {
   return parseManualClaimCaptchaMessage(raw);
 }
 
+/** 等 webview 方法可用的上限：宿主页是 data: URL，本地解析即可，远用不到 30s。 */
+const WEBVIEW_READY_TIMEOUT_MS = 30_000;
+
 /**
  * 桌面端：把一个已挂载的 webview 元素跑完整求解。
  *
- * 与 claim 平面的 ManualClaimCaptchaDialog 同构（宿主页 data: URL + 等 SDK 就绪 +
- * executeJavaScript 取 Promise 返回值），差别只在结果直接交给本平面的编排器。
+ * 与 claim 平面的 ManualClaimCaptchaDialog 同构（宿主页由 `<webview src>` 承载 +
+ * 等就绪 + 等 SDK + executeJavaScript 取 Promise 返回值），差别只在结果直接交给本平面的编排器。
+ *
+ * ## 时序约束（issue #3 的直接成因，2026-10 修复）
+ *
+ * Electron 守卫（docs/api/webview-tag.md「The webview element must be loaded before
+ * using the methods」；spec/webview-spec.ts 的「throws a custom error when an API method
+ * is called before the event is emitted」）：在 attach 与首次 dom-ready 之前调用
+ * `executeJavaScript` / `loadURL` 等 webview 方法会同步抛
+ * "The WebView must be attached to the DOM and the dom-ready event emitted
+ * before this method can be called."
+ *
+ * 本函数此前据此出错：默认实现在 React 刚把 `<webview>` 插入 DOM（只拿到 ref）后
+ * 立即 `loadURL(url)`，此时 Electron 尚未完成内部 attach 与首次加载，守卫同步抛错，
+ * 经编排器收敛成 `verify: The WebView must be attached...` 应答给 host，agent 侧
+ * `headersApplied:false` → `RuntimeHeadersRefreshError` → `reason=unknown retryable=false`。
+ *
+ * 修复形态与 claim 平面逐字一致：宿主页由 `<webview src={hostUrl}>` 在 attach 时
+ * 自动加载，本函数只等待方法可用（探测式），从不调用 loadURL。
  *
  * 不支持的 webview（手机 Web / 普通 Web 构建没有 webviewTag，元素拿不到 executeJavaScript）
  * 显式返回 unsupported 阶段：这一档重试没有意义，调用方据此走 Web 主世界路径或快速失败。
@@ -307,8 +327,11 @@ export async function solveCaptchaInWebview(options: {
   config: ManualClaimCaptchaConfig;
   timeoutMs: number;
   locale?: string;
-  /** 注入点：单测据此断言宿主页与脚本的形状，无需真实 Electron。 */
-  loadHostPage?: (url: string) => Promise<void>;
+  /**
+   * 注入点：等待宿主页就绪。默认实现不调用 loadURL（宿主页由 src 承载），只等
+   * webview 方法可用；单测据此断言时序形状并提供受控的「未就绪→就绪」序列。
+   */
+  ensureHostPageReady?: (url: string) => Promise<void>;
   /** 注入点：默认用元素的 executeJavaScript。 */
   execute?: (code: string, userGesture?: boolean) => Promise<unknown>;
 }): Promise<ManualClaimCaptchaMessage | null> {
@@ -320,9 +343,12 @@ export async function solveCaptchaInWebview(options: {
   const execute =
     options.execute ??
     ((code: string, userGesture?: boolean) => target.executeJavaScript(code, userGesture));
-  const loadHostPage =
-    options.loadHostPage ?? ((url: string) => target.loadURL(url).then(() => undefined));
-  await loadHostPage(buildManualClaimCaptchaHostPageUrl({ lang: options.locale }));
+  const ensureHostPageReady =
+    options.ensureHostPageReady ??
+    (async () => {
+      await waitForWebviewMethodsReady(execute);
+    });
+  await ensureHostPageReady(buildManualClaimCaptchaHostPageUrl({ lang: options.locale }));
   const ready = await waitForCaptchaSdkReady(execute);
   if (!ready) {
     return { kind: "fail", stage: "sdk_load", reason: "sdk_ready_timeout" };
@@ -335,10 +361,41 @@ export async function solveCaptchaInWebview(options: {
 }
 
 /**
+ * 等 webview 的方法可用（Electron attach + 首次 dom-ready）。
+ *
+ * 探测式而不是监听 dom-ready 事件：监听存在「事件先于监听器注册而触发」的竞态
+ * （调用方在 React 挂载拿到 ref 后立即进入求解，无法排除宿主页在极端情况下已加载完成），
+ * 而 `executeJavaScript` 的守卫错误本身就是可靠的「未就绪」信号，且 `void 0` 探测
+ * 不产生任何加载副作用。未就绪时守卫同步抛错，因此必须用 try/catch 而非
+ * `promise.catch()`（后者接不住同步 throw）。
+ */
+export async function waitForWebviewMethodsReady(
+  execute: (code: string, userGesture?: boolean) => Promise<unknown>,
+  deadlineMs: number = WEBVIEW_READY_TIMEOUT_MS,
+): Promise<void> {
+  const deadline = Date.now() + deadlineMs;
+  for (;;) {
+    try {
+      await execute("void 0", true);
+      return;
+    } catch {
+      // 尚未 attach/dom-ready（守卫同步抛错）或 guest 已销毁：继续轮询到超时。
+    }
+    if (Date.now() >= deadline) {
+      throw new Error(`webview methods unavailable after ${deadlineMs}ms`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, SDK_READY_POLL_INTERVAL_MS));
+  }
+}
+
+/**
  * 轮询等宿主页的 SDK 就绪。
  *
  * 宿主页用 script src 异步加载 SDK，dom-ready 时未必已完成，因此不能假设它已存在
  * （claim 平面同样做了这件事，见 ManualClaimCaptchaDialog 的 poll）。
+ *
+ * 同样用 try/catch 容忍守卫的同步抛错：页面仍可能处于 attach 与首次 dom-ready 之间
+ * （ensureHostPageReady 只保证方法可用那一刻，SDK 加载是页面内异步过程）。
  */
 async function waitForCaptchaSdkReady(
   execute: (code: string, userGesture?: boolean) => Promise<unknown>,
@@ -346,9 +403,13 @@ async function waitForCaptchaSdkReady(
 ): Promise<boolean> {
   const deadline = Date.now() + deadlineMs;
   for (;;) {
-    const ready = await execute('typeof window.initAliyunCaptcha === "function"', true).catch(
-      () => false,
-    );
+    let ready: unknown = false;
+    try {
+      ready = await execute('typeof window.initAliyunCaptcha === "function"', true);
+    } catch {
+      // webview 未就绪或已销毁：继续轮询，不悬挂到上层。
+      ready = false;
+    }
     if (ready === true) return true;
     if (Date.now() >= deadline) return false;
     await new Promise((resolve) => setTimeout(resolve, SDK_READY_POLL_INTERVAL_MS));
