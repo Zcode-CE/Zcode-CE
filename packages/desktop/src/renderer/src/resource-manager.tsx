@@ -6,6 +6,7 @@ import {
   ZCodeIntlProvider,
   applyUiFontSizePx,
   loadUiFontSizePx,
+  readPersistedTheme,
   subscribeToUiFontSizeStorageChanges,
 } from "@zcode/ui";
 
@@ -29,7 +30,9 @@ function resolveTheme(theme: Theme): "light" | "dark" {
 }
 
 function applyResourceManagerTheme(): void {
-  const savedTheme = (localStorage.getItem("zcode-theme") as Theme | null) ?? "zai-dark";
+  // 复用主窗口的校验读取：localStorage 中的非法/外来主题条目回退内置 palette（issue #2），
+  // 不再让未校验的字符串直接决定 theme-zai-* 类的开关。
+  const savedTheme = readPersistedTheme();
   const resolvedTheme = resolveTheme(savedTheme);
   const appliedTheme =
     savedTheme === "system"

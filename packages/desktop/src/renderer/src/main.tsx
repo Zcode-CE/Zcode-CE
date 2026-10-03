@@ -12,6 +12,7 @@ import {
   createRemoteWorkspaceDisconnectedError,
   playTaskNotificationSound,
   setStreamClientId,
+  readPersistedTheme,
 } from "@zcode/ui";
 import "@zcode/ui/styles.css";
 import { connectViaMessagePort, createMessagePortServiceConnection } from "@zcode/client";
@@ -69,8 +70,10 @@ function registerE2EStoreBridgesIfEnabled() {
 }
 
 // 初始化主题：默认 Zai dark，后续由 useTheme hook 接管
+// readPersistedTheme 校验持久化条目：非法/外来值（issue #2 中注入页面写入的条目）
+// 回退 zai-dark，避免 html 上 theme-zai-* 类缺失后 UI 丢失主题归属。
 {
-  const saved = localStorage.getItem("zcode-theme") || "zai-dark";
+  const saved = readPersistedTheme();
   const resolved =
     saved === "system"
       ? window.matchMedia("(prefers-color-scheme: dark)").matches

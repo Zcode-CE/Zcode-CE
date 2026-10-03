@@ -49,6 +49,14 @@ User-facing theme choices are:
 
 Default light and dark CSS variables still exist as fallback foundations, but new UI should be validated against Zai Light and Zai Dark as the active light/dark experiences.
 
+The persisted theme preference is the `localStorage` key `zcode-theme`, and only the built-in values
+(`system` / `light` / `dark` / `zai-light` / `zai-dark`) are accepted. Every read point (the shared theme
+reader in `packages/ui/src/useTheme.ts`, the Zustand store, the desktop renderer boot scripts, and the web
+bootstrap inline script) validates the stored value: unrecognized entries — including third-party values
+injected into renderer `localStorage` (issue #2) — fall back to the built-in Zai Dark palette and are
+reported through the UI logger instead of being applied. Custom palette entries are not a supported
+theme input; the palette is static CSS, never parsed from `localStorage`.
+
 ## Color Palette
 
 ### Core semantic colors

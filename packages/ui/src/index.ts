@@ -24,7 +24,15 @@ export type {
 } from "./git-graph/layout.js";
 export { SSHDialog, RemoteConnectionDialog } from "./SSHDialog.js";
 export { useTheme } from "./useTheme.js";
-export type { Theme } from "./useTheme.js";
+export type { Theme, ResolvedTheme } from "./useTheme.js";
+export {
+  DEFAULT_THEME,
+  THEME_STORAGE_KEY,
+  applyTheme,
+  readPersistedTheme,
+  resolveTheme,
+  sanitizeTheme,
+} from "./useTheme.js";
 export { useTestActions } from "./test-actions.js";
 export type { TestActions } from "./test-actions.js";
 export { StoreProvider, useZCodeStore } from "./store/StoreProvider.js";

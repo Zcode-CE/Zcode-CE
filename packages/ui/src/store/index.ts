@@ -37,7 +37,7 @@ import {
   persistTaskNotificationSoundEnabled,
 } from "@/lib/taskNotificationPreferences.js";
 import type { Theme } from "../useTheme.js";
-import { applyTheme, normalizeThemePreference, resolveTheme } from "../useTheme.js";
+import { applyTheme, readPersistedTheme, resolveTheme, sanitizeTheme } from "../useTheme.js";
 
 import {
   INTERFACE_MODE_STORAGE_KEY,
@@ -253,10 +253,12 @@ export function createZCodeStore(
       set({ interfaceMode });
     },
     // 默认主题统一收敛到 Zai dark，避免首次启动时 store 与其他主题入口表现不一致。
-    // 仍然优先尊重 localStorage 中已保存的用户选择，不覆盖已有偏好。
-    theme: normalizeThemePreference((readSafeLocalStorage("zcode-theme") as Theme) || "zai-dark"),
+    // 仍然优先尊重 localStorage 中已保存的用户选择，不覆盖已有偏好；
+    // 非法/外来条目经 readPersistedTheme 校验后回退内置 palette（issue #2）。
+    theme: readPersistedTheme(),
     setTheme: (theme: Theme) => {
-      const normalizedTheme = normalizeThemePreference(theme);
+      // 广播通道可能传来任意字符串（类型断言不保证），写入与广播前先消毒。
+      const normalizedTheme = sanitizeTheme(theme);
       writeSafeLocalStorage("zcode-theme", normalizedTheme);
       syncSystemThemeListener(normalizedTheme);
       applyTheme(normalizedTheme);
