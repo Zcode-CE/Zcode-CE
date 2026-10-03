@@ -115,6 +115,7 @@ import { WorkspaceFileTree } from "@/WorkspaceFileTree.js";
 import { WorkspaceArchivedTasksFlatSection } from "@/WorkspaceArchivedTasksFlatSection.js";
 import { WorkspaceSidebarFooter } from "@/WorkspaceSidebarFooter.js";
 import { RemoteControlPanelHost } from "@/RemoteControlPanelHost.js";
+import { BotsDialog } from "@/BotsDialog.js";
 import { useRemoteControlWiring } from "@/hooks/useRemoteControlWiring.js";
 import { WorkspacePinnedTasksSection } from "@/WorkspacePinnedTasksSection.js";
 import { WorkspaceTimelineTasksSection } from "@/WorkspaceTimelineTasksSection.js";
@@ -453,7 +454,8 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   const [remoteControlOpen, setRemoteControlOpen] = useState(false);
   // 接线**只做一次**（入口与面板宿主共用同一份）：取两次会建立两条 IPC 订阅、
   // 各自拉一次状态，两边可能短暂不一致（入口"运行中"而面板"未开启"）。
-  const remoteControl = useRemoteControlWiring();
+  // panelOpen 只用于 bot 状态轮询节奏：面板关闭时不轮询（BotsDialog 自己在打开时轮询）。
+  const remoteControl = useRemoteControlWiring({ panelOpen: remoteControlOpen });
   const [fileTreeTarget, setFileTreeTarget] = useState<SidebarFileTreeTarget | null>(null);
   const [groupedStickyHeader, setGroupedStickyHeader] = useState<ReactNode | null>(null);
   const [taskOrganizeBy, setTaskOrganizeBy] = useState<TaskOrganizeBy>(
@@ -1881,6 +1883,14 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
             wiring={remoteControl}
             open={remoteControlOpen}
             onOpenChange={setRemoteControlOpen}
+          />
+          {/* Bot 管理面（ce.5）：挂在与面板宿主同一棵树——onEnable 的落点。
+              开闭状态在 wiring 层（宿主）持有，切页/关面板不丢（133 报告 B1）。 */}
+          <BotsDialog
+            open={remoteControl.botsDialogOpen}
+            onOpenChange={remoteControl.setBotsDialogOpen}
+            workspacePath={workspacePath}
+            workspaceIdentity={workspaceIdentity}
           />
         </div>
         <div

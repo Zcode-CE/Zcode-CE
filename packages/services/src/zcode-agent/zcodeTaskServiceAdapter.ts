@@ -45,6 +45,7 @@ import {
   type ZCodeBackgroundTaskNotificationInfo,
   type ZCodeBackgroundTaskControlItem,
   type ZCodeBackgroundTurnAttribution,
+  type ZCodeAutomationBotDeliveryTarget,
   type ZCodeCancelTaskCommandResult,
   type ZCodeConfigOption,
   type ZCodeEnqueueTaskCommandResult,
@@ -376,6 +377,8 @@ export function createZCodeTaskServiceAdapter(
       content: string;
       attachments?: ZCodePromptAttachment[];
       toolDenylist?: string[];
+      /** Bot 来源 turn 的稳定回推地址；经本函数原样转发，供本轮 CronCreate 读取。 */
+      botDeliveryTarget?: ZCodeAutomationBotDeliveryTarget;
       clientId?: string;
       clientMode?: ZCodeTaskClientMode;
       logReason?: string;
@@ -426,6 +429,8 @@ export function createZCodeTaskServiceAdapter(
           modelExecution: params.modelExecution,
           ...turnAttributionOf(params),
           toolDenylist: promptToolDenylist,
+          // Bot 回推地址必须与 toolDenylist 同一出口转发：丢掉它会让本轮定时任务无法回推（静默降级）。
+          botDeliveryTarget: params.botDeliveryTarget,
           ...(params.clientMode ? { clientMode: params.clientMode } : {}),
         });
       } else {
@@ -448,6 +453,8 @@ export function createZCodeTaskServiceAdapter(
               ...(params.modelExecution ? { modelExecution: params.modelExecution } : {}),
               ...turnAttributionOf(params),
               ...(promptToolDenylist ? { toolDisallowlist: promptToolDenylist } : {}),
+              // botDeliveryTarget 未声明时 v4 schema 会剥离；声明后必须在 payload 里真正带上。
+              ...(params.botDeliveryTarget ? { botDeliveryTarget: params.botDeliveryTarget } : {}),
             },
             sessionId: target.taskId,
             commandId: params.traceId,
@@ -1911,6 +1918,8 @@ export function createZCodeTaskServiceAdapter(
         clientMode: params.clientMode,
         modelSelection: params.modelSelection,
         modelExecution: params.modelExecution,
+        // IZCodeTaskService.sendPrompt 已声明该字段（zcodeTaskService.ts）；此处不转发会在 adapter 断链。
+        botDeliveryTarget: params.botDeliveryTarget,
       });
     },
 

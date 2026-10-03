@@ -385,5 +385,22 @@
       "packages/services/src/bots/providers/feishuProvider.ts",
       "packages/services/src/bots/telegramChannelRuntime.ts"
     ]
+  },
+  {
+    "id": "ZCode Bot Management UI (Z.ai)",
+    "referenceRevision": "29628c9acdb81b703bbd4080c207a0e7ce5e276e",
+    "source": "https://raw.githubusercontent.com/zai-org/ZCode/29628c9acdb81b703bbd4080c207a0e7ce5e276e/LICENSE",
+    "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
+    "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
+    "importRevision": "29628c9acdb81b703bbd4080c207a0e7ce5e276e",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision 29628c9 (feat: update v3.14.3) — the Bot management dialog (BotsDialog) that consumes the Bot Channel subsystem copied under 'ZCode Bot Channel (Z.ai)'. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is the same file as the Bot Channel entry. Formatting note (same treatment as the Bot Channel copy precedent): the copied sources were run through this repository's oxfmt (0.41.0) because pnpm fmt:check covers packages/ui, and upstream does NOT keep these files oxfmt-clean. Measured against pristine upstream blobs (lead-verified 2026-10-03): the 6 PNG icons, channel-icons/index.ts and ProviderSettingsCard.tsx are byte-identical to upstream raw; the other 5 .tsx files (BotsDialog.tsx, botsUi.ts, BotSummaryCard.tsx, WorkspaceAccessCard.tsx, shared.tsx) differ from upstream raw only by oxfmt line-normalization (verified against oxfmt-formatted pristine upstream blobs) with zero semantic changes; hence no modifiedFiles entries. In addition, 259 'bots.*' message keys per locale (zh-CN / en-US) were appended verbatim from the same upstream revision into packages/ui/src/i18n/locales/{zh-CN,en-US}.ts; those two locale files are ZCode-CE files carrying CE content plus this appended block. The dialog is mounted from the remote-control panel host (packages/ui/src/RemoteControlPanelHost.tsx + WorkspaceSidebar.tsx) and reads IBotsService via the existing useServices hook — those wiring files are ZCode-CE originals, not upstream copies. The 6 PNG channel icons are IM provider brand logos redistributed as they appear in the upstream repository.",
+    "roots": [
+      "packages/ui/src/BotsDialog.tsx",
+      "packages/ui/src/BotsDialog",
+      "packages/ui/src/botsUi.ts",
+      "packages/ui/src/assets/channel-icons"
+    ],
+    "scope": "Bot management UI (BotsDialog + 4 subcomponents + botsUi.ts + 6 channel brand icons): create bots, configure channels (telegram/feishu/lark/weixin/webhook), QR binding, workspace authorization, reply granularity, enable/disable and delete. Plus the 259 'bots.*' i18n keys appended to both locale files. dingding/discord/wecom providers are placeholder-only (implemented: false), same as upstream.",
+    "license": "Apache-2.0"
   }
 ]

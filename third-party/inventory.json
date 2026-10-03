@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "3cd13cd3142b5edc0332d64f0e02d642dddd46a3c42dcea52f874b76599d40a4",
+  "noticesSha256": "2897e2de27c05b266033c54cec52dc9a98e2bf26787b22a5af832817541e17ff",
   "inputs": {
     ".agents/skills/agent-browser/references/authentication.md": "e2c3b0f4a1dc1368dee821f03c000d818a48421d09f3872525dddffe73f2112b",
     ".agents/skills/agent-browser/references/commands.md": "17522fc56d742663f47231ff06c4811abc87e12c7f78e11f94d253ddd540a909",
@@ -1538,6 +1538,19 @@
     "packages/shared/src/bots.ts": "1474521b9d3afdf9ba5802cfe09c97b8770f9c78914e85d349c833fcc7131cf4",
     "packages/shared/src/zcode-protocol-v4/wire-codec.ts": "ac2494a3acc795c809c94ee9393f50271a9c2a0fd33813459e5ab93842ceef75",
     "packages/ui/package.json": "220e916077604008bb6ffea19d6bdf7148c4b09472bea251248a230ba3c69bf5",
+    "packages/ui/src/assets/channel-icons/icon-dingding@2x.png": "61ffd13c4bc10cdb6641e41530883a6555b774517325326c8f7b3091fdd0ac8e",
+    "packages/ui/src/assets/channel-icons/icon-discord@2x.png": "a0bfaf4674ee3d8439d6918f3933af81a888344fc204ac275b46b7e46232a4c5",
+    "packages/ui/src/assets/channel-icons/icon-feishu@2x.png": "2d1b25fec5efdde3778245428effe525afa783370834683d9484a8ca9c323969",
+    "packages/ui/src/assets/channel-icons/icon-telegram@2x.png": "0f4221ffa99e1dd3555a0e3ffc61114be0d2ae53ac1f03639ae8665eaa95fef4",
+    "packages/ui/src/assets/channel-icons/icon-wecom@2x.png": "2e70ab6625a440923747163d5819c70ad2fc2eb4db6ae3f66108307331515b91",
+    "packages/ui/src/assets/channel-icons/icon-weixin@2x.png": "a0b79a3dcff1779f3b9d1c7c3d39a34d71663084fdf6c088a33a39abbc8a6892",
+    "packages/ui/src/assets/channel-icons/index.ts": "680b3668b05d2ebffc79ee0b0b0921222f2f1c148eb583fab821a50d45ef15fa",
+    "packages/ui/src/BotsDialog.tsx": "f10a443b66f3dfd2ee038561dbe16e59a00ca2a48314f3c5ab8256ac2ca2c153",
+    "packages/ui/src/BotsDialog/BotSummaryCard.tsx": "2f816010375d3efc2d07c01f4c3793d31d4786d2d2cb938ad857f13f6a1bed9d",
+    "packages/ui/src/BotsDialog/ProviderSettingsCard.tsx": "1a6a756dccc89776cbbf9dd27cb3589b81b58c92c6f7f8df6dffd3aa8984b6b6",
+    "packages/ui/src/BotsDialog/shared.tsx": "579f732a289b46b6e2ca59676db75e24335cc7472bd9250d038b02a0cc3d4827",
+    "packages/ui/src/BotsDialog/WorkspaceAccessCard.tsx": "d4999d83d94b394b096b0cbfe0e1423f0462f5a4f2ae3fc1171310cf5ad94904",
+    "packages/ui/src/botsUi.ts": "fbf8febfa53c5971ecf2cac1e64e69ec452ed4b1c1537671a52ced15ae93ad9e",
     "packages/ui/src/components/ai-elements/agent.tsx": "830e7ea9e927de1524851337f1d35bda0e5690e3e4fa307fff854b60006b16c7",
     "packages/ui/src/components/ai-elements/artifact.tsx": "7d73f08864d6280ac86c77d32e56d0e702f8aa6208e5910820139d0fb08ce64c",
     "packages/ui/src/components/ai-elements/attachments.tsx": "7a847ce6c8ac9dc630481a82dd20a5e9e00949bf710a41fea1d32a18123011d8",
@@ -2788,7 +2801,7 @@
     "scripts/license-texts/MPL-2.0.txt": "5eba353fe5076ac3432177f8ab1cf75e3afcd0584251e37c3bfead5f447d040e",
     "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
     "scripts/remote-native-search-tools-config.mjs": "472322a66f84c7452f96aa9e16e9c4e0600f7c2588a03dc6bc869229161b1cb2",
-    "third-party/copied-components.json": "9c30e9cdc483253ca2585ee8e25aef022dbab9ef8a76c9595f38e4033c5c623c",
+    "third-party/copied-components.json": "192bb961e2f3c68bed536c02064398bf49204ddecb95ad5e31d12e0017ff08b3",
     "third-party/embedded-components.json": "1160d4b37e297584099e640998b75599a9ac237dc39dc29d49f2a538e514bb4e",
     "third-party/native-search/licenses/00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce.txt": "00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce",
     "third-party/native-search/licenses/01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f.txt": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
@@ -31135,6 +31148,77 @@
         {
           "file": "packages/shared/src/bots.ts",
           "sha256": "1474521b9d3afdf9ba5802cfe09c97b8770f9c78914e85d349c833fcc7131cf4"
+        }
+      ]
+    },
+    {
+      "id": "ZCode Bot Management UI (Z.ai)",
+      "referenceRevision": "29628c9acdb81b703bbd4080c207a0e7ce5e276e",
+      "source": "https://raw.githubusercontent.com/zai-org/ZCode/29628c9acdb81b703bbd4080c207a0e7ce5e276e/LICENSE",
+      "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
+      "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
+      "importRevision": "29628c9acdb81b703bbd4080c207a0e7ce5e276e",
+      "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision 29628c9 (feat: update v3.14.3) — the Bot management dialog (BotsDialog) that consumes the Bot Channel subsystem copied under 'ZCode Bot Channel (Z.ai)'. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is the same file as the Bot Channel entry. Formatting note (same treatment as the Bot Channel copy precedent): the copied sources were run through this repository's oxfmt (0.41.0) because pnpm fmt:check covers packages/ui, and upstream does NOT keep these files oxfmt-clean. Measured against pristine upstream blobs (lead-verified 2026-10-03): the 6 PNG icons, channel-icons/index.ts and ProviderSettingsCard.tsx are byte-identical to upstream raw; the other 5 .tsx files (BotsDialog.tsx, botsUi.ts, BotSummaryCard.tsx, WorkspaceAccessCard.tsx, shared.tsx) differ from upstream raw only by oxfmt line-normalization (verified against oxfmt-formatted pristine upstream blobs) with zero semantic changes; hence no modifiedFiles entries. In addition, 259 'bots.*' message keys per locale (zh-CN / en-US) were appended verbatim from the same upstream revision into packages/ui/src/i18n/locales/{zh-CN,en-US}.ts; those two locale files are ZCode-CE files carrying CE content plus this appended block. The dialog is mounted from the remote-control panel host (packages/ui/src/RemoteControlPanelHost.tsx + WorkspaceSidebar.tsx) and reads IBotsService via the existing useServices hook — those wiring files are ZCode-CE originals, not upstream copies. The 6 PNG channel icons are IM provider brand logos redistributed as they appear in the upstream repository.",
+      "roots": [
+        "packages/ui/src/BotsDialog.tsx",
+        "packages/ui/src/BotsDialog",
+        "packages/ui/src/botsUi.ts",
+        "packages/ui/src/assets/channel-icons"
+      ],
+      "scope": "Bot management UI (BotsDialog + 4 subcomponents + botsUi.ts + 6 channel brand icons): create bots, configure channels (telegram/feishu/lark/weixin/webhook), QR binding, workspace authorization, reply granularity, enable/disable and delete. Plus the 259 'bots.*' i18n keys appended to both locale files. dingding/discord/wecom providers are placeholder-only (implemented: false), same as upstream.",
+      "license": "Apache-2.0",
+      "files": [
+        {
+          "file": "packages/ui/src/BotsDialog.tsx",
+          "sha256": "f10a443b66f3dfd2ee038561dbe16e59a00ca2a48314f3c5ab8256ac2ca2c153"
+        },
+        {
+          "file": "packages/ui/src/BotsDialog/BotSummaryCard.tsx",
+          "sha256": "2f816010375d3efc2d07c01f4c3793d31d4786d2d2cb938ad857f13f6a1bed9d"
+        },
+        {
+          "file": "packages/ui/src/BotsDialog/ProviderSettingsCard.tsx",
+          "sha256": "1a6a756dccc89776cbbf9dd27cb3589b81b58c92c6f7f8df6dffd3aa8984b6b6"
+        },
+        {
+          "file": "packages/ui/src/BotsDialog/WorkspaceAccessCard.tsx",
+          "sha256": "d4999d83d94b394b096b0cbfe0e1423f0462f5a4f2ae3fc1171310cf5ad94904"
+        },
+        {
+          "file": "packages/ui/src/BotsDialog/shared.tsx",
+          "sha256": "579f732a289b46b6e2ca59676db75e24335cc7472bd9250d038b02a0cc3d4827"
+        },
+        {
+          "file": "packages/ui/src/botsUi.ts",
+          "sha256": "fbf8febfa53c5971ecf2cac1e64e69ec452ed4b1c1537671a52ced15ae93ad9e"
+        },
+        {
+          "file": "packages/ui/src/assets/channel-icons/icon-dingding@2x.png",
+          "sha256": "5101fd13230552f0a2b81f0d563b96c971945930c7cdd61d45aaebdd5742a6ab"
+        },
+        {
+          "file": "packages/ui/src/assets/channel-icons/icon-discord@2x.png",
+          "sha256": "c2d75be8f00d13d66460679babf5682bb1070be92f5d2c191c947b20cce13b7d"
+        },
+        {
+          "file": "packages/ui/src/assets/channel-icons/icon-feishu@2x.png",
+          "sha256": "19fabcf4cff0d754b655b9899390b6d1c6201c952c096253794590b4f767d5e2"
+        },
+        {
+          "file": "packages/ui/src/assets/channel-icons/icon-telegram@2x.png",
+          "sha256": "5eb395e9e7b6914a76eba02274f69af677447d9ee73e11cd40eab974bf46048b"
+        },
+        {
+          "file": "packages/ui/src/assets/channel-icons/icon-wecom@2x.png",
+          "sha256": "8e81afbce8bb291a200f0d6901a20600e253b3d6e3a835f3114a951464304f76"
+        },
+        {
+          "file": "packages/ui/src/assets/channel-icons/icon-weixin@2x.png",
+          "sha256": "074b6749d2bb5ce0a925c05008ad8cb2ea034b596e0cc7d5e019527171143b4d"
+        },
+        {
+          "file": "packages/ui/src/assets/channel-icons/index.ts",
+          "sha256": "680b3668b05d2ebffc79ee0b0b0921222f2f1c148eb583fab821a50d45ef15fa"
         }
       ]
     }

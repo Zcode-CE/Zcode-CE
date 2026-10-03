@@ -73,6 +73,9 @@ export function RemoteControlPanelHost({
           // Web 客户端不提供 rotateWebServiceToken ⇒ 这里就是 undefined ⇒ 入口不出现。
           onRevokeConnection={wiring.connections.revoke}
           onRotateToken={wiring.connections.rotateToken}
+          // IM 机器人通道（ce.5）：null ⇒ 标签页整块不渲染（canRenderRemoteControlImBotTab）。
+          // 宿主只做透传：面板的渲染判据在 model 层，不在这里再判一次（两个所有者会分家）。
+          imBot={wiring.imBot}
         />
       </DialogContent>
     </Dialog>

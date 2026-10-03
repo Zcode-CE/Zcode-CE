@@ -370,7 +370,8 @@ type SessionSendCompatField =
   | "automationId"
   | "offPeakTaskId"
   | "offPeakRunType"
-  | "toolDenylist";
+  | "toolDenylist"
+  | "botDeliveryTarget";
 
 const SESSION_CREATE_OPTIONAL_COMPAT_FIELDS = new Set<SessionCreateCompatField>([
   "persistence",
@@ -401,6 +402,9 @@ const SESSION_SEND_OPTIONAL_COMPAT_FIELDS = new Set<SessionSendCompatField>([
   "offPeakTaskId",
   "offPeakRunType",
   "toolDenylist",
+  // Bot 回推地址同属可降级字段：旧 app-server 的 session/send schema 不认时省略重试
+  // （该轮 automation 回推出 CNC 兜底接管，不阻塞消息发送本身）。
+  "botDeliveryTarget",
 ]);
 // onDynamicSessionEvent 建立上游订阅时若 getClient / sessionSubscribe 瞬时失败
 // （agent 进程刚启动、runtime 抛 "Session is not active" 竞态、transport 抖动），
@@ -728,6 +732,9 @@ function buildSessionSendParams(
       : {}),
     ...(params.toolDenylist !== undefined && !omittedFields.has("toolDenylist")
       ? { toolDenylist: params.toolDenylist }
+      : {}),
+    ...(params.botDeliveryTarget !== undefined && !omittedFields.has("botDeliveryTarget")
+      ? { botDeliveryTarget: params.botDeliveryTarget }
       : {}),
   };
 }
@@ -2788,6 +2795,7 @@ export function createZCodeAgentService(
                 modelSelection: parsed.data.modelSelection,
                 mode: parsed.data.mode,
                 targetTaskId: parsed.data.targetTaskId,
+                botDeliveryTarget: parsed.data.botDeliveryTarget,
                 workspacePath: workspace.workspacePath,
                 workspaceIdentity: workspace.workspaceIdentity,
                 recurring: parsed.data.recurring ?? true,

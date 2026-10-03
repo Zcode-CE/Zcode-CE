@@ -23,6 +23,7 @@ import { bashOutputDisplaySchema } from "../bash-output-display.js";
 // 后台详情共享精简的只读响应 schema，不携带命令或计时元数据。
 export * from "../background-bash-output.js";
 import { executionOutputPreviewSchema } from "../execution-output-preview.js";
+import { zcodeAutomationBotDeliveryTargetSchema } from "../bots.js";
 import { z } from "zod";
 export * from "../process-diagnostic.js";
 import { errorAttributionSchema } from "../zcode-protocol-v4/snapshot.js";
@@ -1758,6 +1759,7 @@ export const zcodeSessionSendParamsSchema = z
     automationId: nonEmptyString.optional(),
     offPeakTaskId: nonEmptyString.optional(),
     offPeakRunType: z.enum(["init", "resume"]).optional(),
+    botDeliveryTarget: zcodeAutomationBotDeliveryTargetSchema.optional(),
     toolDenylist: z.array(nonEmptyString).optional(),
   })
   .strict()
@@ -3408,6 +3410,7 @@ export const zcodeAutomationCreateParamsSchema = z
     modelSelection: modelSelectionSchema.optional(),
     mode: zcodeTaskModeSchema.optional(),
     targetTaskId: nonEmptyString.optional(),
+    botDeliveryTarget: zcodeAutomationBotDeliveryTargetSchema.optional(),
     recurring: z.boolean().optional(),
     maxRuns: z.number().int().positive().optional(),
     // 会话侧自定义重复 carrier：每 N 分钟/小时/天/周/月/年均通过此字段归一化为权威 scheduleRule，

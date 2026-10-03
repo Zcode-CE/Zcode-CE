@@ -2552,6 +2552,8 @@ The original import revisions of copied components are not recorded in the curre
 
 - ZCode Bot Channel (Z.ai) (Apache-2.0): packages/services/src/bots, packages/shared/src/bots.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/29628c9acdb81b703bbd4080c207a0e7ce5e276e/LICENSE. Original import revision: 29628c9acdb81b703bbd4080c207a0e7ce5e276e.
 
+- ZCode Bot Management UI (Z.ai) (Apache-2.0): packages/ui/src/BotsDialog.tsx, packages/ui/src/BotsDialog, packages/ui/src/botsUi.ts, packages/ui/src/assets/channel-icons. License reference: https://raw.githubusercontent.com/zai-org/ZCode/29628c9acdb81b703bbd4080c207a0e7ce5e276e/LICENSE. Original import revision: 29628c9acdb81b703bbd4080c207a0e7ce5e276e.
+
 Fig autocomplete source carries the repository's MIT license; the generated registry records npm @withfig/autocomplete@2.692.3 metadata as ISC. The original source MIT notice is retained below.
 
 ## Embedded native and WASM components
@@ -40829,6 +40831,8 @@ SOFTWARE.
 ### Notice 606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b
 
 - ZCode Bot Channel (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/29628c9acdb81b703bbd4080c207a0e7ce5e276e/LICENSE
+
+- ZCode Bot Management UI (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/29628c9acdb81b703bbd4080c207a0e7ce5e276e/LICENSE
 
 
 

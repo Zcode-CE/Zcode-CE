@@ -7,7 +7,11 @@ import {
   type RemoteControlConnectionsSource,
 } from "@/remoteControlConnectionsSource.js";
 import type { RemoteControlEntryStatus } from "@/RemoteControlEntryButton.js";
-import type { RemoteControlPanelStatus } from "@/remoteControlPanelModel.js";
+import type {
+  RemoteControlImBotChannel,
+  RemoteControlPanelStatus,
+} from "@/remoteControlPanelModel.js";
+import { useImBotChannel } from "@/hooks/useImBotChannel.js";
 import { logger } from "@/logger.js";
 
 /**
@@ -47,10 +51,29 @@ export interface RemoteControlWiring {
   connections: RemoteControlConnectionsSource;
   lanExposureConfirmed: boolean;
   confirmLanExposure: () => void;
+  /**
+   * IM 机器人通道（ce.5）。null ⇒ 「IM 机器人」标签页整块不渲染
+   * （canRenderRemoteControlImBotTab 只读注入值）。
+   *
+   * status 由 botsService.getStatus() 的 enabledBotsCount 承载；onEnable 打开 BotsDialog——
+   * 「同意后即可使用」的落点是真实能力（建 bot / 配渠道 / 扫码绑定 / 授权 / 启停），不是空操作。
+   */
+  imBot: RemoteControlImBotChannel | null;
+  /**
+   * BotsDialog 开闭（宿主层持有，不是组件局部——133 报告 B1：组件局部的开闭状态
+   * 会随 TabsContent/DialogContent 卸载而归零，形成「回到确认界面」闭环）。
+   */
+  botsDialogOpen: boolean;
+  setBotsDialogOpen: (open: boolean) => void;
 }
 
-export function useRemoteControlWiring(): RemoteControlWiring {
+export function useRemoteControlWiring(options?: { panelOpen?: boolean }): RemoteControlWiring {
   const platform = useOptionalPlatform();
+  // imBot 通道与 BotsDialog 开闭在独立 hook 里：本 hook 的契约仍是「webService 状态靠
+  // 广播，不轮询」；bot 状态无广播面（IBotsService 只有 getStatus 拉取），轮询落在 useImBotChannel。
+  const { imBot, botsDialogOpen, setBotsDialogOpen } = useImBotChannel({
+    active: options?.panelOpen ?? false,
+  });
   // 连接面能力探测只做一次：与 servicePlane 同一纪律（入口、面板、区块共用同一个结论，
   // 各处各判一次会分家）。探测本身是纯函数，见 remoteControlConnectionsSource.ts。
   const connectionsSource = useMemo(
@@ -233,5 +256,8 @@ export function useRemoteControlWiring(): RemoteControlWiring {
     },
     lanExposureConfirmed,
     confirmLanExposure,
+    imBot,
+    botsDialogOpen,
+    setBotsDialogOpen,
   };
 }

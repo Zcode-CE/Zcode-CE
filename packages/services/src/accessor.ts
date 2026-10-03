@@ -39,6 +39,7 @@ import type { IWindowControllerService } from "./window-controller/windowControl
 import type { IOnboardingRecordService } from "./onboarding/onboardingRecord.js";
 import type { IConversationShareService } from "./conversation-share/conversationShare.js";
 import type { IWorkspaceRegistryService } from "./session/workspaceRegistry.js";
+import type { IBotsService } from "./bots/bots.js";
 
 /** UI 层消费的统一服务接口 */
 export interface IServiceAccessor {
@@ -79,6 +80,12 @@ export interface IServiceAccessor {
    * 而不是把空列表当成事实（见 docs/development/workspace-registry.md §3.2）。
    */
   readonly workspaceRegistryService?: IWorkspaceRegistryService;
+  /**
+   * Bot 管理面（ce.5）：远控面板「IM 机器人」标签页与 BotsDialog 的数据源。
+   * 与上游一致为必填：createLocalServices 在所有 host（desktop / web server / stdio）
+   * 都注册 IBotsService，channel 由 exposeOnChannelServer 自动暴露。
+   */
+  readonly botsService: IBotsService;
   readonly skillsService: ISkillsService;
   readonly skillSyncService: ISkillSyncService;
   readonly mcpSyncService: IMcpSyncService;

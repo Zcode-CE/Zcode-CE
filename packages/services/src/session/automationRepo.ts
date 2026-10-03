@@ -14,7 +14,9 @@ import {
   resolveWorkspaceKey,
   modelSelectionSchema,
   zcodeTaskModeSchema,
+  zcodeAutomationBotDeliveryTargetSchema,
   type ZCodeAutomation,
+  type ZCodeAutomationBotDeliveryTarget,
   type ZCodeAutomationCreateParams,
   type ZCodeAutomationDispatchStatus,
   type ZCodeAutomationLifecycleStatus,
@@ -65,6 +67,7 @@ interface AutomationRow {
   workspace_path: string;
   workspace_identity: string | null;
   target_task_id: string | null;
+  bot_delivery_target: string | null;
   location_kind: string;
   recurring: number;
   max_runs: number | null;
@@ -333,7 +336,7 @@ export class AutomationRepo {
       db.prepare(
         `INSERT INTO automations (
           automation_id, title, cron_expr, prompt, model, provider, model_selection,
-          workspace_key, workspace_path, workspace_identity, target_task_id, location_kind,
+          workspace_key, workspace_path, workspace_identity, target_task_id, bot_delivery_target, location_kind,
           recurring, max_runs, end_at, schedule_rule, schedule_edited_by_user,
           run_count, enabled, lifecycle_status,
           next_run_at, last_run_at, running, claimed_at,
@@ -342,7 +345,7 @@ export class AutomationRepo {
           created_at, updated_at
         ) VALUES (
           @automation_id, @title, @cron_expr, @prompt, @model, @provider, @model_selection,
-          @workspace_key, @workspace_path, @workspace_identity, @target_task_id, 'local',
+          @workspace_key, @workspace_path, @workspace_identity, @target_task_id, @bot_delivery_target, 'local',
           @recurring, @max_runs, @end_at, @schedule_rule, 0,
           0, @enabled, @lifecycle_status,
           @next_run_at, NULL, 0, NULL,
@@ -365,6 +368,10 @@ export class AutomationRepo {
         workspace_path: params.workspacePath,
         workspace_identity: params.workspaceIdentity ?? null,
         target_task_id: params.targetTaskId ?? null,
+        // Bot 回推目标整对象 JSON 落库；scheduler 终态回推经 getBotDeliveryTarget 校验读回。
+        bot_delivery_target: params.botDeliveryTarget
+          ? JSON.stringify(params.botDeliveryTarget)
+          : null,
         recurring: params.recurring ? 1 : 0,
         max_runs: params.maxRuns ?? null,
         end_at: params.endAt ?? null,
@@ -418,6 +425,25 @@ export class AutomationRepo {
     const followsWorkspace = row.model_selection === "null";
     if (!followsWorkspace) throw new Error("Automation 模型选择不可用，请重新选择模型与思考档位");
     return undefined;
+  }
+
+  /**
+   * 仅供后台派发读取 Bot 回推目标；该内部来源信息不进入 automation 展示模型。
+   */
+  async getBotDeliveryTarget(
+    automationId: string,
+    workspaceKey?: string,
+  ): Promise<ZCodeAutomationBotDeliveryTarget | undefined> {
+    await this.ensureReady();
+    const raw = this.getRow(automationId, workspaceKey)?.bot_delivery_target;
+    if (!raw) return undefined;
+    try {
+      const parsed = zcodeAutomationBotDeliveryTargetSchema.safeParse(JSON.parse(raw));
+      return parsed.success ? parsed.data : undefined;
+    } catch {
+      // Bug 原因：历史/外部写入的脏 JSON 不能拖垮任务列表或 scheduler；无效来源按未配置处理。
+      return undefined;
+    }
   }
 
   async hasTaskBinding(scope: {
@@ -778,6 +804,7 @@ export class AutomationRepo {
             a.workspace_path AS a_workspace_path,
             a.workspace_identity AS a_workspace_identity,
             a.target_task_id AS a_target_task_id,
+            a.bot_delivery_target AS a_bot_delivery_target,
             a.location_kind AS a_location_kind,
             a.recurring AS a_recurring,
             a.max_runs AS a_max_runs,
@@ -854,6 +881,7 @@ export class AutomationRepo {
             workspace_path: row["a_workspace_path"] as string,
             workspace_identity: (row["a_workspace_identity"] as string | null) ?? null,
             target_task_id: (row["a_target_task_id"] as string | null) ?? null,
+            bot_delivery_target: (row["a_bot_delivery_target"] as string | null) ?? null,
             location_kind: row["a_location_kind"] as string,
             recurring: row["a_recurring"] as number,
             max_runs: (row["a_max_runs"] as number | null) ?? null,

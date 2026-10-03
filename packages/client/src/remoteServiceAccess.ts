@@ -32,6 +32,7 @@ import {
   IPluginSyncService,
   IPluginsService,
   IPluginManagementService,
+  IBotsService,
   ISubagentsService,
   ICommandsService,
   IHooksService,
@@ -85,6 +86,12 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly pluginSyncService: IPluginSyncService;
   readonly pluginsService: IPluginsService;
   readonly pluginManagementService: IPluginManagementService;
+  /**
+   * Bot 管理面（ce.5）：「IM 机器人」标签页与 BotsDialog 的数据源。
+   * channel 由 exposeOnChannelServer 随已注册服务自动暴露（IBotsService 在 createLocalServices 注册），
+   * 旧 host 未注册该 channel 时调用会失败，由消费方按「能力缺失」处理。
+   */
+  readonly botsService: IBotsService;
   readonly subagentsService: ISubagentsService;
   readonly commandsService: ICommandsService;
   readonly hooksService: IHooksService;
@@ -200,6 +207,9 @@ export class RemoteServiceAccess implements IServiceAccessor {
     );
     this.pluginManagementService = ProxyChannel.toService<IPluginManagementService>(
       channelClient.getChannel(IPluginManagementService.channelName),
+    );
+    this.botsService = ProxyChannel.toService<IBotsService>(
+      channelClient.getChannel(IBotsService.channelName),
     );
     this.subagentsService = ProxyChannel.toService<ISubagentsService>(
       channelClient.getChannel(ISubagentsService.channelName),

@@ -70,6 +70,7 @@ import {
   getConversationMessageProjectionPolicy,
   parseRemoteWorkspaceIdentity,
   type DangerousCommandPolicy,
+  type ZCodeAutomationBotDeliveryTarget,
   type ZCodeSessionCreateParams,
   type ZCodeDeliveryKind,
   type IntegratedTerminalShellSelection,
@@ -2004,6 +2005,8 @@ export async function sendPrompt(context: ZCodeProtocolAgentServerContext, rawPa
             }
           : {}),
       toolDenylist: params.toolDenylist,
+      // Bot 回推地址经 legacy session/send 入口时同样写入本轮 turn record（与 v4 prompt-turn 同语义）。
+      botDeliveryTarget: params.botDeliveryTarget,
     }),
   ).catch(() => {
     // 后台 turn 的错误会通过状态/事件流降级上报；这里兜底防止协议进程出现 unhandled rejection。
@@ -2375,6 +2378,8 @@ async function runPromptTurnInBackground(
     queryId?: QueryId;
     content: string;
     toolDenylist?: readonly string[];
+    /** Bot 来源 turn 的回推地址；本轮 CronCreate 经 automation-port 读取。 */
+    botDeliveryTarget?: ZCodeAutomationBotDeliveryTarget;
   } & TurnBackgroundAttribution,
 ): Promise<void> {
   const startedAt = Date.now();
@@ -2388,6 +2393,7 @@ async function runPromptTurnInBackground(
   let mutationReason = "prompt_completed";
   const previousAutomationId = record.activeAutomationId;
   const previousOffPeakTaskId = record.activeOffPeakTaskId;
+  const previousBotDeliveryTarget = record.activeBotDeliveryTarget;
   const activeAutomationId = resolvePromptTurnAutomationId(params);
   const activeOffPeakTaskId = resolvePromptTurnOffPeakTaskId(params);
   const turnToolDisallowlist = buildPromptTurnToolDisallowlist(
@@ -2404,6 +2410,10 @@ async function runPromptTurnInBackground(
   if (activeOffPeakTaskId) {
     // 闲时派发轮同型兜底标记，供 offpeak-port 拒绝递归 OffPeakCreate。
     record.activeOffPeakTaskId = activeOffPeakTaskId;
+  }
+  if (params.botDeliveryTarget) {
+    // Bot 回推地址与 automationId 同一 turn 生命周期：本轮 CronCreate 读它，结束后恢复。
+    record.activeBotDeliveryTarget = params.botDeliveryTarget;
   }
   try {
     const admission = await record.app.sendInput(
@@ -2469,6 +2479,9 @@ async function runPromptTurnInBackground(
     }
     record.activeAutomationId = previousAutomationId;
     record.activeOffPeakTaskId = previousOffPeakTaskId;
+    // Bug 原因：legacy record 会跨 turn 复用；必须恢复 Bot 地址，避免后续普通 UI turn
+    // 创建的定时任务错误继承上一轮 Bot 会话。
+    record.activeBotDeliveryTarget = previousBotDeliveryTarget;
   }
   await afterStateMutation(context, record, mutationReason);
 }
