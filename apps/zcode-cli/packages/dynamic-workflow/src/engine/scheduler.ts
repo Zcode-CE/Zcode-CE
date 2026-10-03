@@ -21,7 +21,12 @@ import {
   type Deferred,
   type SchedulerHost,
 } from "./scheduler-types.js";
-import { handleSubmitAttempted, handleTurnEnded, type SubmitSeam } from "./scheduler-submit.js";
+import {
+  handleSubmitAttempted,
+  handleTurnEnded,
+  persistNodeSettlement,
+  type SubmitSeam,
+} from "./scheduler-submit.js";
 import type {
   ActorId,
   ActorRef,
@@ -452,10 +457,16 @@ export class AskScheduler {
   private settleOk(node: AskNode, artifact: unknown): void {
     if (node.settled) return;
     node.settled = true;
-    this.journal.putNode(this.nodeRecordFor(node, { status: "completed", result: artifact }));
-    this.host.record({ type: "node-settled", instance: node.instance, outcome: "ok" });
-    this.finishLiveNode(node);
-    node.deferred.resolve(artifact);
+    const failure = persistNodeSettlement(this.submitSeam, node, {
+      status: "completed",
+      result: artifact,
+    });
+    // 写不进去：判 ask 失败（脚本可 catch、run 可终止）。
+    if (failure !== undefined) this.settleFailed(node, failure);
+    else {
+      this.finishLiveNode(node);
+      node.deferred.resolve(artifact);
+    }
   }
 
   private settleFailed(node: AskNode, error: WorkflowError): void {
@@ -463,16 +474,21 @@ export class AskScheduler {
     node.settled = true;
     // 结算失败必须落 journal（覆盖准入时的 running）：失败是"完结"，且脚本可能已观察到该 rejection
     // 并据此分支，replay 必须复现它——journal 化失败是重放正确性的硬性要求，而非可选。
-    this.journal.putNode(this.nodeRecordFor(node, { status: "failed", error: error.toJSON() }));
-    this.host.record({
-      type: "node-settled",
-      instance: node.instance,
-      outcome: "failed",
+    const failure = persistNodeSettlement(this.submitSeam, node, {
+      status: "failed",
       error: error.toJSON(),
-    });
+    }, error);
+    if (failure === undefined) {
+      this.finishLiveNode(node);
+      // 节点失败只 reject 该 ask，不失败整个 run（脚本可 try/catch）。
+      node.deferred.reject(error);
+      return;
+    }
+    // failed 行也写不进（同一个坏库）：journal 已不可能为这个节点记账，但 deferred
+    // 兑现与队列推进是引擎对脚本的硬契约：不落 journal 地结掉它。
+    node.settled = false;
     this.finishLiveNode(node);
-    // 节点失败只 reject 该 ask，不失败整个 run（脚本可 try/catch）。
-    node.deferred.reject(error);
+    node.deferred.reject(failure);
   }
 
   private finishLiveNode(node: AskNode): void {
@@ -482,28 +498,5 @@ export class AskScheduler {
       this.activeAsks--;
     }
     this.pumpAll();
-  }
-
-  private nodeRecordFor(
-    node: AskNode,
-    outcome:
-      | { status: "completed"; result: unknown }
-      | { status: "failed"; error: NodeRecord["error"] },
-  ): NodeRecord {
-    const record: NodeRecord = {
-      runId: this.host.runId,
-      siteId: node.instance.siteId,
-      ordinal: node.instance.ordinal,
-      kind: "ask",
-      actorSiteId: node.actor.ref.siteId,
-      actorOrdinal: node.actor.ref.ordinal,
-      actorSeq: node.actorSeq,
-      inputHash: node.hash,
-      status: outcome.status,
-    };
-    if (outcome.status === "completed") record.result = outcome.result;
-    else record.error = outcome.error;
-    if (node.lastStats !== undefined) record.stats = node.lastStats;
-    return record;
   }
 }

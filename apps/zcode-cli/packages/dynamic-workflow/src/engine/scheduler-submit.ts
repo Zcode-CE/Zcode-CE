@@ -8,7 +8,8 @@
  */
 
 import type { AskNode, SchedulerHost } from "./scheduler-types.js";
-import type { InstanceRef, Violation } from "./types.js";
+import { refToString } from "./types.js";
+import type { InstanceRef, NodeRecord, Violation } from "./types.js";
 import { REPAIR_ATTEMPTS, WorkflowError } from "./types.js";
 
 /** 调度器暴露给回报处理的最小接缝：查 live 节点、按结果结算。 */
@@ -113,4 +114,93 @@ export function handleTurnEnded(seam: SubmitSeam, instance: InstanceRef, finalTe
       { finalText },
     ),
   );
+}
+
+/**
+ * 结算写入失败时合成的失败原因：把「哪个节点的哪一次写入失败、为什么」一并说清。
+ *
+ * original 在场时是本次 ask 本身的失败原因（例如 typed ask 未提交判的
+ * ResultNotSubmitted），journal 写错因是后来叠加的；两者都要保留——只报后者会让
+ * 脚本以为 merely 记账问题而重试同一个注定失败的值，只报前者则掩盖了 run 已无法
+ * 持久化节点这一更严重的事实。cause 链同时携带原始 Error，诊断面不丢下层堆栈。
+ */
+export function journalWriteFailedError(
+  cause: unknown,
+  node: AskNode,
+  failedWrite: "completed" | "failed",
+  original?: WorkflowError,
+): WorkflowError {
+  const where = refToString(node.instance);
+  const causeText = cause instanceof Error ? cause.message : String(cause);
+  const message =
+    original === undefined
+      ? `Failed to persist the result of the subagent ask at ${where}: ${causeText}`
+      : `Failed to persist the failure of the subagent ask at ${where} (${original.message}): ${causeText}`;
+  return new WorkflowError("DriverError", message, {
+    cause: original ?? cause,
+    ...(failedWrite === "failed" && original !== undefined
+      ? { violations: original.violations }
+      : {}),
+  });
+}
+
+/**
+ * 把一次结算落进 journal 行与事件流（settleOk / settleFailed 共用）。
+ *
+ * undefined = 落库成功；否则返回合成的失败原因（cause 链携带原始写入错误）。
+ *
+ * journal 落库/事件记录失败（磁盘满、锁竞争、IO 错误）不得让 ask 悬空：此前调用方
+ * 直接 journal.putNode 且无 try/catch，一旦抛出 deferred 永不兑现、finishLiveNode
+ * 不跑、activeAsks 不减——子进程在 await ask(...) 上永久等待 response，run 永不
+ * 结算；生产 launch 不设墙钟超时，唯一出口是用户手动取消。这正是「所有智能体
+ * 已完成而界面永远卡住」的断链点（判别实验见
+ * test/journalWriteFailureSettlement.test.ts）。
+ */
+export function persistNodeSettlement(
+  seam: SubmitSeam,
+  node: AskNode,
+  outcome: { status: "completed"; result: unknown } | { status: "failed"; error: NodeRecord["error"] },
+  original?: WorkflowError,
+): WorkflowError | undefined {
+  try {
+    seam.host.driver.journal.putNode(nodeRecordFor(seam, node, outcome));
+    seam.host.record({
+      type: "node-settled",
+      instance: node.instance,
+      ...(outcome.status === "completed"
+        ? { outcome: "ok" as const }
+        : { outcome: "failed" as const, error: outcome.error }),
+    });
+    return undefined;
+  } catch (cause) {
+    node.settled = false;
+    return journalWriteFailedError(
+      cause,
+      node,
+      outcome.status === "completed" ? "completed" : "failed",
+      original,
+    );
+  }
+}
+
+function nodeRecordFor(
+  seam: SubmitSeam,
+  node: AskNode,
+  outcome: { status: "completed"; result: unknown } | { status: "failed"; error: NodeRecord["error"] },
+): NodeRecord {
+  const record: NodeRecord = {
+    runId: seam.host.runId,
+    siteId: node.instance.siteId,
+    ordinal: node.instance.ordinal,
+    kind: "ask",
+    actorSiteId: node.actor.ref.siteId,
+    actorOrdinal: node.actor.ref.ordinal,
+    actorSeq: node.actorSeq,
+    inputHash: node.hash,
+    status: outcome.status,
+  };
+  if (outcome.status === "completed") record.result = outcome.result;
+  else record.error = outcome.error;
+  if (node.lastStats !== undefined) record.stats = node.lastStats;
+  return record;
 }

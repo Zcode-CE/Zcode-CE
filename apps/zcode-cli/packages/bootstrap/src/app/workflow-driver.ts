@@ -521,9 +521,28 @@ class AgentRuntimeWorkflowDriver implements WorkflowDriver {
     result: TurnResult,
   ): Promise<void> {
     const boundary = await countSessionTranscript(this.deps, state, instance);
-    const ended = this.reportTurnOutcome(state, instance, result);
-    if (!ended || boundary === undefined) return;
-    journalAskMessageBoundary(this.deps, state, instance, boundary);
+    try {
+      const ended = this.reportTurnOutcome(state, instance, result);
+      if (!ended || boundary === undefined) return;
+      journalAskMessageBoundary(this.deps, state, instance, boundary);
+    } catch (error) {
+      // ask 的结算回调是引擎所有者的必达事实。此前整条链以 void 发射、无 catch：
+      // sink.askTurnEnded（含引擎侧 journal 写入）一旦抛错，异常成为 unhandled
+      // rejection 被全局处理器静默吞掉，而 ask 永远悬空——子进程等不到 response、
+      // run 永不结算（生产 launch 不设墙钟超时），正是「所有智能体已完成而界面
+      // 永远卡住」。兜底把 ask 判为失败：引擎侧若已结算则 failed() 是安全 no-op，
+      // 未结算时 deferred.reject，脚本能 catch、run 能终止。
+      this.deps.logger?.warn?.(
+        "Dynamic workflow ask settlement callback failed; failing the ask to avoid a stuck run",
+        {
+          errorMessage: error instanceof Error ? error.message : String(error),
+          event: "dynamic_workflow.ask.settlement_callback_failed",
+          instance: refToString(instance),
+          sessionId: state.sessionId,
+        },
+      );
+      this.sink.askFailed(instance, toWorkflowError(error));
+    }
   }
 
   private onTurnRejected(state: SessionState, instance: InstanceRef, error: unknown): void {
