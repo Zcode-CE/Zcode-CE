@@ -44,6 +44,24 @@ export function pickProductPrice(product: CodingPlanProductPreviewPayment): numb
   return product.payAmount ?? product.discountAmount ?? product.renewAmount ?? null;
 }
 
+/**
+ * Start Plan 购买入口 banner 的标题：远端名原样展示（名称无关）。
+ *
+ * 旧实现对 `/^start\s+plan$/i` 的展示名做中文本地化特例：官方把活动改成
+ * "ZCode Weekend Build" / "ZCode Trust Build" 或任何中文名后该特例即失效。
+ * 远端名是要展示的数据（服务端可随时改名、可已是中文名），客户端不做名称匹配；
+ * 远端缺失时才回落本地化文案。
+ */
+export function resolveStartPlanPurchaseChoiceBannerTitle({
+  fallbackTitle,
+  remoteTitle,
+}: {
+  fallbackTitle: string;
+  remoteTitle?: string;
+}): string {
+  return remoteTitle?.trim() || fallbackTitle;
+}
+
 function normalizeCodingPlanCurrency(currency: string | null | undefined): CodingPlanPriceCurrency {
   return currency?.trim().toUpperCase() === "USD" ? "USD" : "CNY";
 }

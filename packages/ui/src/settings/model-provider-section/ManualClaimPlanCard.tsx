@@ -19,6 +19,19 @@
  * 列表/验证码配置/领取结果/票券快照都在 `useManualClaimPlan`（见其注释）；本组件只负责
  * 渲染、四态分界，以及「是否先开验证码对话框」的局部判断。
  *
+ * ## state 注入（一个数据源，两个表示层）
+ *
+ * 本组件有两个挂载面：设置页套餐详情（自取数据）与聊天 context 面板（外部注入同一份
+ * 状态）。`state` 缺省时组件内部自行 `useManualClaimPlan()`；传入时直接使用，**不重复
+ * 拉取**（hook 内部已有模块级共享缓存兜底，见其注释）。两处渲染共用同一套四态分界与
+ * 验证码链路，不存在第二条「领取 UI」路径。
+ *
+ * ## 名称无关（name-agnostic）
+ *
+ * 卡片渲染的套餐名是 `plan.name` 的原样值（服务端运营命名，历次活动名各不相同、
+ * 可中可英）；识别领取目标只按 `planId`，默认目标只按 `priority`。
+ * 本组件不存在对展示名的匹配分支——官方改名不需要改这里。
+ *
  * ## 验收场景
  *
  * 1. 无活动（查完为空且无 error）→ 不渲染任何内容；
@@ -29,7 +42,7 @@
  * 6. 领取成功 → 展示自画票券（活动此时可能已从列表消失，票券仍必须有数据）；
  *    失败 → 展示对应失败文案。
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MANUAL_CLAIM_FAILURE_MESSAGE_KEYS,
   pickManualClaimPlan,
@@ -40,12 +53,33 @@ import {
 import { GiftIcon, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { useManualClaimPlan } from "./useManualClaimPlan.js";
+import { useManualClaimPlan, type ManualClaimPlanStateApi } from "./useManualClaimPlan.js";
 import { ManualClaimTicketCard } from "./ManualClaimTicketCard.js";
 import { ManualClaimCaptchaDialog } from "@/settings/ManualClaimCaptchaDialog.js";
 
-export function ManualClaimPlanCard({ providerId }: { providerId: string }) {
+export function ManualClaimPlanCard({
+  providerId,
+  state,
+  onCaptchaDialogOpenChange,
+}: {
+  providerId: string;
+  /**
+   * 外部注入的领取状态（由同一个 `useManualClaimPlan` 产生）。
+   *
+   * 设置页卡片不传（兼容既有形态）；context 面板传入它与门控共用一份状态，
+   * 避免面板与卡片各自维护一份「领取结果」。
+   */
+  state?: ManualClaimPlanStateApi;
+  /**
+   * 验证码对话框开合通知：context 气泡内需要据此拒绝 HoverCard 关闭
+   * （Dialog 打开会把焦点移出 HoverCard，Radix 会请求关闭并卸载弹层内容）。
+   * 设置页不传，行为不变。
+   */
+  onCaptchaDialogOpenChange?: (open: boolean) => void;
+}) {
   const { intl, locale } = useZCodeIntl();
+  // 注入态优先；未注入时自取。enabled:false 的内部实例不会发起请求。
+  const internalClaimState = useManualClaimPlan({ enabled: state === undefined });
   const {
     plans,
     captchaConfig,
@@ -57,7 +91,7 @@ export function ManualClaimPlanCard({ providerId }: { providerId: string }) {
     claim,
     refresh,
     resetOutcome,
-  } = useManualClaimPlan();
+  } = state ?? internalClaimState;
   const [captchaTarget, setCaptchaTarget] = useState<ManualClaimPlanPreview | null>(null);
   // 宿主没有 <webview> 时（手机 Web / 普通 Web）无法完成验证码求解。
   // 这里提前拦住，避免把用户送进一个必然失败的对话框。
@@ -65,6 +99,12 @@ export function ManualClaimPlanCard({ providerId }: { providerId: string }) {
 
   // 未登录/无 provider 时服务层会返回稳定失败码，不需要在这里额外判断账号状态。
   const claimedOutcome = outcome?.ok === true ? outcome : null;
+  // 与下方 JSX 的渲染条件（captchaTarget && captchaConfig）保持一致地通知宿主：
+  // 气泡宿主需在验证码对话框存活期间拒绝 HoverCard 关闭，否则弹层内容被卸载、
+  // 对话框随之消失。设置页不传回调，此处为空操作。
+  useEffect(() => {
+    onCaptchaDialogOpenChange?.(Boolean(captchaTarget && captchaConfig));
+  }, [captchaTarget, captchaConfig, onCaptchaDialogOpenChange]);
   const view = resolveManualClaimPlanCardView({
     plans,
     loaded,

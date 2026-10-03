@@ -4304,6 +4304,8 @@ const zhCN: Record<string, string> = {
   "chat.contextUsage.title": "上下文容量",
   "chat.contextUsageDescription": "提示词、工具调用和回复都会共享上下文窗口。",
   "chat.contextUsage.cacheHitRate": "平均缓存命中率",
+  // 仅存在可领取活动时触发器的无障碍标签（余额/ Coding Plan 段不存在时的回落）。
+  "chat.contextUsage.claimTitle": "可领取额度",
   "chat.contextUsage.breakdown": "上下文来源",
   "chat.contextUsage.breakdown.messages": "消息",
   "chat.contextUsage.breakdown.systemPrompt": "系统提示词",

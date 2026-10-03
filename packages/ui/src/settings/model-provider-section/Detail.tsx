@@ -43,6 +43,7 @@ import { resolveCodingPlanStatusPanelViewState } from "./codingPlanStatusPanelVi
 import {
   formatCodingPlanAmount,
   pickProductPrice,
+  resolveStartPlanPurchaseChoiceBannerTitle,
   type CodingPlanProductDisplay,
 } from "./codingPlanProductPresentation.js";
 import {
@@ -935,7 +936,6 @@ function CodingPlanPurchaseChoiceBanners({
     fallbackTitle: intl.formatMessage({
       id: "settings.modelProvider.codingPlan.purchaseBanner.startPlanTitle",
     }),
-    locale,
     remoteTitle: startPlanPreview?.name,
   });
   const bannerItems = [
@@ -1146,24 +1146,6 @@ function resolveEnterprisePurchaseChoiceBannerPrice(
     price: product.price,
     currency: product.product.priceCurrency ?? "CNY",
   };
-}
-
-function resolveStartPlanPurchaseChoiceBannerTitle({
-  fallbackTitle,
-  locale,
-  remoteTitle,
-}: {
-  fallbackTitle: string;
-  locale: string;
-  remoteTitle?: string;
-}): string {
-  const title = remoteTitle?.trim() || fallbackTitle;
-  if (locale.startsWith("zh") && /^start\s+plan$/i.test(title)) {
-    // Start Plan banner 的名称来自远端 preview；当前远端默认只返回英文。
-    // 这里只本地化这个已知默认名，避免覆盖真实远端自定义套餐名。
-    return fallbackTitle;
-  }
-  return title;
 }
 
 function PurchaseChoiceBannerPrice({

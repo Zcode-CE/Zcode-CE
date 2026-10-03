@@ -1,5 +1,6 @@
 import { CodingPlanEntryButton } from "@/settings/CodingPlanEntryButton.js";
-import { Loader2Icon, RocketIcon } from "lucide-react";
+import { Loader2Icon, RefreshCwIcon, RocketIcon } from "lucide-react";
+import { Button } from "@/components/ui/button.js";
 import type { UsageEntitlementSnapshot, UsageQuotaLimit } from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
 import type { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -138,6 +139,26 @@ export function ChatStartPlanBalancePanel({
             <Loader2Icon className="size-3.5 shrink-0 animate-spin text-foreground-subtle" />
           ) : null}
         </div>
+        {/* 显式刷新：余额此前只能靠 hover 隐式刷新，用户看不到任何「刷新」入口。
+            复用既有 onAccess 静默刷新链路（60s 节流与 in-flight 合并在刷新策略层）；
+            刷新中禁用，标题旁 spinner 仍是既有反馈。 */}
+        {config.onAccess ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className="shrink-0 text-foreground-subtle hover:text-foreground"
+            aria-label={intl.formatMessage({ id: "common.refresh" })}
+            disabled={config.loading || config.refreshing === true}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              void config.onAccess?.();
+            }}
+          >
+            <RefreshCwIcon className="size-3.5" aria-hidden="true" />
+          </Button>
+        ) : null}
         {config.onUpgradeClick ? (
           <CodingPlanEntryButton
             type="button"

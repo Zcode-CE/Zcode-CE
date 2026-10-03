@@ -51,6 +51,11 @@ import {
   hasChatStartPlanBalance,
   type ChatStartPlanBalanceConfig,
 } from "@/chat-input-toolbar/StartPlanContextBalance.js";
+import {
+  ManualClaimPlanCard,
+  resolveManualClaimPlanCardView,
+} from "@/settings/model-provider-section/ManualClaimPlanCard.js";
+import { useManualClaimPlan } from "@/settings/model-provider-section/useManualClaimPlan.js";
 import { runContextPanelActionWithClose } from "@/chat-input-toolbar/contextPanelAction.js";
 import { coordinateCodingPlanQuotaResetAutoPlay } from "@/chat-input-toolbar/codingPlanQuotaResetAutoPlay.js";
 import { formatCompactTokenNumber } from "@/lib/tokenNumberFormat.js";
@@ -261,13 +266,16 @@ export function ChatContextUsage({
   const [contextAccessRefreshing, setContextAccessRefreshing] = useState(false);
   const [quotaResetDialogOpen, setQuotaResetDialogOpen] = useState(false);
   const quotaResetDialogOpenRef = useRef(false);
+  // 领取卡片的验证码对话框与重置弹框同样的焦点问题：Dialog 打开会请求关闭 HoverCard，
+  // 卸载气泡内容会连带销毁 Portal 内的验证码对话框。
+  const claimCaptchaDialogOpenRef = useRef(false);
   const contextUsageTriggerRef = useRef<HTMLElement | null>(null);
   const contextAccessRefreshSeqRef = useRef(0);
   const handleContextOpenChange = useCallback(
     (open: boolean) => {
       // Dialog 打开后会把焦点移出 HoverCard，Radix 随即请求关闭 HoverCard；
       // 若此时卸载内容，Portal 中的重置弹框也会一起消失，因此弹框存活期间必须拒绝关闭。
-      if (!open && quotaResetDialogOpenRef.current) {
+      if (!open && (quotaResetDialogOpenRef.current || claimCaptchaDialogOpenRef.current)) {
         return;
       }
       setContextOpen(open);
@@ -297,6 +305,11 @@ export function ChatContextUsage({
     if (!open) {
       setContextOpen(false);
     }
+  }, []);
+  // 与重置弹框不同：验证码对话框关闭后不收起气泡——领取结果（成功票券 / 失败提示）
+  // 渲染在气泡内的卡片上，此时收起会把「领取成了没有」从用户眼前拿走。
+  const handleClaimCaptchaDialogOpenChange = useCallback((open: boolean) => {
+    claimCaptchaDialogOpenRef.current = open;
   }, []);
   const renderableTaskUsage = getRenderableTaskUsage(taskUsage);
   const codingPlanUsageRemainingWithClose = useMemo<
@@ -350,6 +363,25 @@ export function ChatContextUsage({
     ? hasChatCodingPlanUsageRemaining(codingPlanUsageRemainingWithClose)
     : false;
   const hasStartPlanBalance = hasChatStartPlanBalance(startPlanBalanceWithClose);
+  // 左下角领取入口：状态来自 useManualClaimPlan（与设置页卡片同源，hook 内部有共享缓存）。
+  // 门控信号复用四态分界纯函数：只要不是「不渲染」就点亮触发器并挂载卡片。
+  // 这里不读 plan.name：是否有可领取活动只由 plans 是否非空决定（名称无关）。
+  const startPlanClaimState = useManualClaimPlan();
+  const hasStartPlanClaimEntry = useMemo(
+    () =>
+      resolveManualClaimPlanCardView({
+        plans: startPlanClaimState.plans,
+        loaded: startPlanClaimState.loaded,
+        error: startPlanClaimState.error,
+        claimed: startPlanClaimState.outcome?.ok === true,
+      }) !== "hidden",
+    [
+      startPlanClaimState.plans,
+      startPlanClaimState.loaded,
+      startPlanClaimState.error,
+      startPlanClaimState.outcome?.ok,
+    ],
+  );
 
   // 自动重置：触发器和面板复用同一完整 Personal/Team scope；共享 in-flight 避免重复请求。
   const resetCodingPlanState = useMemo(
@@ -818,7 +850,9 @@ export function ChatContextUsage({
   if (
     (!renderableTaskUsage || !contextUsageLabel) &&
     !hasCodingPlanUsageRemaining &&
-    !hasStartPlanBalance
+    !hasStartPlanBalance &&
+    // 仅有可领取活动时触发器也必须出现：领取是账号级动作，与当前会话连的模型无关。
+    !hasStartPlanClaimEntry
   ) {
     return null;
   }
@@ -838,9 +872,11 @@ export function ChatContextUsage({
     contextUsageLabel ??
     (hasCodingPlanUsageRemaining
       ? intl.formatMessage({ id: "sidebar.usage.plan.title" })
-      : intl.formatMessage({
-          id: "settings.modelProvider.startPlan.balance.title",
-        }));
+      : hasStartPlanBalance
+        ? intl.formatMessage({
+            id: "settings.modelProvider.startPlan.balance.title",
+          })
+        : intl.formatMessage({ id: "chat.contextUsage.claimTitle" }));
   const contextUsedTokens = renderableTaskUsage?.used ?? 0;
   const contextMaxTokens = renderableTaskUsage?.size ?? 1;
 
@@ -1005,6 +1041,25 @@ export function ChatContextUsage({
                 (renderableTaskUsage && compactTokenUsageLabel) || hasCodingPlanUsageRemaining,
               )}
             />
+          ) : null}
+          {/* 左下角领取卡片：复用设置页的同一个组件（四态分界 / 验证码 / 票券全部既有）。
+              providerId 只作日志归属：claim 平面与 family 无关；未连 Start Plan 时留空。 */}
+          {hasStartPlanClaimEntry ? (
+            <div
+              className={
+                (renderableTaskUsage && compactTokenUsageLabel) ||
+                hasCodingPlanUsageRemaining ||
+                hasStartPlanBalance
+                  ? "border-t border-border pt-2"
+                  : undefined
+              }
+            >
+              <ManualClaimPlanCard
+                providerId={startPlanBalanceWithClose?.snapshot?.provider?.id ?? ""}
+                state={startPlanClaimState}
+                onCaptchaDialogOpenChange={handleClaimCaptchaDialogOpenChange}
+              />
+            </div>
           ) : null}
         </ContextContentBody>
       </ContextContent>

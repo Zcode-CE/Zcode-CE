@@ -427,6 +427,8 @@ export function CodingPlanStatusPanel({
     inactivePlanTitle,
     rawPlanLevel,
     displayPlanLevel,
+    // 结构标识优先于展示名：start-plan 类型段是唯一判据（名称无关）。
+    planProductId: subscriptionDetails?.[0]?.productId?.trim() ?? "",
     startPlanTitle: intl.formatMessage({
       id: "settings.modelProvider.planCard.startPlan",
     }),
@@ -677,6 +679,7 @@ function resolveCodingPlanStatusCardTitle({
   inactivePlanTitle,
   rawPlanLevel,
   displayPlanLevel,
+  planProductId,
   startPlanTitle,
   codingPlanTitle,
 }: {
@@ -686,6 +689,8 @@ function resolveCodingPlanStatusCardTitle({
   inactivePlanTitle?: string | null;
   rawPlanLevel: string;
   displayPlanLevel: string;
+  /** 订阅详情里的结构标识（plan_id），用于按类型段识别 Start Plan 权益。 */
+  planProductId: string;
   startPlanTitle: string;
   codingPlanTitle: string;
 }): string {
@@ -696,7 +701,8 @@ function resolveCodingPlanStatusCardTitle({
   if (isStartPlanProvider) {
     // Start provider 偶尔会承载同品牌 paid Coding Plan 的权益快照。
     // 只有真实 Start 权益继续显示 Start Plan；否则必须露出后端权益名，避免付费用户看到免费套餐标题。
-    return isStartPlanEntitlementName(rawPlanLevel)
+    // 判据是 productId 的类型段而非展示名（见 isStartPlanEntitlementProductId）：官方改名不影响。
+    return isStartPlanEntitlementProductId(planProductId)
       ? startPlanTitle
       : displayPlanLevel || startPlanTitle;
   }
@@ -704,11 +710,20 @@ function resolveCodingPlanStatusCardTitle({
   return displayPlanLevel || codingPlanTitle;
 }
 
-function isStartPlanEntitlementName(planLevel: string): boolean {
-  const normalized = planLevel.trim().toLowerCase();
-  return (
-    normalized === "start" || normalized === "start plan" || normalized.endsWith(" start plan")
-  );
+/**
+ * 按类型段识别 Start Plan 权益，不按展示名。
+ *
+ * 判据：真实载荷里 start-plan 套餐的 plan_id 恒含类型段 `start-plan`（实测：
+ * `zcode-v3-start-plan-0817` / `zcode-v3-start-plan-wk-0918` /
+ * `zcode-v3-start-plan-0924-wk`，见 .reverse/08-entitlement/evidence），
+ * 而同 provider 承载的付费 Coding Plan 的 productId 无此类型段。
+ * `start-plan` 是接口契约里的类型标识（与 claim_plan / coding-plan /
+ * individual-coding-plan / team-coding-plan 同属官方标识符体系），随改名不变；
+ * 按展示名后缀匹配的旧写法匹配的是营销名——历次活动名各不相同，一旦改名即失效。
+ */
+export function isStartPlanEntitlementProductId(productId: string): boolean {
+  const normalized = productId.trim().toLowerCase();
+  return /(^|[-_])start-plan([-_]|$)/.test(normalized);
 }
 
 function isMaxCodingPlanLevel(planLevel: string): boolean {
