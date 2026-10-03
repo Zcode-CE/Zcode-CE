@@ -73,7 +73,7 @@ const CUA_DRIVER_RUNTIME_PACKAGES = ["@trycua/cua-driver", "@ubjs/core", "@ubjs/
  * 三元组口径与 `@ubjs/node` 的 `detectNodeTriple` 以及 `@trycua/cua-driver` 的
  * optionalDependencies 一致；两个包族的命名在 glibc 平台上一一相同，所以一张表覆盖。
  *
- * Linux 上**只支持 glibc**：`@trycua/cua-driver` 与官方 CDN 资产集都没有任何
+ * Linux 上只支持 glibc：`@trycua/cua-driver` 与官方 CDN 资产集都没有任何
  * `-musl` 平台类（official-musl 审计实测：官方代码零 libc 判定、CDN
  * manifest-linux-*-musl.json 全部 404）。因此 musl 目标必须在这里显式失败，
  * 而不是拼出一个不存在的包名、把失败推迟到下方「cannot resolve installed
