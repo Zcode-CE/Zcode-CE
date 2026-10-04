@@ -113,8 +113,15 @@ export function collectBashCommands(toolCalls) {
 }
 
 /**
- * 最终回答：取最后一条非空 message.upserted（用户消息只在开头出现；system message 带
- * type 字段，排除）。submitPrompt 后任何 tool 调用都早于最后一条助手消息。
+ * 最终回答。
+ *
+ * 两个来源，按可靠性排序：
+ *  1. message.upserted 的最后一条非空助手消息（system message 带 type 字段，排除）；
+ *  2. headless 回合的实际权威来源：turn.completed.payload.response——
+ *     prompt-command 的 observer（headless-workflow.ts）与 TUI 的
+ *     applyTurnCompleteFallbackResponse 都把它当作回合回答文本。实测（CI 首次真跑 +
+ *     本地假 key 回合）：headless stream-json 里可以一条 message.upserted 都没有
+ *     （连用户消息也不发），只靠 message.upserted 过滤会把正常完成的回合判成「没有回答」。
  */
 export function collectFinalAnswerText(events) {
   const messages = events.filter(
@@ -124,8 +131,46 @@ export function collectFinalAnswerText(events) {
       event.payload.content.trim().length > 0 &&
       event.payload.type === undefined,
   );
-  const last = messages[messages.length - 1];
-  return last?.payload.content;
+  const lastMessage = messages[messages.length - 1];
+  if (lastMessage) return lastMessage.payload.content;
+  const completed = events.filter(
+    (event) =>
+      event.type === "turn.completed" && typeof event.payload?.response === "string",
+  );
+  for (let index = completed.length - 1; index >= 0; index -= 1) {
+    const response = completed[index].payload.response;
+    if (response.trim().length > 0) return response;
+  }
+  return undefined;
+}
+
+/**
+ * 失败诊断：事件类型计数 + 最后若干条事件的载荷摘要。断言失败时挂进消息里，
+ * 让 CI 日志能直接看见回合里发生了什么（否则 stream-json 的内容完全不可观测）。
+ */
+export function summarizeEventsForFailure(events, tailLimit = 25) {
+  const counts = new Map();
+  for (const event of events) counts.set(event.type, (counts.get(event.type) ?? 0) + 1);
+  const tail = events
+    .slice(-tailLimit)
+    .map((event) => {
+      const payload = event.payload;
+      const details = [];
+      if (event.type === "tool.updated") {
+        details.push(`tool=${payload?.toolName ?? "?"} kind=${payload?.kind ?? "?"}`);
+      } else if (event.type === "message.upserted") {
+        details.push(`content=${String(payload?.content ?? "").slice(0, 80)}`);
+      } else if (event.type === "turn.completed") {
+        details.push(`response=${String(payload?.response ?? "").slice(0, 120)}`);
+      } else if (event.type === "turn.failed") {
+        details.push(`error=${String(payload?.error?.message ?? payload?.error ?? "").slice(0, 160)}`);
+      }
+      return `  ${event.type}${details.length ? " " + details.join(" ") : ""}`;
+    })
+    .join("\n");
+  return `event counts: ${JSON.stringify(Object.fromEntries(counts))}
+last ${Math.min(tailLimit, events.length)} events:
+${tail}`;
 }
 
 /**

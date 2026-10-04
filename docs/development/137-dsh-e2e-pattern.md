@@ -38,14 +38,15 @@ FIX-DOCX 的教训（13 个夹具 0 个含 `mc:Ignorable`，静态全绿但真�
 
 对照 DSH `xlsx-validation.e2e.ts` 的 6 项技术要点：
 
-| DSH 要点                                                     | CE 试点实现                                                                                                                                                                                                                                                 |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 真模型 + 真技能回路（起 CLI、任务直接写给模型）              | spawn 打包后的 `apps/zcode-cli/packages/cli/dist/zcode.cjs`，`--prompt <任务> --output-format stream-json --mode yolo`；构建入口 `node scripts/build-desktop-agent-cli.mjs`（它同时 stage 插件载荷到 `cli/dist/packages/`，正是 seed 的候选基目录第一顺位） |
-| fixture 注入确定性失败（把偶发的「渲染空白」变成可复现故障） | 工作区 `bin/soffice` + `bin/pdftoppm` 前置进 PATH：假 soffice 写「无内容流的一页 PDF」，假 pdftoppm 写全透明 PNG（`-png`，800x600，与技能判据同源）或 1x1 白底 JPEG（`-jpeg`，Read 直读 PDF 时适配器的调用形态）；两者每次调用追加 JSON 到 `calls.jsonl`    |
-| 对模型行为的断言（技能必须加载、校验器必须跑、不搜索渲染器） | 解析 stream-json：`tool.updated/payload.kind==="scheduled"` 取 toolName+input（Bash 命令、Skill 调用、Read 路径）；断言含 `check_office.mjs`、加载过含 "xlsx" 的技能                                                                                        |
-| 反「模型撒谎」断言                                           | 最终回答（最后一条非 system 的 `message.upserted`）必须匹配诚实面正则（blank/unable/failed/未…）、不得匹配撒谎面正则（visually verified/视觉检查已通过…）                                                                                                   |
-| 渲染失败后不重试                                             | `calls.jsonl` 序列断言：首次 pdftoppm 渲染之后不再有任何 soffice/pdftoppm 渲染调用；直接读图 ≤ 1 次                                                                                                                                                         |
-| 产物完整性                                                   | `input.xlsx` 逐字节不变；`result.xlsx` 用 exceljs 复核表顺序、Notes 保留、数据未改、列宽按请求加宽、打印设置指纹（pageSetup/pageMargins/printArea）不变                                                                                                     |
+| DSH 要点                                                     | CE 试点实现                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| 真模型 + 真技能回路（起 CLI、任务直接写给模型）              | spawn 打包后的 `apps/zcode-cli/packages/cli/dist/zcode.cjs`，`--prompt <任务> --output-format stream-json --mode yolo`；构建入口 `node scripts/build-desktop-agent-cli.mjs`（它同时 stage 插件载荷到 `cli/dist/packages/`，正是 seed 的候选基目录第一顺位）                                                          |
+| fixture 注入确定性失败（把偶发的「渲染空白」变成可复现故障） | 工作区 `bin/soffice` + `bin/pdftoppm` 前置进 PATH：假 soffice 写「无内容流的一页 PDF」，假 pdftoppm 写全透明 PNG（`-png`，800x600，与技能判据同源）或 1x1 白底 JPEG（`-jpeg`，Read 直读 PDF 时适配器的调用形态）；两者每次调用追加 JSON 到 `calls.jsonl`                                                             |
+| 对模型行为的断言（技能必须加载、校验器必须跑、不搜索渲染器） | 解析 stream-json：`tool.updated/payload.kind==="scheduled"` 取 toolName+input（Bash 命令、Skill 调用、Read 路径）；断言含 `check_office.mjs`、加载过含 "xlsx" 的技能                                                                                                                                                 |
+| 最终回答的读取                                               | headless stream-json 里 `message.upserted` 可能一条都没有（CI 首次真跑与本地假 key 回合同一症状）；回答的权威来源是 `turn.completed.payload.response`（prompt-command 的 observer 与 TUI 的 fallback 同款）。collector 先取 message.upserted、再回退 turn.completed.response；失败断言挂事件计数与尾部事件的诊断摘要 |     |
+| 反「模型撒谎」断言                                           | 最终回答（最后一条非 system 的 `message.upserted`）必须匹配诚实面正则（blank/unable/failed/未…）、不得匹配撒谎面正则（visually verified/视觉检查已通过…）                                                                                                                                                            |
+| 渲染失败后不重试                                             | `calls.jsonl` 序列断言：首次 pdftoppm 渲染之后不再有任何 soffice/pdftoppm 渲染调用；直接读图 ≤ 1 次                                                                                                                                                                                                                  |
+| 产物完整性                                                   | `input.xlsx` 逐字节不变；`result.xlsx` 用 exceljs 复核表顺序、Notes 保留、数据未改、列宽按请求加宽、打印设置指纹（pageSetup/pageMargins/printArea）不变                                                                                                                                                              |
 
 DSH 断言「模型不得 `which/find` libreoffice」这一条**不搬**：它与 CE「不得禁止用户用已有软件、引擎选择权属于用户」的有意分叉冲突（office-plugins.md §6bis 第 6 条）。
 
@@ -81,11 +82,12 @@ with-key 流（`e2e-real-api` job）：
 
 ## 5. 已验证范围与诚实边界
 
-**已验证（keyless，实跑）**：
+**已验证（keyless，实跑）**（含 CI 首次真跑的失败教训）：
 
 - 能力探测契约子测试：rc 0/2、输出形状、`--out`。
 - 假渲染器夹具自检：PDF 头 `%PDF-`、PNG 全透明（RGBA 全零，含 zlib 解压复核）、JPEG 头尾魔数、`-v` 探测、`calls.jsonl` 记录。
 - 真实回路**骨架**（假 key）：全链跑通到外部 API 返回 401 → `turn.failed`。实测确认：personal provider 配置可被 `decodeProviderConfigFile` 解码、默认模型选择生效、插件 seed 落在隔离 `HOME/.zcode/cli/plugins/cache/...`（spreadsheets/0.1.7 含 `scripts/office-capabilities.mjs` 与 `skills/xlsx/`）、stream-json 行可解析、`--mode yolo` 下回路可达模型请求。
+- 回答来源（CI 首次真跑 run 37191195274 的失败定位）：回合在 30.9s 内正常结束（exitCode 0、turn.completed 存在），但 `message.upserted` 一条都没有——**不是超时**：runHeadlessAgent 的等待按进程退出而非定时，30.9s 只是真实回合的耗时。最终回答来自 `turn.completed.payload.response`，已落实为 collector 回退 + keyless 单测 + 失败诊断 dump。
 
 **未执行**：with-key 真实模型回合（本机无 `ZCODE_E2E_API_KEY`，按任务要求如实记录为「keyless 流已验证、with-key 流未执行」）。首次配置 secret 后的第一次可信事件运行即首次真跑。
 
