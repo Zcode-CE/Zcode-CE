@@ -161,7 +161,31 @@ test("官方插件 SEA 闭包：清单条目与权威定义逐项对齐（运行
   const { buildBrowserUsePluginBundles } = await import(
     join(browserUsePluginRoot, "scripts", "build.mjs")
   );
-  await buildBrowserUsePluginBundles();
+  // CI 的 verify 作业不构建 apps/zcode-cli 的工作区包（zcodeSourceResolver.mjs
+  // 的注释是其根因），esbuild 会把 @zcode/core/browser-client 解析到 dist 子路径
+  // 而失败。按同一规则（读被解析包自己的 exports，dist→src 反推）给出 alias，
+  // 不手写第二份清单。
+  const corePackageJson = JSON.parse(
+    readFileSync(join(cliWorkspaceRoot, "packages", "core", "package.json"), "utf8"),
+  ) as { exports: Record<string, { import?: string } | string> };
+  const coreBrowserClientExport = corePackageJson.exports?.["./browser-client"];
+  const coreBrowserClientDist =
+    typeof coreBrowserClientExport === "string"
+      ? coreBrowserClientExport
+      : coreBrowserClientExport?.import;
+  if (typeof coreBrowserClientDist !== "string") {
+    throw new Error("无法从 @zcode/core 的 exports 推导 browser-client 子路径");
+  }
+  await buildBrowserUsePluginBundles({
+    alias: {
+      "@zcode/core/browser-client": join(
+        cliWorkspaceRoot,
+        "packages",
+        "core",
+        coreBrowserClientDist.replace(/^\.\/dist\//, "src/").replace(/\.js$/, ".ts"),
+      ),
+    },
+  });
 
   const workRoot = mkdtempSync(join(tmpdir(), "zcode-sea-plugin-closure-"));
   const payloadStaging = join(workRoot, "payloads");
