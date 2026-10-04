@@ -135,20 +135,11 @@
 - 已接受的 busy/running 输入由 CLI/runtime `CommandInbox` 串行 admission；Renderer 只保留未提交草稿与 pending optimistic overlay，Host owner/lease 负责路由。
 - 保留 owner/lease、跨 Host 路由和 stale run 防护，不能仅根据单一路径删除边界判断。
 
-> **上游形态提示（本仓库未实现）**：本节「手机远控连接桌面已有 Host attachment」与「外部 relay」两条描述的是**上游产品**的形态。
-> **2026-09-24 订正（原表述是事实错误）**：此前这里写「官方在开源之前已把手机远控**整块移除**」，与上游源码不符。
-> 实测（`zai-org/ZCode` 的 `v3.14.3` = `29628c9`，其**唯一父提交**即开源提交 `872ad96 feat: open source`）：
-> 被移除的是**产品面**（云 relay 服务、配对/扫码服务器、移动壳/PWA/推送）；而**协议与传输层的接缝从开源基线起就存在** ——
-> `872ad96:packages/shared/src/task-realtime-core.ts:102-103` 已有 `relay_owner` / `relay_bridge` 枚举，`packages/desktop/src/main/desktopRemoteSessions.ts`、
-> `web-remote-replayable` 链路也在基线里。即**「整块移除」不成立，准确说法是「移除产品面、保留接缝」**。
-> 另：`v3.14.3` 新增的「移动端远程控制」入口，实测是 **Bot Channel（IM 机器人）** 的渠道选择器 ——
-> 上游全仓 `relayWsUrl` / `mid=` / 配对码 等**0 命中** ⇒ **云 relay 从未进入开源版**，回来的不是中继而是「用 IM 机器人当工作区前端」。
-> 对本仓库现状：我们**不引入中继**（属实）；远控是**自托管**形态（桌面端 spawn 服务端进程，浏览器经 `?token` 连它），见 `packages/desktop/src/main/web-service/`。
-> **2026-09-27 订正（原表述与事实不符）**：此处原写「不做 IM 机器人」，实测**不成立** —— Bot 服务端能力**已与官方同步**（`packages/services/src/bots/` 整块搬入、`packages/shared/src/bots.ts` 与上游逐字节相同，见 `ff544f2`；入站路由为自研 `/bot/**`，**默认不注册**）。
-> 准确口径是**「与官方同步、默认关闭、用户同意后即可使用」**：与上游的**有意偏离在形态**（我们做自托管 Web 控制，不把 IM 机器人当工作台），**不在「做不做」**；两条路径以标签页共存，Web 控制默认开、Chat bot 默认关。
-> **桌面端 UI 已接线**（ce.5：`BotsDialog.tsx` + 4 个子组件 + `botsUi.ts` 已从上游搬运，宿主层注入 `imBot` 通道；spec 见 `docs/development/135-bot-management-ui.md`）。
-> 注意此处「桌面端没有任何入站服务」的说法**对上游成立、对本仓库已不成立**（CE 的 web-service 会 spawn 并监听）。
-> 因此这两条**不是对本仓库现状的描述**，而是「如果要做，按这个边界做」的约束；判断某条链路是否存在时以源码与实测为准，不要按这两句推定。
+> **上游形态说明**：本节「手机远控连接桌面已有 Host attachment」与「外部 relay」两条描述的是**上游产品**的形态，不是本仓库现状 —— 它们是「如果要做，按这个边界做」的约束；判断某条链路是否存在时以源码与实测为准，不要按这两句推定。
+>
+> 上游实测（`zai-org/ZCode` 的 `v3.14.3` = `29628c9`，其**唯一父提交**即开源提交 `872ad96 feat: open source`）：官方开源版移除的是**产品面**（云 relay 服务、配对/扫码服务器、移动壳/PWA/推送），**协议与传输层接缝自基线起就存在**（`872ad96:packages/shared/src/task-realtime-core.ts:102-103` 的 `relay_owner` / `relay_bridge` 枚举）；云 relay 从未进入开源版（`relayWsUrl` / `mid=` / 配对码 全仓 0 命中）。`v3.14.3` 的「移动端远程控制」入口是 **Bot Channel（IM 机器人）** 的渠道选择器，不是中继。
+>
+> 本仓库现状（按源码）：远控是**自托管**形态（桌面端 spawn 服务端进程，浏览器经 `?token` 连它，见 `packages/desktop/src/main/web-service/`），**不引入中继**。IM 机器人（Bot Channel）**与官方同步、默认关闭、用户同意后即可使用**（`packages/services/src/bots/`、`packages/shared/src/bots.ts`，入站路由自研 `/bot/**` 默认不注册，`ff544f2`）；与上游的**有意偏离在形态**（我们做自托管 Web 控制，不把 IM 机器人当工作台），**不在「做不做」**；两条路径标签页共存，Web 控制默认开、Chat bot 默认关。**桌面端 UI 已接线**（`BotsDialog.tsx` + 4 子组件 + `botsUi.ts`，宿主层注入 `imBot` 通道；spec `docs/development/135-bot-management-ui.md`）。注意「桌面端没有任何入站服务」**对上游成立、对本仓库不成立**（CE 的 web-service 会 spawn 并监听）。
 
 ## Workspace Identity
 
