@@ -65,7 +65,7 @@ getAppConfigDir() = {homedir}/.zcode/v2     ← 硬编码 ".zcode"，与 appId/p
 | 头   | `Accept: application/x-yaml` + `X-Device-Mid`                                                              |
 | 解析 | `parseYaml` → electron-updater 标准 `UpdateInfo`（`files[]` 带 `url`/`sha512`，或 legacy `path`/`sha512`） |
 
-**且打包态忽略 `ZCODE_UPDATE_FEED_URL` 覆盖**（`autoUpdater.ts:703-714`）。
+**且打包态忽略 `ZCODE_UPDATE_FEED_URL` 覆盖**（位于 `resolveUpdateFeedSourceFromStartupConfig`，当时行号 703-714）。
 
 ### 2.2 方案选择
 
@@ -79,14 +79,14 @@ getAppConfigDir() = {homedir}/.zcode/v2     ← 硬编码 ".zcode"，与 appId/p
 
 ### 2.3 实施要点（方案 A）—— 已定位到精确改造点
 
-**关键事实**：`applyManifestUpdateProvider` 是**无条件调用**的（`autoUpdater.ts:1507`），**所以改用 GitHub provider 必须改代码，不是只改配置**。
+**关键事实**：provider 注入函数（当时名为 `applyManifestUpdateProvider`，无条件调用；落地后改名 `applyUpdateProvider`）是**无条件调用**的，**所以改用 GitHub provider 必须改代码，不是只改配置**。
 
-| #   | 位置                                                  | 动作                                                                                                                             |
-| --- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `packages/desktop/electron-builder.config.js:747-756` | `publish` 由 `{ provider: "generic", url: "http://localhost:8081" }` 改为 `{ provider: "github", owner, repo }`                  |
-| 2   | `packages/desktop/src/main/autoUpdater.ts:754-769`    | `applyManifestUpdateProvider` 按构建目标分支：社区版走 electron-updater 原生 `GitHubProvider`，不再注入 `ManifestUpdateProvider` |
-| 3   | `packages/desktop/src/main/autoUpdater.ts:1507`       | 调用点保持，但函数内部按分支决定是否 `setFeedURL`                                                                                |
-| 4   | 验证                                                  | `electron-builder` 生成的 `latest.yml` 与 `GitHubProvider` 的读取路径一致；实际发布一个版本验证升级链路                          |
+| #   | 位置                                                            | 动作                                                                                                                                                          |
+| --- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `packages/desktop/electron-builder.config.js:747-756`           | `publish` 由 `{ provider: "generic", url: "http://localhost:8081" }` 改为 `{ provider: "github", owner, repo }`                                               |
+| 2   | `packages/desktop/src/main/autoUpdater.ts` 的 provider 注入函数 | 落地后即 `applyUpdateProvider`：打包态（无更新源覆盖）不 setFeedURL，走 electron-updater 原生 `GitHubProvider`；有覆盖或未打包时注入 `ManifestUpdateProvider` |
+| 3   | `initAutoUpdater` 的调用点保持                                  | 函数内部按分支决定是否 `setFeedURL`                                                                                                                           |
+| 4   | 验证                                                            | `electron-builder` 生成的 `latest.yml` 与 `GitHubProvider` 的读取路径一致；实际发布一个版本验证升级链路                                                       |
 
 **保留 `ManifestUpdateProvider` 文件本身**（不删）—— 它是官方 manifest 协议的实现，未来若要支持自建更新服务可复用。
 
@@ -94,6 +94,20 @@ getAppConfigDir() = {homedir}/.zcode/v2     ← 硬编码 ".zcode"，与 appId/p
 
 打包态忽略 `ZCODE_UPDATE_FEED_URL` 的行为**已放开**，改为「仅忽略非 https」：
 打包态接受 https 覆盖，非 https 取值被忽略并记一条 `warn`。理由与安全约束见第五节第 1 条。
+
+### 2.5 macOS 客户端：跳过更新检查（方案 a，已实施）
+
+Release 不产 macOS 产物 ⇒ 不存在 `latest-mac.yml` ⇒ macOS 打包客户端走 GitHub provider 必然 404。
+落地的是**客户端侧跳过**而非裸 404：
+
+- 判定：`shouldSkipAutoUpdateCheckOnDarwinRelease`（`packages/desktop/src/main/autoUpdateAvailability.ts`），
+  仅 `darwin && 打包态 && 无更新源覆盖` 三条同时成立才跳过；自建 feed / 镜像覆盖与未打包的开发态验证链路保持原行为。
+- 入口：`initAutoUpdater` 命中后不注册事件、不启动检查、不起轮询；
+  `checkForUpdateMenuClick` 回传 `{ kind: "unsupported-platform" }`（renderer 双语 toast，引导手动下载）；
+  `requestForceAutoUpdate` 复用 `dev-skipped` 通道回传原因（CE 当前不接线强更门，纯防御）。
+- 测试：`packages/desktop/test/autoUpdateDarwinAvailability.test.ts`（判定矩阵 + 文案契约）与
+  `autoUpdaterDarwinSkip.test.ts`（electron 桩接线测试，钉住「不发请求」与「win/linux 不变」）。
+- 完整设计见 [docs/development/136-darwin-auto-update-skip.md](../development/136-darwin-auto-update-skip.md)。
 
 ## 三、构建与产物
 

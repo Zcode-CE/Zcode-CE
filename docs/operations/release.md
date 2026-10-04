@@ -6,6 +6,12 @@
 
 **Linux 与 Windows**。macOS 暂不发布（无代码签名证书，未签名包的用户体验代价过高）。
 
+macOS 客户端因此**不检查更新**：本发行线的 Release 没有 macOS 产物（无 `latest-mac.yml`），
+macOS 打包客户端对 GitHub provider 的请求必然 404。客户端在 darwin 打包态显式跳过更新检查
+（不发起请求、不报 404），菜单「检查更新」会给出确定性提示并引导手动从 GitHub Releases 下载
+新版本；开发态调试与配置了更新源覆盖（自建 feed / 镜像）的 macOS 部署不受此限制。设计与测试见
+[136-darwin-auto-update-skip](../development/136-darwin-auto-update-skip.md)。
+
 ## 版本号
 
 当前版本写在根 `package.json` 的 `version` 字段。**本文不复制具体版本号** —— 它每次发布都变，
@@ -129,7 +135,11 @@ electron-builder 会为每个平台生成更新清单与差分块，**必须一�
 | Linux   | `latest-linux.yml` | `AppImage` / `deb` / `rpm` / `pacman` |
 | Windows | `latest.yml`       | `nsis`                                |
 
-同时要上传对应的 `.blockmap`，否则差分下载退化为全量包。Tag 采用 `v` 前缀（如
+同时要上传对应的 `.blockmap`，否则差分下载退化为全量包。表中没有 macOS 行：本发行线不产
+macOS 安装包，客户端在 darwin 打包态直接跳过更新检查（见「平台支持」）。自建 feed 部署形态
+如自行提供 macOS 产物，则不受此限制（见下「更新源覆盖」）。
+
+Tag 采用 `v` 前缀（如
 `v3.14.1-ce.1`），与 electron-builder 的默认 `vPrefixedTagName` 一致。
 
 **Release 必须是已发布状态，不能是 draft。** draft 对更新检查完全不可见

@@ -1176,6 +1176,8 @@ const zhCN: Record<string, string> = {
   "update.toast.downloading": "正在下载新版本 v{version}",
   "update.toast.alreadyDownloading": "正在下载新版本（{progress}%）",
   "update.toast.ready": "v{version} 已下载，重启即可安装",
+  "update.toast.unsupportedPlatform":
+    "macOS 暂不支持自动更新：本发行线不发布 macOS 安装包，请手动从 GitHub Releases 下载新版本。",
   "update.toast.devSkipped": "开发环境不检查更新",
   "update.toast.error": "检查更新失败：{error}",
   "forceUpdate.title": "需要升级 ZCode 后继续使用",

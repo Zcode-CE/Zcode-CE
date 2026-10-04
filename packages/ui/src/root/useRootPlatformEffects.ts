@@ -265,6 +265,10 @@ export function useRootPlatformEffects({
             case "dev-skipped":
               toast(intl.formatMessage({ id: "update.toast.devSkipped" }));
               return;
+            case "unsupported-platform":
+              // macOS 正式包不支持自动更新：确定性提示，不含「失败/重试」措辞，引导手动下载。
+              toast(intl.formatMessage({ id: "update.toast.unsupportedPlatform" }));
+              return;
             case "error":
               toast(intl.formatMessage({ id: "update.toast.error" }, { error: payload.message }));
               return;

@@ -24,6 +24,9 @@ export type UpdateCheckResultPayload =
   | { kind: "already-downloading"; version: string; progress: string }
   | { kind: "ready"; version: string }
   | { kind: "dev-skipped" }
+  // darwin 正式包（无更新源覆盖）：本发行线不发布 macOS 包，更新检查被确定性跳过。
+  // 与 error 严格区分：这不是检查失败，不应引导用户重试，只应引导手动下载（方案 a，spec 136）。
+  | { kind: "unsupported-platform" }
   | { kind: "error"; message: string };
 
 /**

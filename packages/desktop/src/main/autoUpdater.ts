@@ -18,6 +18,7 @@ import {
 import { app, BrowserWindow, ipcMain, Menu } from "electron";
 import pkg, { CancellationToken } from "electron-updater";
 import semver from "semver";
+import { shouldSkipAutoUpdateCheckOnDarwinRelease } from "./autoUpdateAvailability.js";
 import { logger } from "./logger.js";
 import { getElectronReleasePlatform, ManifestUpdateProvider } from "./manifestUpdateProvider.js";
 const { autoUpdater } = pkg;
@@ -64,6 +65,10 @@ let autoUpdaterSettingService: SettingServiceLike | undefined;
 // （占位 feed、autoDownload 默认值）。任何漏改成按身份判断的入口若仍调用手动检查，
 // 都会对占位 feed 发真实请求。这里记住“本 flavor 已禁用”，让手动检查在模块内部 fail-closed。
 let autoUpdaterDisabledForProductFlavor = false;
+// darwin 正式包（无更新源覆盖）不支持自动更新：release 不产 macOS 包（见 release.md 平台支持），
+// 任何更新检查都必然 404。initAutoUpdater 命中后置 true，手动检查与强更入口据此 fail-closed
+// （回传 unsupported-platform / dev-skipped，而不是把请求打到打不通的地址）。
+let autoUpdateUnavailableOnDarwinRelease = false;
 
 type SettingServiceLike = Pick<ISettingService, "get" | "update">;
 
@@ -1528,6 +1533,7 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
     return;
   }
   autoUpdaterDisabledForProductFlavor = false;
+  autoUpdateUnavailableOnDarwinRelease = false;
   if (!canUseAutoUpdaterInCurrentRuntime()) return;
 
   onBeforeQuitAndInstall = options.onBeforeQuitAndInstall;
@@ -1550,6 +1556,27 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
   clearAvailableUpdateState();
   clearDownloadingUpdateState();
   applyDevAutoUpdateRuntimeOverrides();
+
+  // darwin 正式包（无更新源覆盖）：本发行线不发布 macOS 安装包，Release 里没有 latest-mac.yml，
+  // electron-updater 走 app-update.yml 的 github provider 必然 404（issue #2 症状二）。
+  // 这里显式跳过：不注册事件、不发起启动检查、不起轮询（用户每启动一次就少一轮 404 噪音）；
+  // 手动检查入口回传 unsupported-platform（见 checkForUpdateMenuClick），由 renderer 展示
+  // 双语确定性提示「不支持自动更新，请手动下载」，与「检查失败请重试」严格区分。
+  // 开发态（未打包）与更新源覆盖（镜像 / 自建 feed）不命中本分支：前者是本地 manifest 验证
+  // 链路，后者是另一种部署形态，二者都保持原有行为。
+  if (
+    shouldSkipAutoUpdateCheckOnDarwinRelease({
+      platform: process.platform,
+      isPackaged: app.isPackaged,
+      updateFeedUrl: options.updateFeedSource?.url,
+    })
+  ) {
+    autoUpdateUnavailableOnDarwinRelease = true;
+    logger.info(
+      "[auto-update] darwin release build: auto-update unsupported (this release line publishes no macOS builds), skipping update checks; download new versions from GitHub Releases manually",
+    );
+    return;
+  }
 
   logger.info(`[auto-update] initializing, current version: ${getCurrentAppVersionForUpdate()}`);
 
@@ -1842,6 +1869,19 @@ export function requestForceAutoUpdate(
     return dispose;
   }
 
+  if (autoUpdateUnavailableOnDarwinRelease) {
+    // CE 当前不接线远端强更门（index.ts 显式跳过 /api/v1/client/configs 检查），此分支纯防御：
+    // 若将来启用社区版自己的强更策略，darwin 正式包不能走 checkForUpdates（必 404），
+    // 复用 dev-skipped 通道把原因带给强更弹窗（弹窗手动升级 / 退出按钮仍可用）。
+    const message =
+      menuLocale === "zh-CN"
+        ? "macOS 正式包暂不支持自动更新，请使用手动升级"
+        : "Auto update is not available in macOS release builds; use manual update instead";
+    logger.info(`[force-update] 自动升级跳过：${message}`);
+    onStateChange({ kind: "dev-skipped", message });
+    return dispose;
+  }
+
   if (menuState.kind === "update-downloaded") {
     onStateChange({ kind: "installing" });
     void quitAndInstallUpdate();
@@ -1920,6 +1960,18 @@ export function checkForUpdateMenuClick(originWindow?: BrowserWindow | null) {
     logger.info("[auto-update] skip manual check: updater disabled for this product flavor");
     targetWindow.webContents.send(PlatformChannels.UpdateCheckResult, {
       kind: "dev-skipped",
+    } satisfies UpdateCheckResultPayload);
+    return;
+  }
+
+  if (autoUpdateUnavailableOnDarwinRelease) {
+    // 与「检查失败」严格区分：macOS 正式包不支持自动更新是确定性事实，不是故障，不引导重试。
+    // renderer 按 kind 映射到双语 toast（update.toast.unsupportedPlatform），引导用户手动下载。
+    logger.info(
+      "[auto-update] skip manual check: darwin release build does not support auto-update",
+    );
+    targetWindow.webContents.send(PlatformChannels.UpdateCheckResult, {
+      kind: "unsupported-platform",
     } satisfies UpdateCheckResultPayload);
     return;
   }
