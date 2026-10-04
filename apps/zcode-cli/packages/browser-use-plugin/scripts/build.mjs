@@ -38,10 +38,10 @@ const createBundleOptions = ({ entryPoint, outfile }) => ({
 export const buildBrowserUsePluginBundles = async ({
   packageRoot = defaultPackageRoot,
   browserClientOutfile = resolve(packageRoot, "scripts", "browser-client.mjs"),
-  // 可选的 esbuild alias：测试在未构建 apps/zcode-cli 工作区包的环境里跑（CI 的
+  // 可选的 esbuild 插件：测试在未构建 apps/zcode-cli 工作区包的环境里跑（CI 的
   // verify 作业不产 dist，根因见 packages/services/test/support/zcodeSourceResolver.mjs），
-  // 调用方据此把 @zcode/* 的 dist 子路径重定向到源码；真实构建流程不传，走 dist。
-  alias,
+  // 调用方据此把 @zcode/* 重定向到源码；真实构建流程不传，走构建产物 dist。
+  esbuildPlugins,
 } = {}) => {
   // node_repl 宿主的产物由 @zcode/node-repl-host 自己构建与携带；这个包只出 browser-client。
   await mkdir(dirname(browserClientOutfile), { recursive: true });
@@ -50,7 +50,7 @@ export const buildBrowserUsePluginBundles = async ({
       entryPoint: resolve(packageRoot, "src", "browser-client.ts"),
       outfile: browserClientOutfile,
     }),
-    ...(alias ? { alias } : {}),
+    ...(esbuildPlugins ? { plugins: esbuildPlugins } : {}),
   });
   await chmod(browserClientOutfile, executableFileMode);
   return { browserClientOutfile };

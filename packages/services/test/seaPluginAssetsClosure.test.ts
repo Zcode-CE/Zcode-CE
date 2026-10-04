@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { createZcodeSourceEsbuildPlugin } from "./support/zcodeEsbuildSourceResolvePlugin.mjs";
 
 /**
  * SEA（单文件可执行）资产闭包测试：官方插件清单 + 内置技能包清单。
@@ -162,29 +163,12 @@ test("官方插件 SEA 闭包：清单条目与权威定义逐项对齐（运行
     join(browserUsePluginRoot, "scripts", "build.mjs")
   );
   // CI 的 verify 作业不构建 apps/zcode-cli 的工作区包（zcodeSourceResolver.mjs
-  // 的注释是其根因），esbuild 会把 @zcode/core/browser-client 解析到 dist 子路径
-  // 而失败。按同一规则（读被解析包自己的 exports，dist→src 反推）给出 alias，
-  // 不手写第二份清单。
-  const corePackageJson = JSON.parse(
-    readFileSync(join(cliWorkspaceRoot, "packages", "core", "package.json"), "utf8"),
-  ) as { exports: Record<string, { import?: string } | string> };
-  const coreBrowserClientExport = corePackageJson.exports?.["./browser-client"];
-  const coreBrowserClientDist =
-    typeof coreBrowserClientExport === "string"
-      ? coreBrowserClientExport
-      : coreBrowserClientExport?.import;
-  if (typeof coreBrowserClientDist !== "string") {
-    throw new Error("无法从 @zcode/core 的 exports 推导 browser-client 子路径");
-  }
+  // 的注释是其根因），esbuild 解析 @zcode/* 会落到 dist 子路径而失败。装上与
+  // 该解析钩子同一规则的 esbuild 插件（support/zcodeEsbuildSourceResolvePlugin.mjs）：
+  // 读被解析包自己的 exports 做 dist→src 反推，不手写第二份清单，解析不出时
+  // 交回 esbuild 报它原本的错误。
   await buildBrowserUsePluginBundles({
-    alias: {
-      "@zcode/core/browser-client": join(
-        cliWorkspaceRoot,
-        "packages",
-        "core",
-        coreBrowserClientDist.replace(/^\.\/dist\//, "src/").replace(/\.js$/, ".ts"),
-      ),
-    },
+    esbuildPlugins: [createZcodeSourceEsbuildPlugin()],
   });
 
   const workRoot = mkdtempSync(join(tmpdir(), "zcode-sea-plugin-closure-"));
