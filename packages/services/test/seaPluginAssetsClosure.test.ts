@@ -153,6 +153,16 @@ test("官方插件 SEA 闭包：清单条目与权威定义逐项对齐（运行
   );
   const { definitions } = readBootstrapAuthorities();
 
+  // browser-client.mjs 是 browser-use 插件自身 build 的产物（插件 .gitignore 忽略，
+  // prepare:agent-bundle/bootstrap 走同一个构建入口产出）。definition 把它列为
+  // 必需种子路径，干净检出上未先构建时清单会缺它（CI 就是在这里失败）——
+  // build-sea 的真实流程同样先产出该产物再收集，这里与发布同一套 esbuild 选项。
+  const browserUsePluginRoot = join(cliWorkspaceRoot, "packages", "browser-use-plugin");
+  const { buildBrowserUsePluginBundles } = await import(
+    join(browserUsePluginRoot, "scripts", "build.mjs")
+  );
+  await buildBrowserUsePluginBundles();
+
   const workRoot = mkdtempSync(join(tmpdir(), "zcode-sea-plugin-closure-"));
   const payloadStaging = join(workRoot, "payloads");
   const pluginStaging = join(workRoot, "official-plugins");
