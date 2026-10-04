@@ -1267,7 +1267,7 @@ const enUS: Record<string, string> = {
   "update.toast.alreadyDownloading": "Downloading new version ({progress}%)",
   "update.toast.ready": "v{version} downloaded, restart to install",
   "update.toast.unsupportedPlatform":
-    "Auto-update isn't available on macOS: this release line doesn't publish macOS builds yet. Build new versions from the repo source locally (steps in the README).",
+    "Auto-update isn't available on macOS: download the unsigned installer from GitHub Releases (allow Gatekeeper on first launch).",
   "update.toast.devSkipped": "Updates are disabled in dev builds",
   "update.toast.error": "Update check failed: {error}",
   "forceUpdate.title": "Update ZCode to continue",

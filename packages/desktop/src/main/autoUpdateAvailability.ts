@@ -8,10 +8,11 @@
  * 与「判定真的被入口调用」两件事（见 packages/desktop/test/autoUpdateDarwinAvailability.test.ts
  * 与 autoUpdaterDarwinSkip.test.ts）。
  *
- * 背景（issue #2 症状二）：本发行线只发布 Linux 与 Windows 安装包（无 macOS 代码签名证书，
- * 见 docs/operations/release.md §平台支持），Release 里永不产生 latest-mac.yml。
- * macOS 正式包的 electron-updater 读 app-update.yml 走 github provider，请求必 404。
- * 方案 a：客户端在 darwin 正式包上显式跳过更新检查，用确定性提示替代 404 错误。
+ * 背景（issue #2 症状二）：发行线发布未签名 macOS 安装包（darwin x64 + arm64 的 dmg/zip，
+ * ad-hoc 签名、不公证，见 docs/operations/release.md §平台支持），electron-updater 在 macOS
+ * 保持关闭——未签名包不具备自动更新链路所需的签名校验基础。客户端在 darwin 正式包上显式
+ * 跳过更新检查（三条件：darwin + 打包态 + 未配置更新源覆盖），用确定性提示替代更新请求
+ * 失败噪音，引导用户从 GitHub Releases 手动下载新版本（见 136-darwin-auto-update-skip）。
  */
 
 /**
@@ -22,7 +23,7 @@
  * 2. 打包态（app.isPackaged）——开发态（ZCODE_AUTO_UPDATE_DEV）是本地 manifest 验证链路，
  *    保持可用（autoUpdater.ts 的 isDevSquirrelReadyError 等分支依赖它）；
  * 3. 未配置更新源覆盖——镜像 / 自建 feed 是另一种部署形态，其 manifest 是否提供 macOS 包
- *    由部署方决定，不由本发行线的缺失反推禁用（任务书要求保留自托管 feed 路径不变）。
+ *    由部署方决定，不由本发行线的签名策略反推禁用（保留自托管 feed 路径不变）。
  *
  * @param input.platform 进程平台，传 process.platform
  * @param input.isPackaged 是否打包态，传 app.isPackaged

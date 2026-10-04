@@ -47,7 +47,7 @@ test("正向：darwin 正式包且无更新源覆盖 ⇒ 跳过更新检查", ()
 
 test("豁免一：darwin 正式包配了更新源覆盖（自建 feed / 镜像） ⇒ 不跳过", () => {
   // 自托管 feed 是另一种部署形态，其 manifest 可能自行提供 macOS 包；
-  // 任务要求保留该路径行为不变，不由本发行线的缺失反推禁用。
+  // 该路径行为保持不变，不由本发行线的签名策略反推禁用。
   assert.equal(
     shouldSkipAutoUpdateCheckOnDarwinRelease({
       platform: "darwin",
@@ -103,12 +103,14 @@ test("契约：两个 locale 都有 update.toast.unsupportedPlatform 且文案�
   assert.ok((enUS["update.toast.unsupportedPlatform"] ?? "").length > 0);
 });
 
-test("文案护栏：确定性不支持，不含「失败 / 重试」措辞（否则会读成检查失败请重试）", () => {
+test("文案护栏：确定性不支持，不含「失败 / 重试」措辞，引导 GitHub Releases + Gatekeeper", () => {
   const zh = zhCN["update.toast.unsupportedPlatform"];
   const en = enUS["update.toast.unsupportedPlatform"];
   assert.ok(zh && !zh.includes("失败") && !zh.includes("重试"), `zh 文案误用失败/重试: ${zh}`);
   assert.ok(en && !/failed/i.test(en) && !/retry/i.test(en), `en 文案误用 failed/retry: ${en}`);
-  // 必须给出可操作引导（当前发行线不发 macOS 包 ⇒ 引导到源码本地构建）。
-  assert.ok(zh?.includes("本地构建"), "zh 文案必须引导到本地构建");
-  assert.ok(en?.includes("build") && /locally/i.test(en), "en 文案必须引导到本地构建");
+  // 必须给出可操作引导：发行线发布未签名 macOS 包 ⇒ 指向 GitHub Releases 下载并允许 Gatekeeper。
+  assert.ok(zh?.includes("GitHub Releases"), "zh 文案必须引导到 GitHub Releases");
+  assert.ok(zh?.includes("Gatekeeper"), "zh 文案必须提到 Gatekeeper");
+  assert.ok(en?.includes("GitHub Releases"), "en 文案必须引导到 GitHub Releases");
+  assert.ok(en?.includes("Gatekeeper"), "en 文案必须提到 Gatekeeper");
 });

@@ -65,9 +65,10 @@ let autoUpdaterSettingService: SettingServiceLike | undefined;
 // （占位 feed、autoDownload 默认值）。任何漏改成按身份判断的入口若仍调用手动检查，
 // 都会对占位 feed 发真实请求。这里记住“本 flavor 已禁用”，让手动检查在模块内部 fail-closed。
 let autoUpdaterDisabledForProductFlavor = false;
-// darwin 正式包（无更新源覆盖）不支持自动更新：release 不产 macOS 包（见 release.md 平台支持），
-// 任何更新检查都必然 404。initAutoUpdater 命中后置 true，手动检查与强更入口据此 fail-closed
-// （回传 unsupported-platform / dev-skipped，而不是把请求打到打不通的地址）。
+// darwin 正式包（无更新源覆盖）不支持自动更新：发行的 macOS 包为未签名（ad-hoc 签名、不公证），
+// electron-updater 在 macOS 保持关闭，新版本经 GitHub Releases 手动获取（spec 136）。
+// initAutoUpdater 命中后置 true，手动检查与强更入口据此 fail-closed
+// （回传 unsupported-platform / dev-skipped，而不是发更新请求）。
 let autoUpdateUnavailableOnDarwinRelease = false;
 
 type SettingServiceLike = Pick<ISettingService, "get" | "update">;
@@ -1557,11 +1558,13 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
   clearDownloadingUpdateState();
   applyDevAutoUpdateRuntimeOverrides();
 
-  // darwin 正式包（无更新源覆盖）：本发行线不发布 macOS 安装包，Release 里没有 latest-mac.yml，
-  // electron-updater 走 app-update.yml 的 github provider 必然 404（issue #2 症状二）。
-  // 这里显式跳过：不注册事件、不发起启动检查、不起轮询（用户每启动一次就少一轮 404 噪音）；
+  // darwin 正式包（无更新源覆盖）：发行的 macOS 包未签名（ad-hoc 签名、不公证），
+  // electron-updater 在 macOS 保持关闭——未签名包不具备自动更新链路所需的签名校验基础，
+  // 新版本经 GitHub Releases 手动获取（spec 136）。
+  // 这里显式跳过：不注册事件、不发起启动检查、不起轮询（用户每启动一次就少一轮无效请求）；
   // 手动检查入口回传 unsupported-platform（见 checkForUpdateMenuClick），由 renderer 展示
-  // 双语确定性提示「不支持自动更新，请手动下载」，与「检查失败请重试」严格区分。
+  // 双语确定性提示「不支持自动更新，请从 GitHub Releases 下载未签名安装包」，
+  // 与「检查失败请重试」严格区分。
   // 开发态（未打包）与更新源覆盖（镜像 / 自建 feed）不命中本分支：前者是本地 manifest 验证
   // 链路，后者是另一种部署形态，二者都保持原有行为。
   if (
@@ -1573,7 +1576,7 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
   ) {
     autoUpdateUnavailableOnDarwinRelease = true;
     logger.info(
-      "[auto-update] darwin release build: auto-update unsupported (this release line publishes no macOS builds yet), skipping update checks; build new versions from the repo source locally",
+      "[auto-update] darwin release build: auto-update unsupported (macOS builds are unsigned, ad-hoc signed and not notarized), skipping update checks; download the unsigned installer from GitHub Releases and allow Gatekeeper on first launch",
     );
     return;
   }

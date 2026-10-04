@@ -4,12 +4,15 @@
 
 ## 平台支持
 
-**Linux 与 Windows**。macOS 暂不发布（无代码签名证书，未签名包的用户体验代价过高）。
+**Linux、Windows 与 macOS**。macOS 发布**未签名**安装包：darwin x64 与 darwin arm64 各一份
+`.dmg` / `.zip`（`ZCode-CE-<版本>-darwin-<arch>.dmg`），在 mac runner 上 ad-hoc 签名
+（`codesign -f -s -`，无需 Apple 账号）、**不公证**；首次打开需用户允许 Gatekeeper
+（右键打开或 `xattr -dr com.apple.quarantine`，见 README「安装」一节）。
 
-macOS 客户端因此**不检查更新**：本发行线的 Release 没有 macOS 产物（无 `latest-mac.yml`），
-macOS 打包客户端对 GitHub provider 的请求必然 404。客户端在 darwin 打包态显式跳过更新检查
-（不发起请求、不报 404），菜单「检查更新」会给出确定性提示并引导手动从 GitHub Releases 下载
-新版本；开发态调试与配置了更新源覆盖（自建 feed / 镜像）的 macOS 部署不受此限制。设计与测试见
+macOS 客户端**不检查更新**：未签名包不具备自动更新链路所需的签名校验基础，electron-updater
+在 darwin 保持关闭。客户端在 darwin 打包态显式跳过更新检查（不发起请求、不报错），菜单
+「检查更新」会给出确定性提示并引导从 GitHub Releases 下载新版本；开发态调试与配置了更新源
+覆盖（自建 feed / 镜像）的 macOS 部署不受此限制。设计与测试见
 [136-darwin-auto-update-skip](../development/136-darwin-auto-update-skip.md)。
 
 ## 版本号
@@ -134,10 +137,12 @@ electron-builder 会为每个平台生成更新清单与差分块，**必须一�
 | ------- | ------------------ | ------------------------------------- |
 | Linux   | `latest-linux.yml` | `AppImage` / `deb` / `rpm` / `pacman` |
 | Windows | `latest.yml`       | `nsis`                                |
+| macOS   | `latest-mac.yml`   | `dmg` / `zip`                         |
 
-同时要上传对应的 `.blockmap`，否则差分下载退化为全量包。表中没有 macOS 行：本发行线不产
-macOS 安装包，客户端在 darwin 打包态直接跳过更新检查（见「平台支持」）。自建 feed 部署形态
-如自行提供 macOS 产物，则不受此限制（见下「更新源覆盖」）。
+同时要上传对应的 `.blockmap`，否则差分下载退化为全量包。macOS 的清单虽会随 mac job 上传，
+但**客户端不消费**：darwin 打包态直接跳过更新检查（见「平台支持」），自动更新只面向
+win/linux 正式包；两个 arch 的 mac job 顺序上传各自的 `latest-mac.yml`，后跑者覆盖先跑者。
+自建 feed 部署形态如自行提供 macOS 产物，则不受此限制（见下「更新源覆盖」）。
 
 Tag 采用 `v` 前缀（如
 `v3.14.1-ce.1`），与 electron-builder 的默认 `vPrefixedTagName` 一致。
@@ -461,12 +466,12 @@ Release 必须包含**安装包 + 更新清单 + 差分块**，三者缺一会�
 1. `git fetch upstream --tags`，算 fork 点与领先/落后（命令见台账的「基线」节）；
 2. 按区域做差异分析（协议族 → 能力 → 口吻），**结论先落 `.reverse/` 报告再改代码**；
 3. 把本版要跟的项写进 release notes 的「同步上游」，把全部项写进台账；
-4. **逆向时代的结论要回头复核**：有源码后逐条确认（本项目已因此订正两处 —— `AGENTS.md` 的"整块移除"与二维码"需新依赖"）。
+4. **逆向时代的结论要回头复核**：有源码后逐条确认（`AGENTS.md` 的"整块移除"口径与二维码"需新依赖"判定，均是有源码后逐条复核改写的）。
 
 ## 签名
 
-| 平台    | 状态                                                      |
-| ------- | --------------------------------------------------------- |
-| Linux   | 不需要签名                                                |
-| Windows | **无证书**，安装时会触发 SmartScreen 警告，需在文档中说明 |
-| macOS   | 不发布                                                    |
+| 平台    | 状态                                                                             |
+| ------- | -------------------------------------------------------------------------------- |
+| Linux   | 不需要签名                                                                       |
+| Windows | **无证书**，安装时会触发 SmartScreen 警告，需在文档中说明                        |
+| macOS   | **无证书**，ad-hoc 签名（`codesign -f -s -`）、不公证；首次打开需允许 Gatekeeper |
