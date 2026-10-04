@@ -49,10 +49,33 @@
  * 只放纯函数与浏览器侧小工具，不碰 React。服务事件订阅与能力声明在
  * `v4/ProviderRuntimeHeadersCaptchaAttachment.tsx`，判定/去重/应答编排在
  * `v4/providerRuntimeHeadersSolver.ts`。
+ *
+ * ## 移植官方 3.14.4：初始化卡死的显式分类（initialization_timeout）
+ *
+ * 官方 3.14.4 给验证码初始化阶段加了显式超时与分类（详见
+ * .reverse/99-v3144/UPDATE-ANALYSIS.md §2.3 C1/C2 与
+ * docs/development/130-start-plan-captcha-spec.md「移植官方 3.14.4」一节）：
+ * 初始化卡死时以「Captcha initialization timed out. Please restart the app or
+ * reload the page and try again.」显式失败并归为 initialization_timeout，
+ * 而不是让请求挂起到通用超时。
+ *
+ * CE 的移植形态（成功路径不变，只补失败分类，三段初始化等待各有既有 30s 上限）：
+ * - 宿主页方法就绪（waitForWebviewMethodsReady）、SDK 入口就绪（waitForCaptchaSdkReady）、
+ *   Web 主世界 SDK 加载（ensureAliyunCaptchaSdkLoaded）超时后统一归入
+ *   ManualClaimCaptchaFailureStage 的 initialization 阶段，并带官方可操作文案；
+ * - 此前这三处要么裸抛错误被编排器收敛成 verify（「挑战被拒」，分类错误），
+ *   要么塞进 sdk_load（「加载失败」，动作是查网络，与「重启或刷新」不匹配）。
+ *
+ * 官方的 initialization_drain（初始化期间排队的请求排空）不在此文件复刻：
+ * CE 的串行编排器（providerRuntimeHeadersSolver.ts）已保证请求排队逐个处理、
+ * 每个 requestId 都有应答，排空语义由既有机制覆盖。官方的 20 分钟新鲜度守卫
+ * 依赖其单例 initStartedAt 状态，CE 按 Document 重新加载 SDK、无持久 init 状态，
+ * 无对应物可守。
  */
 import type { ManualClaimCaptchaConfig } from "@zcode/shared";
 import {
   ALIYUN_CAPTCHA_SDK_URL,
+  CAPTCHA_INITIALIZATION_TIMEOUT_FAILURE_REASON,
   MANUAL_CLAIM_CAPTCHA_BUTTON_ID,
   MANUAL_CLAIM_CAPTCHA_ELEMENT_ID,
   RESOLVE_VERIFY_PARAM_SOURCE,
@@ -180,6 +203,21 @@ export function ensureAliyunCaptchaHostElements(doc: Document): { created: boole
 const sdkLoadPromises = new WeakMap<Document, Promise<void>>();
 
 /**
+ * SDK 加载超时：初始化阶段「卡死」的形态之一（官方 3.14.4 initialization_timeout 分类）。
+ *
+ * 与「加载失败」（网络错误 / CDN 拒绝 / 入口缺失）区分：失败是快速失败、归 sdk_load；
+ * 超时是悬挂、归 initialization（调用方据此给出「重启应用或刷新页面」的可操作文案）。
+ * 设为模块内错误类而不是裸 Error：solveCaptchaInBrowser 需要 instanceof 区分两种分类，
+ * 裸 Error 只能靠消息文本匹配，会在文案调整时静默退回旧分类。
+ */
+class CaptchaSdkLoadTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`AliyunCaptcha SDK load timeout after ${timeoutMs}ms`);
+    this.name = "CaptchaSdkLoadTimeoutError";
+  }
+}
+
+/**
  * 在 Web / 手机远控的主世界里按需加载阿里云验证码 SDK。
  *
  * 幂等：window.initAliyunCaptcha 已存在时直接返回；已插入但仍在加载的 script 会复用
@@ -205,7 +243,8 @@ export function ensureAliyunCaptchaSdkLoaded(
     script.async = true;
     let settled = false;
     const timer = setTimeout(() => {
-      finish(() => reject(new Error(`AliyunCaptcha SDK load timeout after ${timeoutMs}ms`)));
+      // 超时用专用类：卡死与失败在调用方分两类（见 CaptchaSdkLoadTimeoutError 的说明）。
+      finish(() => reject(new CaptchaSdkLoadTimeoutError(timeoutMs)));
     }, timeoutMs);
     const finish = (settle: () => void) => {
       if (settled) return;
@@ -281,10 +320,33 @@ export async function solveCaptchaInBrowser(options: {
   timeoutMs: number;
   doc: Document;
   evaluate?: (source: string) => unknown;
+  /**
+   * SDK 加载超时上限（默认 SDK_LOAD_TIMEOUT_MS）。
+   * 注入点：单测据此快速复现「初始化卡死」，不必等 30s 真超时。
+   */
+  sdkLoadTimeoutMs?: number;
 }): Promise<ManualClaimCaptchaMessage | null> {
   const { doc } = options;
   ensureAliyunCaptchaHostElements(doc);
-  await ensureAliyunCaptchaSdkLoaded(doc);
+  try {
+    await ensureAliyunCaptchaSdkLoaded(doc, options.sdkLoadTimeoutMs ?? SDK_LOAD_TIMEOUT_MS);
+  } catch (error) {
+    // 官方 3.14.4 initialization_timeout 移植：把初始化阶段的失败分两类 ——
+    // 超时（卡死）归 initialization 并带官方可操作文案；加载失败 / 入口缺失（快速失败）
+    // 归 sdk_load 并保留原始原因（查网络 / CDN）。此前两者都裸抛，被编排器统一收敛成
+    // verify（「挑战被拒」），既分类错误也没有可操作文案。
+    return error instanceof CaptchaSdkLoadTimeoutError
+      ? {
+          kind: "fail",
+          stage: "initialization",
+          reason: CAPTCHA_INITIALIZATION_TIMEOUT_FAILURE_REASON,
+        }
+      : {
+          kind: "fail",
+          stage: "sdk_load",
+          reason: error instanceof Error ? error.message : String(error),
+        };
+  }
   const expression = buildManualClaimCaptchaSolveExpression({
     config: options.config,
     timeoutMs: options.timeoutMs,
@@ -334,6 +396,15 @@ export async function solveCaptchaInWebview(options: {
   ensureHostPageReady?: (url: string) => Promise<void>;
   /** 注入点：默认用元素的 executeJavaScript。 */
   execute?: (code: string, userGesture?: boolean) => Promise<unknown>;
+  /**
+   * 宿主页方法可用的上限（默认 WEBVIEW_READY_TIMEOUT_MS）。
+   * 注入点：单测据此快速复现「初始化卡死」，不必等 30s 真超时。
+   */
+  webviewReadyTimeoutMs?: number;
+  /**
+   * SDK 入口就绪轮询的上限（默认 SDK_LOAD_TIMEOUT_MS）。注入点：同上。
+   */
+  sdkReadyTimeoutMs?: number;
 }): Promise<ManualClaimCaptchaMessage | null> {
   const { element } = options;
   if (!isManualClaimCaptchaWebviewSupported(element)) {
@@ -346,12 +417,35 @@ export async function solveCaptchaInWebview(options: {
   const ensureHostPageReady =
     options.ensureHostPageReady ??
     (async () => {
-      await waitForWebviewMethodsReady(execute);
+      await waitForWebviewMethodsReady(
+        execute,
+        options.webviewReadyTimeoutMs ?? WEBVIEW_READY_TIMEOUT_MS,
+      );
     });
-  await ensureHostPageReady(buildManualClaimCaptchaHostPageUrl({ lang: options.locale }));
-  const ready = await waitForCaptchaSdkReady(execute);
+  try {
+    await ensureHostPageReady(buildManualClaimCaptchaHostPageUrl({ lang: options.locale }));
+  } catch {
+    // 官方 3.14.4 initialization_timeout 移植：宿主页就绪属于初始化阶段，任何原因的失败
+    // 都归 initialization + 官方可操作文案（重启应用或刷新页面），而不是裸抛错误被
+    // 编排器收敛成 verify（「挑战被拒」）—— 那个分类会让用户去重新验证一个根本没弹出的挑战。
+    return {
+      kind: "fail",
+      stage: "initialization",
+      reason: CAPTCHA_INITIALIZATION_TIMEOUT_FAILURE_REASON,
+    };
+  }
+  const ready = await waitForCaptchaSdkReady(
+    execute,
+    options.sdkReadyTimeoutMs ?? SDK_LOAD_TIMEOUT_MS,
+  );
   if (!ready) {
-    return { kind: "fail", stage: "sdk_load", reason: "sdk_ready_timeout" };
+    // 官方 3.14.4 initialization_timeout 移植：SDK 入口在宿主页内一直未就绪属于初始化卡死，
+    // 归 initialization（此前塞进 sdk_load，但这一档的动作是「重启或刷新」而不是「查网络」）。
+    return {
+      kind: "fail",
+      stage: "initialization",
+      reason: CAPTCHA_INITIALIZATION_TIMEOUT_FAILURE_REASON,
+    };
   }
   const raw = await execute(
     buildManualClaimCaptchaSolveScript({ config: options.config, timeoutMs: options.timeoutMs }),

@@ -140,15 +140,15 @@ CE 侧已有的 `manualClaimCaptchaPage.ts` 头注释（`:1-30`）已经把这�
 
 ### 4.3 现有可复用资产盘点（CE 自有，无许可问题）
 
-| 资产                                                                                                            | 位置                                                                          | 可复用性                                                                       |
-| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| 宿主页 HTML + `data:` URL 构造（纯函数）                                                                        | `packages/ui/src/settings/manualClaimCaptchaPage.ts:92-118`                   | **可直接复用**                                                                 |
-| 求解注入脚本（纯函数，含 `AliyunCaptchaConfig`→`initAliyunCaptcha`→`getInstance`→`startTracelessVerification`） | 同文件 `:184-252`                                                             | **可直接复用**                                                                 |
-| verifyParam 归一化（4 种 SDK 回调形态 + ≥200 字符下限）                                                         | 同文件 `:164,261-310`                                                         | **可直接复用**                                                                 |
-| 结果解析 / 失败阶段枚举（`sdk_load`/`init`/`start`/`verify`/`timeout`/`unsupported`）                           | 同文件 `:55-72,314-371`                                                       | **可直接复用**                                                                 |
-| webview 能力探测                                                                                                | 同文件 `:365-371`                                                             | 可复用                                                                         |
-| 配置拉取 + 60s 快照 + 稳定错误码                                                                                | `packages/services/src/coding-plan-subscription/manualClaimCaptcha.ts:77-149` | **可直接复用**（但它挂在 subscription service 上，模型请求链路要另取一份入口） |
-| 对话框组件（webview 生命周期、dom-ready 轮询、重试 key、卸载清理）                                              | `packages/ui/src/settings/ManualClaimCaptchaDialog.tsx:84-304`                | **不可直接复用**，见 §5                                                        |
+| 资产                                                                                                            | 位置                                                                                             | 可复用性                                                                       |
+| --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| 宿主页 HTML + `data:` URL 构造（纯函数）                                                                        | `packages/ui/src/settings/manualClaimCaptchaPage.ts:92-118`                                      | **可直接复用**                                                                 |
+| 求解注入脚本（纯函数，含 `AliyunCaptchaConfig`→`initAliyunCaptcha`→`getInstance`→`startTracelessVerification`） | 同文件 `:184-252`                                                                                | **可直接复用**                                                                 |
+| verifyParam 归一化（4 种 SDK 回调形态 + ≥200 字符下限）                                                         | 同文件 `:164,261-310`                                                                            | **可直接复用**                                                                 |
+| 结果解析 / 失败阶段枚举（`sdk_load`/`init`/`start`/`verify`/`timeout`/`initialization`/`unsupported`）          | 同文件 `:92-115,368-405`（`initialization` 为 3.14.4-ce.1 新增，见 130-spec「移植官方 3.14.4」） | **可直接复用**                                                                 |
+| webview 能力探测                                                                                                | 同文件 `:365-371`                                                                                | 可复用                                                                         |
+| 配置拉取 + 60s 快照 + 稳定错误码                                                                                | `packages/services/src/coding-plan-subscription/manualClaimCaptcha.ts:77-149`                    | **可直接复用**（但它挂在 subscription service 上，模型请求链路要另取一份入口） |
+| 对话框组件（webview 生命周期、dom-ready 轮询、重试 key、卸载清理）                                              | `packages/ui/src/settings/ManualClaimCaptchaDialog.tsx:84-304`                                   | **不可直接复用**，见 §5                                                        |
 
 ---
 

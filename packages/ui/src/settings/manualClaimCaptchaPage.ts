@@ -51,6 +51,35 @@ export const ALIYUN_CAPTCHA_SDK_URL =
 export const MANUAL_CLAIM_CAPTCHA_ELEMENT_ID = "zcode-manual-claim-captcha";
 export const MANUAL_CLAIM_CAPTCHA_BUTTON_ID = "zcode-manual-claim-captcha-button";
 
+/**
+ * 初始化超时的失败分类 token（逐字对齐官方 3.14.4 的 initialization_timeout 分类，见
+ * .reverse/99-v3144/UPDATE-ANALYSIS.md §2.3 C1/C2）。
+ *
+ * 官方在渲染层把以「Captcha initialization timed out.」开头的错误归为 initialization_timeout；
+ * CE 的分类走结构化字段（ManualClaimCaptchaFailureStage 的 initialization），这个 token 只作为
+ * reason 的前缀出现在日志与协议 errorMessage 里，保持「机器可 grep、用户可读」。
+ */
+export const CAPTCHA_INITIALIZATION_TIMEOUT_REASON = "initialization_timeout";
+
+/**
+ * 初始化超时的可操作文案（官方 3.14.4 逐字文案）。
+ *
+ * 初始化卡死通常是宿主环境问题（webview 未完成 attach、CDN 被拦、SDK 内部卡住），
+ * 用户侧唯一有效的动作就是重启应用或刷新页面 —— 文案必须直接给出这个动作，
+ * 而不是只报一个超时让用户无从下手。
+ */
+export const CAPTCHA_INITIALIZATION_TIMEOUT_MESSAGE =
+  "Captcha initialization timed out. Please restart the app or reload the page and try again.";
+
+/**
+ * 初始化超时失败的完整 reason：分类 token + 官方可操作文案。
+ *
+ * 这一段会原样流入 claim 对话框的失败详情与 v4 平面的协议 errorMessage
+ * （`${failureStage}: `${reason} 形式），因此它就是用户最终看到的可操作提示。
+ */
+export const CAPTCHA_INITIALIZATION_TIMEOUT_FAILURE_REASON =
+  CAPTCHA_INITIALIZATION_TIMEOUT_REASON + ": " + CAPTCHA_INITIALIZATION_TIMEOUT_MESSAGE;
+
 /** 求解结果消息：成功带 verifyParam，失败带可归因的阶段与原因。 */
 export type ManualClaimCaptchaMessage =
   | { kind: "success"; verifyParam: string; region: string }
@@ -66,6 +95,17 @@ export type ManualClaimCaptchaFailureStage =
   | "start"
   | "verify"
   | "timeout"
+  /**
+   * 初始化阶段卡死：宿主页方法、SDK 加载或 SDK 入口在限定时间内未就绪
+   * （官方 3.14.4 的 initialization_timeout 分类，见 CAPTCHA_INITIALIZATION_TIMEOUT_REASON）。
+   *
+   * 与其它阶段的可操作动作不同：
+   * - sdk_load 是「加载失败」（查网络 / CDN），init 是「初始化调用抛错」（查配置）；
+   * - initialization 是「初始化链路卡死」，通常是宿主环境问题（webview 未完成 attach、
+   *   脚本被 CSP 拦截、SDK 内部卡住），用户侧有效动作是重启应用或刷新页面
+   *   （即 CAPTCHA_INITIALIZATION_TIMEOUT_MESSAGE 的官方文案）。
+   */
+  | "initialization"
   /**
    * 当前宿主没有可用的 `<webview>`（手机 Web / 普通 Web 构建没有 Electron webviewTag）。
    * 与 "sdk_load" 区分开：这一档重试没有意义，UI 必须给出「改用桌面版」这类不同指引。
@@ -363,6 +403,7 @@ function normalizeFailureStage(value: unknown): ManualClaimCaptchaFailureStage {
     value === "start" ||
     value === "verify" ||
     value === "timeout" ||
+    value === "initialization" ||
     value === "unsupported"
     ? value
     : "verify";

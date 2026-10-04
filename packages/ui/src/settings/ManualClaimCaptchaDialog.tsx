@@ -55,6 +55,7 @@ import {
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import {
+  CAPTCHA_INITIALIZATION_TIMEOUT_FAILURE_REASON,
   buildManualClaimCaptchaHostPageUrl,
   buildManualClaimCaptchaSolveScript,
   isManualClaimCaptchaWebviewSupported,
@@ -195,7 +196,11 @@ export function ManualClaimCaptchaDialog({
                 return;
               }
               if (Date.now() >= deadline) {
-                handleFailure("sdk_load", "sdk_ready_timeout");
+                // 官方 3.14.4 initialization_timeout 移植：SDK 入口一直未就绪属于初始化卡死，
+                // 归 initialization 并带官方可操作文案（与 v4 平面 solveCaptchaInWebview 同分类，
+                // 两平面共用 stage 枚举，同现象同分类）。did-fail-load / render-process-gone
+                // 仍是 sdk_load：那是明确的加载失败，动作是查网络，不是重启或刷新。
+                handleFailure("initialization", CAPTCHA_INITIALIZATION_TIMEOUT_FAILURE_REASON);
                 return;
               }
               setTimeout(poll, SDK_READY_POLL_INTERVAL_MS);

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ALIYUN_CAPTCHA_SDK_URL,
+  CAPTCHA_INITIALIZATION_TIMEOUT_FAILURE_REASON,
   MANUAL_CLAIM_CAPTCHA_BUTTON_ID,
   MANUAL_CLAIM_CAPTCHA_ELEMENT_ID,
   MIN_VERIFY_PARAM_LENGTH,
@@ -245,4 +246,25 @@ test("unsupported 是独立失败阶段，不会被收敛成 verify", () => {
   // 与 sdk_load 区分：unsupported 重试无意义，UI 要给「改用桌面版」而不是「重试」。
   const parsed = parseManualClaimCaptchaMessage({ kind: "fail", stage: "unsupported" });
   assert.deepEqual(parsed, { kind: "fail", stage: "unsupported", reason: "" });
+});
+
+test("initialization 是独立失败阶段（官方 3.14.4 initialization_timeout 移植）", () => {
+  // 初始化卡死的动作是「重启应用或刷新页面」，与 sdk_load（查网络）、verify（重新验证）
+  // 都不同 —— 归一化必须原样透传，不能回落 verify。
+  const parsed = parseManualClaimCaptchaMessage({
+    kind: "fail",
+    stage: "initialization",
+    reason: CAPTCHA_INITIALIZATION_TIMEOUT_FAILURE_REASON,
+  });
+  assert.deepEqual(parsed, {
+    kind: "fail",
+    stage: "initialization",
+    reason: CAPTCHA_INITIALIZATION_TIMEOUT_FAILURE_REASON,
+  });
+  // 跨边界回来一个 UI 不认识的 stage 时仍回落 verify（既有口径不变）。
+  assert.deepEqual(parseManualClaimCaptchaMessage({ kind: "fail", stage: "bogus2" }), {
+    kind: "fail",
+    stage: "verify",
+    reason: "",
+  });
 });
