@@ -174,6 +174,50 @@ ${tail}`;
 }
 
 /**
+ * 输入工作表的打印设置基准：故意非默认（landscape / scale 90 / fitToHeight 0 /
+ * 自定义页边距）。两点作用：① 忠实的 exceljs load→edit→save 会原样保留它（本地探针
+ * 实测字符串相等），② 模型若重建工作表则退回库默认（portrait/100/0.7 边距）必散——
+ * 打印指纹断言因此既有可达性又有牙齿。
+ */
+export const TARGET_PRINT_SETUP = Object.freeze({
+  orientation: "landscape",
+  scale: 90,
+  fitToPage: true,
+  fitToWidth: 1,
+  fitToHeight: 0,
+  paperSize: 9,
+  margins: Object.freeze({
+    left: 0.5,
+    right: 0.5,
+    top: 0.5,
+    bottom: 0.5,
+    header: 0.2,
+    footer: 0.2,
+  }),
+});
+
+/**
+ * 打印指纹：只比对 exceljs round-trip 稳定、且重建会丢失的策展字段。
+ * 不比 useFirstPageNumber/firstPageNumber/cellComments 等库内部位——
+ * 它们随 exceljs 自身 load→save 翻转（CI 首次真跑 37193521331 的失败正是这一位），
+ * 与模型是否改动打印设置无关。
+ */
+export function printFingerprint(workbook) {
+  const sheet = workbook.getWorksheet("Revenue");
+  const pageSetup = sheet.pageSetup ?? {};
+  const margins = sheet.pageMargins ?? pageSetup.margins ?? {};
+  return JSON.stringify({
+    orientation: pageSetup.orientation,
+    scale: pageSetup.scale,
+    fitToPage: pageSetup.fitToPage,
+    fitToWidth: pageSetup.fitToWidth,
+    fitToHeight: pageSetup.fitToHeight,
+    paperSize: pageSetup.paperSize,
+    margins,
+  });
+}
+
+/**
  * PNG 是否全透明（RGBA 全零）。只解析本套夹具生成的 filter 0 + RGBA8 形态——
  * 这是夹具自检，不是通用 PNG 解码器。
  */
@@ -250,6 +294,12 @@ export async function prepareBlankRenderWorkspace(input) {
   sheet.getCell("B3").value = 18;
   const notes = workbook.addWorksheet("Notes");
   notes.getCell("A1").value = "Preserve this note";
+  // 故意给 Revenue 一套非默认打印设置：打印指纹必须比一个「重建新表必然丢失」的值，
+  // 而不是比 exceljs 自己的 round-trip 会翻转的库内部位（实测：load→save 会把
+  // useFirstPageNumber:false→true 注入 firstPageNumber=1，与模型行为无关）。
+  // exceljs 4.4：页边距挂在 pageSetup.margins 上（pageMargins 此时为 undefined），
+  // 直接整体赋 pageSetup 即可；printFingerprint 两种取法都兼容。
+  Object.assign(sheet.pageSetup, TARGET_PRINT_SETUP);
   const inputPath = join(tempDir, "input.xlsx");
   await workbook.xlsx.writeFile(inputPath);
   const providerConfigPath = join(tempDir, "provider-config.json");

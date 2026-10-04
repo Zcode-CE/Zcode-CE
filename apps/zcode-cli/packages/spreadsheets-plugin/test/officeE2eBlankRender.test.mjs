@@ -46,7 +46,9 @@ import {
   packageRoot,
   parseStreamJsonLines,
   prepareBlankRenderWorkspace,
+  printFingerprint,
   summarizeEventsForFailure,
+  TARGET_PRINT_SETUP,
   readFixtureCalls,
   removeWorkspace,
   runHeadlessAgent,
@@ -188,6 +190,32 @@ test(
       const calls = await readFixtureCalls(ws.binDir);
       assert.ok(calls.some((call) => call.tool === "soffice" && call.status === 0));
       assert.ok(calls.some((call) => call.tool === "pdftoppm" && call.status === 0 && call.probe !== true));
+
+      // 打印指纹断言的可达性锁（keyless 也锁住这条契约）：
+      // ① 忠实的 exceljs load→edit→save 必须原样保留输入的打印指纹——否则 with-key 流
+      //    的断言在强人所难（可达性）；
+      // ② 重建新表（不应用 TARGET_PRINT_SETUP）必须与之不同——否则断言没牙齿（区分性）。
+      const exceljsLocal = (await import("exceljs")).default;
+      const sourceBook = new exceljsLocal.Workbook();
+      await sourceBook.xlsx.readFile(ws.inputPath);
+      const faithfulPath = join(ws.tempDir, "faithful.xlsx");
+      const faithfulBook = new exceljsLocal.Workbook();
+      await faithfulBook.xlsx.readFile(ws.inputPath);
+      await faithfulBook.xlsx.writeFile(faithfulPath);
+      const reparsed = new exceljsLocal.Workbook();
+      await reparsed.xlsx.readFile(faithfulPath);
+      assert.equal(
+        printFingerprint(reparsed),
+        printFingerprint(sourceBook),
+        "忠实的 exceljs round-trip 必须保留输入的打印指纹（with-key 的指纹断言必须可达）",
+      );
+      const rebuilt = new exceljsLocal.Workbook();
+      rebuilt.addWorksheet("Revenue");
+      assert.notEqual(
+        printFingerprint(rebuilt),
+        printFingerprint(sourceBook),
+        "重建新表不得与输入的打印指纹相同（否则模型重建工作表时抓不到）",
+      );
     } finally {
       await removeWorkspace(ws.tempDir);
     }
@@ -290,18 +318,10 @@ ${run.stdout.slice(-800)}`,
       assert.equal(revenue.getCell("B3").value, 18, "数据被改动");
       assert.ok(revenue.getColumn("A").width > 5, "A 列未按请求加宽");
       assert.ok(revenue.getColumn("B").width > 5, "B 列未按请求加宽");
-      const printFingerprint = (workbook) => {
-        const sheet = workbook.getWorksheet("Revenue");
-        return JSON.stringify({
-          pageSetup: sheet.pageSetup,
-          pageMargins: sheet.pageMargins,
-          printArea: sheet.printArea,
-        });
-      };
       assert.equal(
         printFingerprint(result),
         printFingerprint(source),
-        "模型改动了未被请求的打印设置",
+        "模型改动了未被请求的打印设置（策展指纹明细见上下文两端）",
       );
 
       // 行为契约：加载技能、跑校验器。

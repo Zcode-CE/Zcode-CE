@@ -88,6 +88,7 @@ with-key 流（`e2e-real-api` job）：
 - 假渲染器夹具自检：PDF 头 `%PDF-`、PNG 全透明（RGBA 全零，含 zlib 解压复核）、JPEG 头尾魔数、`-v` 探测、`calls.jsonl` 记录。
 - 真实回路**骨架**（假 key）：全链跑通到外部 API 返回 401 → `turn.failed`。实测确认：personal provider 配置可被 `decodeProviderConfigFile` 解码、默认模型选择生效、插件 seed 落在隔离 `HOME/.zcode/cli/plugins/cache/...`（spreadsheets/0.1.7 含 `scripts/office-capabilities.mjs` 与 `skills/xlsx/`）、stream-json 行可解析、`--mode yolo` 下回路可达模型请求。
 - 回答来源（CI 首次真跑 run 37191195274 的失败定位）：回合在 30.9s 内正常结束（exitCode 0、turn.completed 存在），但 `message.upserted` 一条都没有——**不是超时**：runHeadlessAgent 的等待按进程退出而非定时，30.9s 只是真实回合的耗时。最终回答来自 `turn.completed.payload.response`，已落实为 collector 回退 + keyless 单测 + 失败诊断 dump。
+- 打印指纹的策展边界（CI 真跑 run 37193521331 的失败定位）：原断言整对象比对 pageSetup，而 exceljs 自身的 load→save（零改动）就会把 useFirstPageNumber:false→true 并注入 firstPageNumber=1——这一位是库的写入噪音，与模型行为无关（测试缺陷，非产品发现）。修法：输入工作表带一套故意非默认的打印设置（landscape/scale 90/fitToHeight 0/自定义页边距，见 TARGET_PRINT_SETUP），指纹只比对 round-trip 稳定且重建必丢的策展字段（printFingerprint），并配 keyless 可达性锁：忠实 round-trip 必过、重建新表必散。
 
 **未执行**：with-key 真实模型回合（本机无 `ZCODE_E2E_API_KEY`，按任务要求如实记录为「keyless 流已验证、with-key 流未执行」）。首次配置 secret 后的第一次可信事件运行即首次真跑。
 
