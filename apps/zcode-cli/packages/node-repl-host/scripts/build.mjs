@@ -41,6 +41,9 @@ const resolveCuaHelperBuildId = (env = process.env) =>
 export const buildNodeReplHostBundle = async ({
   outfile = resolve(packageRoot, "dist", "mcp", "server.js"),
   cuaHelperBuildId = resolveCuaHelperBuildId(),
+  // 可选的 esbuild 插件：测试在未构建 apps/zcode-cli 工作区包的环境里跑（CI 的
+  // verify 作业不产 dist），调用方据此把 @zcode/* 重定向到源码；真实构建流程不传。
+  esbuildPlugins,
 } = {}) => {
   await mkdir(dirname(outfile), { recursive: true });
   await build({
@@ -55,6 +58,7 @@ export const buildNodeReplHostBundle = async ({
     outfile,
     platform: "node",
     target: "node24",
+    ...(esbuildPlugins ? { plugins: esbuildPlugins } : {}),
   });
   // 构建期守卫：define 名一旦漂移（改名、被 createSharedDefines 之类重构吞掉），
   // 产物会静默退回空串，而症状只在正式包出现且表现为超时。这里立刻失败，别再让它溜到用户手上。

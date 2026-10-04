@@ -170,6 +170,14 @@ test("官方插件 SEA 闭包：清单条目与权威定义逐项对齐（运行
   await buildBrowserUsePluginBundles({
     esbuildPlugins: [createZcodeSourceEsbuildPlugin()],
   });
+  // node-repl-host 的 dist/mcp/server.js 同理：definition 把它列为必需种子路径，
+  // 一样是 esbuild 现场产物（真实流程由工作区构建产出）。用同一个构建入口+插件
+  // 产出，cuaHelperBuildId 走 dev 默认空串（不触发 fail-closed 守卫）。
+  const nodeReplHostRoot = join(cliWorkspaceRoot, "packages", "node-repl-host");
+  const { buildNodeReplHostBundle } = await import(join(nodeReplHostRoot, "scripts", "build.mjs"));
+  await buildNodeReplHostBundle({
+    esbuildPlugins: [createZcodeSourceEsbuildPlugin()],
+  });
 
   const workRoot = mkdtempSync(join(tmpdir(), "zcode-sea-plugin-closure-"));
   const payloadStaging = join(workRoot, "payloads");
