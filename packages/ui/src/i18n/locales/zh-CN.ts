@@ -6821,6 +6821,13 @@ const zhCN: Record<string, string> = {
   "bots.unbindSuccess": "机器人已解绑",
   "bots.unbindFailed": "解绑机器人失败：{error}",
   "bots.deleteFailed": "删除机器人失败：{error}",
+  "intranetProbe.consent.title": "确认内网探测目标",
+  "intranetProbe.consent.description":
+    "即将对以下目标发起内网探测（TCP 连接），请确认：\n{targets}",
+  "intranetProbe.consent.confirm": "确认探测",
+  "intranetProbe.error.consentDeclined": "内网探测已取消：未确认的目标不会被探测。",
+  "intranetProbe.error.consentQueryFailed": "查询内网探测授权状态失败。",
+  "intranetProbe.error.consentRecordFailed": "记录内网探测授权失败。",
 };
 
 export default zhCN;

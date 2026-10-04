@@ -9,6 +9,9 @@ import type {
   SystemInfo,
 } from "@zcode/shared";
 import { logger } from "@/logger.js";
+import { useConfirmDialog } from "./useConfirmDialog.js";
+import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { ensureIntranetProbeTcpConsent } from "./intranetProbeConsent.js";
 import { useServices } from "./useServices.js";
 
 const DEFAULT_PROBE_TIMEOUT_MS = 800;
@@ -140,6 +143,8 @@ export function useIntranetProbe(
   options: UseIntranetProbeOptions = {},
 ) {
   const { systemService } = useServices();
+  const requestConfirmation = useConfirmDialog();
+  const { intl } = useZCodeIntl();
   const [result, setResult] = useState<IntranetProbeResult | null>(null);
   const [probing, setProbing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -161,6 +166,24 @@ export function useIntranetProbe(
       setResult(null);
       setProbing(false);
       setError(null);
+      return null;
+    }
+
+    // S3：tcp target 在发起探测前必须逐目标确认（弹窗显示真实 host:port）；
+    // 服务端记录授权后同一 host:port 可复用，换目标重新确认。这里只做门控——
+    // 即便客户端跳过此门，服务端也会拒绝未确认的目标（纵深防护）。
+    // 注意弹窗期间允许更新的探测取代本次（runId 守卫依旧生效）。
+    const consent = await ensureIntranetProbeTcpConsent(latestRequest, {
+      systemService,
+      requestConfirmation,
+      formatMessage: intl.formatMessage,
+    });
+    if (!consent.ok) {
+      if (!shouldApplyIntranetProbeRunResult(runId, latestProbeRunIdRef.current)) {
+        return null;
+      }
+      setError(consent.error);
+      logger.warn("[IntranetProbe] 内网探测目标未确认或授权失败", consent.error);
       return null;
     }
 
@@ -187,7 +210,7 @@ export function useIntranetProbe(
         setProbing(false);
       }
     }
-  }, [enabled, systemService]);
+  }, [enabled, intl, requestConfirmation, systemService]);
 
   useEffect(() => {
     if (!autoProbe) {

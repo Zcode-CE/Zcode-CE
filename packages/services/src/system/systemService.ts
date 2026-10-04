@@ -6,44 +6,35 @@ import type {
   IntranetProbeResult,
   IntranetProbeServiceResponse,
   IntranetProbeServiceTarget,
-  IntranetProbeServiceTargetResult,
   IntranetProbeTarget,
   IntranetProbeTcpTarget,
-  IntranetProbeTcpTargetResult,
   SystemInfo,
 } from "@zcode/shared";
+import { BotAttachmentUrlRejectedError } from "../bots/attachmentUrlGuard.js";
 import type { ISystemService } from "./system.js";
+import {
+  createIntranetProbeTcpConsentStore,
+  type IntranetProbeTcpConsentStore,
+  type IntranetProbeTcpTargetConsentRequest,
+  type IntranetProbeTcpTargetConsentResult,
+} from "./intranetProbeConsent.js";
+import {
+  fetchIntranetProbeServiceBytes,
+  resolveProbeStrategy,
+  runIntranetProbeTarget,
+  type NormalizedProbeTarget,
+  type NormalizedServiceProbeTarget,
+  type NormalizedTarget,
+  type ServiceProbeParams,
+  type ServiceProbeResult,
+  type TcpProbeParams,
+} from "./probeTargetPolicy.js";
 import { listIntegratedTerminalShellOptions } from "./integratedTerminalShells.js";
 
 const DEFAULT_PROBE_TIMEOUT_MS = 800;
 const DEFAULT_PROBE_ATTEMPTS = 2;
 const MAX_PROBE_ATTEMPTS = 3;
 const DEFAULT_PROBE_PORT = 22;
-
-interface NormalizedProbeTarget {
-  kind: "tcp";
-  targetId: string;
-  host: string;
-  port: number;
-  timeoutMs: number;
-}
-
-interface NormalizedServiceProbeTarget {
-  kind: "service";
-  targetId: string;
-  url: string;
-  expectedMarker?: string;
-  token?: string;
-  timeoutMs: number;
-}
-
-type NormalizedTarget = NormalizedProbeTarget | NormalizedServiceProbeTarget;
-
-interface TcpProbeParams {
-  host: string;
-  port: number;
-  timeoutMs: number;
-}
 
 interface CreateSystemServiceOptions {
   env?: NodeJS.ProcessEnv;
@@ -52,17 +43,8 @@ interface CreateSystemServiceOptions {
   tcpProbe?: (params: TcpProbeParams) => Promise<number>;
   serviceProbe?: (params: ServiceProbeParams) => Promise<ServiceProbeResult>;
   now?: () => number;
-}
-
-interface ServiceProbeParams {
-  url: string;
-  timeoutMs: number;
-  token?: string;
-}
-
-interface ServiceProbeResult {
-  latencyMs: number;
-  marker?: string;
+  /** tcp 探测确认记录存储（S3）；缺省在服务实例内新建一个内存实现。 */
+  tcpConsentStore?: IntranetProbeTcpConsentStore;
 }
 
 function normalizeProbeAttempts(attempts: number | undefined): number {
@@ -157,46 +139,6 @@ function normalizeProbeTarget(target: IntranetProbeTarget): NormalizedTarget | n
   return normalizeTcpTarget(target);
 }
 
-async function runProbeWithRetry(
-  target: NormalizedProbeTarget,
-  attempts: number,
-  tcpProbe: (params: TcpProbeParams) => Promise<number>,
-): Promise<IntranetProbeTcpTargetResult> {
-  let lastError = "";
-
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    try {
-      const latencyMs = await tcpProbe({
-        host: target.host,
-        port: target.port,
-        timeoutMs: target.timeoutMs,
-      });
-      return {
-        targetId: target.targetId,
-        kind: "tcp",
-        host: target.host,
-        port: target.port,
-        reachable: true,
-        attemptCount: attempt,
-        latencyMs,
-      };
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
-    }
-  }
-
-  return {
-    targetId: target.targetId,
-    kind: "tcp",
-    host: target.host,
-    port: target.port,
-    reachable: false,
-    attemptCount: attempts,
-    latencyMs: null,
-    error: lastError || "probe failed",
-  };
-}
-
 function parseProbeServiceResponse(payload: unknown): IntranetProbeServiceResponse {
   if (!payload || typeof payload !== "object") {
     throw new Error("invalid service response");
@@ -218,22 +160,28 @@ function parseProbeServiceResponse(payload: unknown): IntranetProbeServiceRespon
   return response;
 }
 
+/**
+ * 默认 service 探测实现（S3）：service target 的服务端 fetch 走与 bot 附件同一套
+ * SSRF 加固——只公网、连接期 DNS pin、不跟随重定向（每跳重新判定）。service
+ * target 的 URL 由调用方直接提供且响应 marker 会被读回，是比 tcp-connect 更强
+ * 的信息外泄通道，因此判据收窄到公网；「探内网」的判定由 tcp target（每目标
+ * 显式确认）承担。token 请求头经 fetchIntranetProbeServiceBytes 随请求发出
+ * （每跳重定向都重新携带）；判据优先级不变：私网/回环一律拒绝，除非放行项登记。
+ */
 async function probeServiceEndpoint(params: ServiceProbeParams): Promise<ServiceProbeResult> {
   const startedAt = Date.now();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), params.timeoutMs);
 
   try {
-    const response = await fetch(params.url, {
-      method: "GET",
-      headers: params.token ? { "x-zcode-intranet-token": params.token } : undefined,
+    const { bytes, status } = await fetchIntranetProbeServiceBytes(params.url, {
       signal: controller.signal,
+      headers: params.token ? { "x-zcode-intranet-token": params.token } : undefined,
     });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    if (status < 200 || status >= 300) {
+      throw new Error(`HTTP ${status}`);
     }
-
-    const responseBody = parseProbeServiceResponse(await response.json());
+    const responseBody = parseProbeServiceResponse(JSON.parse(new TextDecoder().decode(bytes)));
     if (!responseBody.ok) {
       throw new Error("service returned ok=false");
     }
@@ -246,66 +194,16 @@ async function probeServiceEndpoint(params: ServiceProbeParams): Promise<Service
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error(`timeout(${params.timeoutMs}ms)`);
     }
+    // 判据拒绝（blocked_address / invalid_url / redirect_not_allowed；可能来自
+    // choke point 之后的任何一跳，含重定向目标）统一转成探测口径，与 choke point
+    // 的失败文案同形（reason 即可操作线索）。
+    if (error instanceof BotAttachmentUrlRejectedError) {
+      throw new Error(`intranet service target rejected (${error.reason}): ${params.url}`);
+    }
     throw error;
   } finally {
     clearTimeout(timeoutId);
   }
-}
-
-async function runServiceProbeWithRetry(
-  target: NormalizedServiceProbeTarget,
-  attempts: number,
-  serviceProbe: (params: ServiceProbeParams) => Promise<ServiceProbeResult>,
-): Promise<IntranetProbeServiceTargetResult> {
-  let lastError = "";
-
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    try {
-      const result = await serviceProbe({
-        url: target.url,
-        timeoutMs: target.timeoutMs,
-        token: target.token,
-      });
-
-      if (target.expectedMarker && result.marker !== target.expectedMarker) {
-        throw new Error(
-          `marker mismatch(expected=${target.expectedMarker}, actual=${result.marker ?? "<empty>"})`,
-        );
-      }
-
-      return {
-        targetId: target.targetId,
-        kind: "service",
-        url: target.url,
-        reachable: true,
-        attemptCount: attempt,
-        latencyMs: result.latencyMs,
-        marker: result.marker,
-      };
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
-    }
-  }
-
-  return {
-    targetId: target.targetId,
-    kind: "service",
-    url: target.url,
-    reachable: false,
-    attemptCount: attempts,
-    latencyMs: null,
-    error: lastError || "probe failed",
-  };
-}
-
-function resolveProbeStrategy(targets: NormalizedTarget[]): IntranetProbeResult["strategy"] {
-  if (targets.every((target) => target.kind === "tcp")) {
-    return "tcp-connect";
-  }
-  if (targets.every((target) => target.kind === "service")) {
-    return "service-http";
-  }
-  return "mixed";
 }
 
 function probeTcpPort(params: TcpProbeParams): Promise<number> {
@@ -341,12 +239,19 @@ function probeTcpPort(params: TcpProbeParams): Promise<number> {
   });
 }
 
+/**
+ * 创建系统服务。tcp 探测的确认记录（S3）默认为实例内内存存储，生命周期
+ * 见 createIntranetProbeTcpConsentStore 的注释（会话即授权作用域）；
+ * 装配层可注入自定义存储（如按窗口/连接再隔离）。逐目标的策略与执行
+ * 在 probeTargetPolicy.runIntranetProbeTarget，本函数只做输入归一化与结果聚合。
+ */
 export function createSystemService(options: CreateSystemServiceOptions = {}): ISystemService {
   const tcpProbe = options.tcpProbe ?? probeTcpPort;
   const serviceProbe = options.serviceProbe ?? probeServiceEndpoint;
   const now = options.now ?? Date.now;
   const env = options.env ?? process.env;
   const platform = options.platform ?? process.platform;
+  const tcpConsent = options.tcpConsentStore ?? createIntranetProbeTcpConsentStore({ now });
 
   return {
     async info(): Promise<SystemInfo> {
@@ -361,6 +266,18 @@ export function createSystemService(options: CreateSystemServiceOptions = {}): I
       });
     },
 
+    async getIntranetProbeTcpTargetConsent(
+      request: IntranetProbeTcpTargetConsentRequest,
+    ): Promise<IntranetProbeTcpTargetConsentResult> {
+      return tcpConsent.query(request.targets);
+    },
+
+    async recordIntranetProbeTcpTargetConsent(
+      request: IntranetProbeTcpTargetConsentRequest,
+    ): Promise<IntranetProbeTcpTargetConsentResult> {
+      return tcpConsent.record(request.targets);
+    },
+
     async probeIntranet(request: IntranetProbeRequest): Promise<IntranetProbeResult> {
       const normalizedTargets = request.targets
         .map(normalizeProbeTarget)
@@ -372,12 +289,9 @@ export function createSystemService(options: CreateSystemServiceOptions = {}): I
       );
 
       const results = await Promise.all(
-        normalizedTargets.map((target) => {
-          if (target.kind === "service") {
-            return runServiceProbeWithRetry(target, attempts, serviceProbe);
-          }
-          return runProbeWithRetry(target, attempts, tcpProbe);
-        }),
+        normalizedTargets.map((target) =>
+          runIntranetProbeTarget(target, { attempts, tcpProbe, serviceProbe, tcpConsent }),
+        ),
       );
       const reachedTargetCount = results.filter((result) => result.reachable).length;
 

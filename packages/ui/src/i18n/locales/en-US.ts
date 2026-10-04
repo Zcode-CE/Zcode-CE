@@ -7196,6 +7196,13 @@ const enUS: Record<string, string> = {
   "bots.unbindSuccess": "Bot unbound",
   "bots.unbindFailed": "Failed to unbind bot: {error}",
   "bots.deleteFailed": "Failed to delete bot: {error}",
+  "intranetProbe.consent.title": "Confirm intranet probe targets",
+  "intranetProbe.consent.description":
+    "The following targets will be probed with a TCP connection:\n{targets}",
+  "intranetProbe.consent.confirm": "Confirm probe",
+  "intranetProbe.error.consentDeclined": "Intranet probe canceled: targets were not confirmed.",
+  "intranetProbe.error.consentQueryFailed": "Failed to query intranet probe consent state.",
+  "intranetProbe.error.consentRecordFailed": "Failed to record intranet probe consent.",
 };
 
 export default enUS;
