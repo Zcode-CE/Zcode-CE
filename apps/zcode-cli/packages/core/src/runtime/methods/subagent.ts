@@ -77,13 +77,14 @@ export function createDefaultSubagentPort(
       await this.appendEvent(event, traceContext);
     },
     enqueueParentTaskNotification: (notification) => {
-      this.enqueueBackgroundTaskNotification({
+      // 透传入队结果：父队列的显式拒绝（stale_branch / shutdown）必须让 runner
+      // 可见，否则 runner 会把拒绝当作成功（issue #64 的 fake-notified 链）。
+      return this.enqueueBackgroundTaskNotification({
         originMeta: notification.originMeta,
         taskId: notification.taskId,
         text: notification.text,
         traceContext: notification.traceContext,
       });
-      return undefined;
     },
     getAllowedTools: () => {
       return buildExploreAllowedTools({

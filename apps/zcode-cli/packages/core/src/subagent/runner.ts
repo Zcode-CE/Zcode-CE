@@ -102,9 +102,22 @@ export interface ParentTaskNotificationCommand {
   taskId: string;
 }
 
+/**
+ * 入队父 runtime command queue 的结果。
+ *
+ * 同步返回（类型上排斥 Promise）：background completion 必须在同一事件循环内写入
+ * 父队列（见 cli/headless-workflow.ts 对 enqueueRuntimeCommand 同步性的论证）。
+ * 父队列显式拒绝（shutdown / stale_branch）时返回 enqueued:false + reason，
+ * 让调用方知道通知未入队——issue #64 前 reject 只留 debug 日志，调用方却打
+ * info「已入队」并盖 notified 戳，完成通知永久丢失且无报错。
+ */
+export type ParentTaskNotificationEnqueueResult =
+  | { enqueued: true }
+  | { enqueued: false; reason: "shutdown" | "stale_branch" };
+
 export type EnqueueParentTaskNotification = (
   notification: ParentTaskNotificationCommand,
-) => undefined;
+) => ParentTaskNotificationEnqueueResult;
 
 export interface ExploreSubagentPortOptions {
   runExploreAgent: (
@@ -112,8 +125,9 @@ export interface ExploreSubagentPortOptions {
     options?: SubagentRunOptions,
   ) => Promise<ExploreSubagentRuntimeResult>;
   emitParentEvent: (event: SessionEvent, traceContext: TraceContext) => Promise<void>;
-  // background completion 必须同步写入父 runtime command queue；
-  // 返回 undefined 可让 TypeScript 拒绝 async enqueue，避免 fake-notified。
+  // background completion 必须同步写入父 runtime command queue；结果类型同步返回，
+  // 既让 TypeScript 拒绝 async enqueue，又把父队列的显式拒绝暴露给调用方
+  // （stale_branch / shutdown），避免 fake-notified（issue #64）。
   enqueueParentTaskNotification?: EnqueueParentTaskNotification;
   outputRootDir?: string;
   profiles?: readonly AgentProfile[];
@@ -1528,13 +1542,23 @@ async function finalizeBackgroundCompletion(
       totalTokens: completed.output.totalTokens,
     },
   }));
-  enqueueBackgroundNotification(
+  const enqueued = enqueueBackgroundNotification(
     options,
     registry,
     lifecycle.agentId,
     notification,
     lifecycle.runTraceContext,
   );
+  if (!enqueued) {
+    // 通知未入队（父队列显式拒绝 / 无队列 / 入队异常）时必须可见；终态事件照常发出，
+    // 注册表状态与 UI 终态不依赖通知入队。
+    options.logger?.warn("Subagent background terminal notification not enqueued", {
+      ...traceContextToLogContext(lifecycle.runTraceContext),
+      event: "subagent.background.terminal_notification.not_enqueued",
+      module: "core.subagent",
+      taskId: lifecycle.agentId,
+    });
+  }
   if (task) {
     await emitBackgroundTaskCompletedEvent(options, request, lifecycle.runTraceContext, task);
   }
@@ -1606,13 +1630,23 @@ async function finalizeBackgroundFailure(
       durationMs: totalDurationMs,
     },
   }));
-  enqueueBackgroundNotification(
+  const enqueued = enqueueBackgroundNotification(
     options,
     registry,
     lifecycle.agentId,
     notification,
     lifecycle.runTraceContext,
   );
+  if (!enqueued) {
+    // 通知未入队（父队列显式拒绝 / 无队列 / 入队异常）时必须可见；终态事件照常发出，
+    // 注册表状态与 UI 终态不依赖通知入队。
+    options.logger?.warn("Subagent background terminal notification not enqueued", {
+      ...traceContextToLogContext(lifecycle.runTraceContext),
+      event: "subagent.background.terminal_notification.not_enqueued",
+      module: "core.subagent",
+      taskId: lifecycle.agentId,
+    });
+  }
   if (task) {
     await emitBackgroundTaskCompletedEvent(options, request, lifecycle.runTraceContext, task);
   }
@@ -1856,8 +1890,9 @@ function enqueueBackgroundNotification(
     return false;
   }
 
+  let result: ParentTaskNotificationEnqueueResult;
   try {
-    options.enqueueParentTaskNotification({
+    result = options.enqueueParentTaskNotification({
       originMeta: {
         backgroundSource: "subagent",
         title: task.description.trim() || taskId,
@@ -1873,6 +1908,20 @@ function enqueueBackgroundNotification(
       errorMessage: error instanceof Error ? error.message : String(error),
       event: "subagent.background.notification.failed",
       module: "core.subagent",
+      taskId,
+    });
+    return false;
+  }
+
+  if (!result.enqueued) {
+    // 父队列显式拒绝（rewind 后旧分支 / runtime 关闭）是领域决策，不是基础设施失败：
+    // 不抛错、不回滚注册表、不打「已入队」的 info 日志、不盖 notified 戳（未入队即未通知）。
+    // 事件仍由调用方照常发出——UI 终态转移不依赖通知入队。
+    options.logger?.warn("Subagent background notification rejected by parent queue", {
+      ...traceContextToLogContext(traceContext),
+      event: "subagent.background.notification.rejected",
+      module: "core.subagent",
+      reason: result.reason,
       taskId,
     });
     return false;

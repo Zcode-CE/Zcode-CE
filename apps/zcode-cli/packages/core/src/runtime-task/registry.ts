@@ -71,10 +71,7 @@ export interface RuntimeTaskRegistry {
   all(): Record<string, RuntimeTaskSnapshot>;
   get(id: string): RuntimeTaskSnapshot | undefined;
   drainMessages(id: string): RuntimeTaskPendingMessage[];
-  queueMessage(
-    id: string,
-    message: RuntimeTaskPendingMessage,
-  ): RuntimeTaskSnapshot | undefined;
+  queueMessage(id: string, message: RuntimeTaskPendingMessage): RuntimeTaskSnapshot | undefined;
   register(task: RuntimeTaskSnapshot): void;
   remove(id: string): void;
   requestBackground(id: string): boolean;
@@ -127,6 +124,29 @@ export class InMemoryRuntimeTaskRegistry implements RuntimeTaskRegistry {
 
   setActiveBranchGeneration(generation: number): void {
     this.activeBranchGeneration = generation;
+    this.migrateNonTerminalTaskBranchGenerations(generation);
+  }
+
+  /**
+   * 推进分支代数时把仍存活的非终态任务迁移到新代数。
+   *
+   * 调用点：init / resume 时注册表为空，迁移是 no-op；实际生效于 conversation rewind
+   * （applyConversationRewindPlan）。回卷只取消被移除 turn 的后台任务
+   * （cancelRemovedBranchBackgroundTasks，fail-closed）；
+   * 存活任务属于保留分支前缀。若保留旧代数戳，它们的终态通知与事件会被 stale-branch
+   * fencing 当旧分支残留整体丢弃——注册表已终态而 UI 永久「运行中」、用户取消只得到
+   * background_task_not_running（zcode-plugins issue #64）。
+   *
+   * 终态任务刻意不迁移：结果已由结算路径持有，出队围栏仍需旧代数丢弃 rewind 前已入队的
+   * 命令（旧分支输入不得注入新分支）；迟到的终态事件由 isStaleBranchRuntimeTaskEvent
+   * 的「终态优先于代数」口径放行。
+   */
+  private migrateNonTerminalTaskBranchGenerations(generation: number): void {
+    for (const [taskId, task] of this.tasks) {
+      if (isTerminalRuntimeTask(task)) continue;
+      if (task.branchGeneration === generation) continue;
+      this.tasks.set(taskId, { ...task, branchGeneration: generation });
+    }
   }
 
   update(
@@ -165,10 +185,7 @@ export class InMemoryRuntimeTaskRegistry implements RuntimeTaskRegistry {
     return Object.fromEntries(this.tasks);
   }
 
-  queueMessage(
-    id: string,
-    message: RuntimeTaskPendingMessage,
-  ): RuntimeTaskSnapshot | undefined {
+  queueMessage(id: string, message: RuntimeTaskPendingMessage): RuntimeTaskSnapshot | undefined {
     return this.update(id, (task) => ({
       ...task,
       pendingMessages: [...(task.pendingMessages ?? []), message],
@@ -242,10 +259,7 @@ export class InMemoryRuntimeTaskRegistry implements RuntimeTaskRegistry {
     }
   }
 
-  private resolveBackgroundWaiters(
-    id: string,
-    task: RuntimeTaskSnapshot | undefined,
-  ): void {
+  private resolveBackgroundWaiters(id: string, task: RuntimeTaskSnapshot | undefined): void {
     this.resolveWaiters(this.backgroundWaiters, id, task);
   }
 

@@ -257,21 +257,42 @@ async function generateAndPersistSessionTitle(
 }
 
 /**
- * renameSession：用户显式重命名会话（titleSource=custom）。custom 之后自动标题
- * 生成会被跳过（见 persistGeneratedSessionTitle 的 custom_title 短路），持久化 + 发
- * SessionTitleUpdated(source:custom) 供 v4 投影 meta 更新。
+ * renameSession / 标题冻结：写入 titleSource=custom 的标题并发 SessionTitleUpdated。
+ *
+ * expectedTitleSources（乐观锁，与 persistGeneratedSessionTitle 同口径）：调用方只想
+ * 覆盖自动标题、不能踩掉用户手动命名时传入。当前 titleSource 不在期望集合内（含 custom）
+ * 时 updateSession 原子跳过，方法直接返回——不持久化、不发事件，用户标题保持不动
+ * （zcode-plugins issue #60：CronCreate 无条件冻结导致一天内会话被改名 4 次）。
+ * 不传 = 用户显式重命名，无条件覆盖任何来源。
  */
 export async function setCustomSessionTitle(
   this: AgentRuntimeInternal,
-  input: { title: string; traceContext: TraceContext },
+  input: {
+    title: string;
+    traceContext: TraceContext;
+    expectedTitleSources?: readonly SessionTitleSource[];
+  },
 ): Promise<void> {
   const previous = await this.sessionStore?.getSession(this.sessionId);
   const previousTitle = previous?.title ?? "";
-  await this.sessionStore?.updateSession({
+  const updated = await this.sessionStore?.updateSession({
+    ...(input.expectedTitleSources ? { expectedTitleSources: input.expectedTitleSources } : {}),
     id: this.sessionId,
     title: input.title,
     titleSource: "custom",
   });
+  if (input.expectedTitleSources && (!updated || updated.title !== input.title)) {
+    // 乐观锁未命中：当前标题来源已不在期望集合（例如用户已手动重命名为 custom，
+    // 或并发产生了其他来源的标题）。冻结/重命名不得覆盖，静默跳过并留痕。
+    this.logger?.debug("Session custom title update skipped", {
+      ...traceContextToLogContext(input.traceContext),
+      event: "session_title_custom.skipped",
+      module: "core.runtime",
+      reason: "title_source_not_expected",
+      sessionId: this.sessionId,
+    });
+    return;
+  }
   await this.appendEvent(
     this.createEvent(
       SessionEventType.SessionTitleUpdated,

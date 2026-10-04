@@ -329,6 +329,9 @@ export function createSessionFacade(deps: CreateSessionFacadeDeps): SessionFacad
     setCustomSessionTitle: async (input) =>
       deps.runtime.setCustomSessionTitle({
         title: input.title,
+        // 透传乐观锁：调用方（automation-port 的标题冻结）只覆盖自动标题，
+        // 用户手动命名（titleSource=custom）必须跳过（zcode-plugins issue #60）。
+        ...(input.expectedTitleSources ? { expectedTitleSources: input.expectedTitleSources } : {}),
         traceContext: input.traceContext ?? deps.traceContext,
       }),
     setTarget: async (input) =>
