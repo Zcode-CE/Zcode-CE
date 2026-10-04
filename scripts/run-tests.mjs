@@ -51,6 +51,13 @@ const TEST_PACKAGES = [
   // 审计实测：未登记前 `pnpm test` 只跑 20 个文件，完全覆盖不到这些断言。
   // 注意它们用 .mjs（校验器本身是 Node 脚本），见下面的后缀列表。
   "apps/zcode-cli/packages/documents-plugin",
+  // spreadsheets 插件的 LLM-in-the-loop e2e（office-xlsx 空白渲染场景）与其 keyless
+  // 常跑的伴随测试（能力探测契约、假渲染器夹具自检）：**必须在这里登记**，否则
+  // 「模型不得把空白结果说成成功」这条反撒谎断言（以及真实回路的跳过逻辑本身）
+  // 不进 CI——with-key 流由 ci.yml 的 e2e-real-api job 单独驱动，但 keyless 部分
+  // （跳过逻辑、解析链、夹具）必须常跑，否则真实回路会静默腐烂。模式见
+  // docs/development/137-dsh-e2e-pattern.md。
+  "apps/zcode-cli/packages/spreadsheets-plugin",
   // pdf 插件的校验器/生成器契约测试：**必须在这里登记**，否则 11 条有牙齿的断言
   // （页数不符、未嵌入、缺 /ToUnicode、无子集前缀、文本层缺字、bfrange 多码元目标不得错位、
   // 截断与非 PDF 必须结构化失败、参数 rc=2）不进 CI。用 .mjs，见下面的后缀列表。

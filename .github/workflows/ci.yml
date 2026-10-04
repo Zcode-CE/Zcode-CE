@@ -20,6 +20,88 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # real-API e2e 门禁（keyless / with-key 双流中的 with-key 流）。
+  #
+  # 为什么单独一个 job 而不是并入 verify：verify 的价值正是「无 secret、fork 可跑、恒绿」——
+  # 任何贡献者（包括外部 fork）都拿到完整 keyless 信号。把消耗 secret 的真实回路塞进去，
+  # 会把这条恒绿门禁与凭据可用性耦合。两条流触发策略与凭据策略都不同 ⇒ 分开（同源设计：
+  # DSH 的 .github/workflows/e2e.yml 备注）。
+  #
+  # keyless 流（默认）：verify 的 pnpm test 里 spreadsheets-plugin 的 e2e 测试以
+  # { skip } 显式跳过真实回路，但常跑其 keyless 伴随断言（能力探测契约、假渲染器夹具自检），
+  # 因此解析链与夹具不会静默腐烂。
+  #
+  # with-key 流（本 job）：只在可信事件运行。GitHub 对 fork PR 与 Dependabot PR 都
+  # 不下发仓库 secret（后者 head.repo.fork==false 但仍无 secret），job 级 if 跳过这两类；
+  # job 级 if 跳过的 check 报 success，不阻塞合并，因此本 job 可作为 required status check。
+  # if 判据按 PR author（pull_request.user.login）而非 github.actor：维护者重开/重跑
+  # Dependabot PR 时 actor 是人，但 PR 依然无 secret。
+  #
+  # preflight 把「secret 丢失」变成大红失败而不是假绿：自跳过的测试套件 + 丢失的 secret
+  # 在没有 preflight 时会报「全部跳过 = 全绿」，等于整个安全网静默消失。本 job 只在可信
+  # 事件运行 ⇒ secret 理应存在 ⇒ 空就是配置错误，必须红。
+  #
+  # secret 卫生：ZCODE_E2E_API_KEY 只出现在 preflight 与 e2e 两个 step 的 env 里
+  # （step 级，checkout/install 看不到）；base URL 钉死，防仓库根 .env 劫持；
+  # permissions 已在 workflow 级收到 contents: read。
+  #
+  # 安全红线：绝不要把触发器改成 pull_request_target（它用 base 仓库上下文 + secret
+  # 跑未受信任 fork 代码，是教科书级 key 泄露面）。
+  # 模式与随路环境变量登记见 docs/development/137-dsh-e2e-pattern.md。
+  e2e-real-api:
+    runs-on: ubuntu-latest
+    name: e2e (real API)
+    if: >-
+      github.event_name != 'pull_request'
+      || !(github.event.pull_request.head.repo.fork || github.event.pull_request.user.login == 'dependabot[bot]')
+    # 真实回路含构建 + 模型回合；超时上限把重试风暴挡在流水线内。
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 真实回路以「真实消费形态」启动 agent CLI（apps/zcode-cli/packages/cli/dist/zcode.cjs）
+      # 并依赖 seed 到 cli/dist/packages/ 的插件载荷，与 verify 的 Build check 同一条构建。
+      - name: Build agent CLI
+        run: node scripts/build-desktop-agent-cli.mjs
+
+      - name: Preflight (require ZCODE_E2E_API_KEY)
+        env:
+          ZCODE_E2E_API_KEY: ${{ secrets.ZCODE_E2E_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ZCODE_E2E_API_KEY:-}" ]; then
+            echo "::error::ZCODE_E2E_API_KEY 为空：e2e 真实回路会自跳过并报假绿。"
+            echo "::error::请在仓库 secrets 配置 ZCODE_E2E_API_KEY（外部 DeepSeek API key）。"
+            exit 1
+          fi
+          echo "ZCODE_E2E_API_KEY present."
+
+      # 只跑 e2e 文件（keyless 门禁在 verify job）。step 级 secret；base URL 钉死防
+      # 仓库 .env 重定向；deepseek-chat 无图像输入能力时模型走「如实声明不可用」分支，
+      # 要打满「空白渲染」路径需供应支持图像的模型并设 ZCODE_E2E_MODEL_SUPPORTS_IMAGES=1。
+      - name: Real-API e2e
+        env:
+          ZCODE_E2E_API_KEY: ${{ secrets.ZCODE_E2E_API_KEY }}
+          ZCODE_E2E_BASE_URL: https://api.deepseek.com/v1
+          ZCODE_E2E_MODEL: deepseek-chat
+        run: |
+          cd apps/zcode-cli/packages/spreadsheets-plugin
+          node --test test/officeE2eBlankRender.test.mjs
+
   verify:
     runs-on: ubuntu-latest
     steps:

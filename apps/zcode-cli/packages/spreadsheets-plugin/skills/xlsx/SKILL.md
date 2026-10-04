@@ -2,7 +2,7 @@
 name: xlsx
 metadata:
   upstream: "@deepseek-ai/dsh-skill-office (MIT)"
-  modified: "ZCode-CE: 工具链由系统 Python(openpyxl/pandas) 改为随包 Node 库(exceljs 4.4.0)；修正校验器相对路径为 ../../scripts/；补充降级边界（重写丢失图表部件）；提权安装场景改为给出确切命令并声明所需权限（引导式授权，见 docs/development/office-plugins.md）；视觉检查改为按任务分情况（数据/公式任务跳过且不加未请求的免责声明），补 soffice→pdftoppm→visual-judge 两步链、模型图片能力前置判定与「空白预览=渲染失败」规则"
+  modified: "ZCode-CE: 工具链由系统 Python(openpyxl/pandas) 改为随包 Node 库(exceljs 4.4.0)；修正校验器相对路径为 ../../scripts/；补充降级边界（重写丢失图表部件）；提权安装场景改为给出确切命令并声明所需权限（引导式授权，见 docs/development/office-plugins.md）；视觉检查改为按任务分情况（数据/公式任务跳过且不加未请求的免责声明），补 soffice→pdftoppm→visual-judge 两步链、模型图片能力前置判定与「空白预览=渲染失败」规则；recalculate 改为能力探测（scripts/office-capabilities.mjs）+ 不可用时在交付回复中如实声明缓存结果未重算（不引入 145–182 MiB/平台、Linux 仅 WASM 的引擎整包）"
 description: Read, create, and modify Excel workbooks (.xlsx), including cell values, formulas, formatting, and analysis. Use when an Excel workbook is an input or deliverable.
 ---
 
@@ -76,7 +76,23 @@ await workbook.xlsx.writeFile("report.xlsx");
 
 Preserve numbers, dates, booleans, and identifiers as the intended cell types; formatting is not a type conversion. Prefer a targeted cell or range edit over rebuilding a sheet, since rebuilding discards parts the library cannot represent.
 
-Writing a formula does not calculate its result: this library stores formulas and any cached `result` you supply, but does not evaluate them. Verify formulas and inputs separately, and state when current results require recalculation in a spreadsheet application. Do not replace requested formulas with constants or report cached values as newly calculated results.
+Writing a formula does not calculate its result: this library stores formulas and any cached `result` you supply, but does not evaluate them. Verify formulas and inputs separately. When the deliverable must contain calculated results, follow **Formula recalculation capability** below — probe first, then declare the outcome honestly. Do not replace requested formulas with constants or report cached values as newly calculated results.
+
+### Formula recalculation capability
+
+This build carries no formula recalculation engine, but do not assume either way — probe once when the request requires delivered calculated results:
+
+```text
+node ${ZCODE_SKILL_DIR}/../../scripts/office-capabilities.mjs
+```
+
+The probe prints one JSON line; its `capabilities.recalculate.available` field is the authoritative answer. While it is `false`, every delivery containing formulas must:
+
+- keep the requested formulas and whatever cached values the input carried,
+- finish the structural and data checks, and
+- **state plainly in the final reply that the cached formula results were not recalculated in this build** and must be recalculated or verified in a spreadsheet application.
+
+Recalculation is independent of rendering: skipping visual inspection for a data or formula task never removes this declaration duty.
 
 Do not rename `.xls`, `.xlsb`, encrypted files, or macro-enabled files to `.xlsx`. They need an appropriate supported operation, and this build does not provide one. Preserve the original and report the limitation.
 
@@ -90,7 +106,7 @@ node ${ZCODE_SKILL_DIR}/../../scripts/check_office.mjs <workbook.xlsx> --out <ch
 
 It checks ZIP/XML integrity and internal relationships, and reports sheet names, populated-cell counts, and formula counts. Repeated `--contains TEXT` arguments check string cells and sheet names, and `--count N` checks sheet count. `--contains` excludes numeric cells and does not validate formula results; verify those separately by reopening the workbook. The checker does not calculate formulas or judge workbook appearance. Compare relevant values, types, formulas, styles, and totals with the task's source data.
 
-**For data and formula tasks, stop here.** Once the structural and data checks pass, deliver the workbook — skip preview rendering and visual inspection, and do **not** add an unrequested caveat that visual inspection was omitted. Basic styling such as bold headers or number formats does not by itself call for visual inspection.
+**For data and formula tasks, stop here.** Once the structural and data checks pass, deliver the workbook — skip preview rendering and visual inspection, and do **not** add an unrequested caveat that visual inspection was omitted. Basic styling such as bold headers or number formats does not by itself call for visual inspection. Formula recalculation is independent of rendering: when calculated results must be refreshed, the recalculation declaration in *Read and modify* still applies to a delivered workbook even though visual inspection is skipped.
 
 Inspect a rendered region only when the task concerns formatting, layout, chart appearance, or printed layout. That takes two steps, because `pdftoppm` reads PDF, not `.xlsx`:
 
