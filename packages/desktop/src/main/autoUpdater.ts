@@ -1573,7 +1573,7 @@ export async function initAutoUpdater(options: InitAutoUpdaterOptions = {}): Pro
   ) {
     autoUpdateUnavailableOnDarwinRelease = true;
     logger.info(
-      "[auto-update] darwin release build: auto-update unsupported (this release line publishes no macOS builds), skipping update checks; download new versions from GitHub Releases manually",
+      "[auto-update] darwin release build: auto-update unsupported (this release line publishes no macOS builds yet), skipping update checks; build new versions from the repo source locally",
     );
     return;
   }

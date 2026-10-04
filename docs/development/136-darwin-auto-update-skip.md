@@ -20,7 +20,7 @@
 ## 1. 产品规则
 
 1. macOS 上「不支持自动更新」是确定事实，不是故障。提示不得读成「检查失败请重试」：
-   不复用 error / failed 通道，单独一个 payload kind + 单独 i18n 键，文案给出可操作动作（手动从 GitHub Releases 下载）。
+   不复用 error / failed 通道，单独一个 payload kind + 单独 i18n 键，文案给出可操作动作（当前发行线不发 macOS 包 ⇒ 引导源码本地构建）。
 2. 跳过范围精确到「darwin 正式包 + 未配置更新源覆盖」三个条件同时成立。其余形态行为完全不变：
    - win32 / linux 正式包：启动检查、轮询、手动检查、下载、安装链路逐行不动。
    - darwin 未打包 + ZCODE_AUTO_UPDATE_DEV：本地 manifest 验证链路（含 isDevSquirrelReadyError 那套 Squirrel 兜底）保持可用。
@@ -89,9 +89,9 @@ case "unsupported-platform":
 
 i18n 文案（双语，不含「失败/重试」措辞）：
 
-- zh-CN：macOS 暂不支持自动更新：本发行线不发布 macOS 安装包，请手动从 GitHub Releases 下载新版本。
+- zh-CN：macOS 暂不支持自动更新：本发行线暂不发布 macOS 安装包，请拉取仓库源码本地构建（步骤见 README）。
 - en-US：Auto-update isn't available on macOS: this release line doesn't publish macOS builds.
-  Download new versions from GitHub Releases manually.
+  Build new versions from the repo source locally (steps in the README).
 
 ## 5. 测试
 

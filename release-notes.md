@@ -15,19 +15,19 @@
 
 - **本地储存的主题被外部修改后界面不再异常**：如果本地的主题条目被其他程序改成无效值，界面会掉到无样式的默认亮色。现在所有读取主题的地方都会校验，异常时回退到内置深色主题。
 - **领取额度时不再偶发报「The WebView must be attached」**：此前在网页容器还没准备好的时刻发起领取，验证码求解会因为时序竞争而报错，重试通常要碰运气。现在求解会先确认页面就绪再开始。
-- **macOS 版不再每次启动都报更新失败**：macOS 打包版此前每次启动都会去请求更新清单并收到 404。发版线不产出 macOS 安装包（没有代码签名），所以这个请求永远不可能成功。现在 macOS 正式包会跳过更新检查，改为明确提示「macOS 暂不支持自动更新，请手动从 GitHub Releases 下载新版本」。
+- **macOS 版不再每次启动都报更新失败**：macOS 打包版此前每次启动都会去请求更新清单并收到 404。发版线暂不产出 macOS 安装包（没有代码签名），所以这个请求永远不可能成功。现在 macOS 正式包会跳过更新检查，改为明确提示「macOS 暂不支持自动更新，请拉取仓库源码本地构建（步骤见 README）」。
 - **musl 系统上使用电脑控制时会明确告知不可用**：此前在 musl Linux（Alpine 系）上电脑控制能力会静默缺失。现在会直接说明该能力在 musl 环境下不可用，而不是表现为功能消失。
 - **单文件可执行版现在带上了完整的内置技能与内容插件**：此前以单文件可执行形式运行时，内置技能包、computer-use 与 pdf 插件不在其中。现在这些内容随单文件可执行版一起提供。
 
 ## 升级须知（行为变化）
 
-- **macOS 用户需要手动更新**：macOS 打包客户端不再自动检查更新。点「检查更新」会看到确定性提示并引导前往 GitHub Releases 下载。配置了自建更新源的企业部署不受影响。
+- **macOS 用户需要手动构建更新**：macOS 打包客户端不再自动检查更新。点「检查更新」会看到确定性提示，引导拉取仓库源码本地构建（README 有步骤）。配置了自建更新源的企业部署不受影响。
 - **工作流在本地数据写入失败时现在会显示该步骤失败**：而不是一直显示「进行中」。如果你依赖「一直进行中 = 还在跑」这个现象，注意它现在会变成明确的失败结果。
 - **左下角新增了领取入口**：没有可领取活动时不显示任何东西，有活动时出现。
 
 ## 已知限制
 
-- **macOS 没有自动更新**：发版线不产 macOS 安装包，客户端侧的更新检查已关闭；每次新版本需要从 GitHub Releases 手动下载覆盖。
+- **macOS 没有自动更新**：发版线暂不产 macOS 安装包，客户端侧的更新检查已关闭；每次新版本需要拉取仓库源码本地构建（README 有步骤）。
 - **浏览器与手机网页版不能领取需要验证码的额度**：领取的验证码求解依赖客户端内嵌的网页容器，手机网页版与纯浏览器构建里没有它，会提示该操作不支持（不需要验证码的领取不受影响）。
 
 ## 本版尚未验证
@@ -57,19 +57,19 @@
 
 - **The interface no longer breaks when the locally stored theme is tampered with**: if another program writes an invalid theme entry, the UI used to fall back to an unstyled default light theme. Every place that reads the theme now validates it and falls back to the built-in dark theme.
 - **Claiming quota no longer intermittently reports "The WebView must be attached"**: when a claim started in the moment before the embedded page was ready, the captcha solver failed due to a race; retrying usually succeeded by luck. The solver now waits for the page to be ready before starting.
-- **The macOS build no longer fails the update check on every launch**: packaged macOS clients requested an update manifest and got a 404 every startup. The release pipeline does not produce macOS installers (no code-signing certificate), so that request could never succeed. The packaged macOS app now skips the update check and states plainly that automatic updates are not supported on macOS and to download new versions from GitHub Releases manually.
+- **The macOS build no longer fails the update check on every launch**: packaged macOS clients requested an update manifest and got a 404 every startup. The release pipeline does not produce macOS installers yet (no code-signing setup), so that request could never succeed. The packaged macOS app now skips the update check and states plainly that automatic updates are not supported on macOS and to build new versions from the repo source locally (steps in the README).
 - **Computer use on musl systems now says it is unavailable**: previously the capability silently went missing on musl Linux (Alpine family). It now reports that it is not supported in musl environments instead of just disappearing.
 - **The single-file executable now ships the built-in skills and content plugins**: built-in skills, computer-use, and the pdf plugin were absent when running as a single-file executable. They are now included.
 
 ## Upgrade notes (behavior changes)
 
-- **macOS users need to update manually**: packaged macOS clients no longer check for updates. "Check for updates" shows a plain message pointing to GitHub Releases. Deployments with a self-hosted update feed are unaffected.
+- **macOS users need to build updates from source**: packaged macOS clients no longer check for updates. "Check for updates" shows a plain message pointing to the repo README's build steps. Deployments with a self-hosted update feed are unaffected.
 - **A workflow now shows a failed step when local data writes fail**: instead of staying "in progress" forever. If you relied on "still in progress means still running", note that this now becomes an explicit failure.
 - **A claim entry now exists in the bottom-left corner**: nothing is shown when there is nothing to claim; the entry appears when an activity is available.
 
 ## Known limitations
 
-- **No automatic updates on macOS**: the release pipeline does not produce macOS installers and the client-side update check is off; each new version must be downloaded manually from GitHub Releases.
+- **No automatic updates on macOS**: the release pipeline does not produce macOS installers yet and the client-side update check is off; each new version must be built from the repo source locally (steps in the README).
 - **Quota claims that need a verification code are not possible in the browser or mobile web**: the claim captcha solver relies on the embedded page container, which the mobile web and plain browser builds do not have; they state that the operation is unsupported. Claims that need no verification code are unaffected.
 
 ## Not yet verified in this version

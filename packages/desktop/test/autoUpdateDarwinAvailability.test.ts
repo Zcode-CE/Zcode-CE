@@ -108,7 +108,7 @@ test("文案护栏：确定性不支持，不含「失败 / 重试」措辞（�
   const en = enUS["update.toast.unsupportedPlatform"];
   assert.ok(zh && !zh.includes("失败") && !zh.includes("重试"), `zh 文案误用失败/重试: ${zh}`);
   assert.ok(en && !/failed/i.test(en) && !/retry/i.test(en), `en 文案误用 failed/retry: ${en}`);
-  // 必须给出可操作引导（手动下载）。
-  assert.ok(zh?.includes("GitHub Releases"), "zh 文案必须引导到 GitHub Releases");
-  assert.ok(en?.includes("GitHub Releases"), "en 文案必须引导到 GitHub Releases");
+  // 必须给出可操作引导（当前发行线不发 macOS 包 ⇒ 引导到源码本地构建）。
+  assert.ok(zh?.includes("本地构建"), "zh 文案必须引导到本地构建");
+  assert.ok(en?.includes("build") && /locally/i.test(en), "en 文案必须引导到本地构建");
 });
