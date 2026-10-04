@@ -1,5 +1,14 @@
 # ZCode-CE
 
+## 与官方 3.14.4 的关系（本版基线）
+
+官方 3.14.4 与 3.14.3 之间的差异只集中在阿里云验证码的健壮性处理，协议、机器人、工作流与远程控制全部一致（分发包逐文件比对，新增差异为零）。本版据此把上游基线推进到 3.14.4，并落了其中两项与验证码相关的处理：
+
+- **验证码初始化超时有了明确分类与可操作提示**（见「体验优化」）。
+- **另一项只在配置合并路径出现的验证码头处理**：判定后确认本项目的配置结构不存在该路径，未做改动；同样的判定结论已写进维护者文档，避免后人重做分析。
+
+官方另外两项验证码处理（初始化期排空排队请求、二十分钟新鲜度守卫）在本项目里没有对应的失效形态（本项目的请求处理是串行逐个应答、每次使用都重新加载），未引入。
+
 ## 新增功能
 
 - **聊天输入栏左下角现在会提示「有可领取的额度」**：此前可领取的赠送额度只在设置页深处，用户往往不知道有活动可领。现在左下角在有可领取活动时出现入口，点开可以看到活动名称（例如「ZCode Trust Build」）、权益内容、有效期与领取按钮；领取需要验证码时在面板内直接完成；领取成功后界面立即显示新增的票券，无需重开页面。识别活动靠权益标识而非显示名，官方改活动的名字也不影响领取。
@@ -41,6 +50,15 @@
 ---
 
 # English
+
+## Relation to official 3.14.4 (the baseline of this version)
+
+The difference between official 3.14.4 and 3.14.3 is confined to robustness handling for the Aliyun captcha; the protocol, bots, workflows and remote control are identical (file-by-file comparison of the distribution package showed zero new differences). This version therefore advances the upstream baseline to 3.14.4 and ports two captcha-related pieces of handling:
+
+- **Captcha initialization timeouts now have an explicit classification and an actionable message** (see "Improvements").
+- **A captcha-header handling that applies on the configuration-merge path**: after checking, this project's configuration structure has no such path, so no change was made; the same conclusion is recorded in the maintainer docs so nobody re-does the analysis.
+
+Two further captcha handling pieces from upstream (draining queued requests during initialization, and a twenty-minute freshness guard) have no corresponding failure mode in this project (requests are handled serially with each one answered, and the SDK is reloaded on each use), so they were not introduced.
 
 ## New features
 
