@@ -44,14 +44,14 @@ agent 侧无 `CaptchaRequestRetry`/`isCaptchaRejection`。于是 start-plan 请�
 见 `zcode-builtin.json` 的 `account:zai-start-plan` / `account:bigmodel-start-plan`；
 opencode 的 baseUrl 是 `https://opencode.ai/zen/go/v1`，不经任何 ZCode 网关），因此完全不触发这套验证码挑战。
 
-> **2026-09-25 订正（r3-reference-parity 独立复核提出，Lead 已实测确认）**：本节初稿把 start-plan 的
-> 网关路径写成 `ultra*`，**这是事实错误**。实测 `~/.zcode/v2/runtime/provider/*/zcode-builtin.json`：
+> **start-plan 的网关路径（r3-reference-parity 独立复核，Lead 已实测确认）**：
+> 实测 `~/.zcode/v2/runtime/provider/*/zcode-builtin.json`：
 > `account:zai-start-plan` 与 `account:bigmodel-start-plan` 的 baseUrl 均为
 > `https://zcode.z.ai/api/v1/zcode-plan/anthropic`；`ultra[-zai]` 是 **coding-plan** 的重写目标
 > （见 `official-coding-plan-gateway.ts:22-31` 的路由表，源端点是 `api.z.ai/api/anthropic` 与
 > `open.bigmodel.cn/api/anthropic`，**不含** start-plan）。因此 CE 的硬编码网关路由表与 start-plan
 > **不冲突**（`endpointKey` 精确匹配，未命中即原样返回），它只是「等价但静态」的实现。
-> 该订正不影响本报告的主结论（验证码挑战链路缺失）。
+> 这条复核不影响本报告的主结论（验证码挑战链路缺失）。
 
 一句话：**这不是鉴权坏了，是「验证码挑战 → 求解 → 带新 token 重试」这条链路在 CE 从未被实现，
 而 CE 又把挑战码误判成不可重试的鉴权失败。**
@@ -329,8 +329,8 @@ grep -rn 'CaptchaRequestRetry\|isCaptchaRejection\|captcha-retry\|captchaRetry' 
 - 文案 `packages/ui/src/i18n/locales/zh-CN.ts:5584`：
   `"zcode.error.providerBusiness.3007": "请求被网关安全校验拒绝，请稍后重试或联系支持。"`
   （原文含「网关安全校验拒绝」——**产品文案已承认这是安全校验，不是鉴权**；`en-US.ts:5850` 同条）
-  > 订正记录：本报告初稿把该行写成 `zh-CN.ts:5694`，那是**开源检出**
-  > （`.reverse/91-upstream-checkout/zai-org-ZCode/...`）的行号，CE 实际在 `:5584`。已按 CE 实测修正。
+  > 行号以 CE 实测为准（`:5584`）；开源检出 `.reverse/91-upstream-checkout/zai-org-ZCode/...`
+  > 里同条在 `:5694`，跨仓库引用时注意区分。
 
 用户日志行的字段顺序与 `packages/zcode-cli/packages/core/src/errors/error-payload.ts:310-317` 的
 `formatContextDetail` **完全一致**（provider / provider_code / model / request / code / reason / status / retryable）
@@ -445,31 +445,30 @@ Lead 表述的「官方 host 转发渲染层 / CE 直接短路」方向正确，
 | 5   | **渲染层接线**：订阅 provider runtime headers 请求，在 start-plan 时求解并回传 `runtimeProviderHeaders`；需处理取消与同 requestId 合并                                                                                                    | `packages/ui/src/`（新增 hook/service）＋ `packages/services/src/zcode-agent/` 的事件桥接                                          |
 | 6   | **求解器复用判定**：确认 claim 平面求解器（`packages/services/src/coding-plan-subscription/manualClaimCaptcha.ts`）能否在**无用户交互**（`send_preflight` 预求解）路径复用；官方用 `AliyunCaptcha.js` + `allowInteractive:!0` + 120s 超时 | `packages/services/src/coding-plan-subscription/manualClaimCaptcha.ts`、`packages/ui/src/settings/ManualClaimCaptchaDialog.tsx`    |
 | 7   | **agent 重试**：新增 `isCaptchaRejection`（`providerErrorCode === "3007"`）与单次 `CaptchaRequestRetry`；重试时以 `reason:"captcha-retry"` 重新请求 headers，并把 `extraAttempts` 并入重试预算                                            | `apps/zcode-cli/packages/adapters/src/model/runner-runtime-headers.ts:21-24`（reason 类型）＋ 重试循环（`runner*.ts`）             |
-| 8   | ~~**分类修正**：3007 不应归 `AuthFailed`~~ **【已订正，见下方勘误】** 官方 3007 **同样**是 `AuthFailed + retryable:false`，业务码表与 workflow 策略均与官方逐项一致 ⇒ **不改码表**；重试拦截应发生在**分类器之前**（即 §5-7 的 agent 层） | ~~`failure-provider-business-codes.ts:100-108`、`workflow-model-failure-policy.ts:86`~~ **落点改为 §5-7**                          |
-| 9   | ~~**UI 归因**：`chatErrorAttributionEvidence.ts:52` 需调整~~ **【已降级】** 该模块是**死代码**（唯一导出 0 引用），改它不改变任何用户可见行为；保留现状即可                                                                               | `packages/ui/src/lib/chatErrorAttributionEvidence.ts:52`（无消费者）                                                               |
+| 8   | **不改码表**：官方 3007 **同样**是 `AuthFailed + retryable:false`，业务码表与 workflow 策略均与官方逐项一致 ⇒ 重试拦截发生在**分类器之前**（即 §5-7 的 agent 层）                                                                         | 落点见 §5-7（`failure-provider-business-codes.ts:100-108`、`workflow-model-failure-policy.ts:86` 与官方逐字一致，不动）            |
+| 9   | **UI 归因模块保持现状**：`chatErrorAttributionEvidence.ts:52` 的 `"3007":"auth_failed"` 只被死模块 `chatErrorAttribution.ts` 引用（其唯一导出 0 引用），改它不改变任何用户可见行为                                                        | `packages/ui/src/lib/chatErrorAttributionEvidence.ts:52`（无消费者）                                                               |
 | 10  | **清理死字段**：`runtimeProviderHeaders` 在 `zcodeAgent.ts:267` 是无人读写的死字段，要么接入要么删除，勿留误导                                                                                                                            | `packages/services/src/zcode-agent/zcodeAgent.ts:267`                                                                              |
 
-> **【2026-09-25 勘误（r4-defect-scan 提出，Lead 已独立复核）】**
+> **【2026-09-25 复核（r4-defect-scan 提出，Lead 已独立复核）】**
 >
-> **勘误 1（严重，改变实施顺序）**：本表初稿把 1→2→3→4 说成「先打通带验证码头发出」，
-> **这个顺序不成立**。CE 的 host **没有渲染层应答入口**：`zcodeAgentService.ts:2266` 只有两个出口
+> **1（严重，决定实施顺序）**：CE 的 host **没有渲染层应答入口**：`zcodeAgentService.ts:2266` 只有两个出口
 > —— 账号短路自答，或 `:2275-2281` 立即回 `headersApplied:false` 快速失败；
 > 全仓 `grep -rn respondProviderRuntimeHeaders` **0 命中**，而官方 host 有该方法作为渲染层应答的唯一入站 API。
-> ⇒ **只改守卫（第 1 项）会把故障从「必然 3007」变成「必然立即失败」，用户可感知结果更差。**
-> 因此 **1（守卫）+ 4（头合并）+ 新增「渲染层应答入口」+ 5（渲染层接线）必须作为一个原子提交**，
-> 不能按 1→2→3→4 分批落地。§6.2 预判的「180s 超时」形态也应订正为「立即失败」（若只改守卫）。
+> ⇒ **1（守卫）+ 4（头合并）+ 新增「渲染层应答入口」+ 5（渲染层接线）必须作为一个原子提交**，
+> 不能按 1→2→3→4 分批落地。只改守卫（第 1 项）会把故障从「必然 3007」变成「必然立即失败」
+> （**不是** §6.2 预判的 180s 超时），用户可感知结果更差。
 >
-> **勘误 2**：第 8 项「分类修正」**不成立**。已实测 `diff` 官方开源检出
+> **2**：实测 `diff` 官方开源检出
 > （`.reverse/91-upstream-checkout/zai-org-ZCode/apps/zcode-cli/packages/adapters/src/model/failure-provider-business-codes.ts`）
-> 与 CE 的同名文件 **完全一致**，`workflow-model-failure-policy.ts` 亦 **完全一致**。
-> 即官方 3007 本身就是 `AuthFailed + retryable:false`；官方不出问题是因为 agent 层用
-> `CaptchaRequestRetry.claim()` 在**分类器之前**拦截重试。⇒ 修复落点是第 7 项（agent 层），**改码表反而偏离官方语义**。
+> 与 CE 的同名文件 **完全一致**，`workflow-model-failure-policy.ts` 亦 **完全一致**
+> ⇒ 官方 3007 本身就是 `AuthFailed + retryable:false`；官方不出问题是因为 agent 层用
+> `CaptchaRequestRetry.claim()` 在**分类器之前**拦截重试。修复落点是第 7 项（agent 层），**改码表反而偏离官方语义**。
 >
-> **勘误 3**：第 9 项降级。`packages/ui/src/lib/chatErrorAttribution.ts` 整模块为**死代码**
+> **3**：`packages/ui/src/lib/chatErrorAttribution.ts` 整模块为**死代码**
 > （其唯一导出无外部引用，实测 `grep` 仅命中其自身与 `chatErrorAttributionEvidence` 的导入行），
 > 修改 `"3007":"auth_failed"` **不改变任何用户可见行为**。
 >
-> 建议顺序（订正后）：**7（agent 重试骨架 + 分类前拦截，可独立单测）→ 然后 1+4+应答入口+5 作为一个原子提交**；
+> 建议顺序：**7（agent 重试骨架 + 分类前拦截，可独立单测）→ 然后 1+4+应答入口+5 作为一个原子提交**；
 > 2、3（协议扩展）随原子提交一并落地。
 > 7→8→9 再补「万一仍被挑战可自愈」。6 是独立风险点，需先做可行性验证。
 
@@ -514,7 +513,7 @@ Lead 表述的「官方 host 转发渲染层 / CE 直接短路」方向正确，
 - **§5-1 的回归面**：把 start-plan 从「短路自答」改为「转发渲染层」后，
   **后台任务 / 无 pane 会话**将不再有 host 自答兜底——官方渲染层为此实现了请求合并（`m3` map）
   与取消（`Bnn`/`providerRuntimeHeadersCancelled`）。CE 若只改守卫不补这两条，
-  会从「必然 3007」变成「180s 超时」（`provider-runtime-headers.ts:16`）。
+  会从「必然 3007」变成「必然立即失败」（只缺守卫时请求落到 `:2275-2281` 快速失败分支；`provider-runtime-headers.ts:16` 的 180s 超时只在应答入口接通后才成为超时形态）。
   **这是本次修复最容易踩的坑。**
 
 ---

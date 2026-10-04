@@ -11,18 +11,18 @@
 | 材料                                                          | 结论是否一致                                                               |
 | ------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | 根 `AGENTS.md`「能力来源与取舍」                              | 一致：外部能力按来源分三类，搬载荷必须走许可登记；本报告 §4 据此判定       |
-| `docs/development/126-start-plan-3007-root-cause.md`          | **大部分一致，但有一处事实错误**，见下方「订正」                           |
+| `docs/development/126-start-plan-3007-root-cause.md`          | **大部分一致**；start-plan 网关路径一处以本节复核为准                      |
 | `third-party/README.md`、`third-party/copied-components.json` | 一致：逐字节搬运需登记 id/revision/source/sha256/license                   |
 | `.reverse/08-entitlement/00-签名协议还原-Lead.md`             | 一致：CE 对 Client Request Signing V4 与 `proxyEndpoint` 动态映射均 0 命中 |
 | 参考实现源码（本次逐文件读）                                  | —（本报告的原始证据来源）                                                  |
 
-> **订正 126 的一处事实错误（我复核出的，非照抄）**
-> 126 §1 写「start-plan 的模型请求经 ZCode 平台网关 `zcode.z.ai/api/v1/ultra*` 转发」——**不成立**。
+> **start-plan 的网关路径（实测复核，非照抄 126）**
+> start-plan 的模型请求经 `https://zcode.z.ai/api/v1/zcode-plan/anthropic`，**不经** `ultra*`。
 > 证据：官方 bundle `zcode.cjs` @710631 的端点构造器里，
 > `zcodePlanAnthropicBaseUrl: \`${origin}/api/v1/zcode-plan/anthropic\``；
 CE 自己的内置 provider 目录 `config/provider/zcode-builtin.json:747`、`:810`给`account:zai-start-plan`/`account:bigmodel-start-plan`的 baseUrl 同样是`https://zcode.z.ai/api/v1/zcode-plan/anthropic`。
 > `/api/v1/ultra[-zai]/` 是 **coding-plan（individual/team）** 的重写目标，不是 start-plan 的路径。
-> 126 §2.9 的结论（opencode 不经该网关）不受影响，但它对「哪条路径带风控」的表述需要按本节改写。
+> 126 §2.9 的结论（opencode 不经该网关）不受影响，但它对「哪条路径带风控」的表述以本节为准。
 > 本报告 §3 给出完整路径关系。
 
 ---

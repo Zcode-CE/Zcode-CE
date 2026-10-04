@@ -388,9 +388,9 @@ export const probe = 1;
    换成 `ts.transpileModule(..., { removeComments: true })` 后确认**逐字节相同**。
    ⇒ **验证工具与生产工具不能是同一个（可能有同一个盲点）。**
 
-### 9.5 口径订正记录
+### 9.5 口径记录
 
-因上述修复，注释强调的**全仓总数由 2627 订正为 3372**（635 文件）。
+注释强调的**全仓总数 = 3372**（635 文件）。
 **这不是"基线被写松"，恰恰相反**：是修掉假阴性后**第一次看到真实值**。
 判据：修正后的实现通过了 **5 个人工逐行核对的样例**（`tools/verify-extractor-fixtures.cjs`，exit 0）：
 `file-config.adapter.ts`=1、`model-catalog-port.ts`=9、`session-facade.ts`=2、`child-source.ts`=14、`exportLogs.ts`=0。

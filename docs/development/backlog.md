@@ -60,19 +60,41 @@
 | **`packages/web` 端到端测试依赖本机登录态**（本机无 zai OAuth 凭据 ⇒ 稳定红；CI 上因 dist 不存在而 `skip`）                                                     | 工程   | task-100 发现 + Lead 核实                                                         | M    | 中（**CI 上这 4 条的牙齿是拔掉的** ⇒ 验证盲区）  | 待排（下一版）                                         |
 | **onboarding 经 RPC 时 host 未注册 channel 会挂起而非 reject**（`appendRecord` 有 5s 超时，`dismissOnboarding` 没有）                                           | 工程   | task-108 未验证项                                                                 | S    | 中（挂起只影响"决策没落盘"，属静默）             | 待排（下一版）                                         |
 | **web 端 `deviceMid` 与设备身份不同源**（web 用屏幕指纹，服务侧用 `ensureDeviceMid`）                                                                           | 工程   | task-108 未验证项                                                                 | S    | 中（不同入口可能得到不同 deviceMid）             | 待排（下一版）                                         |
-| **claim solver 的 host 进程 fallback（C13 残余）**：claim 主路径已接通；兜底未接——两个构造点在 host 进程（无 DOM），需 130 spec 之外的 host→renderer solve 通道 | 正确性 | `.reverse/98-ce4/IMPL-CE4-REMAINING.md` C13 订正                                  | M    | 中（触发该 fallback 时报 SOLVER_UNAVAILABLE）    | 待排（需先做协议设计）                                 |
+| **claim solver 的 host 进程 fallback（C13 残余）**：claim 主路径已接通；兜底未接——两个构造点在 host 进程（无 DOM），需 130 spec 之外的 host→renderer solve 通道 | 正确性 | `.reverse/98-ce4/IMPL-CE4-REMAINING.md` C13                                       | M    | 中（触发该 fallback 时报 SOLVER_UNAVAILABLE）    | 待排（需先做协议设计）                                 |
 | **issue #2 合成器崩溃未调查**：白屏/透明窗口崩溃且不生成崩溃报告；主题篡改兜底已消除已知触发面，但主进程崩溃报告机制未查                                        | 工程   | issue #2                                                                          | S/M  | 中（无崩溃报告 ⇒ 真实崩溃无法诊断）              | 待排                                                   |
 | **IM bot 缺陷 B2/B3**（B1 已随 ce.5 宿主层状态修复）                                                                                                            | 正确性 | `.reverse/133-im-bot-approval-loop.md`                                            | S/M  | 中                                               | 待排                                                   |
 
-## 已排入 3.14.4-ce.2（DSH 可借鉴项）
+## 已排入 3.14.4-ce.2（进行中）
 
-来源：`.reverse/100-dsh-021/REPORT.md`（DSH 0.1.7→0.2.1-alpha.1 差异学习，2026-10-03）。另有 10 项"需适配后搬运"与 4 项"仅理念参考"，详见该报告 §3。
+DSH 可借鉴项来源：`.reverse/100-dsh-021/REPORT.md`（DSH 0.1.7→0.2.1-alpha.1 差异学习，2026-10-03）。另有 10 项"需适配后搬运"与 4 项"仅理念参考"，详见该报告 §3。
 
-| 条目                                                                                                   | 类   | 来源                                     | 代价 | 风险 | 状态        |
-| ------------------------------------------------------------------------------------------------------ | ---- | ---------------------------------------- | ---- | ---- | ----------- |
-| LLM-in-the-loop e2e 模式（真实模型 + fixture 注入空白渲染 + 反"模型撒谎"断言）                         | 工程 | DSH `xlsx-validation.e2e.ts`（236 行）   | M    | 低   | 已排入 ce.2 |
-| real-API e2e 的 CI 门禁设计（keyless/with-key 双流 + preflight fail-loud）                             | 工程 | DSH `.agents/notes/implemented/testing/` | S    | 低   | 已排入 ce.2 |
-| `recalculate` 缺口 S 档补齐（能力探测 + 如实声明；引擎整包 145-182 MiB/平台 + Linux 仅 WASM 明确不搬） | 工程 | DSH `assets/office-xlsx/SKILL.md`        | S    | 低   | 已排入 ce.2 |
+| 条目                                                                                                                                                                                              | 类       | 来源                                                       | 代价    | 风险                                               | 状态       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------- | ------- | -------------------------------------------------- | ---------- |
+| **未签名 macOS 安装包**（darwin x64 + arm64，.dmg + .zip，ad-hoc 签名、不公证）—— electron-updater 在 macOS 保持关闭，toast 引导从 GitHub Releases 下载                                           | 产品面   | ce.2 派单；发布形态见 spec 136（mac-unsigned 线并行落地）  | **L**   | 中（首次双架构构建 + Gatekeeper 引导文案需实测）   | **进行中** |
+| **DSH `recalculate` 缺口补齐**（能力探测 + 如实声明；引擎整包 145-182 MiB/平台 + Linux 仅 WASM 明确不搬）                                                                                         | 工程     | DSH `assets/office-xlsx/SKILL.md`                          | **S**   | 低                                                 | **进行中** |
+| **DSH real-API e2e 的 CI 门禁**（keyless/with-key 双流 + preflight fail-loud）                                                                                                                    | 工程     | DSH `.agents/notes/implemented/testing/`                   | **S**   | 低                                                 | **进行中** |
+| **DSH LLM-in-the-loop e2e 模式**（真实模型 + fixture 注入空白渲染 + 反"模型撒谎"断言）                                                                                                            | 工程     | DSH `xlsx-validation.e2e.ts`（236 行）                     | **M**   | 低                                                 | **进行中** |
+| **C47 + C48 + IM bot B2/B3（quick-fixes）**：onboarding RPC 挂起改 reject（补 `dismissOnboarding` 超时）；web `deviceMid` 与服务端 `ensureDeviceMid` 同源；B2/B3 两处缺陷。三项独立小修，一并收口 | 正确性   | task-108 未验证项 + `.reverse/133-im-bot-approval-loop.md` | **S**   | 中（挂起属静默降级；deviceMid 关乎设备身份一致性） | **进行中** |
+| **上游漏洞与优化分析**（只读研究：对 3.14.3/3.14.4 逐条差异再核对，产出对照报告；与「工程 / 文档」节的 `official-diff.md` 整篇重跑互补，那条是对照表重排版）                                      | 上游跟进 | ce.2 派单；基线见 upstream-sync 台账                       | **M**   | 低（只读，不改码）                                 | **进行中** |
+| **S1 + T4 附件防护绕过修复 + 超时**（quick-fixes）：附件路径校验补绕过封堵、附件相关请求补超时，两条一起收口                                                                                      | 正确性   | ce.2 派单（上游审计 S1/T4）                                | **S**   | 高（防护绕过 = 越权面）                            | **进行中** |
+| **S4 webhook secret fail-closed + timingSafeEqual**（quick-fixes）：webhook secret 校验改 fail-closed，比较改常量时间                                                                             | 正确性   | ce.2 派单（上游审计 S4）                                   | **S**   | 中（secret 比较存在时序侧信道）                    | **进行中** |
+| **T1 stale-branch fencing 丢完成通知**（core-defects）：分支过期 fencing 时把「已完成」通知丢掉，补齐通知链                                                                                       | 正确性   | ce.2 派单（上游审计 T1）                                   | **M**   | 高（完成通知丢失 = 任务结果漂移）                  | **进行中** |
+| **T2 CronCreate 标题冻结 guard**（core-defects）：CronCreate 路径加标题冻结守卫，防标题被调度过程改写                                                                                             | 正确性   | ce.2 派单（上游审计 T2）                                   | **S-M** | 中（守卫误拦会阻塞合法创建）                       | **进行中** |
+| **R1 feishu 缓存淘汰**（quick-fixes）：飞书长连接相关缓存补淘汰策略                                                                                                                               | 正确性   | ce.2 派单（上游审计 R1）                                   | **S**   | 中（缓存不淘汰 = 内存/凭据陈旧）                   | **进行中** |
+
+> 待排三行任务书另列（C13 claim solver host fallback、续跑在飞 ask、`workspaceTabs` 迁移）：**本表均已存在**（见上方「协议/引擎」「产品面」「工程 / 文档」各节），要点也齐（host→renderer 新协议需单独立项 / 原子单元不可拆 / 239 处引用），不重复添加以遵守本表「唯一汇总处」的规则。
+
+## 待排（等用户决策后落位）
+
+> 上游审计发现但**未派发**的项：每行写清卡在哪一步决策，不进入「待排（下一版候选）」。
+
+| 条目                                                                                                      | 类       | 来源                      | 代价          | 风险 | 状态                               |
+| --------------------------------------------------------------------------------------------------------- | -------- | ------------------------- | ------------- | ---- | ---------------------------------- |
+| **S3 probeIntranet 目标限制**                                                                             | 正确性   | 上游审计（Lead 派单预留） | 未估          | 中   | 待排（需口径决策：哪些目标算合法） |
+| **S5 artifact 下载判据**                                                                                  | 正确性   | 上游审计（Lead 派单预留） | 未估          | 中   | 待排（需口径决策）                 |
+| **T5 v3.14.3 workflow fix 选择性 cherry-pick**                                                            | 上游跟进 | 上游审计（Lead 派单预留） | 未估          | 中   | 待排（需决策：跟不跟）             |
+| **S2 / S4 / S5 / R1 / R2 的上游回传**（等用户批准是否公开提 issue；上游拒外部 PR，只能以 issue 形式回传） | 上游跟进 | 上游审计（Lead 派单预留） | S（写 issue） | 低   | 待排（等用户批准）                 |
+| **T3 automation 重复投递**（继承性未验证）                                                                | 正确性   | 上游审计（Lead 派单预留） | 未估          | 中   | 待排（待实机录制确认是否复现）     |
 
 ## 有意不做（**写清原因，防后人误以为漏了**）
 

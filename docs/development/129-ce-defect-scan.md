@@ -9,29 +9,29 @@
 
 ## 开工前读过的材料（一致性声明）
 
-| 材料                                                               | 结论                                                                                                                                                |
-| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AGENTS.md`（根 + `apps/zcode-cli/AGENTS.md`）                     | —（规则）                                                                                                                                           |
-| `docs/development/126-start-plan-3007-root-cause.md`               | **基本一致**；对 §5-1 的修复顺序（D1）、§6.2 的风险形态（D1）、§5-9 的 UI 归因必要性（C3）**有三处订正**；§2.7 的死字段旁注（C1）**经独立复核一致** |
-| `docs/development/128-reference-proxy-parity.md`                   | 一致（引用其 §222 对 3007 归因的处置）                                                                                                              |
-| `.reverse/91-upstream-checkout/zai-org-ZCode/`（v3.14.3 开源检出） | 一致：CE 相对该检出的协议差异极小（79 行 diff），**captcha 三段链路在开源基线里本就不存在**，说明它是官方闭源打包期的补丁，不是 CE 裁掉的           |
+| 材料                                                               | 结论                                                                                                                                      |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `AGENTS.md`（根 + `apps/zcode-cli/AGENTS.md`）                     | —（规则）                                                                                                                                 |
+| `docs/development/126-start-plan-3007-root-cause.md`               | **基本一致**；修复顺序（D1）、风险形态（D1）、UI 归因必要性（C3）三处以本报告的复核结论为准；§2.7 的死字段旁注（C1）**经独立复核一致**    |
+| `docs/development/128-reference-proxy-parity.md`                   | 一致（引用其 §222 对 3007 归因的处置）                                                                                                    |
+| `.reverse/91-upstream-checkout/zai-org-ZCode/`（v3.14.3 开源检出） | 一致：CE 相对该检出的协议差异极小（79 行 diff），**captcha 三段链路在开源基线里本就不存在**，说明它是官方闭源打包期的补丁，不是 CE 裁掉的 |
 
 ---
 
 ## 1. 摘要表
 
-| #      | 严重度 | 一句话                                                                                                                                                                                     | 文件:行号                                                                                                                                              | 与 3007 同模式                 |
-| ------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
-| **D1** | **高** | CE 的 host **没有渲染层应答入口**：runtime-headers 请求只有「账号短路自答」和「立即失败」两个出口，**只改 126 §5-1 的守卫会让 start-plan 从「必然 3007」变成「必然立即失败」**，而不是变好 | `packages/services/src/zcode-agent/zcodeAgentService.ts:2266`、`:2275-2281`；官方对照 `host/index.js` @356111                                          | ✅ 同模式（分支被简化）        |
-| **A1** | **高** | 协议响应 schema 缺 `runtimeProviderHeaders` 字段，且两分支都是 `.strict()` —— 渲染层即便回传也会被 zod 拒绝                                                                                | `packages/shared/src/zcode-protocol/index.ts:2424-2445`                                                                                                | ✅ 同模式（字段级裁剪）        |
-| **A2** | 中     | reason 枚举缺 `captcha-retry`（已知，126 §2.7[1]）                                                                                                                                         | `packages/shared/src/zcode-protocol/index.ts:2395`                                                                                                     | ✅                             |
-| **C1** | 中     | 死字段 `runtimeProviderHeaders`（已知，126 §2.7 旁注）；含测试在内全仓 **0 引用**                                                                                                          | `packages/services/src/zcode-agent/zcodeAgent.ts:267`                                                                                                  | ❌（接线断）                   |
-| **C2** | 中     | 死字段 `rulesRevision`：官方 host 会回填、CE 的 session 映射器**从不写**它，全仓 0 引用                                                                                                    | `packages/shared/src/zcode-protocol/index.ts:928`；生产点 `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts:265-267`             | ❌（接线断）                   |
-| **C3** | 中     | **`packages/ui/src/lib/chatErrorAttribution.ts` 整模块是死代码**（唯一导出 `resolveTelemetryAttribution` 全仓 0 引用）。⇒ 126 §5-9「UI 归因误导用户去重新登录」**在 CE 当前不成立**        | `packages/ui/src/lib/chatErrorAttribution.ts:177`                                                                                                      | ❌（接线断，**订正既有文档**） |
-| **C4** | 低     | `getProviderBusinessErrorUiAction` / `isProviderBusinessErrorCode` 死代码（0 引用）；⇒ 3007 的「恢复动作」表整体未被消费                                                                   | `packages/ui/src/lib/providerBusinessError.ts:78`、`:94`                                                                                               | ❌（接线断）                   |
-| **A3** | 中     | 协议 `automation/create`、`automation/update` 参数缺 `botDeliveryTarget`（官方**保留**该字段），且 adapter 收到后**丢弃** ⇒ 机器人定时任务的回推地址无法持久化                             | `packages/shared/src/zcode-protocol/index.ts:3386-3401`、`:3428-3439`；丢弃点 `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts`（0 命中） | ✅ 同模式（字段级裁剪）        |
-| **D2** | 低     | 官方把 `CAPTCHA_VERIFY_FAILED` 码与三类文案变体都归一到 3007（`sw()`），CE 无此归一；但当前无消费者 ⇒ **无用户可感知影响**                                                                 | 官方 `styles-DEELZGp2.js` @1001224；CE 全仓 0 命中                                                                                                     | ✅                             |
-| —      | —      | **A/B/C/D/E 五类中，A 类基本对齐（仅 3 处缺口）、D 类业务码表 47/47 完全一致**                                                                                                             | 见 §3                                                                                                                                                  | —                              |
+| #      | 严重度 | 一句话                                                                                                                                                                                     | 文件:行号                                                                                                                                              | 与 3007 同模式                                        |
+| ------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| **D1** | **高** | CE 的 host **没有渲染层应答入口**：runtime-headers 请求只有「账号短路自答」和「立即失败」两个出口，**只改 126 §5-1 的守卫会让 start-plan 从「必然 3007」变成「必然立即失败」**，而不是变好 | `packages/services/src/zcode-agent/zcodeAgentService.ts:2266`、`:2275-2281`；官方对照 `host/index.js` @356111                                          | ✅ 同模式（分支被简化）                               |
+| **A1** | **高** | 协议响应 schema 缺 `runtimeProviderHeaders` 字段，且两分支都是 `.strict()` —— 渲染层即便回传也会被 zod 拒绝                                                                                | `packages/shared/src/zcode-protocol/index.ts:2424-2445`                                                                                                | ✅ 同模式（字段级裁剪）                               |
+| **A2** | 中     | reason 枚举缺 `captcha-retry`（已知，126 §2.7[1]）                                                                                                                                         | `packages/shared/src/zcode-protocol/index.ts:2395`                                                                                                     | ✅                                                    |
+| **C1** | 中     | 死字段 `runtimeProviderHeaders`（已知，126 §2.7 旁注）；含测试在内全仓 **0 引用**                                                                                                          | `packages/services/src/zcode-agent/zcodeAgent.ts:267`                                                                                                  | ❌（接线断）                                          |
+| **C2** | 中     | 死字段 `rulesRevision`：官方 host 会回填、CE 的 session 映射器**从不写**它，全仓 0 引用                                                                                                    | `packages/shared/src/zcode-protocol/index.ts:928`；生产点 `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts:265-267`             | ❌（接线断）                                          |
+| **C3** | 中     | **`packages/ui/src/lib/chatErrorAttribution.ts` 整模块是死代码**（唯一导出 `resolveTelemetryAttribution` 全仓 0 引用）。⇒ 126 §5-9「UI 归因误导用户去重新登录」**在 CE 当前不成立**        | `packages/ui/src/lib/chatErrorAttribution.ts:177`                                                                                                      | ❌（接线断；126 §5-9 的「误导用户」判定在 CE 不成立） |
+| **C4** | 低     | `getProviderBusinessErrorUiAction` / `isProviderBusinessErrorCode` 死代码（0 引用）；⇒ 3007 的「恢复动作」表整体未被消费                                                                   | `packages/ui/src/lib/providerBusinessError.ts:78`、`:94`                                                                                               | ❌（接线断）                                          |
+| **A3** | 中     | 协议 `automation/create`、`automation/update` 参数缺 `botDeliveryTarget`（官方**保留**该字段），且 adapter 收到后**丢弃** ⇒ 机器人定时任务的回推地址无法持久化                             | `packages/shared/src/zcode-protocol/index.ts:3386-3401`、`:3428-3439`；丢弃点 `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts`（0 命中） | ✅ 同模式（字段级裁剪）                               |
+| **D2** | 低     | 官方把 `CAPTCHA_VERIFY_FAILED` 码与三类文案变体都归一到 3007（`sw()`），CE 无此归一；但当前无消费者 ⇒ **无用户可感知影响**                                                                 | 官方 `styles-DEELZGp2.js` @1001224；CE 全仓 0 命中                                                                                                     | ✅                                                    |
+| —      | —      | **A/B/C/D/E 五类中，A 类基本对齐（仅 3 处缺口）、D 类业务码表 47/47 完全一致**                                                                                                             | 见 §3                                                                                                                                                  | —                                                     |
 
 > 严重度口径：**高** = 会造成功能整块失效或让既定修复方案失效；**中** = 能力静默缺失但当前无用户可感知路径，或属于修复前置；**低** = 有缺口但无消费者 / 无影响面。
 
@@ -80,7 +80,7 @@ start-plan 请求会**掉进 2275-2281 的快速失败分支**：
 用户看到的将是 `headersApplied:false / "Provider request auth is unavailable"`（几乎瞬时），
 **不是** 126 §6.2 预判的「180s 超时」。
 
-⇒ 126 §6.2 的风险预判方向对（修守卫不够），但**具体形态要订正**；
+⇒ 126 §6.2 的风险预判方向对（修守卫不够），但**具体形态是「立即失败」**（不是 180s 超时）；
 更重要的是 §5 的修复顺序「1→2→3→4 先打通带验证码头发出」**不成立**：
 1（守卫）与 5（渲染层接线）+「渲染层应答入口」必须**同一个提交**上线，否则等于把「必然 3007」换成「必然立即失败」，用户可感知结果更差（错误文案更含糊）。
 
@@ -178,7 +178,7 @@ sed -n '265,267p' apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-m
 
 ---
 
-### C3（中）`chatErrorAttribution.ts` 整模块死代码 —— **订正 126 §5-9**
+### C3（中）`chatErrorAttribution.ts` 整模块死代码（**与 126 §5-9 的判定相反**）
 
 **现象**：`packages/ui/src/lib/chatErrorAttribution.ts` 唯一导出 `resolveTelemetryAttribution` 全仓 **0 引用**（含测试）。
 它在官方由 `chatErrorBannerTelemetry.ts` 消费，而后者在 CE **整文件不存在**（官方上游检出里有该文件，CE 无）。
@@ -198,7 +198,7 @@ grep -rn "chatErrorBannerTelemetry" packages apps --include=*.ts | grep -v dist
 # → 无输出
 ```
 
-**影响 / 对既有文档的订正**：
+**影响（对 126 §5-9 的复核）**：
 126 §5-9 与 §2.8 把 `chatErrorAttributionEvidence.ts:52` 的 `"3007":"auth_failed"` 列为「会误导用户去重新登录」，
 **在 CE 当前不成立**：该表只被死模块 `chatErrorAttribution.ts` 引用，不进入任何用户可见输出。
 ⇒ 它**不应**排进 ce.3-fix.1 的必改项，应按「随死代码一并处理」处置（要么整块删除，要么等遥测链路恢复时再改）。

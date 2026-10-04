@@ -193,7 +193,7 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
 ## 7. 「ce.3 发版时的发布清单」（已批准，本轮不执行）
 
 > 前提：真正打 tag 发 release 时才做；**失败不得阻塞 tag 发版**（job 独立、仅 tag/dispatch 触发）。
-> **将来真做时也不得用 `continue-on-error`** —— 理由是它与 §7.1 第 5 条那次订正完全相同：
+> **将来真做时也不得用 `continue-on-error`** —— 理由与 §7.1 第 5 条相同：
 > 交付终点（推 registry）失败被吞掉后，CI 全绿而产物根本不存在，**误报成功比误报失败更危险**。
 > 下面每一步都写成照着做即可的动作。
 
@@ -248,7 +248,7 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
 
 5. CI job 形态（**已落地**，在 `release.yml` 的 `headless-server-package` job 内）：checkout → pnpm install →
    `build-zcode` → smoke → 挂 Release / 上传 artifact → stage npm 包 → `npm publish` → 发布后验证。
-   **不再有 `continue-on-error`**（2026-09-25 订正）：原先 job 级与 `Publish to npm` / `Verify npm package` / `Attach package to release` 四处都设了它，
+   **`continue-on-error` 已全部移除**：job 级与 `Publish to npm` / `Verify npm package` / `Attach package to release` 四处原先都设有它，
    后果是 **npm 发布实际失败（`ENEEDAUTH`）而 CI 显示全绿、registry 上根本没有这个包**。
    交付终点失败必须让流水线变红 —— 唯一保留的软降级是「基址未配置就跳过构建」这种显式选择（会打印 `::warning::`）。
    **npm 三步不依赖 `ZCODE_DIST_BASE_URL`**：该 job 的构建步骤在变量未配置时会 `exit 0` 跳过，
@@ -419,8 +419,7 @@ smoke-exit=0
 | macOS-x64 / arm64                             | **未知**（未在 mac 上构建过；跨平台工作流已可测，结果未观测）                            | 推断（`node-pty` 懒加载） | 推断      | 推断（**darwin 原生载荷在包内**，见下）                               | 推断可用（mac 有 SIGHUP）                                                   |
 | **Windows-x64 / arm64**                       | **未知**（`install.sh` 是 POSIX 脚本 ⇒ 只能走 npm 形态；跨平台工作流已可测，结果未观测） | 推断                      | 推断      | 推断（**win32 原生载荷在包内**，但服务端终端与信号另有 Windows 分支） | ❌ **不成立**（见 §10.3）                                                   |
 
-**⚠️ 订正（2026-09-27，实测解包产物）**：本表此前写「包内**没有** darwin 原生载荷」「**无** win32 原生载荷」，
-**那是错的** —— 实测 `dist/zcode/releases/3.14.3-ce.3/zcode-3.14.3-ce.3.tar.gz`（`tar -tzf` 列目录）：
+**⚠️ 原生载荷以包内实测为准（2026-09-27 解包产物）**：实测 `dist/zcode/releases/3.14.3-ce.3/zcode-3.14.3-ce.3.tar.gz`（`tar -tzf` 列目录），**6 个平台的载荷全在**：
 
 | 载荷                        | 包内实际存在的平台目录                                                                      |
 | --------------------------- | ------------------------------------------------------------------------------------------- |
