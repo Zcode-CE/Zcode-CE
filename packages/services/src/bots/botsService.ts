@@ -6,7 +6,7 @@ import {
   BOT_MAX_ATTACHMENT_SIZE_BYTES,
 } from "./botAttachmentLimits.js";
 import { resolveAllowedAttachmentLocalPath } from "./attachmentPathGuard.js";
-import { fetchBotAttachmentFromUrl } from "./attachmentUrlGuard.js";
+import { assertAllowedAttachmentUrl, fetchBotAttachmentFromUrl } from "./attachmentUrlGuard.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { IDisposable } from "@zcode/rpc";
@@ -1169,6 +1169,16 @@ export function createBotsService(
         attachment,
         data: await readFile(allowedPath),
       };
+    }
+    // 修复原因（S1）：downloadUrl 是入站 payload 里唯一由请求方控制的 URL 字段
+    // （webhook 透传 payload、微信从 download_url 读取）。原实现先调用 provider
+    // 的 downloadAttachment 再回退到通用 guarded 路径，而 provider 各自的下载实现
+    // 没有统一判据——微信渠道曾是裸 fetch，入站 downloadUrl 指向回环 / 内网 /
+    // 云元数据时会被真实请求（SSRF，判别实验已复现）。统一在 provider 路径之前
+    // 校验：任何 provider（含未来新增）的下载都先过同一道判据；通用 URL 路径
+    // 内部的 fetchBotAttachmentFromUrl 仍会再校验一次（幂等，纵深而非冗余）。
+    if (attachment.downloadUrl) {
+      await assertAllowedAttachmentUrl(attachment.downloadUrl);
     }
     const provider = providers[bot.provider];
     const downloaded = await provider?.downloadAttachment?.(bot, attachment, actor);

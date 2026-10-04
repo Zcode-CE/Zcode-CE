@@ -334,7 +334,14 @@ export interface IZCodeTaskService {
     expectedRevision?: number;
   }): Promise<ZCodeSessionGoalResult>;
 
-  /** 响应权限请求 */
+  /**
+   * 响应权限请求。
+   *
+   * 返回值语义：true 表示本次提交生效（ACK = accepted/duplicate）；
+   * false 表示提交未生效——具体是 CLI 侧 resolveInteraction 回 noop：
+   * 该 interaction 已被其它端或自动裁决先行收口（先到先得语义，见
+   * packages/shared 的 command.ts）。调用方应据此回复「已处理」而非「已提交」。
+   */
   respondPermission(params: {
     taskId: string;
     workspacePath?: string;
@@ -345,7 +352,12 @@ export interface IZCodeTaskService {
     response: ZCodePermissionResponse;
   }): Promise<boolean>;
 
-  /** 响应用户问答请求（Elicitation） */
+  /**
+   * 响应用户问答请求（Elicitation）。
+   *
+   * 返回值语义与 respondPermission 一致：noop（已被其它端 / 自动裁决收口）时
+   * 返回 false，调用方据此回复「已处理」。
+   */
   respondElicitation(params: {
     taskId: string;
     workspacePath?: string;

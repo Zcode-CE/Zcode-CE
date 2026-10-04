@@ -2214,6 +2214,20 @@ export function createZCodeTaskServiceAdapter(
         }),
       });
       assertV4CommandAckOk("resolveInteraction", ack, `permission ${params.requestId}`);
+      // 修复原因（133-im-bot-approval-loop B3）：resolveInteraction 是「先到先得，晚到 noop」
+      // （packages/shared 的 command.ts）。noop 表示该 interaction 已被其它端（桌面 / 手机）
+      // 或自动裁决先行收口——本次提交并未生效。把 noop 与 accepted/duplicate 分开：
+      // 不抛错（noop 是多端并发应答的正常幂等语义，抛 failed 会误导客户端，见 133 §5.2），
+      // 但返回 false，让 Bot 侧回复「该权限已处理」而不是「已提交」——把别端的裁决说成
+      // 本次提交，会让用户误以为自己的选择生效了。
+      if (ack.status === "noop") {
+        logger.info(
+          undefined,
+          "resolveInteraction noop (already resolved elsewhere), permission submission not applied",
+          { requestId: params.requestId },
+        );
+        return false;
+      }
       return true;
     },
 
@@ -2244,6 +2258,18 @@ export function createZCodeTaskServiceAdapter(
         }),
       });
       assertV4CommandAckOk("resolveInteraction", ack, `elicitation ${params.requestId}`);
+      // 修复原因（133 B3，与 respondPermission 同一条判据）：noop 表示该问答已被其它端
+      // 或自动裁决先行收口，本次提交未生效。返回 false 让 Bot 侧回复「该问答已处理」；
+      // 同时跳过下面的 replayable 事件投递——那是「本次应答已生效、请各端清理弹窗」的语义，
+      // 在 noop 下投递会把未生效的应答广播给桌面 / 手机 observer。
+      if (ack.status === "noop") {
+        logger.info(
+          undefined,
+          "resolveInteraction noop (already resolved elsewhere), elicitation submission not applied",
+          { requestId: params.requestId },
+        );
+        return false;
+      }
       if (params.clientMode === "web-remote-replayable") {
         // 语义保真（原 agentService.respondUserInput 的 web-remote-replayable 分支）：
         // 手机远控应答后，桌面/其它 observer 需要显式响应事件清理同一 requestId 的弹窗；

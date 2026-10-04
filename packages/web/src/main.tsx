@@ -332,6 +332,13 @@ function createWebPlatform(): IPlatformService {
     executeDesktopCommand: () => Promise.resolve(),
     setApplicationLocale: (_locale) => Promise.resolve(),
     setTitleBarTheme: () => Promise.resolve(),
+    // 身份隔离声明（C48）：web 端无法读取宿主的设备身份文件（telemetry-state.json），
+    // getDeviceId() 返回的是浏览器物理指纹（platform + 屏幕尺寸 + 色深），
+    // 只作 streamClientId（owner/observer 过滤的客户端身份，见 packages/ui 的
+    // streamClientId.ts）使用。它不是跨端共享的设备身份 deviceMid：onboarding 记录、
+    // X-Device-Mid 计费头 / claim 等设备级锚点一律由宿主侧 ensureDeviceMid 统一生成
+    // （onboarding 记录文件新建时服务侧解析，见 onboardingRecordService.appendRecord），
+    // UI 不得把本指纹当 deviceMid 落盘或发给任何设备级接口。
     getDeviceId: () => {
       const nav = globalThis.navigator as Navigator & { platform?: string };
       const platform = nav?.platform ?? "";
@@ -379,7 +386,7 @@ async function resolveWebBootstrap(): Promise<WebBootstrapResult> {
     probe = { networkError: true };
   }
 
-  // 401/403 是**授权问题**，不是网络问题：直接渲染未授权屏并停止（不进 WS、不重试），
+  // 401/403 是授权问题，不是网络问题：直接渲染未授权屏并停止（不进 WS、不重试），
   // 否则用户会看到「正在重连」这种把授权说成网络问题的误导提示。见 authProbe.ts。
   if (classifyServerInfoProbe(probe) === "unauthorized") {
     throw new Error(
@@ -387,7 +394,7 @@ async function resolveWebBootstrap(): Promise<WebBootstrapResult> {
     );
   }
 
-  // 拿到 server-info 时**必须**校验契约版本：web 资产与服务器不同版本时不进入应用，
+  // 拿到 server-info 时必须校验契约版本：web 资产与服务器不同版本时不进入应用，
   // 也不静默降级（RPC 层不做版本协商）。见 docs/development/web-remote-control.md §5。
   if (serverInfo) {
     const compatibility = evaluateServerCompatibility(serverInfo, SERVER_REMOTE_PROTOCOL_VERSION);

@@ -211,6 +211,24 @@ export async function resolveAllowedAttachmentAddresses(
 }
 
 /**
+ * 只校验、不下载：入站附件 URL 在交给任何 provider 自行下载、或通用下载路径之前，
+ * 先过本模块的同一套判据。
+ *
+ * 为什么需要这个入口（S1）：botsService.resolveAttachmentBytes 原先是先调用
+ * provider.downloadAttachment、再回退到本模块的 guarded 下载，而各 provider 的
+ * 下载实现各自为政、没有统一判据——微信渠道的 downloadAttachment 曾是裸 fetch，
+ * 使入站 payload 里的 downloadUrl 指向回环 / 内网 / 云元数据时被真实请求（SSRF：
+ * 用「本地 127.0.0.1 探针 server + 真实回调投递」的判别实验复现过，修复前命中 1 次）。
+ * 把校验收敛到 provider 路径之前这一处 choke point，任何 provider（含未来新增）的
+ * 下载实现都先过同一道判据；provider 自身的下载仍应复用 fetchBotAttachmentFromUrl
+ * 以同时获得超时与连接期 DNS pin（纵深第二层）。
+ */
+export async function assertAllowedAttachmentUrl(rawUrl: string): Promise<void> {
+  const url = parseAttachmentUrl(rawUrl);
+  await resolveAllowedAttachmentAddresses(url);
+}
+
+/**
  * 校验并下载附件。返回 body 字节。
  *
  * 重定向不跟随（`redirect: "manual"`）：跟随会让「公网 URL 302 到内网」绕过首跳判定。

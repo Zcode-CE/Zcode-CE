@@ -145,8 +145,16 @@ export function createOnboardingRecordService(
           }
           file = existing;
         } else {
-          // 新文件直接落 v2：v1 只在读取旧文件时出现，由 onboardingRecordFileSchema 无损升级。
-          file = { version: 2, deviceMid, entries: [], decisions: [] };
+          // 修复原因（C48）：原实现在这里直接落调用方传入的 deviceMid——web 客户端的
+          // platform.getDeviceId() 返回浏览器物理指纹（main.tsx，非 UUID），全新部署下
+          // 首条 appendRecord 会把指纹固化为记录文件的 deviceMid，与 telemetry-state.json
+          // 的设备身份（X-Device-Mid / claim / 反馈同源）分叉。新建文件的 deviceMid
+          // 一律走宿主侧设备身份入口（resolveDeviceMid / ensureDeviceMid），与
+          // recordDecisionSafely（dismiss 路径）同一口径；调用方传入值退化为纯诊断
+          // （上方的 mismatch warn 正是 C48 这类分叉的可观测出口）。
+          const resolvedDeviceMid = await resolveNewFileDeviceMid();
+          if (!resolvedDeviceMid) return;
+          file = { version: 2, deviceMid: resolvedDeviceMid, entries: [], decisions: [] };
         }
         const record: OnboardingRecordEntry = {
           userId,

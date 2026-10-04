@@ -31,6 +31,13 @@ export interface IOnboardingRecordService {
   /**
    * 追加一条引导完成记录。文件不存在时创建并固化 deviceMid（之后以文件内值为权威）；
    * userId 由服务内部按当前登录态补全，调用方不传。
+   *
+   * deviceMid 参数语义：纯诊断，不作为新建文件的取值来源（C48 修复）。
+   * 新建文件的 deviceMid 一律由服务侧的 resolveDeviceMid（默认 ensureDeviceMid，
+   * 与 X-Device-Mid / 反馈 / claim 同源）解析——调用方（尤其 web 客户端）的
+   * platform.getDeviceId() 可能是浏览器指纹而非设备身份，落进文件会造成记录锚点
+   * 与设备身份分叉。调用方传入值仅用于与文件现有值比对并在不一致时 warn
+   * （该 warn 是 C48 这类分叉的可观测出口）。
    */
   appendRecord(deviceMid: string, entry: OnboardingRecordEntryInput): Promise<void>;
   /**

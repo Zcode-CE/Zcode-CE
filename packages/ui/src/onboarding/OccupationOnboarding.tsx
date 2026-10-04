@@ -4,6 +4,7 @@ import { occupations, type OccupationValue } from "@/onboarding/occupationOption
 import { OnboardingModeSelector } from "@/onboarding/OnboardingModeSelector.js";
 import { OnboardingOccupationGrid } from "@/onboarding/OnboardingOccupationGrid.js";
 import { useOnboardingTrigger } from "@/onboarding/useOnboardingTrigger.js";
+import { withOnboardingRpcTimeout } from "@/onboarding/withOnboardingRpcTimeout.js";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useSettings } from "@/hooks/useSettingService.js";
 import { useOnboardingRecordService } from "@/hooks/useOnboardingRecordService.js";
@@ -19,16 +20,13 @@ import { logger } from "@/logger.js";
 import { DesktopWindowControls } from "@/DesktopWindowControls.js";
 import type { OnboardingRecordEntry } from "@zcode/shared";
 
-/** 追加本地引导记录（userId 由 host 补全）；channel 缺失挂起时 5 秒超时按写失败处理。 */
+/** 追加本地引导记录（userId 由 host 补全）；channel 缺失 / 无响应挂起时 5s 超时按写失败处理。 */
 async function appendOnboardingRecord(
   service: NonNullable<ReturnType<typeof useOnboardingRecordService>>,
   deviceMid: string,
   entry: Parameters<typeof service.appendRecord>[1],
 ): Promise<void> {
-  await Promise.race([
-    service.appendRecord(deviceMid, entry),
-    new Promise((_, reject) => setTimeout(() => reject(new Error("appendRecord timeout")), 5000)),
-  ]);
+  await withOnboardingRpcTimeout(service.appendRecord(deviceMid, entry), "appendRecord");
 }
 
 export function OccupationOnboarding({
@@ -86,8 +84,13 @@ export function OccupationOnboarding({
     setRequested(false);
     // 关闭必须落盘：只改组件 state 时重启后引导会再次弹出（8225921 声称修过、实际未接通）。
     // deviceMid 由 host 侧服务自己解析（记录文件的所有者），UI 不传也不生成身份。
+    // dismissOnboarding 同样走 RPC：channel 未注册时 promise 永不结算，
+    // 超时兜底在 5s 后强制按写失败处理（C47，纯超时兜底，不改交互语义）。
     if (onboardingRecord) {
-      void onboardingRecord.dismissOnboarding().catch((cause: unknown) => {
+      void withOnboardingRpcTimeout(
+        onboardingRecord.dismissOnboarding(),
+        "dismissOnboarding",
+      ).catch((cause: unknown) => {
         logger.warn("[occupation-onboarding] 写入关闭决策失败", { error: String(cause) });
       });
     }

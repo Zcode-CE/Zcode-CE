@@ -8,6 +8,7 @@ import type {
   BotOutboundMessage,
 } from "@zcode/shared";
 import type { BotProviderAdapter, BotTypingTarget } from "./types.js";
+import { fetchBotAttachmentFromUrl } from "../attachmentUrlGuard.js";
 import { fetchBotProviderJson } from "#src/bots/providers/providerRequest.js";
 
 export const DEFAULT_WEIXIN_ILINK_BASE_URL = "https://ilinkai.weixin.qq.com";
@@ -17,6 +18,8 @@ const WEIXIN_MESSAGE_TYPE_BOT = 2;
 const WEIXIN_MESSAGE_STATE_FINISH = 2;
 const WEIXIN_CDN_AES_ALGORITHM = "aes-128-ecb";
 const WEIXIN_GET_UPDATES_TIMEOUT_MS = 90_000;
+// 与 botsService / feishu / telegram 的附件下载超时同口径（30s）：回调不得因下载悬挂而卡住。
+const WEIXIN_ATTACHMENT_DOWNLOAD_TIMEOUT_MS = 30_000;
 
 interface WeixinProviderDeps {
   loadCredential(key: string): Promise<string | null>;
@@ -730,14 +733,33 @@ export function createWeixinBotProvider(deps: WeixinProviderDeps): BotProviderAd
       if (!attachment.downloadUrl || !aesKey) {
         return null;
       }
-      const response = await fetch(attachment.downloadUrl);
-      if (!response.ok) {
-        throw new Error(`Weixin attachment download failed: HTTP ${response.status}`);
+      // 修复原因（S1/T4）：原实现是裸 fetch 回调 payload 里的 download_url——
+      // ① 无目标判据：指向回环 / 内网 / 云元数据的 URL 会被服务端真实请求（SSRF，
+      //    判别实验用「本地 127.0.0.1 探针 server + 真实回调投递」复现过）；
+      // ② 无超时：undici 默认约 300s 兜底，bot 回调等于被拖死。
+      // 复用通用 guard 入口 fetchBotAttachmentFromUrl 同时拿到判据（DNS pin、
+      // 不跟随重定向、只公网）与超时，与 botsService 通用下载路径同口径。
+      // 注意：botsService 在调到本方法之前还会用 assertAllowedAttachmentUrl
+      // 先校验一次（choke point），两层独立成立，单层被改掉时另一层仍承重。
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), WEIXIN_ATTACHMENT_DOWNLOAD_TIMEOUT_MS);
+      try {
+        const { bytes } = await fetchBotAttachmentFromUrl(attachment.downloadUrl, {
+          signal: controller.signal,
+        });
+        return {
+          attachment,
+          data: decryptWeixinCdnMedia(bytes, aesKey),
+        };
+      } catch (error) {
+        if ((error as { name?: unknown })?.name === "AbortError") {
+          // Bugfix：附件下载卡住时必须尽快失败并回复用户，不能让 bot 回调一直悬挂。
+          throw new Error("Weixin attachment download timed out.");
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeout);
       }
-      return {
-        attachment,
-        data: decryptWeixinCdnMedia(new Uint8Array(await response.arrayBuffer()), aesKey),
-      };
     },
 
     parseCallback(payload): BotInboundMessage[] {

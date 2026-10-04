@@ -14,6 +14,7 @@ import type {
   BotTransientInteractionCardHandle,
 } from "./types.js";
 import { formatBotMessage } from "../messages.js";
+import { readCachedUserDisplayName, writeUserDisplayName } from "./feishuDisplayNameCache.js";
 import { fetchBotProviderJson } from "#src/bots/providers/providerRequest.js";
 
 interface FeishuProviderDeps {
@@ -108,7 +109,8 @@ interface FeishuUserInfoResponse {
 
 const accessTokenCache = new Map<string, { token: string; expiresAt: number }>();
 const typingReactionIds = new Map<string, string>();
-const userDisplayNameCache = new Map<string, { name: string | null; expiresAt: number }>();
+// userDisplayNameCache 已收敛到 feishuDisplayNameCache.ts（R1：写入时清过期项，
+// 避免按 bot+user 维度无界增长）。
 const FEISHU_ELICITATION_FORM_FIELD_NAME = "answer";
 const FEISHU_ELICITATION_FORM_VALUE_PREFIX = "__form__:";
 const FEISHU_ELICITATION_CUSTOM_OPTION_ID = "__custom__";
@@ -1320,8 +1322,8 @@ async function readFeishuUserDisplayName(
     return null;
   }
   const cacheKey = `${getFeishuDomainProvider(bot)}:${bot.feishuAppId ?? ""}:${bot.credentialRef ?? ""}:${trimmedUserId}`;
-  const cached = userDisplayNameCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
+  const cached = readCachedUserDisplayName(cacheKey);
+  if (cached.hit) {
     return cached.name;
   }
   const token = await readTenantAccessToken(bot, deps);
@@ -1347,10 +1349,9 @@ async function readFeishuUserDisplayName(
   const name = resolveFeishuUserDisplayName(payload);
   // Bugfix: 飞书消息事件只稳定携带 sender_id，不携带发送者名称。
   // 这里缓存通讯录查询结果，避免同一个用户连续发消息时每条都请求 contact API。
-  userDisplayNameCache.set(cacheKey, {
-    name,
-    expiresAt: Date.now() + 10 * 60_000,
-  });
+  // R1：写入统一走 feishuDisplayNameCache（写入时清过期项，避免按 bot+user 维度
+  // 无界增长），注释与判据见该模块。
+  writeUserDisplayName(cacheKey, name);
   return name;
 }
 
