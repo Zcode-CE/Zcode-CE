@@ -720,8 +720,9 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
     });
     // 内置技能包（bundled-skills）：官方 3.14.3 起 dynamic-workflows 住在这里
     // （zcode-guide 插件已不再携带它）。与官方插件共用同一套候选基目录，每次启动都重新解析，
-    // 缺资产时只 warn 不抛错，见 bundled-skills.ts。
-    const bundledSkillRoots = resolveBundledSkillRoots({ logger });
+    // 缺资产时只 warn 不抛错，见 bundled-skills.ts。SEA 二进制态按内容 hash 解包到
+    // <cliStorageRoot>/bundled-skills/<hash>/（解包失败的降级同样只 warn）。
+    const bundledSkillRoots = await resolveBundledSkillRoots({ cliStorageRoot, logger });
     runtime = new AgentRuntime(sessionId, runtimeConfig, {
       // 主代理的模型请求过治理器的 observer：立即放行，但让治理器看见它的 429 / 成功。
       modelRequestAdmission: workflowConcurrencyGovernor.observer(),

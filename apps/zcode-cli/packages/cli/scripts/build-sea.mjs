@@ -23,6 +23,8 @@ import {
 import { removeWindowsAuthenticodeSignature } from "./windows-authenticode.mjs";
 import { collectSeaTuiAssets } from "./sea-tui-assets.mjs";
 import { collectSeaOfficialPluginAssets } from "./sea-official-plugin-assets.mjs";
+import { prepareSeaPluginNodePayloads } from "./sea-plugin-node-payloads.mjs";
+import { collectSeaBundledSkillAssets } from "./sea-bundled-skill-assets.mjs";
 import { collectSeaRuntimeToolAssets } from "./sea-runtime-tool-assets.mjs";
 import { prepareSeaRuntimeToolAssets } from "./sea-runtime-tool-prepare.mjs";
 import { collectSeaPlaywrightAssets } from "./sea-playwright-assets.mjs";
@@ -149,11 +151,26 @@ const prepareSeaBlob = async (target, nodeVersion) => {
     stagingDirectory: seaAssetStagingForTarget(target),
     target,
   });
+  // 内容插件的 Node 载荷（office-node/pdf-node）不在源码树（esbuild 现场产出），
+  // 必须先 stage 出带载荷的暂存副本，收集器才能拿到完整闭包（详见该模块头注释）。
+  const { pluginRoots: payloadPluginRoots } = await prepareSeaPluginNodePayloads({
+    root,
+    stagingDirectory: seaAssetStagingForTarget(`${target}-plugin-payloads`),
+    lookupRoots: [repositoryRoot, resolve(repositoryRoot, "packages", "desktop")],
+  });
   const { assets: pluginAssets, manifest: pluginManifest } = await collectSeaOfficialPluginAssets({
     requireRuntime: true,
     root,
     stagingDirectory: seaAssetStagingForTarget(`${target}-official-plugins`),
+    pluginRoots: payloadPluginRoots,
   });
+  // 内置技能包（bundled-skills）：不是插件，没有版本身份，按内容 hash 内嵌；
+  // 运行时解包见 bootstrap/src/app/bundled-skills.ts 的 materializeSeaBundledSkillPack。
+  const { assets: bundledSkillAssets, manifest: bundledSkillManifest } =
+    await collectSeaBundledSkillAssets({
+      root,
+      stagingDirectory: seaAssetStagingForTarget(`${target}-bundled-skills`),
+    });
   const { assets: runtimeToolAssets, manifest: runtimeToolManifest } =
     await collectSeaRuntimeToolAssets({
       root: repositoryRoot,
@@ -167,7 +184,11 @@ const prepareSeaBlob = async (target, nodeVersion) => {
       target,
     });
   const providerConfigAssets = await collectSeaProviderConfigAssets({ root: repositoryRoot });
-  const nodeLicensePath = await stageNodeNotices(seaAssetStagingForTarget(`${target}-node`), nodeVersion, repositoryRoot);
+  const nodeLicensePath = await stageNodeNotices(
+    seaAssetStagingForTarget(`${target}-node`),
+    nodeVersion,
+    repositoryRoot,
+  );
 
   await writeFile(
     seaConfig,
@@ -176,6 +197,7 @@ const prepareSeaBlob = async (target, nodeVersion) => {
         assets: {
           ...tuiAssets,
           ...pluginAssets,
+          ...bundledSkillAssets,
           ...runtimeToolAssets,
           ...playwrightAssets,
           ...providerConfigAssets,
@@ -193,7 +215,7 @@ const prepareSeaBlob = async (target, nodeVersion) => {
   );
 
   console.log(
-    `[sea] generating SEA blob for ${target} with ${tuiManifest.files.length} TUI assets, ${pluginManifest.plugins.length} official plugins, ${runtimeToolManifest.tools.length} runtime tools, and ${playwrightManifest.files.length} Playwright assets`,
+    `[sea] generating SEA blob for ${target} with ${tuiManifest.files.length} TUI assets, ${pluginManifest.plugins.length} official plugins, ${bundledSkillManifest.files.length} bundled skill files, ${runtimeToolManifest.tools.length} runtime tools, and ${playwrightManifest.files.length} Playwright assets`,
   );
   run(process.execPath, ["--experimental-sea-config", seaConfig]);
   return seaBlob;

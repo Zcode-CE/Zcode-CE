@@ -181,7 +181,13 @@ pnpm exec tsx scripts/verify-remote-assets.mjs --root ./publish-root
 3. `prepare:remote-assets` 的输出目录固定在 `packages/desktop/mock-cdn`（不可重定向）；装配脚本可用 `--out` 指定输出。
 4. 生成过程没有事务性：中途失败会留下"半个 release 目录"，重跑会复用已存在文件；怀疑产物陈旧时删掉
    `packages/desktop/mock-cdn/releases/<版本>` 重跑。
-5. 远程工作区当前**不承载** Browser Use / Computer Use（远端插件合同只声明 browser-use 所需资产）。
+5. 远程工作区**不承载浏览器操作 / 电脑控制能力**：浏览器操作依赖桌面宿主注入的
+   `browserControlPort`（远端 SSH/Docker 链路不提供），电脑控制还需要 CUA Helper、原生驱动与
+   `zcode-cua-plugin` 插件资产（都不随远端资源下发）。远端 glm 组件随包带 browser-use 的
+   **插件正文**与 node_repl 宿主（上游布局），但其在远端不可执行；远端插件合同
+   （`packages/server/src/remote/zcodeAgentOfficialPluginAssets.ts`）是**下限**语义，
+   只钉 browser-use 内容资产，宿主与其余内容插件由预构建侧的完整性清单兜底
+   （`scripts/prepare-prebuilds.mjs` 的 `remoteOfficialPluginRequiredPaths`）。
 6. **Docker：已实测通过**（2026-09-24）。三者共用同一套部署与资源代码（`connectRemote` →
    `deployServer(backend, {platform, arch})`，资产层无 provider 分支），这次的实测把 Docker 从"理论上同样受益"变成"真的走通"：
    `detect() = {platform: linux, arch: x64}` → 自托管发布根 **8 个请求全部 200、零 404**（manifest + node-runtime /
