@@ -1,4 +1,4 @@
-import { lookup } from "node:dns/promises";
+import { lookup as defaultDnsLookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 import { Agent, fetch as undiciFetch } from "undici";
 
@@ -28,6 +28,24 @@ const BOT_ATTACHMENT_MAX_REDIRECTS = 3;
 
 /** 禁止的网段。与 desktopSaveFile.ts:18-45 同一份口径，便于两处一起审。 */
 const blockedRemoteAddresses = new BlockList();
+
+/**
+ * 依赖注入点：默认逐字走系统 DNS。与 paths.ts 的 setDataBaseDir() 同构——
+ * 测试不得依赖真实解析结果：沙箱与部分 CI runner 的通配解析器会把
+ * notlocalhost / localtest.me 这类名字解析到公网，于是「解析失败拒绝」「解析到私网拒绝」
+ * 这两类判据无法稳定复现（本机即如此：DNS 把 localtest.me 解析到 28.0.0.x）。
+ * 替换为 null 恢复默认系统 DNS。
+ */
+let attachmentDnsResolver: (hostname: string) => Promise<{ address: string; family: number }[]> = (
+  hostname,
+) => defaultDnsLookup(hostname, { all: true, verbatim: true });
+
+export function setBotAttachmentDnsResolver(
+  resolver: ((hostname: string) => Promise<{ address: string; family: number }[]>) | null,
+): void {
+  attachmentDnsResolver =
+    resolver ?? ((hostname) => defaultDnsLookup(hostname, { all: true, verbatim: true }));
+}
 for (const [network, prefix] of [
   ["0.0.0.0", 8],
   ["10.0.0.0", 8],
@@ -155,7 +173,7 @@ export async function resolveAllowedAttachmentAddresses(
       return [{ address: hostname, family: isIP(hostname) === 6 ? 6 : 4 }];
     }
     try {
-      const resolved = await lookup(hostname, { all: true, verbatim: true });
+      const resolved = await attachmentDnsResolver(hostname);
       if (resolved.length > 0) return resolved;
     } catch {
       // 放行项解析失败时落回下面的默认判定，给出统一的可操作错误。
@@ -176,7 +194,7 @@ export async function resolveAllowedAttachmentAddresses(
 
   let addresses: { address: string; family: number }[];
   try {
-    addresses = await lookup(hostname, { all: true, verbatim: true });
+    addresses = await attachmentDnsResolver(hostname);
   } catch {
     throw new BotAttachmentUrlRejectedError("invalid_url", `DNS lookup failed for ${hostname}`);
   }

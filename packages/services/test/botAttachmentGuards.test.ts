@@ -14,6 +14,7 @@ import {
   parseAllowedAttachmentHosts,
   resolveAllowedAttachmentAddresses,
   setBotAttachmentAllowedHosts,
+  setBotAttachmentDnsResolver,
 } from "../src/bots/attachmentUrlGuard.js";
 
 /**
@@ -231,15 +232,21 @@ test("放行项：未登记的内网地址仍被拒绝（默认安全不被放�
   }
 });
 
-test("放行项：不做后缀匹配（登记 evil.com 不放行 notevil.com）", async () => {
+test("放行项：不做后缀匹配（登记 localhost 不放行 notlocalhost）", async () => {
+  // 判据与系统解析结果解耦：真实环境里 notlocalhost 多数解析失败而被拒，
+  // 但沙箱/CI 的通配解析器会把它解析到公网（判定就该放行），断言因而不可复现。
+  // 这里注入确定性的私网解析，钉住真正要测的不变量：登记是精确主机名匹配，
+  // 相似的名字没有任何豁免——若做了后缀匹配，notlocalhost 会走放行快速路径
+  // 直接返回私网地址而不被拦（快速路径不做网段判定）。
   setBotAttachmentAllowedHosts(["localhost"]);
+  setBotAttachmentDnsResolver(async () => [{ address: "10.0.0.9", family: 4 }]);
   try {
-    // 精确匹配才放行；这是防「登记 com 就放行一切」的判据。
-    await assert.rejects(
-      () => resolveAllowedAttachmentAddresses(new URL("http://notlocalhost/x")),
-      BotAttachmentUrlRejectedError,
+    assert.equal(
+      await resolveAllowedAttachmentAddresses(new URL("http://notlocalhost/x")).catch(() => null),
+      null,
     );
   } finally {
+    setBotAttachmentDnsResolver(null);
     setBotAttachmentAllowedHosts([]);
   }
 });
@@ -258,9 +265,31 @@ test("放行项：清空后回到默认安全（可逆）", async () => {
 });
 
 test("downloadUrl：解析到私网的域名被拒绝（判据看解析后地址，不看字符串）", async () => {
-  // 用一个真实存在、稳定解析到 127.0.0.1 的名字验证「解析后判定」这条口径。
-  await assert.rejects(
-    () => resolveAllowedAttachmentAddresses(new URL("http://localtest.me/x")),
-    BotAttachmentUrlRejectedError,
-  );
+  // 判据与系统解析结果解耦：localtest.me 在公网真实解析到 127.0.0.1，
+  // 但这本就是环境相关的偶然（沙箱通配解析器会给出公网地址）。注入确定性
+  // 的回环解析，钉住「解析后判定」这条口径本身。
+  setBotAttachmentDnsResolver(async () => [{ address: "127.0.0.1", family: 4 }]);
+  try {
+    await assert.rejects(
+      () => resolveAllowedAttachmentAddresses(new URL("http://localtest.me/x")),
+      BotAttachmentUrlRejectedError,
+    );
+  } finally {
+    setBotAttachmentDnsResolver(null);
+  }
+});
+
+test("downloadUrl：解析失败的域名被拒绝（错误可操作，不是泛洪重试）", async () => {
+  setBotAttachmentDnsResolver(async () => {
+    throw Object.assign(new Error("getaddrinfo ENOTFOUND"), { code: "ENOTFOUND" });
+  });
+  try {
+    await assert.rejects(
+      () => resolveAllowedAttachmentAddresses(new URL("http://no-such-host.invalid/x")),
+      (err: unknown) =>
+        err instanceof BotAttachmentUrlRejectedError && /DNS lookup failed/.test(String(err)),
+    );
+  } finally {
+    setBotAttachmentDnsResolver(null);
+  }
 });

@@ -328,7 +328,7 @@
     "apps/zcode-cli/packages/zcode-guide-plugin/skills/zcode-configuration-guide/SKILL.md": "c173c54d3d125e5a3228f01a154c6a55e760dce07835226f0fa8dea644b0570d",
     "apps/zcode-cli/tools/prompt-trajectory/package.json": "7f161fc87f36691f01eb8c2034bd89cf28107da36db02bc20e76f059edd36af6",
     "apps/zcode-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
-    "package.json": "619471a3285d28445273e1800004542cece4069fffcb36e12d6a617d4b33db00",
+    "package.json": "0236c1b3886ee7cb3d49d6b73e40584bfc196d231b6ca11b34cb2a3879447d44",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
     "packages/desktop/package.json": "bafff01fd85e4b57e32d0c3bc5acf2bceb6b90744dce35b9b1466c3626e9d9d3",
     "packages/desktop/src/renderer/public/material-icons/3d.svg": "9527b849f0fba57ca7640e2717b3a19cb5f5e046712cbbd8b75d73af338c68fb",
@@ -1504,7 +1504,7 @@
     "packages/server/package.json": "0a6119239c88af79bc766e3c023eb4437105a0d35b03ecca1137d1e688e60a90",
     "packages/services/package.json": "34a8d00b4b0e4874c1427cdde4ab0c3d21be955750661dbb19f5241a53a3cb9f",
     "packages/services/src/bots/attachmentPathGuard.ts": "7db16b5bbd951690ae4d92f811a7176451059554ce048ce5229891b27204c687",
-    "packages/services/src/bots/attachmentUrlGuard.ts": "33ca4093099dc3c245f96ec93388857e10978e9132b12ea3414d439f70d2effa",
+    "packages/services/src/bots/attachmentUrlGuard.ts": "c5cbf90d0517665ff1924a0cfa80136593b3c9c9c1272f8a15a87e592bcfd721",
     "packages/services/src/bots/botAttachmentLimits.ts": "8ed42b6c752ff26af77438ac157d5f35c1cb1e7e647e088cdecfaa1032a9b347",
     "packages/services/src/bots/botConfigHelpers.ts": "f4d5e4d3a6141d44a5d99418417c1d4eed80321084b671ae07d1ea86726abe9a",
     "packages/services/src/bots/botRemoteRuntimeServices.ts": "74bfcb89b3ddb3f8c1ffa30f3a17d12cc542ecc0b52673ff793900e82260fe59",
@@ -31027,7 +31027,7 @@
         },
         {
           "file": "packages/services/src/bots/attachmentUrlGuard.ts",
-          "sha256": "33ca4093099dc3c245f96ec93388857e10978e9132b12ea3414d439f70d2effa"
+          "sha256": "c5cbf90d0517665ff1924a0cfa80136593b3c9c9c1272f8a15a87e592bcfd721"
         },
         {
           "file": "packages/services/src/bots/botAttachmentLimits.ts",

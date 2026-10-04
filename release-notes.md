@@ -1,83 +1,83 @@
-# ZCode-CE v3.14.3-ce.4
+# ZCode-CE
+
+<!-- 草稿：未发版，发版前删除本行 -->
 
 ## 新增功能
 
-- **远程控制面板可以看到「谁连着」并逐台断开**：面板现在列出已连接的设备（地址、客户端、连接时间、角色），可以断开单台或全部断开。此前只能看到访问地址与二维码，没有任何办法知道有谁连进来、也没法单独踢掉某一台。
-- **面板内可以轮换访问令牌**：此前令牌只能通过改启动参数或删令牌文件再发信号来更换。现在桌面端面板里可以直接轮换，轮换后旧令牌立即失效。**已连接的设备不会因此断开**，需要的话请配合「全部断开」使用。
-- **监听范围与端口可在面板内选择**：可以选择「仅本机」或「本机所在的局域网」，端口可自动选空闲端口或指定。对局域网开放前会先确认一次，并可一键切回「仅本机」。
-- **入口会显示「等待连接」**：远程控制入口现在有三种状态 —— 未开启、等待连接（服务已启动但还没有设备连上）、运行中。此前只有两种。
-- **Office 文档可以自动做视觉检查了**：docx / pptx / xlsx 交付前可以渲染成页图并检查版面（断行、裁切、表格宽度、图表标签等）。此前技能里写的是「本版本没有渲染工具」，直接把转出的 PDF 交给用户自己看。渲染需要系统已安装 LibreOffice，缺失时会如实说明未做该项检查。
-- **CI 增加 macOS 与 Windows 的构建与启动检查**：这两个平台的「能构建 / 能启动 / 能连面板」此前只有推断，现在由流水线实测（每日与手动触发）。**三平台均已实测通过**；Windows 首轮暴露的四处平台差异（包管理器 shim、归档解包、权限位与信号语义、文件锁与句柄回收）已全部修复。
+- **聊天输入栏左下角现在会提示「有可领取的额度」**：此前可领取的赠送额度只在设置页深处，用户往往不知道有活动可领。现在左下角在有可领取活动时出现入口，点开可以看到活动名称（例如「ZCode Trust Build」）、权益内容、有效期与领取按钮；领取需要验证码时在面板内直接完成；领取成功后界面立即显示新增的票券，无需重开页面。识别活动靠权益标识而非显示名，官方改活动的名字也不影响领取。
+- **开始计划面板的余额旁边新增刷新按钮**：此前余额只在鼠标悬停时才会重新获取，现在可以随时点一下刷新。
+- **新增 IM 机器人管理面板**：可以在桌面端创建机器人、绑定 IM 渠道（企业微信、钉钉、飞书、Lark、Telegram、Discord 等）、扫码完成账号绑定、给机器人授权可访问的工作区、配置允许使用的命令、以及启停或删除机器人。此前服务的开关只能改文件，现在同意使用的动作落在真实的界面上。机器人服务默认仍不开启，需要手动创建并启用。
 
 ## 体验优化
 
-- **工作流大量子代理时不再丢实例**：单条工作流可容纳的子代理与节点上限从 256 提升到 1024，并且超出上限的实例现在会被计数并在界面上如实显示，而不是静默消失。此前一个 3000 路并发的运行在界面上会显示成「1024 步」，是一句假话。
-- **工作流状态推送的流量与改动量成正比**：此前每有一条引擎事件就要把整张状态表重发一遍，一条长运行的开销随规模平方增长。现在只发送变化的部分。
-- **Office 数据类任务不再多一句无用提示**：xlsx 的数据与公式任务此前会无条件附带一句「未做视觉检查」，现在这类任务不再提示；只有排版类任务才做视觉检查。
+- **工作流的所有步骤完成后能正常结束了**：此前当本地数据写入失败（例如磁盘空间不足或文件被占用）时，即使全部步骤都已结束，整条运行也会一直显示「进行中」。现在写入失败会让该步骤如实显示失败，运行可以收尾。
+- **验证码初始化卡住时给出明确提示**：领取额度的验证码如果初始化超时（页面或输入框一直不出现），现在会提示「验证码初始化超时，请重启应用或重载页面后重试」。此前这类超时被归为「挑战被拒」，提示内容会误导用户。
 
 ## 问题修复
 
-- **修复子会话的上下文顺序颠倒**：当目标会话已有自己的历史消息时，被复制的转录内容会被追加到这些历史之后，导致模型看到的上下文前后颠倒，而且没有任何报错或日志。现在这种情况会跳过复制而不是写坏顺序。
-- **修复跨站防护误伤普通读取请求**：此前来自其他站点的普通 GET 请求会被拒绝（403），而设计上读请求不在防护范围内。这是过严而非过松，没有安全影响，但会让跨源部署的读接口不可用。
-- **修复 Office 视觉评审无法调用**：技能里让模型调用的评审代理名缺少插件前缀，在默认安装下会因重名而调用失败。四个办公插件现在都使用带前缀的名称。
-- **修复 PDF 插件的同一处评审调用**：同上。
-- **许可材料登记与实际不符**：图形驱动包实际声明的是「MIT 与 MPL-2.0 双许可」，登记表此前只记了 MIT，把 MPL 的义务漏掉了。现已按实际声明登记，并随包分发 MPL-2.0 全文。
+- **本地储存的主题被外部修改后界面不再异常**：如果本地的主题条目被其他程序改成无效值，界面会掉到无样式的默认亮色。现在所有读取主题的地方都会校验，异常时回退到内置深色主题。
+- **领取额度时不再偶发报「The WebView must be attached」**：此前在网页容器还没准备好的时刻发起领取，验证码求解会因为时序竞争而报错，重试通常要碰运气。现在求解会先确认页面就绪再开始。
+- **macOS 版不再每次启动都报更新失败**：macOS 打包版此前每次启动都会去请求更新清单并收到 404。发版线不产出 macOS 安装包（没有代码签名），所以这个请求永远不可能成功。现在 macOS 正式包会跳过更新检查，改为明确提示「macOS 暂不支持自动更新，请手动从 GitHub Releases 下载新版本」。
+- **musl 系统上使用电脑控制时会明确告知不可用**：此前在 musl Linux（Alpine 系）上电脑控制能力会静默缺失。现在会直接说明该能力在 musl 环境下不可用，而不是表现为功能消失。
+- **单文件可执行版现在带上了完整的内置技能与内容插件**：此前以单文件可执行形式运行时，内置技能包、computer-use 与 pdf 插件不在其中。现在这些内容随单文件可执行版一起提供。
 
 ## 升级须知（行为变化）
 
-- **工作流实例上限提升会改变对旧客户端的推送**：上限提升后，超过旧上限（256）的状态在推送给**旧版本客户端**时会先被裁剪到旧上限。因此用旧版本客户端连接新版本主机时，界面上看到的工作流条目可能少于主机实际持有的。升级客户端即可看到完整内容。
-- **Office 视觉检查现在可能主动调用外部渲染器**：仅在用户要求视觉检查、且系统已安装 LibreOffice 时才会执行。没有安装时行为与之前一致（如实说明未做）。
+- **macOS 用户需要手动更新**：macOS 打包客户端不再自动检查更新。点「检查更新」会看到确定性提示并引导前往 GitHub Releases 下载。配置了自建更新源的企业部署不受影响。
+- **工作流在本地数据写入失败时现在会显示该步骤失败**：而不是一直显示「进行中」。如果你依赖「一直进行中 = 还在跑」这个现象，注意它现在会变成明确的失败结果。
+- **左下角新增了领取入口**：没有可领取活动时不显示任何东西，有活动时出现。
 
 ## 已知限制
 
-- **令牌轮换不会断开已连接的设备**：轮换只让旧令牌失效，已经建立的连接会继续工作。要立即断开需要另外执行「全部断开」。
-- **Windows 上的三项检查按平台跳过**：执行位权限、`SIGTERM ⇒ 143` 退出码、`[0, null]` 退出形态都是 POSIX 语义，Windows 上不成立（该平台无执行位概念、无 `128+signal` 语义）。这三项在 Windows 上**未验证**（不是通过），运行时会在日志里显式打印跳过原因。
+- **macOS 没有自动更新**：发版线不产 macOS 安装包，客户端侧的更新检查已关闭；每次新版本需要从 GitHub Releases 手动下载覆盖。
+- **浏览器与手机网页版不能领取需要验证码的额度**：领取的验证码求解依赖客户端内嵌的网页容器，手机网页版与纯浏览器构建里没有它，会提示该操作不支持（不需要验证码的领取不受影响）。
 
 ## 本版尚未验证
 
-- **远程控制面板的界面未经真实 Electron 窗口查看**：相关逻辑有测试覆盖（含跨端真实服务端联调与反向验证），但未在真实桌面窗口里完整走一遍。
-- **触屏下的入口显示未在真机验证**：只有源码级与 DOM 级断言。
-- **Office 视觉检查的端到端未由真实模型执行**：技能文本与渲染链路均已实测，但「模型按技能指示去调用」这一步没有真实会话验证。
-- **Windows 的终端交互未验证**：CI 覆盖的是「构建 + 启动 + 连面板 + 非交互式退出」，真实终端（conpty、按键送达）仍需真机验证。
+- **macOS 的更新提示未在真实 macOS 客户端运行过**：本机没有 macOS 打包环境。可验证的点：macOS 打包版点「检查更新」能看到提示且日志里没有请求失败。
+- **领取入口与验证码链路未在真实桌面窗口里完整走一遍**：界面与逻辑层都有覆盖，但没有在真实桌面应用窗口里从打开到领取成功逐屏操作过。
+- **主题回退同样未在真实桌面窗口里看过**：只在界面层与逻辑层验证。
+- **工作流写入失败的处理是注入式构造的**：真实长运行中的写入失败（磁盘满、文件锁）没有自然触发过验证。
+- **单文件可执行版的插件载荷在打包环节逐项核对过**：但没有在真正打好包的单文件可执行程序里运行技能。
+
+---
 
 # English
 
 ## New features
 
-- **The remote control panel now shows who is connected, and can disconnect them**: the panel lists connected devices (address, client, connect time, role) and can disconnect one or all of them. Previously it showed only the access address and a QR code, with no way to tell who was connected or to drop a single device.
-- **The access token can be rotated from the panel**: previously this required changing launch parameters, or editing the token file and signalling the process. The desktop panel can now rotate it directly, and the old token stops working immediately. **Already-connected devices are not disconnected by a rotation** - pair it with "disconnect all" if that is what you want.
-- **Listen scope and port are selectable in the panel**: choose "this machine only" or "the local network", with an automatic free port or a specific one. Opening to the local network asks for confirmation first, and one click returns to "this machine only".
-- **The entry point shows a "waiting for connection" state**: the remote control entry now has three states - off, waiting for a connection (service running, no device connected yet), and running. Previously there were two.
-- **Office documents can be visually checked automatically**: docx / pptx / xlsx can be rendered to page images and inspected for layout (line breaks, clipping, table widths, chart labels) before delivery. The skills previously said "this build has no rendering tool" and handed the converted PDF to the user. Rendering needs LibreOffice installed; when it is missing the check is reported as not performed.
-- **CI now builds and starts on macOS and Windows**: those two platforms' "builds / starts / can reach the panel" were previously inferred; a pipeline now measures them (daily and on demand). **It had not run on real runners at release time** - see "Not verified in this release".
+- **The chat input area now tells you when free quota can be claimed**: previously claimable promotional quota was buried deep in the settings page. When a claimable activity exists, an entry appears in the bottom-left corner; opening it shows the activity name (for example "ZCode Trust Build"), the entitlement, its validity period, and a claim button. Verification codes are completed in the same panel, and the new coupon shows up immediately afterwards without reopening anything. Activities are matched by entitlement identifier rather than display name, so renaming an activity does not break claiming.
+- **A refresh button next to the balance in the start-plan panel**: the balance was only refetched on hover; now it can be refreshed on demand.
+- **An IM bot management panel is now available**: create bots, bind IM channels (WeCom, DingTalk, Feishu, Lark, Telegram, Discord, etc.), complete account pairing by scanning a code, grant a bot access to workspaces, configure allowed commands, and start, stop, or delete bots. The "enable after consent" action now lives in a real interface instead of a config file. The bot service stays off by default until you create and enable one.
 
 ## Improvements
 
-- **Large workflows no longer silently drop instances**: the per-run ceiling for subagents and nodes rose from 256 to 1024, and instances beyond the ceiling are now counted and shown honestly instead of disappearing. A 3000-way run used to display as "1024 steps", which was untrue.
-- **Workflow state updates now scale with the change, not the state**: previously every engine event resent the whole state table, making a long run quadratic. Only the changed part is sent now.
-- **Office data tasks no longer carry a useless caveat**: xlsx data and formula tasks used to state "visual layout was not inspected" unconditionally; they no longer do. Only layout tasks get a visual check.
+- **A workflow can finish once all of its steps are done**: previously, when local data writes failed (for example a full disk or a locked file), the whole run stayed "in progress" forever even after every step had ended. A failed write now marks that step as failed so the run can conclude.
+- **Captcha initialization hangs now give a clear message**: when the verification code fails to initialize in time (the panel never appears), you get "Captcha initialization timed out. Please restart the app or reload the page and try again." Previously this was classified as a rejected challenge, which was misleading.
 
 ## Fixes
 
-- **Fixed reversed context order in sub-sessions**: when the target session already had its own history, copied transcript content was appended after it, so the model saw the context in the wrong order - with no error and no log. That case now skips the copy instead of writing a bad order.
-- **Fixed cross-site protection rejecting ordinary reads**: ordinary GET requests from another site were rejected (403), while reads are outside the protected surface by design. This was over-strict rather than permissive, with no security impact, but it made cross-origin read endpoints unusable.
-- **Fixed the Office visual reviewer being uncallable**: the agent name used in the skills lacked its plugin prefix, so it failed on a default install because the name was ambiguous. All four Office plugins now use the prefixed name.
-- **Fixed the same reviewer call in the PDF plugin.**
-- **Licence material registration did not match the artifact**: the graphics driver packages actually declare "MIT and MPL-2.0", while the registry recorded only MIT, hiding the MPL obligation. It now matches the actual declaration, and the MPL-2.0 text ships with the notices.
+- **The interface no longer breaks when the locally stored theme is tampered with**: if another program writes an invalid theme entry, the UI used to fall back to an unstyled default light theme. Every place that reads the theme now validates it and falls back to the built-in dark theme.
+- **Claiming quota no longer intermittently reports "The WebView must be attached"**: when a claim started in the moment before the embedded page was ready, the captcha solver failed due to a race; retrying usually succeeded by luck. The solver now waits for the page to be ready before starting.
+- **The macOS build no longer fails the update check on every launch**: packaged macOS clients requested an update manifest and got a 404 every startup. The release pipeline does not produce macOS installers (no code-signing certificate), so that request could never succeed. The packaged macOS app now skips the update check and states plainly that automatic updates are not supported on macOS and to download new versions from GitHub Releases manually.
+- **Computer use on musl systems now says it is unavailable**: previously the capability silently went missing on musl Linux (Alpine family). It now reports that it is not supported in musl environments instead of just disappearing.
+- **The single-file executable now ships the built-in skills and content plugins**: built-in skills, computer-use, and the pdf plugin were absent when running as a single-file executable. They are now included.
 
-## Upgrade notes (behaviour changes)
+## Upgrade notes (behavior changes)
 
-- **The raised workflow ceiling changes what old clients receive**: state beyond the old ceiling (256) is trimmed before being sent to **older clients**. A newer host with an older client may therefore show fewer workflow entries than the host holds. Upgrading the client shows the full content.
-- **Office visual checks may now invoke an external renderer**: only when the user asks for a visual check and LibreOffice is installed. Without it, behaviour is unchanged (the check is reported as not performed).
+- **macOS users need to update manually**: packaged macOS clients no longer check for updates. "Check for updates" shows a plain message pointing to GitHub Releases. Deployments with a self-hosted update feed are unaffected.
+- **A workflow now shows a failed step when local data writes fail**: instead of staying "in progress" forever. If you relied on "still in progress means still running", note that this now becomes an explicit failure.
+- **A claim entry now exists in the bottom-left corner**: nothing is shown when there is nothing to claim; the entry appears when an activity is available.
 
 ## Known limitations
 
-- **Rotating the token does not disconnect connected devices**: rotation only invalidates the old token; established connections keep working. Use "disconnect all" to drop them immediately.
-- **The macOS and Windows build checks have not run on real runners yet**: the pipelines are new in this release but had not been executed at release time, so measured results for those platforms are still pending.
+- **No automatic updates on macOS**: the release pipeline does not produce macOS installers and the client-side update check is off; each new version must be downloaded manually from GitHub Releases.
+- **Quota claims that need a verification code are not possible in the browser or mobile web**: the claim captcha solver relies on the embedded page container, which the mobile web and plain browser builds do not have; they state that the operation is unsupported. Claims that need no verification code are unaffected.
 
-## Not verified in this release
+## Not yet verified in this version
 
-- **The remote control panel has not been viewed in a real Electron window**: the logic is covered by tests (including cross-end integration against a real server, with negative verification), but a full walkthrough in a real desktop window was not performed.
-- **The entry point on touch devices was not verified on a real device**: only source-level and DOM-level assertions.
-- **The Office visual check was not executed end to end by a real model**: the skill text and the rendering chain are both measured, but "the model follows the skill and calls it" was not verified in a real session.
-- **The three-platform CI workflow has not run on real runners**: Windows is expected to fail (the build script invokes the package manager in a way that does not work on Windows), and the real result had not been observed at release time.
+- **The macOS update message has not been run on a real macOS client**: no macOS packaging environment is available here. The checkable point: on a packaged macOS build, "Check for updates" shows the message and the log contains no failed request.
+- **The claim entry and captcha path have not been walked through in a real desktop window**: interface and logic layers are covered, but not a full from-open-to-claimed pass in the real desktop app.
+- **The theme fallback has likewise not been seen in a real desktop window**: verified at the interface and logic layers only.
+- **The workflow write-failure handling was constructed by injecting failures**: a naturally occurring write failure during a long run (full disk, locked file) has not been triggered and verified.
+- **The single-file executable plugin payloads were verified at the packaging step**: but skills were not exercised inside a truly packaged single-file executable program.
