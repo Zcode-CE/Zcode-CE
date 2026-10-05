@@ -2,7 +2,7 @@
 
 ## 新增功能
 
-- **macOS 现在有了安装包**：本版开始发布 macOS 版（Intel x64 与 Apple Silicon arm64 的 .dmg 与 .zip）。作为社区项目没有 Apple 签名证书，安装包只做本地 ad-hoc 签名、不公证：首次打开需在 Gatekeeper 提示里选择「仍要打开」（或执行 `xattr -dr com.apple.quarantine <应用>`）。自动更新在 macOS 上仍然关闭——更新时请手动下载新包覆盖。
+- **macOS 安装包已就绪但本版未产出**：构建矩阵与 ad-hoc 签名配置都已上线，但本版发布时 GitHub 的 macOS runner 排队超时，两个 mac 构建被取消——**本版 Release 里没有 macOS 安装包**。macOS 用户请从源码构建（`docs/development/`），或等下一个版本附上 .dmg/.zip（届时首次打开需在 Gatekeeper 提示里选「仍要打开」，或执行 `xattr -dr com.apple.quarantine <应用>`；自动更新在 macOS 上仍会保持关闭）。
 - **内网探测改为你点头才探**：工作台里「探测局域网服务」（TCP 目标）现在会对每一个目标弹确认（显示真实 host 与端口），确认后才开始连接；同一会话内重复探测同一目标无需再确认。服务端不再对未经确认的内网地址发起任何请求。
 
 ## 体验优化
@@ -23,7 +23,7 @@
 
 ## 本版尚未验证
 
-- **macOS 安装包未在真实 macOS 环境跑完整回归**：配置与构建矩阵都在 CI 上，但「打好包的 dmg 能装能开、Gatekeeper 提示形态」只能靠本版的发布流水线与用户真机反馈验证；如果 mac 版有异常，请直接在 GitHub Issues 反馈。
+- **macOS 构建本版未产出**：runner 排队超时、两个 mac job 被取消；配置与矩阵都在 CI 上（linux/windows 已按同一流水线产出），mac 包形态只能等下一次发布流水线真正跑通后再验证。
 - **内网探测的确认弹窗未在真实桌面/浏览器窗口里逐屏看过**：门控行为有行为测试覆盖，但真实渲染未验证。
 - **导入分享的全链路未跑**：地址判据抽成独立函数单独验证过；从创建分享到导入的完整链路未端到端跑过。
 
@@ -33,7 +33,7 @@
 
 ## New features
 
-- **macOS builds are here**: this version publishes macOS installers (.dmg and .zip for both Intel x64 and Apple Silicon arm64). As a community project without an Apple signing certificate, the packages are only locally ad-hoc signed and not notarized: on first launch choose "Open anyway" in the Gatekeeper prompt (or run `xattr -dr com.apple.quarantine <app>`). Automatic updates stay off on macOS — download new versions manually from GitHub Releases.
+- **macOS builds are ready but not in this release**: the build matrix and ad-hoc signing configuration are live, but GitHub's macOS runner queue timed out at release time and both mac builds were cancelled — **there are no macOS installers in this release**. macOS users should build from source (`docs/development/`) or wait for the next version, which will ship .dmg/.zip (on first launch choose "Open anyway" in the Gatekeeper prompt, or run `xattr -dr com.apple.quarantine <app>`; automatic updates stay off on macOS).
 - **Intranet probing now asks first**: "probe a LAN service" (TCP targets) now confirms each target with a dialog showing the real host and port before connecting; repeated probes of the same target in one session do not ask again. The server no longer contacts unconfirmed intranet addresses.
 
 ## Improvements
@@ -54,6 +54,6 @@
 
 ## Not yet verified in this version
 
-- **The macOS installers have not gone through a full regression on real macOS**: the configuration and build matrix are in CI, but "the packaged dmg installs and opens, and what the Gatekeeper prompt looks like" can only be validated by this release pipeline and by user machines — if anything looks wrong, please report it in GitHub Issues.
+- **macOS builds were not produced in this version**: the runner queue timed out and both mac jobs were cancelled; the configuration and matrix are in CI (linux/windows shipped via the same pipeline), and the packaged-mac experience can only be validated once a release pipeline actually completes the mac jobs.
 - **The intranet-probe confirmation dialog has not been seen in a real desktop/browser window**: the gating behavior is covered by behavior tests, but the rendered dialog was not verified end to end.
 - **The full share-import chain was not run**: the address check is factored out and tested on its own; the end-to-end path from creating a share to importing it was not executed.
