@@ -315,7 +315,7 @@
     "apps/zcode-cli/packages/spreadsheets-plugin/test/fixtures/pdftoppm-fake.cjs": "e24f950403ec6a84704453dfec7fba50519ff353a1a819543a7ec3309c04b565",
     "apps/zcode-cli/packages/spreadsheets-plugin/test/fixtures/soffice-fake.cjs": "6b6819686ff4e8d0c4f32389b72edd8a79521fca19d5b38cb869be98d18e96d3",
     "apps/zcode-cli/packages/spreadsheets-plugin/test/lib/blank-render-support.mjs": "8ec4fd0933f907a12aae6f750717237c5b1365abc3ccf024d603be0a63db6c88",
-    "apps/zcode-cli/packages/spreadsheets-plugin/test/officeE2eBlankRender.test.mjs": "1955b3ca7c26e490fd3081d52ba679deb8e40af26f594bf9b54b94a3b41afd22",
+    "apps/zcode-cli/packages/spreadsheets-plugin/test/officeE2eBlankRender.test.mjs": "dffdf410bc5bd1f9b703cf34fc40389785bed61868465edc82cd0f05d8cd2aab",
     "apps/zcode-cli/packages/superpowers-plugin/LICENSE": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
     "apps/zcode-cli/packages/swift-bridge/package.json": "958674fcd44c789564ee672b0e6c687f1f900f4286174280700ddfb442d23906",
     "apps/zcode-cli/packages/tui/package.json": "097d5896b0b37a455eafaf015f21113dfbea7b05bb3f92666f423f7753720eb1",
@@ -30759,7 +30759,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/test/officeE2eBlankRender.test.mjs",
-          "sha256": "1955b3ca7c26e490fd3081d52ba679deb8e40af26f594bf9b54b94a3b41afd22"
+          "sha256": "dffdf410bc5bd1f9b703cf34fc40389785bed61868465edc82cd0f05d8cd2aab"
         }
       ]
     },
