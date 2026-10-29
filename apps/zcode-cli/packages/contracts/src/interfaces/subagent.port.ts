@@ -29,7 +29,8 @@ export interface SubagentRunOptions {
   modelOverride?: {
     selection: ModelSelection;
     requestDependencies?: ModelRequestDependencies;
-    background: "deny";
+    /** 后台子代理是否允许（上游 3.16.2 起从字面量 deny 放宽为 deny|allow）。 */
+    background: "deny" | "allow";
   };
 }
 

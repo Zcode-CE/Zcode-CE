@@ -102,6 +102,6 @@
 
 ## 验证
 
-- 在完成代码变更之前，从仓库根目录运行 `pnpm typecheck` 和 `pnpm lint`；涉及 CLI 代码时，还应运行 `pnpm --dir apps/zcode-cli typecheck` 和 `pnpm --dir apps/zcode-cli lint`。
+- 在完成代码变更之前，从仓库根目录运行 `pnpm typecheck` 和 `pnpm lint`；涉及 CLI 代码时，还要运行 `pnpm typecheck:cli`。根 `typecheck` 不含 CLI 子树（CLI 各包是独立 tsc 项目），漏跑会把「shared 改了镜像类型没跟上」留到 `build-desktop-agent-cli` 才暴露；该构建检查在 CI 里跑，本地可手动 `node scripts/build-desktop-agent-cli.mjs`。
 - 测试入口以目标包当前的 `package.json` 和实际测试文件为准，不假定存在统一的测试命令；行为变更应执行对应测试，交互变更应覆盖 E2E 场景。
 - 如实记录执行过的命令、结果和未验证范围；缺少测试入口、已有失败或环境限制不得写成通过。

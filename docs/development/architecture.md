@@ -5,7 +5,7 @@
 ## 仓库结构
 
 ```
-apps/zcode-cli/          Agent CLI 与运行时（独立 workspace，有自己的 pnpm-workspace.yaml）
+apps/zcode-cli/          Agent CLI 与运行时（包由根 pnpm-workspace.yaml 收录，共用根 lockfile）
   packages/              adapters / bootstrap / cli / contracts / core / i18n / tui …
   packages/*-plugin/     内置插件（browser-use / node-repl-host / documents / presentations /
                          spreadsheets / pdf / zcode-cua / plugin-creator / skill-creator /

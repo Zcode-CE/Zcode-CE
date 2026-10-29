@@ -302,7 +302,10 @@ export interface HighspeedMessageMetadata {
   toolDurationMs?: number;
   otherDurationMs?: number;
   fallbackAt?: number;
-  fallbackReason?: "highspeed_card_expired" | "highspeed_request_failed";
+  fallbackReason?:
+    | "highspeed_card_expired"
+    | "highspeed_request_failed"
+    | "highspeed_selection_unavailable";
 }
 
 /** 协议无关的输入 intent metadata；bootstrap v4 在事件边界组装为 ConversationInputIntent。 */

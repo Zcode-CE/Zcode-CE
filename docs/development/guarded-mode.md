@@ -91,7 +91,7 @@ executeTurn → tool executor
 
 ## 7. 验证
 
-- `pnpm --dir apps/zcode-cli typecheck`、`pnpm --dir apps/zcode-cli lint`；`cd apps/zcode-cli/packages/core && node --import tsx --test test/guarded-*.test.ts test/dangerousCommandPolicy.test.ts`。
+- `pnpm typecheck:cli`（根目录；覆盖 CLI 五个包的 tsc 工程）与 `pnpm lint`；`cd apps/zcode-cli/packages/core && node --import tsx --test test/guarded-*.test.ts test/dangerousCommandPolicy.test.ts`。
 - 门禁真实结果回传（未跑≠通过）。
 
 ## 8. 搬运清单（Apache-2.0，交 release-integrator 登记）

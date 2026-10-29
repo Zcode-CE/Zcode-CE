@@ -446,7 +446,8 @@ export interface ModelExecutionContext {
   requestDependencies?: ModelRequestDependencies;
   subagents?: {
     foregroundModel: "submission";
-    background: "deny";
+    /** 上游 3.16.2：后台子代理允许 deny|allow；旧值仍兼容。 */
+    background: "deny" | "allow";
   };
 }
 
