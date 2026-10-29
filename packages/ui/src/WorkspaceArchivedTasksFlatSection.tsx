@@ -23,6 +23,7 @@ import { buildWorkspaceServiceLookup } from "@/lib/workspaceServiceResolver.js";
 import { DeleteAllArchivedTasksButton } from "@/DeleteAllArchivedTasksButton.js";
 import { WorkspaceArchivedGroupHeader } from "@/workspace-archived-tasks/WorkspaceArchivedGroupHeader.js";
 import { groupArchivedTasksByWorkspace } from "@/workspace-archived-tasks/groupArchivedTasks.js";
+import { useArchivedWorkspaceCollapse } from "@/workspace-archived-tasks/useArchivedWorkspaceCollapse.js";
 
 export function WorkspaceArchivedTasksFlatSection({
   workspaceTabs,
@@ -66,9 +67,7 @@ export function WorkspaceArchivedTasksFlatSection({
   const { settings: sharedSettings } = useSettings();
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [deletingTaskKeys, setDeletingTaskKeys] = useState<Set<string>>(() => new Set());
-  const [collapsedWorkspaceKeys, setCollapsedWorkspaceKeys] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const { collapsedWorkspaceKeys, toggleWorkspaceCollapsed } = useArchivedWorkspaceCollapse();
   const collapsedLimit = 20;
   const workspaceLabelByKey = useMemo(
     () =>
@@ -149,14 +148,7 @@ export function WorkspaceArchivedTasksFlatSection({
                     label={group.label}
                     count={group.items.length}
                     collapsed={collapsed}
-                    onToggle={() => {
-                      setCollapsedWorkspaceKeys((current) => {
-                        const next = new Set(current);
-                        if (next.has(group.key)) next.delete(group.key);
-                        else next.add(group.key);
-                        return next;
-                      });
-                    }}
+                    onToggle={() => toggleWorkspaceCollapsed(group.key)}
                   />
                 </li>
               ) : null}
