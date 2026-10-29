@@ -206,16 +206,27 @@ pnpm licenses:notices   # 重新生成 THIRD-PARTY-NOTICES.md 与 third-party/in
 
 ### 2. 本地预检
 
-发布前至少确认这几项通过。**前四项 CI 也会跑**（`ci.yml` 的 verify job），本地先跑能省一轮往返；
-**最后一项 `pnpm licenses:check` CI 刻意不跑，只有本地手动跑这一条路**：
+发布前至少确认这几项通过。**除 `licenses:check` 外 CI 也会跑**（`ci.yml` 的 verify job），本地先跑能省一轮往返；
+**`pnpm licenses:check` CI 刻意不跑，只有本地手动跑这一条路**：
 
 ```bash
 pnpm fmt:check
 pnpm lint
 pnpm typecheck
+pnpm typecheck:cli   # CLI 五个包是独立 tsc 工程，不并入根 typecheck
 pnpm test
+pnpm architecture:check --changed
 pnpm licenses:check   # ⚠️ CI 不跑这一项，必须本地手动跑
 ```
+
+本机发包链验证（可选，推荐在改过 desktop/main/preload 或依赖后跑一次；Linux 上只产出 Linux 四件套）：
+
+```bash
+pnpm bundle:desktop --os linux --arch x64
+```
+
+它同时执行运行时资产准备、构建、electron-builder 打包、产物校验与体积审计；**GUI 交互仍需人工** ——
+本机无显示会话时只能验证「解包版 main 启动 + 窗口创建 + host/agent ready」的日志，不能替代目视与点击。
 
 > **为什么 `licenses:check` 不进 CI**：它比对的平台包集合与 runner 平台相关，在 CI 环境会因平台差异
 > 产生与改动无关的失败（`.github/workflows/ci.yml` 里那行注释写的就是这个理由；`release.yml` 同样没有它）。
