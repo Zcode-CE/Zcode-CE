@@ -102,6 +102,18 @@ function handle(message) {
 
   if (typeof message.method !== "string" || message.id === undefined) return;
 
+  // 冷恢复附加目录用例：记录 v4 订阅参数并回一个最小合法 ACK。
+  if (message.method === "v4/conversation/subscribe") {
+    record({ kind: "v4-subscribe", params: message.params });
+    send({
+      id: message.id,
+      result: {
+        ack: { subscriptionId: "fake-sub-1", mode: "snapshot", logEpoch: "fake-epoch" },
+      },
+    });
+    return;
+  }
+
   if (message.method === "session/subscribe") {
     send({
       id: message.id,
