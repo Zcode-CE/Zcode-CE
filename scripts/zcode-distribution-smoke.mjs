@@ -197,9 +197,11 @@ try {
   // （见 .github/workflows/release.yml 的 headless server package job），因此成立；
   // 在 Windows 上直接跑这个脚本会因信号语义不同而失败。
   process.kill(terminal.pid, "SIGTERM");
+  // 超时是「挂死」的判据，不是性能断言：20s 仍能抓住真挂死，又不会被 CI 负载下的启动/关机
+  // 拖慢误伤（2026-10-29 nightly ubuntu 在 8s 上偶发失败，同 commit 此前连续 7 次绿）。
   const tuiExit = await Promise.race([
     tuiExited,
-    setTimeout(8000).then(() => {
+    setTimeout(20_000).then(() => {
       throw new Error("TUI did not exit after SIGTERM (可能挂死)");
     }),
   ]);

@@ -73,11 +73,30 @@ jobs:
       - name: Format check
         run: pnpm fmt:check
 
+      # 与 ci.yml 的 verify 逐步对齐（本文件顶部的声明：改一处要同步另一处）。
+      - name: Doc freshness
+        run: node scripts/check-doc-freshness.mjs
+
+      - name: Licenses freshness
+        run: pnpm licenses:freshness
+
+      # 先产出 dist：dist 依赖的测试（exposureGateHttp 等）否则会 skip。
+      - name: Build server/web dist (for dist-dependent tests)
+        run: pnpm --filter @zcode/server --filter @zcode/web build
+
       - name: Test
         run: pnpm test
 
       - name: Architecture check
         run: pnpm run architecture:check -- --changed
+
+      # 同 ci.yml：只有真跑打包才会暴露 esbuild 别名漂移。先删 dist 避免打到旧产物。
+      - name: Build check (agent bundle)
+        run: |
+          shopt -s nullglob
+          rm -rf apps/zcode-cli/packages/*/dist packages/desktop/bundled-agents
+          node scripts/build-desktop-agent-cli.mjs
+          test -s apps/zcode-cli/packages/cli/dist/zcode.cjs
 
   build:
     name: build ${{ matrix.artifact }}

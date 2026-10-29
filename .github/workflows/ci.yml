@@ -133,6 +133,19 @@ jobs:
       - name: Format check
         run: pnpm fmt:check
 
+      # 与本地 verify:pre-push 对齐：这两道门禁原先只在本地跑，CI 与 Release 都没有，
+      # 文档/许可漂移可以绿着合并且绿着发版（见 docs/operations/ci.md）。
+      - name: Doc freshness
+        run: node scripts/check-doc-freshness.mjs
+
+      - name: Licenses freshness
+        run: pnpm licenses:freshness
+
+      # 为什么必须先构建：exposureGateHttp 等测试断言的是**构建产物**，干净检出没有 dist
+      # 时会显式 skip（且 dist 早于 src 也 skip）⇒ 安全断言在 CI 一次都没跑过。
+      - name: Build server/web dist (for dist-dependent tests)
+        run: pnpm --filter @zcode/server --filter @zcode/web build
+
       - name: Test
         run: pnpm test
 
