@@ -42,6 +42,7 @@ Options:
     Comma or space-separated tool names, e.g. "Bash Edit".
     "Bash(git *)" removes all of Bash; command patterns are not matched.
   --force-mcs      Force mid-conversation system projection for Anthropic providers
+  --toolsearch-mode <mode>  Tool search: auto, native, local, or off (default: off)
   --locale <locale>  UI locale: en-US, zh-CN, or auto
   --mode <mode>    Permission mode for prompts: build, edit, plan, or yolo (default: yolo for --prompt)
   --resume <sessionId>  Resume a persisted session by sessionId (sess_...)

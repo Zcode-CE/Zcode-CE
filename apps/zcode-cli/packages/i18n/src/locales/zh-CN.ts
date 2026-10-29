@@ -42,6 +42,7 @@ export const zhCN: ZCodeCopy = {
     工具名用逗号或空格分隔，例如 "Bash Edit"。
     "Bash(git *)" 也会移除整个 Bash，不支持按命令内容匹配。
   --force-mcs      对 Anthropic provider 强制启用 mid-conversation system 投影
+  --toolsearch-mode <mode>  工具搜索：auto、native、local 或 off（默认 off）
   --locale <locale>  UI 语言：en-US、zh-CN 或 auto
   --mode <mode>    prompt 权限模式：build、edit、plan 或 yolo（--prompt 默认 yolo）
   --resume <sessionId>  按 sessionId 恢复持久化 session（sess_...）

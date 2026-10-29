@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { isSettingsSectionEnabled, resolveSettingsSection } from "../src/lib/settingsNavigation.js";
 import { SETTINGS_SECTIONS, createSettingsPageConfig } from "../src/settings/settingsPageConfig.js";
 
@@ -37,4 +40,22 @@ test("隐藏集仍按原样生效，未被本次改动意外放开", () => {
     assert.equal(isSettingsSectionEnabled(hidden), false, `${hidden} 应保持隐藏`);
   }
   assert.equal(resolveSettingsSection("plugins"), "plugin");
+});
+
+const here = dirname(fileURLToPath(import.meta.url));
+const sectionSource = readFileSync(resolve(here, "../src/settings/ToolPolicySection.tsx"), "utf8");
+const pageSource = readFileSync(resolve(here, "../src/SettingsPage.tsx"), "utf8");
+
+test("工具搜索四态在分区里可选，且 SettingsPage 透传当前值与变更回调", () => {
+  assert.match(sectionSource, /\["off", "auto", "native", "local"\]/u, "分区缺少四态选项");
+  assert.match(
+    pageSource,
+    /toolSearchMode=\{sharedSettings\?\.toolSearchMode\}/u,
+    "SettingsPage 没把当前模式传给分区",
+  );
+  assert.match(
+    pageSource,
+    /onToolSearchModeChange=\{handleToolSearchModeChange\}/u,
+    "SettingsPage 没接模式变更回调",
+  );
 });
