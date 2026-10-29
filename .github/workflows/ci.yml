@@ -143,6 +143,9 @@ jobs:
       - name: Doc freshness
         run: node scripts/check-doc-freshness.mjs
 
+      - name: Doc index
+        run: node scripts/check-doc-index.mjs
+
       - name: Licenses freshness
         run: pnpm licenses:freshness
 

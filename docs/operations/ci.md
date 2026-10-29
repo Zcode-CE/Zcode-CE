@@ -13,14 +13,15 @@
 
 在 `main` 的 push 与所有 pull request 上运行，串行执行：
 
-| 步骤     | 命令                                       |
-| -------- | ------------------------------------------ |
-| 类型检查 | `pnpm typecheck` + `pnpm typecheck:cli`    |
-| Lint     | `pnpm lint`                                |
-| 格式检查 | `pnpm fmt:check`                           |
-| 测试     | `pnpm test`                                |
-| 架构检查 | `pnpm run architecture:check -- --changed` |
-| 构建检查 | 见下方「构建检查」                         |
+| 步骤     | 命令                                              |
+| -------- | ------------------------------------------------- |
+| 类型检查 | `pnpm typecheck` + `pnpm typecheck:cli`           |
+| Lint     | `pnpm lint`                                       |
+| 格式检查 | `pnpm fmt:check`                                  |
+| 文档     | `check-doc-freshness.mjs` + `check-doc-index.mjs` |
+| 测试     | `pnpm test`                                       |
+| 架构检查 | `pnpm run architecture:check -- --changed`        |
+| 构建检查 | 见下方「构建检查」                                |
 
 用 `fetch-depth: 0` 做完整克隆，因为 `architecture:check --changed` 需要与基线比较变更集，
 浅克隆会让它算错改动范围。
