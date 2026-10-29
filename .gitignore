@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# 私有工作区（.local/README.md 有目录契约）：过程记录、证据、原始产物，不入库
+/.local/
 # zcode-server-cli 发行包 staging 输出，本地组装产物不入库。
 dist-release/
 # node-repl-host 的 tsc 声明产物目录（tsconfig outDir + emitDeclarationOnly），不是源码：
