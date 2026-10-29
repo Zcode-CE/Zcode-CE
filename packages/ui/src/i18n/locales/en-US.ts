@@ -2654,6 +2654,9 @@ const enUS: Record<string, string> = {
   "settings.plugins.toggle.workspaceDisabled":
     "Disabled {plugin} in this project (overriding User default)",
   "settings.plugins.toggle.failed": "Couldn't update {plugin}. Try again.",
+  "settings.plugins.error.noWorkspaceInstall": "Open a workspace before installing plugins.",
+  "settings.plugins.error.noWorkspaceUninstall": "Open a workspace before uninstalling plugins.",
+  "settings.plugins.error.noWorkspaceToggle": "Open a workspace before changing plugin state.",
   "settings.modelProviderDescription":
     "Manage custom model providers. Once configured, they can be selected during chat.",
   "settings.modelProvider.add": "Add provider",

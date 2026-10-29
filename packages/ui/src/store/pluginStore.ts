@@ -323,7 +323,8 @@ export const usePluginStore = create<PluginStoreState>((set, get) => ({
     if (!workspacePath) {
       // 设置页尚未绑定 workspace 时 store 里可能还留着上一份缓存列表；
       // 直接 return false 会让点击安装看起来毫无反应，这里先写入显式错误提示。
-      set({ error: "请先打开一个工作区后再安装插件" });
+      // 用户可见错误用稳定 i18n key：store 不持有 intl，展示方用 resolvePluginStoreErrorMessage 解析。
+      set({ error: "plugin.error.noWorkspaceInstall" });
       return false;
     }
     const workspaceIdentityFromState =
@@ -367,7 +368,7 @@ export const usePluginStore = create<PluginStoreState>((set, get) => ({
   ) {
     const workspacePath = get().workspacePath;
     if (!workspacePath) {
-      set({ error: "请先打开一个工作区后再卸载插件" });
+      set({ error: "plugin.error.noWorkspaceUninstall" });
       return false;
     }
     const workspaceIdentityFromState =
@@ -409,7 +410,7 @@ export const usePluginStore = create<PluginStoreState>((set, get) => ({
   ) {
     const workspacePath = get().workspacePath;
     if (!workspacePath) {
-      set({ error: "请先打开一个工作区后再修改插件状态" });
+      set({ error: "plugin.error.noWorkspaceToggle" });
       return false;
     }
     const workspaceIdentityFromState =

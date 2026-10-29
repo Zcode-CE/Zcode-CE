@@ -20,6 +20,7 @@ import { useServices } from "@/hooks/useServices.js";
 import { useZCodeSessionService } from "@/hooks/useZCodeSessionService.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/zcodeDraftSkillInvalidation.js";
+import { resolvePluginStoreErrorMessage } from "@/lib/pluginStoreError.js";
 import { logger } from "@/logger.js";
 import { startUserAction } from "@/lib/userActionTelemetry.js";
 import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
@@ -92,6 +93,7 @@ export function BrowserSettingsSection({
   );
   const loading = usePluginManagementStore((state) => state.loading);
   const pluginError = usePluginManagementStore((state) => state.error);
+  const pluginErrorMessage = resolvePluginStoreErrorMessage(intl, pluginError);
   const togglingPluginId = usePluginManagementStore((state) => state.togglingPluginId);
   const initializePlugins = usePluginManagementStore((state) => state.initialize);
   const setPluginEnabled = usePluginManagementStore((state) => state.setEnabled);
@@ -262,8 +264,8 @@ export function BrowserSettingsSection({
               />
             }
             detail={
-              pluginError ? (
-                <div className="text-ui-base text-destructive">{pluginError}</div>
+              pluginErrorMessage ? (
+                <div className="text-ui-base text-destructive">{pluginErrorMessage}</div>
               ) : undefined
             }
           />

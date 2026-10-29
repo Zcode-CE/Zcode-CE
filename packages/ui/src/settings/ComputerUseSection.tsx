@@ -36,6 +36,7 @@ import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
 import { SettingsBadge, SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
 import { StatusDot, type StatusDotTone } from "@/settings/StatusDot.js";
 import { supportsLocalMacCuaPermissionOnboarding } from "@/lib/cuaPlatform.js";
+import { resolvePluginStoreErrorMessage } from "@/lib/pluginStoreError.js";
 import { runAfterSuccessfulPluginEnabledChange } from "@/settings/pluginEnabledChange.js";
 import { createCuaPermissionOnboardingOperationId } from "@/lib/cuaPermissionOnboardingOperation.js";
 import { waitForAccessibilityNotStale } from "@/settings/cuaPermissionRestartVerify.js";
@@ -216,9 +217,10 @@ export function ComputerUseSection({
   // 启用失败：只看归属自己的失败。共享 error 字段会被无关插件操作的失败污染，
   // 把它当成「电脑控制启用失败」会给出错误的操作建议。
   const pluginEnableFailed = lastFailedPluginId === ZCODE_CUA_OFFICIAL_PLUGIN_ID;
+  const resolvedPluginStoreError = resolvePluginStoreErrorMessage(intl, pluginStoreError);
   const pluginEnableFailureMessage =
-    pluginEnableFailed && pluginStoreError
-      ? pluginStoreError
+    pluginEnableFailed && resolvedPluginStoreError
+      ? resolvedPluginStoreError
       : pluginEnableFailed
         ? intl.formatMessage({ id: "settings.computerUse.pluginState.enableFailedFallback" })
         : null;
