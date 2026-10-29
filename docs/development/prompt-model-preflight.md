@@ -25,10 +25,11 @@
 
 ## 4. 未做 / 未验证
 
-- 未搬 `selectionFallback`（Highspeed 退回原模型）整链。**结论：不单独搬** —— CE 的 CLI
-  `ModelExecutionContext` 还没有 fallback 字段，core 也没有「同一 Turn 内换模型继续」的行为；
-  它必须与 Highspeed 3402 到期退回一起设计。当前 CE 的 Highspeed 只覆盖「编辑时保留卡」，
-  不包含到期退回；在这条运行时链路出现前，预检对 execution Selection 保持宽松是唯一不误伤的选择。
+- 未搬 `selectionFallback`（Highspeed 退回原模型）整链。**结论：不单独搬** —— CE 只有 shared 的
+  抽卡/卡 schema 与若干视觉组件，**没有 Highspeed 抽卡服务、卡状态或加速运行时**（全仓无
+  `/highspeed/draw` 调用）；`ModelExecutionContext` 也没有 fallback 字段，core 没有「同一 Turn
+  内换模型继续」的行为。它必须随 Highspeed 功能整体决策，而不是作为 X2 的附庸；在功能未引入前，
+  预检对 execution Selection 保持宽松是唯一不误伤的选择。
 - destructive edit/retry 的「branch cut 前预检、提交后直接消费」上游拆分为 `startPreflightedPromptTurn`，
   CE 当前仍在提交后走完整 `startPromptTurn`（会再次预检）；待编辑重发链路需要时再拆；
 - 真实 provider 下模型列表缺失/竞态未实机复现。
