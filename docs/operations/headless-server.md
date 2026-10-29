@@ -439,7 +439,7 @@ POSIX 假设（见 §10.1），那些必须由 `.github/workflows/cross-platform
 **⚠️ 未覆盖：包内同时带着一份「本机编出来的」`build/Release/pty.node`（见 §10.2）。**
 
 远程工作区组件清单只有 `linux-x64/arm64` + `darwin-x64/arm64` —— 那属于**远程工作区运行时**，
-与本机 CLI 的原生依赖是两件事（`win32` 远程组件仍缺，见 `.reverse/36-ssh/ROADMAP.md` 阶梯 ⑤）。
+与本机 CLI 的原生依赖是两件事（`win32` 远程组件仍缺，见 `.local/reports/remote/ssh-and-headless/ROADMAP.md` 阶梯 ⑤）。
 
 **musl 上的边界（为什么服务能跑、终端不行）**：上游 `node-pty` 的预编译**没有 musl 变体**，所以终端这一项在本版不可用；服务与面板不依赖它，因此可用。**这不是我们的取舍**，三条上游事实：① 上游 `node-pty` 的预编译**没有 musl 变体**（只有 glibc 的 `linux-x64`/`linux-arm64` 等）；② 官方发行版的资产集同样只有 `platformArch` 维度、**没有 `-musl` 平台类**，其 Linux 侧原生载荷是单份 glibc 二进制；③ 官方对「没有该平台预编译」的处置只是终端不可用，用户看不到 libc 层面的说明。⇒ 因此本版把 `Alpine / musl` 明确列为**不成立**，而不是「未实测」。
 
@@ -466,12 +466,12 @@ POSIX 假设（见 §10.1），那些必须由 `.github/workflows/cross-platform
 
 ### 10.1 三 OS 实测能测到什么、测不到什么（`.github/workflows/cross-platform.yml`）
 
-| 事项                  | 该工作流覆盖                                                                     | **不**覆盖                                                                         |
-| --------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| 构建                  | `node scripts/build-zcode.mjs --allow-placeholder-base-url` 在三个 OS 上真跑一遍 | 发布构建（平台化 seed、远程资产装配、安装包生成）—— 那是 `release.yml`             |
-| 启动 `--web` / 连面板 | 既有 smoke：解包后起服务、`/` 壳、`/api/server-info`、WebSocket、优雅退出        | 真实终端交互（conpty / spawn-helper）、浏览器端到端、反代与 TLS                    |
-| 平台                  | `ubuntu-latest` / `macos-latest` / `windows-latest`（CI runner 镜像）            | **用户机器**（旧内核、不同 shell、企业代理、只读 rootfs）                          |
-| 终端功能              | 只在 Linux 上被 smoke 覆盖                                                       | macOS / Windows 的终端能力**仍需真机验证**（`.reverse/36-ssh/ROADMAP.md` §3 末条） |
+| 事项                  | 该工作流覆盖                                                                     | **不**覆盖                                                                                                |
+| --------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 构建                  | `node scripts/build-zcode.mjs --allow-placeholder-base-url` 在三个 OS 上真跑一遍 | 发布构建（平台化 seed、远程资产装配、安装包生成）—— 那是 `release.yml`                                    |
+| 启动 `--web` / 连面板 | 既有 smoke：解包后起服务、`/` 壳、`/api/server-info`、WebSocket、优雅退出        | 真实终端交互（conpty / spawn-helper）、浏览器端到端、反代与 TLS                                           |
+| 平台                  | `ubuntu-latest` / `macos-latest` / `windows-latest`（CI runner 镜像）            | **用户机器**（旧内核、不同 shell、企业代理、只读 rootfs）                                                 |
+| 终端功能              | 只在 Linux 上被 smoke 覆盖                                                       | macOS / Windows 的终端能力**仍需真机验证**（`.local/reports/remote/ssh-and-headless/ROADMAP.md` §3 末条） |
 
 **当前实测结果（2026-09-27，run `36337338853`）—— 三 OS 全绿**：
 
@@ -534,7 +534,7 @@ macOS 此前整列是「未实测」；Windows 经五轮修复后转绿（见下
 
 ⇒ 本工作流在 Windows 上**预期红**。**不要用 `continue-on-error` 把它变绿**：那会把
 「Windows 上这套 smoke 还没打通」伪装成「Windows 可用」。要让它绿，得先让 smoke 的判据按平台分叉
-（属 `.reverse/36-ssh/ROADMAP.md` 阶梯 ② 之后的工作），而不是放宽断言。
+（属 `.local/reports/remote/ssh-and-headless/ROADMAP.md` 阶梯 ② 之后的工作），而不是放宽断言。
 
 ### 10.2 ⚠️ 包内同时带着一份「本机编出来的」`node-pty/build/Release/pty.node`
 

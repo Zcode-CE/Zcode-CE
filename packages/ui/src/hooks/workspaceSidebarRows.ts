@@ -11,7 +11,7 @@ import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
  * 为什么必须改（旧口径是「本机 tab 并集 注册表」）：
  * ① 同一份数据在不同客户端列出不同集合（实测桌面 38 行、手机 23 行）；
  * ② 注册表补列行点击后会被 addTab 物化成 tab，随即被 tabKeys 过滤掉，
- *    用户看到的是「点击后消失」（docs/development/131-workspace-path-titled-entries.md 第 3 节）。
+ *    用户看到的是「点击后消失」（.local/reports/remote/workspace-path-titled-entries.md 第 3 节）。
  *
  * 两条不可动摇的约束：
  * ① 主序列只由注册表决定：行的存在与顺序都来自注册表条目（lastActivityAt 降序）。

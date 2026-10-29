@@ -411,7 +411,7 @@ export interface DesktopWindowChromeState {
 
 // Modified by ZCode: 自上游 aac47556 (Apache-2.0) 增量并入(F10)。
 /**
- * 桌面端「关闭驻留托盘」能力(spec:docs/development/151-linux-close-to-tray.md)。
+ * 桌面端「关闭驻留托盘」能力(spec:docs/development/linux-tray.md)。
  * Linux 上取决于 session DBus 是否有 StatusNotifierWatcher(KDE/XFCE 原生有,
  * GNOME 需 AppIndicator 扩展);Windows 固定 supported=true;macOS/Web 不查询。
  */

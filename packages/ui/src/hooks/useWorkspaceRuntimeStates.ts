@@ -18,7 +18,7 @@ import type { SessionsIndexStore } from "@/v4/sessionsIndexStore.js";
  *
  * 成本纪律（§3.1）：本 hook 只做**被动订阅**，走的仍是会话索引 transport 里硬编码的
  * `runtimePolicy: "existing-only"`，因此列出 N 个 workspace **不会**拉起任何 runtime
- * （实测见 .reverse/40-remote-control/PUBLISHER-SCALE-MEASUREMENT.md §2.1）。
+ * （实测见 .local/reports/remote/workspace-registry-m1/PUBLISHER-SCALE-MEASUREMENT.md §2.1）。
  */
 
 export type WorkspaceRuntimeState =

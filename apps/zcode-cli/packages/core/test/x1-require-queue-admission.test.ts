@@ -7,7 +7,7 @@ import type { AgentRuntimeInternal } from "../src/runtime/internal.js";
 /**
  * X1（加速回合编辑丢失）core 侧回归：admitPrompt 的 requireQueue 分支。
  *
- * Bug 根因（上游 aac47556，Apache-2.0；见 docs/development/166-x1-accelerated-edit-loss.md §3）：
+ * Bug 根因（上游 aac47556，Apache-2.0；见 .local/reports/engineering/x1-accelerated-edit-loss.md §3）：
  * 编辑重发不能依据 Bootstrap 的 busy 快照决定是否直接启动——状态在跨层 await 期间转为空闲时，
  * 高速临时 provider 会按普通模型启动（Highspeed 临时 provider 只能在独立 turn 的提升边界安装）。
  * requireQueue 让 edit 重发无条件入队成未来独立 turn。

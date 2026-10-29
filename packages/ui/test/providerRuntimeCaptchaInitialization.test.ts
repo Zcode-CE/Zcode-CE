@@ -13,7 +13,7 @@ import {
 /**
  * 官方 3.14.4「验证码初始化显式超时 + 分类」移植的回归测试。
  *
- * 背景（.reverse/99-v3144/UPDATE-ANALYSIS.md §2.3 C1/C2）：官方 3.14.4 给渲染层验证码
+ * 背景（.local/reports/upstream/version-3.14.4/UPDATE-ANALYSIS.md §2.3 C1/C2）：官方 3.14.4 给渲染层验证码
  * 子系统新增 initialization_drain 排空、initialization_timeout 分类与显式超时文案
  * 「Captcha initialization timed out. Please restart the app or reload the page and try again.」，
  * 取代「初始化卡死时挂起到通用超时」。CE 的对应实现是给三段既有初始化等待

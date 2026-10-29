@@ -104,7 +104,7 @@ const OFFICIAL_SKILL_CREATOR_REQUIRED_SEED_PATHS = ["skills/skill-creator/SKILL.
  *
  * 这是**运行期闸门**：载荷缺失时 seed 拒绝写缓存并告警（bundled-plugins.ts 的
  * ZCODE_PLUGIN_SEED_INCOMPLETE），而不是让用户看到一个"已启用、但第一次调用就
- * MODULE_NOT_FOUND"的插件 —— 该失效形态已在 task-6 实测（.reverse/38-pdf/COMMIT-SHAPE.md：
+ * MODULE_NOT_FOUND"的插件 —— 该失效形态已在 task-6 实测（.local/reports/office-pdf-cua/pdf/COMMIT-SHAPE.md：
  * 只有目录与 manifest 时，plugins list 就会输出 pdf@zcode-plugins-official [enabled]）。
  *
  * 载荷由打包链 stage 到 <plugin>/scripts/pdf-node/（packages/desktop/scripts/pdf-node-payload-assets.mjs），
@@ -155,7 +155,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     //
     // 必须是插件根直属：shouldSkipDirectory 只放行 depth === 0，实测 dist/node_modules、
     // scripts/node_modules、vendor/…/node_modules 一律被丢弃，白名单救不了。
-    // 详见 .reverse/29-cua-seed/CUA-SEED-PAYLOAD.md 与 .reverse/31-audit/SECURITY-AUDIT.md。
+    // 详见 .local/reports/office-pdf-cua/computer-use/seed-payload/CUA-SEED-PAYLOAD.md 与 .local/reports/audit/correctness-audit/SECURITY-AUDIT.md。
     runtimeTopLevelPaths: ["node_modules"],
     rootCandidates: [
       "packages/node-repl-host",

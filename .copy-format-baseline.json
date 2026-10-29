@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "注释正文里的成对 markdown 强调数（棘轮基线：只许减不许增）。生成：node .reverse/92-copy-format/tools/gen-copy-baseline.cjs --write。规则见 docs/development/copy-and-format.md §3。",
+  "note": "注释正文里的成对 markdown 强调数（棘轮基线：只许减不许增）。生成：node .local/tools/copy-format/gen-copy-baseline.cjs --write。规则见 docs/development/copy-and-format.md §3。",
   "total": 3077,
   "files": {
     "apps/zcode-cli/packages/adapters/src/config/file-config.adapter.ts": 1,

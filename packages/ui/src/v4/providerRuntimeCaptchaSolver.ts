@@ -6,7 +6,7 @@
  * start-plan（官方赠送额度）的模型请求经网关转发时会强制要求
  * `X-Aliyun-Captcha-Verify-Param` 头（阿里云无痕验证）。官方客户端为此有一条三段式链路，
  * CE 此前三段全缺，表现为模型请求必然报 `provider_code=3007`
- * （见 docs/development/126-start-plan-3007-root-cause.md 与 130-start-plan-captcha-spec.md）。
+ * （见 .local/reports/account/start-plan-3007-root-cause.md 与 130-start-plan-captcha-spec.md）。
  *
  * Task B 已补齐 host 侧两段：守卫收紧（只有非 start-plan 才走 host 自答短路）+
  * 渲染层应答入口 `respondProviderRuntimeHeaders`。本模块补的是第三段：渲染层求解。
@@ -28,7 +28,7 @@
  * 这是一处刻意的安全取舍，不是疏漏：
  *
  * 1. 官方 renderer 本身就是主世界加载。实测官方 3.14.3 的 renderer bundle
- *    （.reverse/94-account-capability/official-3.14.3/asar-out/out/renderer/assets/styles-DEELZGp2.js）
+ *    （.local/reports/account/account-capability/official-3.14.3/asar-out/out/renderer/assets/styles-DEELZGp2.js）
  *    在 renderer 页面里直接 document.createElement("script") 插入
  *    https://o.alicdn.com/captcha-frontend/aliyunCaptcha/AliyunCaptcha.js，
  *    并直接操作 window.initAliyunCaptcha / window.AliyunCaptchaConfig。
@@ -53,8 +53,8 @@
  * ## 移植官方 3.14.4：初始化卡死的显式分类（initialization_timeout）
  *
  * 官方 3.14.4 给验证码初始化阶段加了显式超时与分类（详见
- * .reverse/99-v3144/UPDATE-ANALYSIS.md §2.3 C1/C2 与
- * docs/development/130-start-plan-captcha-spec.md「移植官方 3.14.4」一节）：
+ * .local/reports/upstream/version-3.14.4/UPDATE-ANALYSIS.md §2.3 C1/C2 与
+ * docs/development/start-plan-captcha.md「移植官方 3.14.4」一节）：
  * 初始化卡死时以「Captcha initialization timed out. Please restart the app or
  * reload the page and try again.」显式失败并归为 initialization_timeout，
  * 而不是让请求挂起到通用超时。

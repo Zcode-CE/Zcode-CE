@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
  * 工作流卡表头右簇的可压缩性（上游 3.14.3 的「卡片按钮被挤出界面」修复）。
  *
  * 为什么这两条断言是配套的，缺一不可（浏览器实测，1280x800 Chromium；实测脚本在
- * .reverse/90-upstream-v3143/overflow-harness/ 下，该目录是分析区、不随仓库分发）：
+ * .local/reports/upstream/deep-dive-3.14.3/overflow-harness/ 下，该目录是分析区、不随仓库分发）：
  *
  * - 只去掉簇的 min-w-0（其余不变）：零溢出的下限由 220px 退到 480px；
  * - 只去掉细节串的 min-w-0 truncate：下限退到 280px（带待答芯片时 340px）；

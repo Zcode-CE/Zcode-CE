@@ -264,7 +264,7 @@
       "apps/zcode-cli/packages/presentations-plugin",
       "apps/zcode-cli/packages/spreadsheets-plugin"
     ],
-    "scope": "Office document authoring skills (docx/pptx/xlsx SKILL.md), the shared OOXML structural checker (scripts/check_office.py, kept as the behavioral baseline; scripts/check_office.mjs + scripts/lib/*.mjs is the Node rewrite actually invoked by the skills), and the MIT license text. Adapted for ZCode-CE: the upstream `load_workspace_dependencies` / `render_document` / `present` tool references were replaced with a self-contained Node payload (docx/pptxgenjs/exceljs bundled under scripts/office-node/) and file-path equivalents, and the skill directory was renamed from `assets/` to `skills/` to match this repository's plugin layout. The `agents/visual-judge.md` file is an independent ZCode-CE implementation, not copied from upstream, as are each plugin's `package.json`, `.zcode-plugin/plugin.json`, `documents-plugin/test/checkOffice.test.mjs`, the recalculate capability probe `spreadsheets-plugin/scripts/office-capabilities.mjs` (S-level closure of the upstream recalculate gap: probe + honest declaration, engine not vendored), and the e2e pilot `spreadsheets-plugin/test/officeE2eBlankRender.test.mjs` with `test/lib/blank-render-support.mjs` and `test/fixtures/{soffice,pdftoppm}-fake.cjs` (DSH LLM-in-loop pattern, docs/development/137-dsh-e2e-pattern.md).",
+    "scope": "Office document authoring skills (docx/pptx/xlsx SKILL.md), the shared OOXML structural checker (scripts/check_office.py, kept as the behavioral baseline; scripts/check_office.mjs + scripts/lib/*.mjs is the Node rewrite actually invoked by the skills), and the MIT license text. Adapted for ZCode-CE: the upstream `load_workspace_dependencies` / `render_document` / `present` tool references were replaced with a self-contained Node payload (docx/pptxgenjs/exceljs bundled under scripts/office-node/) and file-path equivalents, and the skill directory was renamed from `assets/` to `skills/` to match this repository's plugin layout. The `agents/visual-judge.md` file is an independent ZCode-CE implementation, not copied from upstream, as are each plugin's `package.json`, `.zcode-plugin/plugin.json`, `documents-plugin/test/checkOffice.test.mjs`, the recalculate capability probe `spreadsheets-plugin/scripts/office-capabilities.mjs` (S-level closure of the upstream recalculate gap: probe + honest declaration, engine not vendored), and the e2e pilot `spreadsheets-plugin/test/officeE2eBlankRender.test.mjs` with `test/lib/blank-render-support.mjs` and `test/fixtures/{soffice,pdftoppm}-fake.cjs` (DSH LLM-in-loop pattern, docs/development/e2e-real-api-pattern.md).",
     "locallyModifiedFiles": [
       "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md",
       "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md",
@@ -410,7 +410,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": ["packages/shared/src/mcp-apps"],
     "scope": "MCP App (UI plugin) contract: 12 .ts files plus CONTRACT.md and contract.example.ts, self-contained shared schema/type contract (app tools, resources, sampling, CSP relaxations, instance lifecycle). Byte-identical to upstream; upstream's vitest tests were NOT copied (this workspace has no vitest in packages/shared) and were re-implemented as CE-style node:test in packages/shared/test (separate, not part of this copy).",
     "license": "Apache-2.0",
@@ -423,7 +423,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": ["apps/zcode-cli/packages/bootstrap/src/zcode-protocol/mcp-ui"],
     "scope": "MCP UI (plugin UI surface) protocol: 15 .ts files plus CONTRACT.md, the bootstrap-side wire contract consumed by the desktop plugin sandbox host and the UI layer. Byte-identical to upstream; upstream's vitest tests were NOT copied (no vitest in the bootstrap package), re-implemented as CE-style node:test instead.",
     "license": "Apache-2.0",
@@ -436,7 +436,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": ["packages/shared/src/zcode-protocol-v4"],
     "scope": "The whole packages/shared/src/zcode-protocol-v4 directory as of the v3.15.1 sync: 31 pre-existing files replaced wholesale plus new files (create-session-config, workflow-command-rejections, workflow-runs-actor-session, workflow-runs-holes) and index. Content is the upstream v3.15.1 protocol drift: default-concurrency-D model (run-started records concurrencyCeiling; shared bucket may grow to 2D), ceiling vs limit two-bounds semantics, actor.model (F7 per-subagent model), actor sessionId semantics (X2), holes/extractions. 32 of the files carry the 'Modified by ZCode:' marker because comments containing markdown emphasis were de-emphasized per docs/development/copy-and-format.md §3 (copyFormatGuard ratchet); listed in modifiedFiles.",
     "license": "Apache-2.0",
@@ -482,7 +482,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/shared/src/channel-mention.ts",
       "packages/shared/src/attachment-source.ts",
@@ -521,7 +521,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "apps/zcode-cli/packages/core/src/tool/handlers/guarded",
       "apps/zcode-cli/packages/core/src/tool/handlers/bash.ts",
@@ -555,7 +555,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "apps/zcode-cli/packages/core/src/tool/handlers/workflow-settings-adjustment.ts",
       "apps/zcode-cli/packages/core/src/tool/executor/permission-input-adjustments.ts",
@@ -576,13 +576,13 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/fork-edit-retry.ts",
       "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/canonical-intent-replay.ts",
       "apps/zcode-cli/packages/core/src/runtime/methods/prompt-admission.ts"
     ],
-    "scope": "X1 fix (edited messages lost during accelerated turns): fork-edit-retry.ts (389 lines, whole upstream handler) and canonical-intent-replay.ts (131 lines, new) are upstream-derived protocol handlers; prompt-admission.ts carries the upstream requireQueue early-return branch. CE deviations (equivalent CE admission logic kept in session-flow.ts instead of upstream's input-admission.ts; upstream highspeed-metrics.ts not copied) are recorded in docs/development/173-x1-runtime-side-verdict.md.",
+    "scope": "X1 fix (edited messages lost during accelerated turns): fork-edit-retry.ts (389 lines, whole upstream handler) and canonical-intent-replay.ts (131 lines, new) are upstream-derived protocol handlers; prompt-admission.ts carries the upstream requireQueue early-return branch. CE deviations (equivalent CE admission logic kept in session-flow.ts instead of upstream's input-admission.ts; upstream highspeed-metrics.ts not copied) are recorded in （判别记录见私有工作区）.",
     "license": "Apache-2.0",
     "modifiedFiles": [
       "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/fork-edit-retry.ts",
@@ -597,7 +597,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "apps/zcode-cli/packages/core/src/mcp/app-tools.ts",
       "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/mcp-elicitation.ts",
@@ -618,7 +618,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/desktop/src/main/pluginSandbox",
       "packages/desktop/src/renderer/src/plugin-sandbox",
@@ -680,7 +680,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/shared/src/platform.ts",
       "packages/shared/src/channels.ts",
@@ -710,7 +710,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/services/src/gen-ui",
       "packages/services/src/plugin-ui-bridge",
@@ -727,7 +727,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/services/src/zcode-agent/zcodeAgent.ts",
       "packages/services/src/zcode-agent/zcodeAgentService.ts",
@@ -737,7 +737,7 @@
       "packages/services/src/index.ts",
       "packages/shared/src/node.ts"
     ],
-    "scope": "Wiring of the gen-ui and plugin-ui services into the zcode-agent surface and the services composition root (tasks 13/15): 19 interface/implementation additions and 10 parameter families on the zcode-agent trio, plus gen-ui/plugin-ui assembly, registration, dispose and credential hooks in services/src/node.ts (node.ts also carries the A2 OAuth cleanup tolerance adopted from the closed-source 3.15.3 reference — recorded in docs/development/143-oauth-recovery-and-signer-assessment.md), the four optional service-accessor fields, the services index export block and the shared genUiPaths export. All seven carry in-place Modified-by markers.",
+    "scope": "Wiring of the gen-ui and plugin-ui services into the zcode-agent surface and the services composition root (tasks 13/15): 19 interface/implementation additions and 10 parameter families on the zcode-agent trio, plus gen-ui/plugin-ui assembly, registration, dispose and credential hooks in services/src/node.ts (node.ts also carries the A2 OAuth cleanup tolerance adopted from the closed-source 3.15.3 reference — recorded in （评估记录见私有工作区）), the four optional service-accessor fields, the services index export block and the shared genUiPaths export. All seven carry in-place Modified-by markers.",
     "license": "Apache-2.0",
     "modifiedFiles": [
       "packages/services/src/zcode-agent/zcodeAgent.ts",
@@ -756,7 +756,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts",
       "apps/zcode-cli/packages/core/src/runtime/types.ts",
@@ -789,7 +789,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/desktop/src/main/embeddedBrowserPermissionPolicy.ts",
       "packages/desktop/src/main/embeddedBrowserSitePermissions.ts",
@@ -798,7 +798,7 @@
       "packages/desktop/src/main/embeddedBrowserDeviceOptions.ts",
       "packages/desktop/src/main/embeddedBrowserBluetoothGuard.ts"
     ],
-    "scope": "F9/X4 embedded-browser site permission governance for the persist:zcode-embedded-browser partition: permission policy (fail-closed with whitelist), persistent site-consent store (atomic writes), UI bridge (confirmation bubble / source picker / device picker), device options and bluetooth guard. All six files are upstream-derived with in-place 'Modified by ZCode:' markers (CE trims guest branches that do not exist here). Wiring increments in desktopBrowserDataIpc.ts / desktopWindowChrome.ts / index.ts are CE-side adaptations recorded in docs/development/150-embedded-browser-permission-governance.md.",
+    "scope": "F9/X4 embedded-browser site permission governance for the persist:zcode-embedded-browser partition: permission policy (fail-closed with whitelist), persistent site-consent store (atomic writes), UI bridge (confirmation bubble / source picker / device picker), device options and bluetooth guard. All six files are upstream-derived with in-place 'Modified by ZCode:' markers (CE trims guest branches that do not exist here). Wiring increments in desktopBrowserDataIpc.ts / desktopWindowChrome.ts / index.ts are CE-side adaptations recorded in docs/development/embedded-browser-permissions.md.",
     "license": "Apache-2.0",
     "modifiedFiles": [
       "packages/desktop/src/main/embeddedBrowserPermissionPolicy.ts",
@@ -816,13 +816,13 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/desktop/src/main/desktopTraySupport.ts",
       "packages/desktop/src/main/desktopTray.ts",
       "packages/desktop/src/main/desktopWindowLifecycle.ts"
     ],
-    "scope": "F10 Linux close-to-tray residency: desktopTraySupport.ts (241 lines, whole upstream file) plus the tray and window-lifecycle files carrying the merged closeToTray / closeToTraySupported platform arbitration and Linux PNG-icon tray creation. index.ts wiring is CE-side adaptation recorded in docs/development/151-linux-close-to-tray.md.",
+    "scope": "F10 Linux close-to-tray residency: desktopTraySupport.ts (241 lines, whole upstream file) plus the tray and window-lifecycle files carrying the merged closeToTray / closeToTraySupported platform arbitration and Linux PNG-icon tray creation. index.ts wiring is CE-side adaptation recorded in docs/development/linux-tray.md.",
     "license": "Apache-2.0",
     "modifiedFiles": [
       "packages/desktop/src/main/desktopTraySupport.ts",
@@ -837,7 +837,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/ui/src/highspeed",
       "packages/ui/src/v4/highspeed",
@@ -869,7 +869,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/ui/src/lib/codingPlanQuotaResetUi.ts",
       "packages/ui/src/hooks/useCodingPlanQuotaResetUi.ts",
@@ -890,7 +890,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": ["packages/ui/src/plugin-ui"],
     "scope": "F5 UI plugin (MCP App) surface in the UI package: 64 files (root 9, adapters 21, app 21, components 5, domain 15, sidePane 1) — side panes, tool-call blocks, adapters, app tooling, domain models and the host primitives. Byte-identical to upstream except comment-style normalization applied under this repo's copyFormatGuard ratchet (logic-level unchanged, which is why no Modified-by markers are required). Upstream vitest tests were not copied (no vitest in packages/ui).",
     "license": "Apache-2.0",
@@ -903,7 +903,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": ["packages/ui/src/gen-ui"],
     "scope": "F4 visualization surface (complete render chain): adapters (page / retainedPage / theme), host, module, GenUiCard and GenUiMessageResponse components, useGenUi hook and the restored full upstream entry index, plus the contract/domain/app(tweaks) subset and TweakPanel. Byte-identical to upstream (comment-style normalization only, logic unchanged). The visualization pages are projected through the desktop plugin sandbox entry registered under 'ZCode plugin sandbox desktop host v3.15.1'.",
     "license": "Apache-2.0",
@@ -916,7 +916,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/ui/src/browser-use",
       "packages/ui/src/store/embeddedBrowserPermissionStore.ts",
@@ -933,7 +933,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/ui/src/settings/model-provider-section/StatusCards.tsx",
       "packages/ui/src/v4/ConversationTimeline.tsx",
@@ -972,7 +972,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/ui/src/BotsDialog/BoundGroupsCard.tsx",
       "packages/ui/src/BotsDialog/PrivateDeliveryRetry.tsx",
@@ -998,7 +998,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/ui/src/store/workflowRunSavedStore.ts",
       "packages/ui/src/hooks/useWorkflowRunSave.ts",
@@ -1015,7 +1015,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/services/src/bots/groupSessions.ts",
       "packages/services/src/bots/groupAdminAttention.ts",
@@ -1046,7 +1046,7 @@
       "packages/services/src/session/zcodeTaskService.ts",
       "packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts"
     ],
-    "scope": "Task-17 F8 service wave (committed c104623a): 21 new modules byte-identical to upstream except the #src alias rewritten to relative paths — group/topic sessions, delivery throttle and queue cards, result delivery, topic continuation/history/attachment/preparation/resource, channel mention resolver, the reverse-reply entry, taskStreamHub, three Feishu provider modules (group messages / input reaction / member directory), provider types (contract surface + 6 methods) and three zcode-agent adapters (topic admission / runtime snapshot / attachment upload); six of them are upstream group/topic state machines. The eight CE-pre-existing files carry in-place Modified-by markers and received upstream-derived increments: bots.ts (IBotsService +10 group/topic methods), messages.ts (group/topic text family + 2 back-connected CE keys; removed commandNotSupportedInCe and its 5 stub cases), feishuChannelRuntime.ts (X7 three touchpoints), feishuProvider.ts (splitFeishuText export), zcodeTaskService.ts (+7 session methods), zcodeTaskServiceAdapter.ts (imports + botAgent + 7 implementations) and botsService.ts (whole-file upstream transplant + 5 CE hardening back-connects; the first-line declaration was added by cli-runtime in acb38772). Four more path-rewritten files (groupResultDelivery, channelReply, groupRuntimeSnapshot, groupAttachmentUpload — #src alias rewritten to relative paths, no other changes) carry the same first-line Modified-by declaration added in 5b9c20d2. CE-side coverage is test/botGroupTopic.test.ts (18 self-written assertions — upstream ships no bots unit tests) and spec docs/development/145-bots-group-topic-implementation.md.",
+    "scope": "Task-17 F8 service wave (committed c104623a): 21 new modules byte-identical to upstream except the #src alias rewritten to relative paths — group/topic sessions, delivery throttle and queue cards, result delivery, topic continuation/history/attachment/preparation/resource, channel mention resolver, the reverse-reply entry, taskStreamHub, three Feishu provider modules (group messages / input reaction / member directory), provider types (contract surface + 6 methods) and three zcode-agent adapters (topic admission / runtime snapshot / attachment upload); six of them are upstream group/topic state machines. The eight CE-pre-existing files carry in-place Modified-by markers and received upstream-derived increments: bots.ts (IBotsService +10 group/topic methods), messages.ts (group/topic text family + 2 back-connected CE keys; removed commandNotSupportedInCe and its 5 stub cases), feishuChannelRuntime.ts (X7 three touchpoints), feishuProvider.ts (splitFeishuText export), zcodeTaskService.ts (+7 session methods), zcodeTaskServiceAdapter.ts (imports + botAgent + 7 implementations) and botsService.ts (whole-file upstream transplant + 5 CE hardening back-connects; the first-line declaration was added by cli-runtime in acb38772). Four more path-rewritten files (groupResultDelivery, channelReply, groupRuntimeSnapshot, groupAttachmentUpload — #src alias rewritten to relative paths, no other changes) carry the same first-line Modified-by declaration added in 5b9c20d2. CE-side coverage is test/botGroupTopic.test.ts (18 self-written assertions — upstream ships no bots unit tests) and spec （实现记录见私有工作区）.",
     "license": "Apache-2.0",
     "modifiedFiles": [
       "packages/services/src/bots/groupResultDelivery.ts",
@@ -1070,7 +1070,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/shared/src/request-security-edition/index.ts",
       "packages/shared/src/request-security-edition/policy.ts",
@@ -1087,7 +1087,7 @@
     "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
     "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
-    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .reverse/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": [
       "packages/ui/src/app-shell/WorkflowActorSessionSidePane.tsx",
       "packages/ui/src/app-shell/WorkflowArtifactSidePane.tsx",

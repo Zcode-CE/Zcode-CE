@@ -24,7 +24,7 @@
  * PDF 分支。它们被删掉时技能会指挥模型做做不到的事，所以必须一并钉住。
  *
  * 本文件是静态断言：它不能替代端到端实跑（soffice→pdftoppm→非空白页图），
- * 那一步的证据在 `.reverse/98-ce4/IMPL-OFFICE-VISUAL.md` 的实跑记录里。
+ * 那一步的证据在 `.local/reports/audit/ce4-candidate-pool/IMPL-OFFICE-VISUAL.md` 的实跑记录里。
  */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";

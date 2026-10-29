@@ -9,7 +9,7 @@ import { resolveClientAddress, type AuthThrottle, type TrustedProxyRange } from 
 /**
  * IM 机器人入站回调的独立接入面（/bot/**）。
  *
- * 设计依据：`.reverse/93-bot-ingress/BOT-INGRESS-SPEC.md`（本文的 § 引用均指该 spec）。
+ * 设计依据：`.local/reports/bots/im-bot-ingress/BOT-INGRESS-SPEC.md`（本文的 § 引用均指该 spec）。
  *
  * ## 为什么是独立前缀而不是 /api/bots
  *

@@ -128,7 +128,7 @@ function run(command, args, options = {}) {
   // 复用 scripts/spawn-command.mjs 的既有判定（它同时处理「含空格路径要按 cmd 规则加引号」），
   // 而不是在本文件重写一份 —— 那份注释记录了当初用 `pnpm.cmd` 改写踩过的坑。
   // 2026-09-27 修：此前漏了这一步，导致 cross-platform 工作流的 Windows job 红在
-  // `spawnSync pnpm ENOENT`（实测见 .reverse/98-ce4/ 的跨平台实测记录）。
+  // `spawnSync pnpm ENOENT`（实测见 .local/reports/audit/ce4-candidate-pool/ 的跨平台实测记录）。
   const runtimeOptions = resolveSpawnRuntimeOptions(command);
   const spawnArgs = runtimeOptions.shell ? quoteArgsForWindowsShell(args) : args;
   const result = spawnSync(command, spawnArgs, {

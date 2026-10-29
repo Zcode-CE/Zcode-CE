@@ -27,7 +27,7 @@ import {
 /**
  * 引导式授权（ENH-2）的回归测试。
  *
- * 背景：task-67（`.reverse/30-sudo-auth/SUDO-AUTH-EVAL.md`）否决了"给 agent 一条可交互提权通道"，
+ * 背景：task-67（`.local/reports/permissions/sudo-auth/SUDO-AUTH-EVAL.md`）否决了"给 agent 一条可交互提权通道"，
  * 改做「引导式授权」—— agent 给出确切命令，UI 把命令**只粘贴进终端输入缓冲**，
  * **由用户自己按回车执行**。这条设计的安全性完全建立在一个不变量上：
  *

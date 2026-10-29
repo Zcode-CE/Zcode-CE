@@ -824,7 +824,7 @@ function providerRuntimeHeadersRequestKey(
 /**
  * 渲染层允许注入的运行时请求头白名单（逐字对齐官方 host：
  * `["X-Aliyun-Captcha-Verify-Param","X-Aliyun-Captcha-Verify-Region"]`，见
- * asar-out/out/host/index.js @357101 与 docs/development/130-start-plan-captcha-spec.md §4.3）。
+ * asar-out/out/host/index.js @357101 与 docs/development/start-plan-captcha.md §4.3）。
  *
  * 只有这两个头会被并入账号鉴权材料——渲染层不得借此注入任意请求头（spec §5 不变量 2）。
  */
@@ -2529,7 +2529,7 @@ export function createZCodeAgentService(
           //   if (mr && Ze && Ze.mode !== "start-plan") { 短路自答; return }
           // CE 此前丢掉了 `mode !== "start-plan"` 这一半，于是 start-plan 也被短路自答，
           // 渲染层永远收不到请求 ⇒ 模型请求永远不带 X-Aliyun-Captcha-Verify-Param ⇒ 必然 3007。
-          // 见 docs/development/130-start-plan-captcha-spec.md §4.2 与 126 报告 §2.3。
+          // 见 docs/development/start-plan-captcha.md §4.2 与 126 报告 §2.3。
           if (accountRequestAuthService && accountAccess && accountAccess.mode !== "start-plan") {
             // 非 start-plan 的 Account API Key / Team Runtime Key / Individual JWT
             // 都不需要 Renderer 交互：Host 按 Model 固定的 Account Access 自动应答，

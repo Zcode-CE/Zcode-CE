@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // --- 来源与归属 ---
 // 归属:      ZCode-CE 自研（self）。无上游来源，不回写任何上游。
-// 由来:      把 .reverse/38-pdf/PDF-SPEC.md §2.3 的生成器契约落地：声明式 JSON → PDF，
+// 由来:      把 .local/reports/office-pdf-cua/pdf/PDF-SPEC.md §2.3 的生成器契约落地：声明式 JSON → PDF，
 //            并且**自带校验闸门**（渲染到临时文件 → check_pdf.mjs 断言 → 通过才 rename）。
 // 本模块:    命令行 + 编排（字体解析 → 渲染 → 校验 → 原子落地）；布局在 lib/pdf-render.mjs。
 // 契约:      stdout 恒为一行 JSON（成功与失败都是），退出码 0=已产出 / 1=失败（未产出任何文件）/ 2=参数错误。

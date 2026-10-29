@@ -20,7 +20,7 @@ import type { ManualClaimPlanPreview } from "@zcode/shared";
  * ## 这条测试与真浏览器证据的关系
  * 这里钉的是三态分界（纯函数）与源码形态（防止把分支写回去）。
  * 真浏览器里的 DOM 证据（失败态可见 + 重试可点 + 无活动时无卡片）见
- * `.reverse/94-account-capability/harness/`（vite build + node probe-render.mjs）。
+ * `.local/reports/account/account-capability/harness/`（vite build + node probe-render.mjs）。
  */
 
 const CARD_SOURCE = readFileSync(

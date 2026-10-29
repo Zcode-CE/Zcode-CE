@@ -205,7 +205,7 @@ permissions:
 ## `cross-platform.yml` — 跨平台实测（三 OS 构建 + smoke）
 
 把 macOS / Windows 的「**能构建 / 能启动 / 能连面板**」从**推断**变成**实测**，而不需要我们自己
-拥有 mac/Windows 硬件。依据：[`.reverse/36-ssh/ROADMAP.md` §1](../../.reverse/36-ssh/ROADMAP.md)
+拥有 mac/Windows 硬件。依据：[`.local/reports/remote/ssh-and-headless/ROADMAP.md` §1](../../.local/reports/remote/ssh-and-headless/ROADMAP.md)
 的阶梯 ①（最便宜，且是 ②③④⑤ 的前置）。
 
 | 项   | 值                                                                                                                                                                                       |
@@ -218,7 +218,7 @@ permissions:
 **为什么单独一个 workflow**（既不并进 `ci.yml`，也不并进 `release.yml`）：
 
 - 并进 `ci.yml` ⇒ **每个 PR** 都要在 mac/Windows runner 上跑一遍完整构建 + 解包 + smoke，成本过高。
-  `.reverse/archive/45-release/CE3-CHECKLIST.md` §1 的 F2-M 已定口径：**nightly 或发布前，不进每个 PR**。
+  `.local/archive/45-release/CE3-CHECKLIST.md` §1 的 F2-M 已定口径：**nightly 或发布前，不进每个 PR**。
 - 并进 `release.yml` ⇒ 只有打 tag 才知道结果，而那时已经在发版路径上（红会卡住发版）。
 
 **为什么用 `--allow-placeholder-base-url` 而不是 `pnpm build:zcode`**：后者要求仓库变量

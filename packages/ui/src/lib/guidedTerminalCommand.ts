@@ -1,6 +1,6 @@
 // 引导式授权（ENH-2）的纯规则层。
 //
-// 背景（task-67 / .reverse/30-sudo-auth/SUDO-AUTH-EVAL.md）：本项目**不引入** agent 可交互提权
+// 背景（task-67 / .local/reports/permissions/sudo-auth/SUDO-AUTH-EVAL.md）：本项目**不引入** agent 可交互提权
 // 通道（PTY 透传 / askpass / 密码框），改做「引导式授权」—— agent 给出确切命令，UI 提供
 // 「发送到终端」，**由用户自己按回车**。审批与执行是同一个动作，TOCTOU 从结构上不可能发生。
 //

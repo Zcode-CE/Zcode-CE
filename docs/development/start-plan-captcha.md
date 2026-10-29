@@ -1,7 +1,7 @@
 # Spec：start-plan 验证码挑战链路（captcha challenge）+ 切渠道队列授权位复位
 
 - 状态：**已实现（3.14.3-ce.4 至 ce.5 逐步落地，2026-10-03 修复 issue #3 的 webview 时序 bug）**
-- 背景与证据：[126 根因报告](./126-start-plan-3007-root-cause.md)、[127 粘滞机制](./127-session-scoped-sticky-provider-failure.md)、[128 参考项目对照](./128-reference-proxy-parity.md)、[129 缺陷扫描](./129-ce-defect-scan.md)
+- 背景与证据：[126 根因报告](../../.local/reports/account/start-plan-3007-root-cause.md)、[127 粘滞机制](../../.local/reports/account/session-scoped-sticky-provider-failure.md)、[128 参考项目对照](../../.local/reports/account/reference-proxy-parity.md)、[129 缺陷扫描](../../.local/reports/audit/ce-defect-scan.md)
 - 影响范围：协议契约（shared）、host 服务（services）、agent 运行时（zcode-cli）、UI（ui）
 
 ## 落地状态（2026-10-03 核对，按本 spec 章节逐条）
@@ -49,7 +49,7 @@ ensureHostPageReady 注入、超时快速失败、源码防回退断言）。
 
 ## 移植官方 3.14.4：初始化阶段的显式超时与失败分类（3.14.4-ce.1）
 
-来源：官方 3.14.4 闭源 deb 的验证码健壮性补丁（`.reverse/99-v3144/UPDATE-ANALYSIS.md §2.3 C1/C2`）。
+来源：官方 3.14.4 闭源 deb 的验证码健壮性补丁（`.local/reports/upstream/version-3.14.4/UPDATE-ANALYSIS.md §2.3 C1/C2`）。
 官方新增：初始化期间排队的请求排空（initialization_drain）、
 `Captcha initialization timed out. Please restart the app or reload the page and try again.`
 显式超时、`initialization_timeout` 错误分类、20 分钟新鲜度守卫。

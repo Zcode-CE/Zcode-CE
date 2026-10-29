@@ -18,7 +18,7 @@ import ts from "typescript";
  *
  * 判据落在「用户实际看到的那一层」：本文件断言的是 i18n 字典的字符串取值（AST 提取），
  * 不是源码文本 —— 注释里合法地写着 `**`（那是给维护者看的），源码扫描会把它们一起算进去。
- * 真浏览器侧的对照证据见 `.reverse/92-copy-format/harness/`（vite build + node probe-render.mjs）。
+ * 真浏览器侧的对照证据见 `.local/reports/engineering/copy-format/harness/`（vite build + node probe-render.mjs）。
  *
  * 规则与理由见 `docs/development/copy-and-format.md` §2。
  */
@@ -349,7 +349,7 @@ test("注释面的棘轮：不得超过基线（新注释不得带 markdown 强�
       "\n\n怎么修（按顺序判断）：\n" +
       "  1. 正常修法：**删掉注释里的 ** 强调**（改回直接陈述）。规则见 docs/development/copy-and-format.md §3。\n" +
       "  2. 只有在**既有**注释被清理、数字下降时，才运行收紧基线：\n" +
-      "     node .reverse/92-copy-format/tools/gen-copy-baseline.cjs --write\n" +
+      "     node .local/tools/copy-format/gen-copy-baseline.cjs --write\n" +
       "  3. **不要**为了让它变绿而手工把基线数字改大 —— 那正是这条棘轮要防的事。",
   );
 });

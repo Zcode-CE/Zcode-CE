@@ -600,7 +600,7 @@ node --import tsx --test test/exposureGateHttp.test.ts  # 登记域名 + 无令�
 ```
 
 桌面端远程控制面板的「IM 机器人」标签页里那句话（§12.4），真浏览器断言见
-`.reverse/93-bot-ingress/harness/probe-im-bot.mjs`：它渲染产品组件本身并读 `innerText`，
+`.local/reports/bots/im-bot-ingress/harness/probe-im-bot.mjs`：它渲染产品组件本身并读 `innerText`，
 判据是「这句话在屏幕上且落在常显的提醒块内」。把渲染点摘掉后探针必须变红（已验证）。
 
 该探针有**两个** case，判据不同（2026-09-27 随 §12.4 的前提一起修订）：

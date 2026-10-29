@@ -9,7 +9,7 @@
 // ## 为什么现在才补
 // task-52（3.14.3 跟进）只做了桌面链：bundled-skills.ts 解析器 + 两侧 staging 清单
 // （prepare-agent-node-bundle.mjs 的 stageBundledSkills 与 prepare-prebuilds.mjs 的
-// stageRemoteBundledSkills）。SEA 那条链当时刻意留下（见 .reverse/25-v3143/BUNDLED-SKILLS.md
+// stageRemoteBundledSkills）。SEA 那条链当时刻意留下（见 .local/reports/upstream/version-3.14.3/BUNDLED-SKILLS.md
 // §6.1），因为 SEA 清单本身还缺一堆插件；本批连同 sea-official-plugin-assets.mjs 一起补齐。
 //
 // ## 与 official-plugins 采集的区别

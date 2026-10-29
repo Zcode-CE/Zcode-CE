@@ -20,7 +20,7 @@ import { TaskIndexRepo } from "../src/session/taskIndexRepo.js";
  * 一旦这条路径顺带拉起 Agent runtime，「能全看」的成本就会从 ≈14 KB/workspace
  * 变成每个 +20 MB 与一个子进程（50 个外推 ≈1 GB + 50 进程）——
  * 见 docs/development/workspace-registry.md §3.1 与
- * .reverse/40-remote-control/PUBLISHER-SCALE-MEASUREMENT.md §2。
+ * .local/reports/remote/workspace-registry-m1/PUBLISHER-SCALE-MEASUREMENT.md §2。
  */
 
 const DAY = 24 * 60 * 60 * 1000;

@@ -18,7 +18,7 @@ import type {
 } from "@zcode/contracts";
 
 /**
- * T1 point 5 单测（issue #64 / .reverse/102 T1）：后台智能体终态链路。
+ * T1 point 5 单测（issue #64 / .local/reports/audit/upstream-audit T1）：后台智能体终态链路。
  *
  * 修复前 enqueueParentTaskNotification 类型上返回 undefined，父队列把通知按
  * stale-branch 丢弃后 subagent runner 仍然盖 notified 戳并打 info「已入队」——

@@ -6,24 +6,35 @@
 
 ### `development/` — 开发
 
-| 文档                                                                     | 内容                                                       |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| [架构与模块边界](development/architecture.md)                            | 仓库结构、包职责、依赖方向、跨包导入规则                   |
-| [与上游的差异](development/upstream-diff.md)                             | 相对官方 ZCode 改了什么、为什么改、如何同步                |
-| [与官方发行版的差异](development/official-diff.md)                       | 官方有哪些能力、我们补了什么、哪些做不了及原因             |
-| [Computer Use](development/computer-use.md)                              | 开源桌面自动化实现的平台、能力面与安全语义                 |
-| [办公插件](development/office-plugins.md)                                | 办公三件套的来源标注规范、逐文件归属、上游跟进             |
-| [PDF 插件](development/pdf-plugins.md)                                   | PDF 能力的载荷构成、注册闸门、校验器契约与降级边界         |
-| [模型列表](development/model-list.md)                                    | 内置模型隐藏与从供应商拉取模型列表                         |
-| [本地开发](development/local-setup.md)                                   | 环境准备、构建、调试、测试入口                             |
-| [网页远控（无头服务器 + 浏览器面板）](development/web-remote-control.md) | 自托管网页远控：启动方式、安全默认值、手机使用、未测边界   |
-| [远程工作区（SSH / Docker / WSL）](development/remote-workspace.md)      | 远程工作区的默认行为、自建发布点、验收与排障               |
-| [工具与权限：按资源/工具精细启停](development/tool-policy.md)            | 危险命令判定、MCP 单工具启停、持久授权策略                 |
-| [遥测与隐私](development/telemetry.md)                                   | 本版移除遥测的范围、保留的能力边界、验证方法               |
-| [工作区可见性](development/workspace-registry.md)                        | 可见工作区的真相源、能全看不默认全看、未启动态             |
-| [文案与格式纪律](development/copy-and-format.md)                         | UI 文案 / 注释 / 文档三面的 markdown 强调规则与护栏        |
-| [上游同步台账](development/upstream-sync.md)                             | 每个上游版本同步了什么、有意未同步什么、确认过不存在的结论 |
-| [欠账台账](development/backlog.md)                                       | 未做 / 排后续 / 有意不做的**唯一汇总处**（防散落与遗漏）   |
+> 文档按主题命名并原地更新；一次性任务记录、取证与判决不进本目录（在维护者私有工作区）。新增能力先改这里对应的主题文档，再改代码。
+
+| 文档                                                                     | 内容                                                          |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| [架构与模块边界](development/architecture.md)                            | 仓库结构、包职责、依赖方向、跨包导入规则                      |
+| [本地开发](development/local-setup.md)                                   | 环境准备、构建、调试、测试入口                                |
+| [与上游的差异](development/upstream-diff.md)                             | 相对官方 ZCode 改了什么、为什么改、如何同步                   |
+| [与官方发行版的差异](development/official-diff.md)                       | 官方有哪些能力、我们补了什么、哪些做不了及原因                |
+| [上游同步台账](development/upstream-sync.md)                             | 每个上游版本同步了什么、有意未同步什么、确认过不存在的结论    |
+| [网页远控（无头服务器 + 浏览器面板）](development/web-remote-control.md) | 自托管网页远控：启动方式、安全默认值、手机使用、未测边界      |
+| [远程工作区（SSH / Docker / WSL）](development/remote-workspace.md)      | 远程工作区的默认行为、自建发布点、验收与排障                  |
+| [工作区可见性](development/workspace-registry.md)                        | 可见工作区的真相源、能全看不默认全看、未启动态                |
+| [IM 机器人管理面](development/bot-management-ui.md)                      | 建机器人 / 绑定渠道 / 授权工作区 / 群与话题的管理界面与消费链 |
+| [内置浏览器权限](development/embedded-browser-permissions.md)            | 站点权限 fail-closed、持久同意、弹窗桥与蓝牙守卫              |
+| [插件 UI 沙箱](development/plugin-ui-sandbox.md)                         | MCP App / UI 插件的宿主沙箱：main/renderer/preload 三面边界   |
+| [MCP Apps](development/mcp-apps.md)                                      | mcp-ui 契约、运行时消费与降级边界                             |
+| [工具与权限](development/tool-policy.md)                                 | 危险命令判定、MCP 单工具启停、持久授权策略                    |
+| [自主模式危险命令确认](development/guarded-mode.md)                      | 危险命令执行前的确认粒度与设置项                              |
+| [Linux 关闭窗口驻留托盘](development/linux-tray.md)                      | 关闭行为裁决、DBus 能力检测与托盘图标                         |
+| [start-plan 验证码链路](development/start-plan-captcha.md)               | 3007 / 验证码挑战的失败分类、重试入口与不悬挂约束             |
+| [DSH e2e 双流模式](development/e2e-real-api-pattern.md)                  | keyless / with-key 两条真实回路门禁与凭据卫生                 |
+| [遥测与隐私](development/telemetry.md)                                   | 移除范围、保留的能力边界、四层验证方法                        |
+| [文案与格式纪律](development/copy-and-format.md)                         | UI 文案 / 注释 / 文档三面的 markdown 强调规则与护栏           |
+| [派单纪律](development/delegation-discipline.md)                         | 并行委派的磁盘预算、写范围与交付纪律                          |
+| [Computer Use](development/computer-use.md)                              | 开源桌面自动化实现的平台、能力面与安全语义                    |
+| [办公插件](development/office-plugins.md)                                | 办公三件套的来源标注规范、逐文件归属、上游跟进                |
+| [PDF 插件](development/pdf-plugins.md)                                   | PDF 能力的载荷构成、注册闸门、校验器契约与降级边界            |
+| [模型列表](development/model-list.md)                                    | 内置模型隐藏与从供应商拉取模型列表                            |
+| [欠账台账（精简）](development/backlog.md)                               | 长期方向与「有意不做」；全量未完成项在维护者私有工作区        |
 
 ### `community/` — 社区
 
@@ -61,9 +72,9 @@
 
 **写作规则**：
 
-- 本目录**不引用**仓库外或本地忽略的路径 —— 外部读者看不到它们
-- 结论若源自私有调研，应**整理成自洽的说明**写进本目录，而不是链接过去
+- 结论若源自私有调研，应**整理成自洽的说明**写进本目录，而不是只给一个链接
 - 过程性、临时性、未定论的内容留在私有记录里，不进本目录
+- 允许把 `.local/` 当作**取证出处**标注（维护者本机可见，外部读者可忽略）；但**当前行为、契约与操作步骤必须自洽**，不能只说"见 `.local/`"
 
 ## 与仓库根文档的分工
 

@@ -26,7 +26,7 @@ import {
  * start-plan 验证码渲染层接线的回归测试。
  *
  * 背景：3007 是阿里云验证码挑战，CE 缺「渲染层求解」这一段（见
- * docs/development/130-start-plan-captcha-spec.md §4.1）。本文件钉住这条链路上
+ * docs/development/start-plan-captcha.md §4.1）。本文件钉住这条链路上
  * 四类静默失败的形态 —— 它们都不会报错，只会表现为「模型请求仍然 3007」：
  *
  * 1. 非 start-plan 也去求解 ⇒ 用户白看一次验证码挑战（体验缺陷，非崩溃）；

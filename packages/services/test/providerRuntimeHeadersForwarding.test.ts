@@ -9,7 +9,7 @@ import { createZCodeAgentService } from "../src/zcode-agent/zcodeAgentService.js
 
 /**
  * start-plan 验证码挑战链路：host 转发守卫 + 渲染层应答入口 + 头合并
- * （docs/development/130-start-plan-captcha-spec.md §4.2/§4.3，验收场景 A/B/F）。
+ * （docs/development/start-plan-captcha.md §4.2/§4.3，验收场景 A/B/F）。
  *
  * ## 为什么走真实链路，而不是只测合并函数
  *

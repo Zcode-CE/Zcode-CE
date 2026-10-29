@@ -6,7 +6,7 @@
 // pdfkit 提供排版与 PDF 写出（内建自动断行/自动分页/两遍页码），fontkit 用来**解析系统字体文件**
 // —— 这是本能力最硬的一环：Linux/macOS 上的中文正文字体基本都是 `.ttc` 集合，pdfkit 的
 // `registerFont(path)` 在集合上会抛 `this.font.createSubset is not a function`，必须给出
-// **PostScript 面名**，而面名只能通过解析集合得到（实测见 .reverse/38-pdf/PDF-FEASIBILITY.md §4）。
+// **PostScript 面名**，而面名只能通过解析集合得到（实测见 .local/reports/office-pdf-cua/pdf/PDF-FEASIBILITY.md §4）。
 // 两个库都是纯 JS（0 原生模块、0 install 脚本），因此可以随包分发、完全离线。
 //
 // ## 为什么不放 node_modules

@@ -225,7 +225,7 @@ pnpm exec tsx scripts/verify-remote-assets.mjs --root ./publish-root
    即使**换上 musl 版 Node** 能起来、能握手，也仍然不可用：`pty.node` 是 glibc 构建，在 musl 上**能加载**，
    但建终端时原生 `fork()` 会**段错误**（实测 exit 139 / core dumped）—— 该崩溃**不可捕获**，
    会把整个远端 `zcode-server` 进程一起带走；另有 `bfs`/`ugrep` 两个搜索工具是 glibc 二进制、在 musl 上无法执行。
-   （详见 `.reverse/47-remote-providers/MUSL-COST-VERIFICATION.md` 的组件表与运行时判定。）
+   （详见 `.local/reports/remote/remote-providers/MUSL-COST-VERIFICATION.md` 的组件表与运行时判定。）
 
    **替代做法**（任选其一）：把远端换成 glibc 发行版的默认 tag（`ubuntu:24.04`、`debian:bookworm`、
    `rockylinux:9` 等），或换一台 glibc 远端机器；不要在 Alpine 上继续排障。

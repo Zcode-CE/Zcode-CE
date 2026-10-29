@@ -5,7 +5,7 @@ import type { AiSdkModelTextRequest, ResolvedAiSdkModel } from "./runner-runtime
 /**
  * start-plan（官方赠送额度）渠道的 3007 验证码挑战单次重试。
  *
- * 背景（docs/development/126-start-plan-3007-root-cause.md §1）：3007 不是鉴权失败，是
+ * 背景（.local/reports/account/start-plan-3007-root-cause.md §1）：3007 不是鉴权失败，是
  * `zcode.z.ai/api/v1/zcode-plan/anthropic` 网关对 start-plan 启用的阿里云无痕验证挑战。
  * 官方客户端为此建了三段式链路，本模块负责第三段（agent 侧）。
  *

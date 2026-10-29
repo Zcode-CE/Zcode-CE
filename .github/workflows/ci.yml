@@ -2,7 +2,7 @@
 #
 # 本文件已在真实 GitHub runner 上验证并持续运行（CI / Release 两个 workflow 均为 active）。
 # 注意：不要在此处写死运行次数或版本号 —— 这类值会漂移；需要引用时用 `gh run list` 现取。
-# 首次验证记录与已知问题：.reverse/archive/21-release/R3b-ci.md
+# 首次验证记录与已知问题：.local/archive/21-release/R3b-ci.md
 
 name: CI
 
@@ -48,7 +48,7 @@ jobs:
   #
   # 安全红线：绝不要把触发器改成 pull_request_target（它用 base 仓库上下文 + secret
   # 跑未受信任 fork 代码，是教科书级 key 泄露面）。
-  # 模式与随路环境变量登记见 docs/development/137-dsh-e2e-pattern.md。
+  # 模式与随路环境变量登记见 docs/development/e2e-real-api-pattern.md。
   e2e-real-api:
     runs-on: ubuntu-latest
     name: e2e (real API)

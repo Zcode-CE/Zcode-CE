@@ -41,7 +41,7 @@ import {
  *   （用户原则：不能少东西）。
  *   fix.2 修订：这条的边界是"有动作可做时不许少"。原先的写法是"通道未注入也渲染启用 +
  *   一句说明"，实测那是死路 —— 点击走空操作、重挂载后又回到确认界面
- *   （docs/development/133-im-bot-approval-loop.md §4.1）。现在没有通道就整页不渲染
+ *   （.local/reports/bots/approval-loop.md §4.1）。现在没有通道就整页不渲染
  *   （宿主侧门控，见 remoteControlPanelModel.ts 的 canRenderRemoteControlImBotTab），
  *   因此本组件的 `channel` 是必填：把"没有宿主"这一态变成不可表达的，
  *   而不是靠注释提醒后来的人。

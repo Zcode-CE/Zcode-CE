@@ -17,7 +17,7 @@
  *
  * ## 范围与豁免
  *
- * - 扫描 `README.md`、`AGENTS.md`、`docs/` 下全部 md；跳过 `.reverse/`、`node_modules/`，
+ * - 扫描 `README.md`、`AGENTS.md`、`docs/` 下全部 md；跳过 `.local/`、`node_modules/`，
  *   排除 `release-notes.md`（每版一份的版本快照，不适用 keep-latest）。
  * - `official-diff.md` 的对照表同样是版本快照（清理时豁免），但仍纳入扫描：其存量命中在基线里，
  *   新增同样变红。
@@ -54,7 +54,7 @@ const BASELINE = {
 /** 版本快照类文件（保持快照语义，不适用 keep-latest）。按 basename 匹配。 */
 const SNAPSHOT_FILES = new Set(["release-notes.md"]);
 /** 不追踪 / 不扫描的目录名。 */
-const SKIPPED_DIRS = new Set([".reverse", "node_modules"]);
+const SKIPPED_DIRS = new Set([".local", "node_modules"]);
 
 /** 收集检查目标：README.md、AGENTS.md、docs/ 下全部 md。 */
 function collectTargets() {

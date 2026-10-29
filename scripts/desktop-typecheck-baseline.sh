@@ -19,7 +19,7 @@
 #      必须按「文件|错误码」比较。
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="$ROOT/.reverse/16-typecheck-baseline"
+OUT="$ROOT/.local/archive/16-typecheck-baseline"
 mkdir -p "$OUT"
 
 # 归一化为「文件|错误码」。
@@ -73,7 +73,7 @@ link_worktree_modules() {
 }
 
 worktree_for_head() {
-  local wt="$ROOT/.reverse/.head-worktree"
+  local wt="$ROOT/.local/tools/.head-worktree"
   if [ ! -d "$wt" ]; then
     git -C "$ROOT" worktree add --detach "$wt" HEAD >/dev/null 2>&1
   fi
@@ -81,7 +81,7 @@ worktree_for_head() {
 }
 
 cleanup_worktree() {
-  local wt="$ROOT/.reverse/.head-worktree"
+  local wt="$ROOT/.local/tools/.head-worktree"
   [ -d "$wt" ] && git -C "$ROOT" worktree remove --force "$wt" >/dev/null 2>&1 || true
 }
 

@@ -605,7 +605,7 @@ test("IM 机器人默认关闭：通道已注入且 disabled 时照样渲染启�
  * 缺陷：channel 恒为 undefined（全仓 imBot= 0 命中），点击走 channel?.onEnable() 空操作；
  * requested/inFlight/confirmOpen 都是组件局部 state，而 TabsContent 无 forceMount、
  * 宿主 DialogContent 关闭即卸载 ⇒ 切页/关面板重挂载后三个标记归零，用户又看到「启用」按钮，
- * 再点又是同一个确认弹窗（docs/development/133-im-bot-approval-loop.md §4.1）。
+ * 再点又是同一个确认弹窗（.local/reports/bots/approval-loop.md §4.1）。
  *
  * 处置依据：本仓既有纪律 —— 能力缺失时不渲染，而不是给一个假按钮
  * （remoteControlWiring.ts:93-94 的 renderable:false 口径，与 canRenderRemoteControlPanel 同源）。

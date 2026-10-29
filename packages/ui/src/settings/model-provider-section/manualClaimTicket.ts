@@ -12,8 +12,8 @@
  *
  * 本实现抄的是横幅版。票券版在混合单位下会把 3 亿 token 与 500 credits 加成
  * 300,000,500 Tokens，是退化行为，不采用。依据与实测对照见
- * .reverse/94-account-capability/BANNER-BUNDLE-ANALYSIS.md 第 3.3 节、
- * 规格 .reverse/94-account-capability/C-SUCCESS-TICKET.md 第 4、6 节。
+ * .local/reports/account/account-capability/BANNER-BUNDLE-ANALYSIS.md 第 3.3 节、
+ * 规格 .local/reports/account/account-capability/C-SUCCESS-TICKET.md 第 4、6 节。
  *
  * ## 状态所有者
  *

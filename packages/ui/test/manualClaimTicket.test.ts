@@ -24,8 +24,8 @@ import { resolveManualClaimPlanCardView } from "../src/settings/model-provider-s
  * ## 与真浏览器证据的关系
  *
  * 这里钉的是纯函数输出、四态分界与源码形态。真浏览器里渲染产品组件本身、
- * 读票券实际 DOM 文本的证据见 .reverse/94-account-capability/harness/
- * （vite build + node probe-ticket.mjs），规格见 .reverse/94-account-capability/C-SUCCESS-TICKET.md。
+ * 读票券实际 DOM 文本的证据见 .local/reports/account/account-capability/harness/
+ * （vite build + node probe-ticket.mjs），规格见 .local/reports/account/account-capability/C-SUCCESS-TICKET.md。
  */
 
 const here = fileURLToPath(new URL("../", import.meta.url));
@@ -314,7 +314,7 @@ test("判据 11 的文案护栏：票券四条文案中英齐备，且沿用既�
  * 为什么要有这条：判据 1–6 的期望值是人从官方渲染物读出来的，读错时测试只会跟着错。
  * 这里拿官方横幅版 `resolveMarketingQuota` 在同一批载荷上的真实输出当参照。
  *
- * 为什么读受追踪的 fixture 而不直接跑官方 `quota.js`：官方归档件在 `.reverse/`
+ * 为什么读受追踪的 fixture 而不直接跑官方 `quota.js`：官方归档件在 `.local/`
  * （本地私有目录，不追踪、不在 CI 检出里）。旧写法在文件缺失时 skip，而 CI 永远缺
  * ⇒ 这条对照在 CI 上从未执行。现在官方函数在六类载荷 × 中英两 locale 上的输出固化在
  * `test/fixtures/manualClaimQuotaParity.json`，断言在 CI 上真实生效。

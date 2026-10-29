@@ -2,7 +2,7 @@
   "provenance": {
     "source": "官方 3.14.3 桌面安装包 marketing 横幅 bundle 的 quota.js —— resolveMarketingQuota（按单位分组、每组一次性优先、不同单位不相加的那一版）",
     "sourceSha256": "16a7222c83cf50f70449c88c501724602bc7165f86611593fd43103270b13439",
-    "sourcePathAtCapture": ".reverse/94-account-capability/weekend-banner-bundle/47e733112e863678220ea40e211823a1b88e322b8efd6e9c6a1451d746b7245d/quota.js",
+    "sourcePathAtCapture": ".local/reports/account/account-capability/weekend-banner-bundle/47e733112e863678220ea40e211823a1b88e322b8efd6e9c6a1451d746b7245d/quota.js",
     "capturedAt": "2026-10-29",
     "inputShape": "raw = { zcode_plan: { entitlements: [{ show_name, meter, unit_type, grant_units, period }] } } —— 官方函数读服务端原始 snake_case 载荷",
     "locales": ["zh-CN", "en-US"]

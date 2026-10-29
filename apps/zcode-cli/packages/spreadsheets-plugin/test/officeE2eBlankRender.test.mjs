@@ -14,7 +14,7 @@
  * 「静默降级是唯一不被允许的」「空白预览=渲染失败不重试」「不得谎称已做视觉检查」
  * 这些产品规则此前只有技能文本的静态 grep 护栏——FIX-DOCX 证明过静态验证 ≠ 行为验证。
  *
- * 双流 CI 策略（详见 docs/development/137-dsh-e2e-pattern.md）：
+ * 双流 CI 策略（详见 docs/development/e2e-real-api-pattern.md）：
  *  - keyless 流（默认）：第 3 条以 { skip } 显式跳过，永远保持绿（fork PR 也能跑），
  *    但第 1、2 条常跑——真实回路的解析链与夹具因此不会静默腐烂。
  *  - with-key 流（.github/workflows/ci.yml 的 e2e-real-api job）：只在可信事件运行，
@@ -58,7 +58,7 @@ import {
 
 /**
  * with-key 流的随路开关（全新环境变量；用途、优先级与错误行为登记在
- * docs/development/137-dsh-e2e-pattern.md，勿在别处复用同名环境变量）。
+ * docs/development/e2e-real-api-pattern.md，勿在别处复用同名环境变量）。
  */
 const apiKey = process.env.ZCODE_E2E_API_KEY?.trim();
 const baseUrl = process.env.ZCODE_E2E_BASE_URL?.trim() || "https://api.deepseek.com/v1";

@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 /**
- * CLI 配置文件（spec: .reverse/36-ssh/CONFIG-FILE-SPEC.md）——从 runner.mjs 按职责拆出（task-49）。
+ * CLI 配置文件（spec: .local/reports/remote/ssh-and-headless/CONFIG-FILE-SPEC.md）——从 runner.mjs 按职责拆出（task-49）。
  *
  * 语义（**原样保留，不要在拆分中顺手改**）：
  * - 文件不存在（且非显式指定）⇒ 返回 `{}`；
@@ -97,7 +97,7 @@ export function loadConfigFile() {
     const spec = CONFIG_KEY_SPECS[key];
     if (!spec) {
       console.warn(
-        `配置文件 ${path} 含未知键 ${JSON.stringify(key)}：已忽略（不拒绝启动；已知键见 .reverse/36-ssh/CONFIG-FILE-SPEC.md）`,
+        `配置文件 ${path} 含未知键 ${JSON.stringify(key)}：已忽略（不拒绝启动；已知键见 .local/reports/remote/ssh-and-headless/CONFIG-FILE-SPEC.md）`,
       );
       continue;
     }

@@ -15,7 +15,7 @@ import {
  * `ZCODE_SERVER_AUTH_TOKEN` 时 /api/*、/ws、/ws/host 全部无鉴权可达 —— 实测可以从
  * 局域网 IP 无凭证读到 server-info 并发 /ws/host 的 trusted-host ticket（拿到即得
  * desktop-continuous 角色）。这几条断言是那次修复的护栏，详见
- * `.reverse/40-remote-control/SECURITY-SERVER-DEFAULTS.md`。
+ * `.local/reports/remote/workspace-registry-m1/SECURITY-SERVER-DEFAULTS.md`。
  *
  * 只绑回环：这些用例里的真实监听一律用 127.0.0.1 + 端口 0，绝不在 CI 上绑 0.0.0.0。
  * 非回环的「放行/拒绝」由纯函数 assertListenSecurity 覆盖。

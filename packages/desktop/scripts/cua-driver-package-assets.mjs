@@ -28,7 +28,7 @@
 // 驱动永远解析不到，而驱动是懒加载的，症状要等到首次 CUA 调用才以
 // 「Cannot find package '@trycua/cua-driver'」暴露（点名包名 ⇒ 诱导模型自行装包）。
 // 改动这条链时，验收必须从 **seed 后的 cache** 出发。见
-// `.reverse/29-cua-seed/CUA-SEED-PAYLOAD.md`。
+// `.local/reports/office-pdf-cua/computer-use/seed-payload/CUA-SEED-PAYLOAD.md`。
 //
 // 只 stage 目标平台的原生包：驱动与 @ubjs 的平台包都是 optionalDependencies 全集，
 // 全拷会把六个平台的二进制一起打进安装包（Linux x64 只需 42 MB，全拷是数百 MB）。

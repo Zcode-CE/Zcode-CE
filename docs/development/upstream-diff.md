@@ -150,7 +150,7 @@ git merge upstream/main
 技术债 #3 已修完，**这里不抄数字**（同 #5 的理由：写死必然过期）。取当前值：
 
 ```bash
-bash scripts/desktop-typecheck-baseline.sh current   # 结果写在 .reverse/16-typecheck-baseline/current.*.txt
+bash scripts/desktop-typecheck-baseline.sh current   # 结果写在 .local/archive/16-typecheck-baseline/current.*.txt
 bash scripts/desktop-typecheck-baseline.sh diff      # 只报相对 HEAD 的新增（改动 desktop 后跑这条）
 ```
 
@@ -159,9 +159,9 @@ bash scripts/desktop-typecheck-baseline.sh diff      # 只报相对 HEAD 的新�
 （复核方式：先确认 tsc 真的在检查这些文件 —— 往 `src/main/` 与 `src/renderer/src/` 各放一个
 故意的类型错误，两边都如期报 `TS2322`，再删掉。）
 ⚠️ **当前状态**：main 与 renderer 的类型错误均已清零（`ce03e36` main 77→0、`5cbe4cd` renderer 114→0）。
-`.reverse/16-typecheck-baseline/current.*.counts` 中若见 09-22 的旧值，那是**修复前**的快照
-（已于 2026-10-03 归档到 `.reverse/archive/16-typecheck-baseline/`）——**别拿它当当前值**；
-脚本下次运行会在 `.reverse/16-typecheck-baseline/` 重新生成。
+`.local/archive/16-typecheck-baseline/current.*.counts` 中若见 09-22 的旧值，那是**修复前**的快照
+（已于 2026-10-03 归档到 `.local/archive/16-typecheck-baseline/`）——**别拿它当当前值**；
+脚本下次运行会在 `.local/archive/16-typecheck-baseline/` 重新生成。
 
 技术债 #5 的两级判定：
 

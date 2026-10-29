@@ -620,7 +620,7 @@ export type ZCodeAgentServiceEvent =
   | { type: "userInput.request"; request: ZCodeUserInputRequestParams }
   // start-plan 的模型请求需要渲染层求解阿里云验证码后回传运行时请求头。
   // 与 permission/userInput 同族：host 是转发方，渲染层是唯一的求解方与应答方；
-  // 详见 docs/development/130-start-plan-captcha-spec.md §4.2/§4.3。
+  // 详见 docs/development/start-plan-captcha.md §4.2/§4.3。
   | {
       type: "providerRuntimeHeaders.request";
       request: ZCodeProviderRuntimeHeadersRequestParams;

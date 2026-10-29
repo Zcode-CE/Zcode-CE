@@ -4,7 +4,7 @@ import { join } from "node:path";
 /**
  * 本地 Web 服务（远程控制）在磁盘上的**唯一路径所有者**。
  *
- * 契约见 `.reverse/44-remote-ui/WEB-SERVICE-CONTRACT.md` §3。
+ * 契约见 `.local/reports/remote/remote-control-ui/WEB-SERVICE-CONTRACT.md` §3。
  * **不得自拼 `~/.zcode`**：`getAppConfigDir()` 是数据目录的唯一所有者
  * （自定义 dataBaseDir 也要跟着走），与 `packages/server/src/entry-http.ts:1` 同一来源。
  */

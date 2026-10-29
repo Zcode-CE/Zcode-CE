@@ -271,7 +271,7 @@ const linuxDesktopIntegrationIconPath =
     : iconPath;
 let currentApplicationLocale: Locale = DEFAULT_LOCALE;
 let closeToTrayOnWindows = true;
-// 关闭驻留托盘能力 monitor(spec:docs/development/151-linux-close-to-tray.md)。
+// 关闭驻留托盘能力 monitor(spec:docs/development/linux-tray.md)。
 // Linux 关窗分支是同步回调,只能读缓存;启动后首次探测完成前按「不可用」安全默认。
 const closeToTrayCapabilityMonitor = createCloseToTrayCapabilityMonitor({
   platform: process.platform,
@@ -1604,7 +1604,7 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
         closeToTray: closeToTrayOnWindows,
         // 空缓存按不可用处理:隐藏前兜底确认托盘真的可渲染,防 GNOME 静默失败失联。
         // CR-01:DBus 探测 ∧ Tray 实例创建成功才可隐藏;任一不满足按不可用走确认退出
-        // (spec:docs/development/151-linux-close-to-tray.md)。
+        // (spec:docs/development/linux-tray.md)。
         closeToTraySupported: resolveCloseToTraySupported({
           platform: process.platform,
           desktopTrayReady,
@@ -1825,7 +1825,7 @@ app.whenReady().then(async () => {
     currentDesktopZoomLevel = clampDesktopZoomLevel(bootstrapSettings.desktopZoomLevel ?? 0);
     currentDesktopWindowSize = bootstrapSettings.desktopWindowSize;
     // 全局 keep-awake：启动时若设置已开，立刻持有 powerSaveBlocker，不必等设置变更事件。
-    // F10(上游 aac47556):Linux 默认值归位迁移(spec:docs/development/151-linux-close-to-tray.md)——
+    // F10(上游 aac47556):Linux 默认值归位迁移(spec:docs/development/linux-tray.md)——
     // shared 迁移无平台概念、曾把存量 Linux 用户归为 true,但 Linux 此前无设置入口,
     // 存量 true 非用户显式选择;首次启动强制归位为默认关并落标记,之后尊重用户选择。
     const closeToTrayBootstrap = resolveCloseToTrayBootstrapValue({
@@ -1990,7 +1990,7 @@ app.whenReady().then(async () => {
 
   // Linux 托盘创建跟随能力而非设置开关:无 StatusNotifierWatcher 的桌面(GNOME 默认)上
   // new Tray() 静默失败,注册无人渲染的 DBus name 没有意义;能力探测通过后再创建。
-  // 用户装扩展后经设置页查询也会走到这里补建(spec:docs/development/151-linux-close-to-tray.md)。
+  // 用户装扩展后经设置页查询也会走到这里补建(spec:docs/development/linux-tray.md)。
   const ensureLinuxDesktopTray = async (): Promise<void> => {
     if (process.platform !== "linux" || desktopTrayReady) {
       return;

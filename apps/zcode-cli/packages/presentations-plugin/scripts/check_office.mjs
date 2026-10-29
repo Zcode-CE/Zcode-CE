@@ -4,7 +4,7 @@
 // 由来:      scripts/check_office.py（derived-from-dsh，MIT）的 Node 重写。
 //            对外契约（checks.json 的 format/verdict/checks/summary、退出码 0/1/2、
 //            4 个 MAX_* 预算常量、媒体不计入读内存预算）与 .py 逐项一致；
-//            逐项对照与真跑对比见 .reverse/28-office-provenance/OFFICE-CHECKER-JS.md。
+//            逐项对照与真跑对比见 .local/reports/office-pdf-cua/office-payload-provenance/OFFICE-CHECKER-JS.md。
 // 本模块:    入口 —— 只负责跑流程并设置退出码，实现按职责拆在 lib/ 下。
 // 同名副本:  三份（documents/presentations/spreadsheets）必须逐字节相同，改一处同步三处
 // 回归测试:  apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs

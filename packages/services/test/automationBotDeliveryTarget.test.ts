@@ -15,7 +15,7 @@ import { AutomationRepo } from "../src/session/automationRepo.js";
 /**
  * botDeliveryTarget 消费链（ce.5）：从协议面到落库的护栏。
  *
- * 背景（.reverse/98-ce4/IMPL-BOT-DELIVERY-TARGET.md）：wire 层早已就位，但消费端全线缺失
+ * 背景（.local/reports/audit/ce4-candidate-pool/IMPL-BOT-DELIVERY-TARGET.md）：wire 层早已就位，但消费端全线缺失
  * ⇒ 静默丢弃不报错。本测试按 spec §5 的 B1/B2/B3 判据钉住三个点：
  * 1. B1 落库：create 带 botDeliveryTarget ⇒ 真实 sqlite 的 bot_delivery_target 列写入，
  *    且 getBotDeliveryTarget 能按 scheduler 终态回推的路径读回（不停在 safeParse 层）。

@@ -713,7 +713,7 @@ function resolveCodingPlanStatusCardTitle({
  *
  * 判据：真实载荷里 start-plan 套餐的 plan_id 恒含类型段 `start-plan`（实测：
  * `zcode-v3-start-plan-0817` / `zcode-v3-start-plan-wk-0918` /
- * `zcode-v3-start-plan-0924-wk`，见 .reverse/08-entitlement/evidence），
+ * `zcode-v3-start-plan-0924-wk`，见 .local/reports/account/entitlement-signing/evidence），
  * 而同 provider 承载的付费 Coding Plan 的 productId 无此类型段。
  * `start-plan` 是接口契约里的类型标识（与 claim_plan / coding-plan /
  * individual-coding-plan / team-coding-plan 同属官方标识符体系），随改名不变；

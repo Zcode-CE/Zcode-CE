@@ -57,7 +57,7 @@ const includedTopLevelPaths = new Set([
   // 两个插件合计多搬约 166 MiB。runtimeTopLevelPaths 是 per-plugin 的，
   // collectFilesystemPluginFiles 在 :379-382 已把它并进 allowedTopLevelPaths，零新机制。
   //
-  // 详见 .reverse/29-cua-seed/CUA-SEED-PAYLOAD.md 与 .reverse/31-audit/SECURITY-AUDIT.md。
+  // 详见 .local/reports/office-pdf-cua/computer-use/seed-payload/CUA-SEED-PAYLOAD.md 与 .local/reports/audit/correctness-audit/SECURITY-AUDIT.md。
   "output-styles",
   "package.json",
   // Browser skill 会从官方插件根目录动态导入 scripts/browser-client.mjs。

@@ -407,7 +407,7 @@ export function captureComputerUseRuntimeFromEnvironment(
   // 模型最终只看到首次调用抛出的「driver is unavailable … Cannot find package
   // '@trycua/cua-driver'」—— 点名包名且说「不可用」，实测正是诱导它自行 npm install
   // 猜包名的文案（cua-bridge.ts:10-15 记录过这个失效模式）。见
-  // .reverse/29-cua-seed/CUA-SEED-PAYLOAD.md。
+  // .local/reports/office-pdf-cua/computer-use/seed-payload/CUA-SEED-PAYLOAD.md。
   //
   // 探测只做**解析**，不 import 驱动：不拉起原生库、不产生副作用，CI 与无图形会话
   // 也安全。解析失败即按「本会话 CUA 不可用」降级，让上面两道护栏照常生效。

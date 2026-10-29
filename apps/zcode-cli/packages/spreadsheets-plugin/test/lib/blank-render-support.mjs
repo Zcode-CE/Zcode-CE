@@ -3,7 +3,7 @@
 // 为什么单独成模块：officeE2eBlankRender.test.mjs 同时含「keyless 常跑的夹具自检」与
 //「with-key 才跑的真实回路」两类测试；夹具构造、provider 配置、stream-json 解析与
 // 断言辅助是纯函数，抽出来后两种测试都能复用，也满足单文件不超过 400 行的约束。
-// 模式与来源记录见 docs/development/137-dsh-e2e-pattern.md。
+// 模式与来源记录见 docs/development/e2e-real-api-pattern.md。
 
 import { spawn } from "node:child_process";
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";

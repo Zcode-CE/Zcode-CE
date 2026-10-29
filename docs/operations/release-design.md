@@ -107,7 +107,7 @@ Release 不产 macOS 产物 ⇒ 不存在 `latest-mac.yml` ⇒ macOS 打包客�
   `requestForceAutoUpdate` 复用 `dev-skipped` 通道回传原因（CE 当前不接线强更门，纯防御）。
 - 测试：`packages/desktop/test/autoUpdateDarwinAvailability.test.ts`（判定矩阵 + 文案契约）与
   `autoUpdaterDarwinSkip.test.ts`（electron 桩接线测试，钉住「不发请求」与「win/linux 不变」）。
-- 完整设计见 [docs/development/136-darwin-auto-update-skip.md](../development/136-darwin-auto-update-skip.md)。
+- 完整设计见 [.local/reports/engineering/darwin-auto-update-skip.md](../../.local/reports/engineering/darwin-auto-update-skip.md)。
 
 ## 三、构建与产物
 

@@ -16,7 +16,7 @@ import type {
  * - `model-request`：常规模型请求，含 adapter 内部重试的每一次 attempt。
  * - `captcha-retry`：start-plan 渠道收到网关的 3007 验证码挑战后触发的单次重试；
  *   渲染层据此重新求解验证码并回传新 token（对齐官方 `CaptchaRequestRetry.takeReason()`，
- *   见 docs/development/126-start-plan-3007-root-cause.md §2.1）。
+ *   见 .local/reports/account/start-plan-3007-root-cause.md §2.1）。
  *
  * 抽成具名类型而不是在各处散落字面量联合：该值跨 adapter / core / bootstrap / 协议四处传递，
  * 任一处的字面量漂移都会让 `captcha-retry` 在链路中静默退化成普通请求（渲染层不重新求解）。

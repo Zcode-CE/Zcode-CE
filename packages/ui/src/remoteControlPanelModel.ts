@@ -2,7 +2,7 @@
  * 远程控制面板的纯模型（ce.3 · 切片 3）。
  *
  * 这里只做两件事，都不碰 React、不碰服务、不碰令牌：
- * 1. props 形状：镜像后端契约（`.reverse/44-remote-ui/WEB-SERVICE-CONTRACT.md` §5）的
+ * 1. props 形状：镜像后端契约（`.local/reports/remote/remote-control-ui/WEB-SERVICE-CONTRACT.md` §5）的
  *    `WebServiceStatus`。UI 侧自己声明这份形状而不是从 `packages/desktop` 导入 ——
  *    契约 §5 明确「`packages/ui` 只依赖这五条通道」，导入 desktop 主进程模块会把 Electron 拖进 UI 包。
  * 2. 分支解析：把状态折叠成「面板该显示哪一档 + 用户此刻能做什么」。
@@ -393,7 +393,7 @@ export function canRenderRemoteControlPanel(capability: RemoteControlPanelCapabi
  * 于是确认弹窗点「继续启用」是空操作；又因为 `requested`/`inFlight`/`confirmOpen`
  * 都是组件局部 state，而 Radix `TabsContent` 无 `forceMount`、宿主 `DialogContent` 关闭即卸载，
  * 任何切页/关面板都会让组件重挂载、三个标记归零 ⇒ 用户又看到「启用」按钮，
- * 再点又是同一个确认弹窗，形成闭环（见 docs/development/133-im-bot-approval-loop.md §4.1）。
+ * 再点又是同一个确认弹窗，形成闭环（见 .local/reports/bots/approval-loop.md §4.1）。
  * 这是本仓自己禁止的形态：能力缺失时不渲染，而不是给一个假按钮
  * （同 {@link canRenderRemoteControlPanel} 的纪律，见 remoteControlWiring.ts:93-94）。
  *

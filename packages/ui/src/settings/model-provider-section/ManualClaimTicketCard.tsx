@@ -6,8 +6,8 @@
  * 官方那张票券是服务端下发的 bundle（marketing/touch 的 delivery.banner.success_popup.hero），
  * 由 iframe 沙箱渲染。搬它要同时搬 marketing/touch 与 cloud-content 两条链路（CE 全仓 0 命中），
  * 而票券上的每一个事实都能由 preview 加 claim 客户端算出。规格与字段对照见
- * .reverse/94-account-capability/C-SUCCESS-TICKET.md；算法依据见
- * .reverse/94-account-capability/BANNER-BUNDLE-ANALYSIS.md。
+ * .local/reports/account/account-capability/C-SUCCESS-TICKET.md；算法依据见
+ * .local/reports/account/account-capability/BANNER-BUNDLE-ANALYSIS.md。
  *
  * ## 状态所有者
  *

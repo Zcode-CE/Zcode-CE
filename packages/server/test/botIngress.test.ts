@@ -17,7 +17,7 @@ import { createAuditLog } from "../src/auditLog.js";
 /**
  * IM 机器人入站面（/bot/**）的验收判据（task-97）。
  *
- * 判据编号与 `.reverse/93-bot-ingress/BOT-INGRESS-SPEC.md` §8.2 一一对应（A1–A15），
+ * 判据编号与 `.local/reports/bots/im-bot-ingress/BOT-INGRESS-SPEC.md` §8.2 一一对应（A1–A15），
  * 另加 §7.1.1 的两条耦合断言（C1/C2）。
  *
  * 本文件的核心目的是证明「新增 /bot/** 没有削弱既有令牌面」——

@@ -1,6 +1,6 @@
 // --- 来源与归属 ---
 // 归属:      ZCode-CE 自研（self）。无上游来源，不回写任何上游。
-// 由来:      原型实测结论的固化（见 .reverse/38-pdf/PDF-FEASIBILITY.md §3）：PDFKit 有流式排版与
+// 由来:      原型实测结论的固化（见 .local/reports/office-pdf-cua/pdf/PDF-FEASIBILITY.md §3）：PDFKit 有流式排版与
 //            自动分页，但**没有表格原语**、且页脚画在可写区之下会被库**静默加页**。
 // 本模块:    文档模型（blocks）→ PDF 渲染。只处理布局与绘制，不做字体验证、不写最终文件。
 // 约束:      布局只用 PDFKit 的公开 API；分页断言失败必须抛错，不许产出"看着对"的产物。

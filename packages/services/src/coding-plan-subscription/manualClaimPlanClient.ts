@@ -4,7 +4,7 @@
  * 与 CE 已有的购买链路（/api/biz/pay/*、/api/pay/*）完全独立：claim 平面走
  * `/api/v1/zcode-plan/billing/*`，头集合也不同。
  *
- * 头集合按官方客户端逐字对齐（.reverse/08-entitlement/01 结论 §3 实测）：
+ * 头集合按官方客户端逐字对齐（.local/reports/account/entitlement-signing/01 结论 §3 实测）：
  *   - preview：仅 `Authorization: Bearer {jwt}`（未登录时省略），
  *     外加活动网关硬性要求的 UUID `X-Device-Mid`；
  *   - claim：Authorization、Content-Type、X-Aliyun-Captcha-Verify-Param、

@@ -1,6 +1,6 @@
 # 无头发行包的跨平台实测：Linux / macOS / Windows 三 OS **构建 + 跑既有 smoke**。
 #
-# 依据：.reverse/36-ssh/ROADMAP.md §1 的阶梯 ① —— 不需要我们拥有 mac/Windows 硬件，
+# 依据：.local/reports/remote/ssh-and-headless/ROADMAP.md §1 的阶梯 ① —— 不需要我们拥有 mac/Windows 硬件，
 # 就能把「能构建 / 能启动 / 能连面板」三列从**推断**变成**实测**。
 #
 # 为什么单独一个 workflow（既不并进 ci.yml，也不并进 release.yml）：
@@ -11,7 +11,7 @@
 #
 # ⚠️ 本 workflow **不设 continue-on-error**（根 AGENTS.md 硬规则）：交付终点失败必须让流水线变红。
 #    某个 OS 必然失败时，让它红，把根因写进 docs/operations/headless-server.md §10
-#    与 .reverse/36-ssh/ROADMAP.md，而不是掩盖。
+#    与 .local/reports/remote/ssh-and-headless/ROADMAP.md，而不是掩盖。
 #
 # ⚠️ 与 ci.yml / release.yml 不同：本 workflow 的**首次真实结果尚未观测**（Actions 只能在 GitHub
 #    runner 上跑，本地无法执行工作流本身）。在第一次跑出结果之前，macOS / Windows 的三列

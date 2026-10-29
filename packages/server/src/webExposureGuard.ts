@@ -3,7 +3,7 @@ import type { MiddlewareHandler } from "hono";
 /**
  * 跨站请求防护（CSRF）与安全响应头。
  *
- * 背景（威胁模型，依据 `.reverse/43-web-security/SURVEY.md` 的 G1/G2/G5）：
+ * 背景（威胁模型，依据 `.local/reports/security/web-security/SURVEY.md` 的 G1/G2/G5）：
  * - 本服务的凭据是 cookie（`zcode_lite_token`），而 cookie 会被浏览器**自动附带**；
  * - WebSocket 握手**不受同源策略约束**：RFC 6455 §10.2 指出，当 WebSocket 由浏览器里的
  *   网页使用时，浏览器用 origin 模型限制哪些页面能连；而该协议**唯一**的服务端防护手段就是

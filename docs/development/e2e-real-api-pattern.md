@@ -1,7 +1,7 @@
 # DSH e2e 模式落地：LLM-in-the-loop 与 real-API 双流门禁
 
 > 专题：把 DSH（deepseek-harness，MIT）的两项测试工程实践搬进 CE —— **LLM-in-the-loop e2e**（真模型 + 故障注入 + 反撒谎断言）与 **real-API e2e 的 CI 双流门禁**（keyless 恒绿 + with-key fail-loud）。试点场景选在 office-xlsx 的「空白渲染」；推广留给后续版本。
-> 方法学来源：`.reverse/100-dsh-021/REPORT.md` §2.4/§4.1（三项可搬物的判别）与 `.reverse/98-ce4/DSH-OFFICE-DELTA.md`（DSH e2e 的 6 项技术要点）。本文件是这两份分析结论的落地 spec。
+> 方法学来源：`.local/reports/office-pdf-cua/dsh/version-0.2.1/REPORT.md` §2.4/§4.1（三项可搬物的判别）与 `.local/reports/audit/ce4-candidate-pool/DSH-OFFICE-DELTA.md`（DSH e2e 的 6 项技术要点）。本文件是这两份分析结论的落地 spec。
 
 ## 0. 读了什么 + 一致性
 
@@ -108,7 +108,7 @@ with-key 流（`e2e-real-api` job）：
 - `scripts/office-capabilities.mjs`（spreadsheets-plugin）：stdout 一行 JSON，`capabilities.recalculate.available` 是权威答案；rc 不表达 availability（能力不可用不是错误）。将来引擎落在唯一的挂载点 `scripts/office-node/recalculate.cjs` 时探测自动翻转，技能正文无需改动。
 - `skills/xlsx/SKILL.md`：交付含公式结果的工作簿时先跑探测；不可用时（CE 现状）在最终回复中如实声明「缓存结果未在本构建中重算」；不得把缓存值说成新算结果、不得用常量替换公式。
 
-为什么把 recalculate 探测与本 e2e 模式放在同一批：两者同源（`.reverse/100-dsh-021` §4.3 的 S 档），且 e2e 的假渲染器夹具证明了「故障注入 + 如实声明断言」的模式可以复制到 recalculate（将来 L 档引擎落地时，注入「重算失败/未刷新缓存」场景，断言模型不把缓存值说成新算结果）。
+为什么把 recalculate 探测与本 e2e 模式放在同一批：两者同源（`.local/reports/office-pdf-cua/dsh/version-0.2.1` §4.3 的 S 档），且 e2e 的假渲染器夹具证明了「故障注入 + 如实声明断言」的模式可以复制到 recalculate（将来 L 档引擎落地时，注入「重算失败/未刷新缓存」场景，断言模型不把缓存值说成新算结果）。
 
 ## 7. 改动文件与许可门禁
 
@@ -132,4 +132,4 @@ with-key 流（`e2e-real-api` job）：
 - 子代理内部行为断言（需要子会话事件可观测面）；
 - 夜间 schedule 触发（捕捉外部 API 漂移；DSH 有，CE 本轮不新增触发器类型）；
 - Windows 支持（需要 .cmd 形态的假渲染器与 PATHEXT 处理）；
-- 覆盖率门、性能基准门（`.reverse/100-dsh-021` §3.2 #3 的分层测试政策，单独的 M 档任务）。
+- 覆盖率门、性能基准门（`.local/reports/office-pdf-cua/dsh/version-0.2.1` §3.2 #3 的分层测试政策，单独的 M 档任务）。

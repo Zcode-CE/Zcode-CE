@@ -137,7 +137,7 @@ function formatLastActivity(lastActivityAt: number | null | undefined, now: numb
  * 这里原本导出 WorkspaceRuntimeBadge（列表行上的「未启动」徽标）。fix.2 / Task F1 删除了它。
  *
  * 为什么删：徽标挂在工作区行上、按行渲染，而 runtime 是按工作区懒启动的，所以首屏几乎每行
- * 都带它（实测 29 行里 28 行带徽标，见 .reverse/40-remote-control/M1-CRITERIA-3-4.md:37）。
+ * 都带它（实测 29 行里 28 行带徽标，见 .local/reports/remote/workspace-registry-m1/M1-CRITERIA-3-4.md:37）。
  * 一个恒亮、几乎人人有份的徽标不携带信息，只会变成噪音。
  *
  * 诚实未启动态没有丢：它由本文件的 WorkspaceRuntimeNotice 承载（展开行后给出

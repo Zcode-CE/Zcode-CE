@@ -8,7 +8,7 @@
 //            ③ 可变字体注册必抛（Variation settings must be ...），直接排除。
 // 本模块:    字体发现与面解析。返回 { file, postscriptName } 供 pdfkit 注册；
 //            覆盖不全时返回 missing 列表，由调用方**失败关闭**（本模块不抛，因为"缺哪些字"是要报给
-//            用户的关键信息，见 .reverse/38-pdf/PDF-FEASIBILITY.md §4）。
+//            用户的关键信息，见 .local/reports/office-pdf-cua/pdf/PDF-FEASIBILITY.md §4）。
 // 依赖:      随包载荷 fontkit（scripts/pdf-node/fontkit.cjs，由打包链 stage）。
 //            **载荷缺失时必须报错，不许静默降级成「用某个拉丁字体凑合」**——那会产出豆腐 PDF。
 // ---------------------------------------------------------------------------

@@ -128,7 +128,7 @@ test("共享缓存：多消费者只发一次请求（in-flight 去重 + TTL）�
 });
 
 test("类型段识别：isStartPlanEntitlementProductId 按 plan_id 的类型段判定，不按展示名", () => {
-  // 实测历史载荷（.reverse/08-entitlement/evidence）与本次改名后的形态。
+  // 实测历史载荷（.local/reports/account/entitlement-signing/evidence）与本次改名后的形态。
   assert.equal(isStartPlanEntitlementProductId("zcode-v3-start-plan-0924-wk"), true);
   assert.equal(isStartPlanEntitlementProductId("zcode-v3-start-plan-wk-0918"), true);
   assert.equal(isStartPlanEntitlementProductId("zcode-v3-start-plan-trust-build-0926"), true);

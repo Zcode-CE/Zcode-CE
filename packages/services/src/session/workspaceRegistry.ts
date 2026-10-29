@@ -18,7 +18,7 @@ import { createServiceDescriptor } from "#src/descriptors.js";
  *
  * **架构不变式（不是优化建议）**：本服务是纯读——列出全部工作区**绝不**拉起任何 Agent runtime。
  * runtime 只允许由用户主动打开工作区（或显式会话入口）时按需启动，成本模型见
- * docs/development/workspace-registry.md §3.1 与 .reverse/40-remote-control/PUBLISHER-SCALE-MEASUREMENT.md。
+ * docs/development/workspace-registry.md §3.1 与 .local/reports/remote/workspace-registry-m1/PUBLISHER-SCALE-MEASUREMENT.md。
  */
 
 export interface WorkspaceRegistryListParams {

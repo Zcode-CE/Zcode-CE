@@ -58,7 +58,7 @@
 > 「Zcode 官方的 UI 文案已经很优秀了，我们没有必要搬其他项目的描述。但是问题是我们需要将模仿官方口吻与文案
 > 作为参考与编写 UI 文案时的一个有意识的参考来做。」
 
-⇒ **写 UI 文案时以官方源码为对照**（官方检出：`.reverse/91-upstream-checkout/zai-org-ZCode`，只读）。
+⇒ **写 UI 文案时以官方源码为对照**（官方检出：`.local/references/upstream-checkout/zai-org-ZCode`，只读）。
 
 **推论（重要）**：如果某条文案**本来就是官方的**（与官方逐字节相同），**不要改它** —— 动它等于偏离官方口吻。
 实测本仓库 UI 字典里含 `**` 的 5 个键中，**4 个与官方逐字节相同**（`settings.modelProvider.help.*`），
@@ -89,21 +89,21 @@
 - **「未验证」的如实标注**（不得写成「已验证」，也不得因为「读起来啰嗦」而删）；
 - **否定式采集声明**（「不采集 X/Y/Z」）。
 
-这些在 `.reverse/90-upstream-v3143/VOICE-DRIFT.md` §5 被列为「我们比官方更清楚的地方」（12 处，6 处有测试护栏），
+这些在 `.local/reports/upstream/deep-dive-3.14.3/VOICE-DRIFT.md` §5 被列为「我们比官方更清楚的地方」（12 处，6 处有测试护栏），
 **清理时不得顺手抹掉**。
 
 ### 2.4 验收方式：必须跑真实渲染
 
 **改 UI 文案后不得只改字符串就宣称修好** —— 必须证明**用户实际看到什么**。
 
-本仓库的现成做法：**临时渲染壳 + 真浏览器**（参考 `.reverse/90-upstream-v3143/remote-tabs-harness/`）。
+本仓库的现成做法：**临时渲染壳 + 真浏览器**（参考 `.local/reports/upstream/deep-dive-3.14.3/remote-tabs-harness/`）。
 渲染壳的要点：
 
 1. 渲染**产品组件本身**（不是复制一份 DOM）；
 2. 用**真实 i18n 字典**与**真实 Tailwind 样式**；
 3. 读 `innerText`（用户看到的那一行），不读源码字符串。
 
-本任务的可复跑样例：`.reverse/92-copy-format/harness/`（`vite build` + `node probe-render.mjs`）。
+本任务的可复跑样例：`.local/reports/engineering/copy-format/harness/`（`vite build` + `node probe-render.mjs`）。
 
 **判据要钉在「用户看到的那一行」上**：源码扫描只能证明「字面量里有 `**`」，
 不能证明「屏幕上出现了星号」—— 后者才是缺陷。
@@ -221,19 +221,19 @@ markdown 在 `docs/`、`README*.md`、`AGENTS.md` 里**确实按 markdown 渲染
 
 ### 6.1 本轮实际改了什么（task-94）
 
-| 面                    | 改动                                                                                                             | 规模        | 证据                                                                                        |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------- |
-| **UI 文案（缺陷）**   | `settings.remoteAssets.cdnBaseUrlDescription` 去掉 `**`（**只删标记，一个事实都没删**）                          | 中英各 1 行 | 真浏览器：`hasLiteralStars` **true → false**；截图 `.reverse/92-copy-format/harness/shots/` |
-| **UI 文案（冗长句）** | `hiddenModels.description` 删「为什么叫隐藏」的机制解释；`unavailableDescription` 删内部插件标识与复述标题的状态 | 中英各 2 行 | 真浏览器 `innerText` 前后对照                                                               |
-| **代码注释（样板）**  | `packages/web` 清理 **40 对**（11 文件 / 39 行）                                                                 | 仅注释      | 逐文件比对「剥注释后的 token 流」⇒ **11/11 与改前逐字节相同**（零代码/字符串改动）          |
-| **护栏**              | `packages/ui/test/copyFormatGuard.test.ts`（9 条）+ 棘轮基线 `.copy-format-baseline.json`                        | —           | 见 §6.2                                                                                     |
+| 面                    | 改动                                                                                                             | 规模        | 证据                                                                                                       |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------- |
+| **UI 文案（缺陷）**   | `settings.remoteAssets.cdnBaseUrlDescription` 去掉 `**`（**只删标记，一个事实都没删**）                          | 中英各 1 行 | 真浏览器：`hasLiteralStars` **true → false**；截图 `.local/reports/engineering/copy-format/harness/shots/` |
+| **UI 文案（冗长句）** | `hiddenModels.description` 删「为什么叫隐藏」的机制解释；`unavailableDescription` 删内部插件标识与复述标题的状态 | 中英各 2 行 | 真浏览器 `innerText` 前后对照                                                                              |
+| **代码注释（样板）**  | `packages/web` 清理 **40 对**（11 文件 / 39 行）                                                                 | 仅注释      | 逐文件比对「剥注释后的 token 流」⇒ **11/11 与改前逐字节相同**（零代码/字符串改动）                         |
+| **护栏**              | `packages/ui/test/copyFormatGuard.test.ts`（9 条）+ 棘轮基线 `.copy-format-baseline.json`                        | —           | 见 §6.2                                                                                                    |
 
 **明确未改（判定为保留）**：
 
 - `settings.modelProvider.help.{inputModalities,capabilities,reasoningLevelsOrdered,advanced}` —— 走 `emphasis()` 渲染正确，且**与官方逐字节相同**；
 - `settings.remoteAssets.error.queryOrFragment` —— 曾判「复述屏幕已有信息」，复核后**撤回**：错误显示时输入框里是用户填的值，placeholder 被遮住，
   所以那句示例是**此刻唯一可见的正确示例**（删了读者会少知道一件事 ⇒ 保留）；
-- `.reverse/90-upstream-v3143/VOICE-DRIFT.md` §5 的 12 处「我们比官方更清楚」—— **一处未删**。
+- `.local/reports/upstream/deep-dive-3.14.3/VOICE-DRIFT.md` §5 的 12 处「我们比官方更清楚」—— **一处未删**。
 
 ### 6.2 变异验证（护栏必须证明有牙齿）
 
@@ -268,7 +268,7 @@ markdown 在 `docs/`、`README*.md`、`AGENTS.md` 里**确实按 markdown 渲染
 ## 7. 棘轮基线：生成方式与口径（后人复算用）
 
 基线文件 `.copy-format-baseline.json` 由
-`node .reverse/92-copy-format/tools/gen-copy-baseline.cjs --write` 生成，
+`node .local/tools/copy-format/gen-copy-baseline.cjs --write` 生成，
 由 `packages/ui/test/copyFormatGuard.test.ts` 读取。**两者必须用同一套口径**，否则会互相打架。
 
 ### 7.1 口径（四条，缺一条数字就对不上）
@@ -421,7 +421,7 @@ export const probe = 1;
 注释提取器用裸 `ts.createScanner().scan()` 取注释，遇**模板表达式**后失同步，
 之后的注释全部读不到 ⇒ **漏 725 对 / 21.5%**（2647 vs 3372）。
 护栏**一直绿**，但五分之一的注释在它视野之外。完整复盘见
-[`.reverse/92-copy-format/EXTRACTOR-FALSE-NEGATIVE.md`](../../.reverse/92-copy-format/EXTRACTOR-FALSE-NEGATIVE.md)。
+[`.local/reports/engineering/copy-format/EXTRACTOR-FALSE-NEGATIVE.md`](../../.local/reports/engineering/copy-format/EXTRACTOR-FALSE-NEGATIVE.md)。
 
 **验证覆盖率的方法**（本轮采用）：
 

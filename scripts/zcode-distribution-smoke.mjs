@@ -180,7 +180,7 @@ try {
   //   ⇒ 进程被**裸信号**杀死。而 node-pty 对裸信号死亡报的是 exitCode=0 / signal=<n>
   //   （实测：kill SIGTERM ⇒ {exitCode:0, signal:15}）⇒ **原来的 assert.equal(exitCode, 0)
   //   在"被信号杀死"时也会通过** —— 它自称验"键盘优雅退出(0)"，实际让它通过的是信号致死。
-  //   （此段归因与校准由 .reverse/124-smoke-timing/FINDINGS.md 的真终端模拟器实验给出；
+  //   （此段归因与校准由 .local/reports/engineering/smoke-flaky/FINDINGS.md 的真终端模拟器实验给出；
   //    早先"Ctrl-C 落在启动屏"与"两屏交替"两种解释都已被该实验推翻：
   //    启动屏文案在 ≥1605ms 消失且不再回来，两屏是先后切换、不共存；
   //    EmptyTranscriptLogo 被两个屏幕共用且带逐帧动画，在原始字节流里看起来像"共存"。）

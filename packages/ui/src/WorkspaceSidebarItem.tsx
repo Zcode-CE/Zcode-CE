@@ -788,7 +788,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
        * 「未启动」徽标已移除（fix.2 / Task F1）。
        *
        * 为什么删：徽标挂在工作区行上，而 runtime 是按工作区懒启动的，所以首屏几乎每行都带它
-       * （实测 29 行里 28 行带徽标，见 .reverse/40-remote-control/M1-CRITERIA-3-4.md:37）。
+       * （实测 29 行里 28 行带徽标，见 .local/reports/remote/workspace-registry-m1/M1-CRITERIA-3-4.md:37）。
        * 一个恒亮、几乎人人有份的徽标不携带信息，只会变成噪音。
        *
        * 为什么可以删而不会退回「以为会话丢了」：列会话不需要 runtime（数据在 SQLite），

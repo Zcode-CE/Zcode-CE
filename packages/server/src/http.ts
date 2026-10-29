@@ -759,7 +759,7 @@ function staticContentType(filePath: string): string {
  * 拿到即得 `desktop-continuous`（trusted host）角色；`/api/server-info`
  * 还会泄露主机名、版本与工作区绝对路径。原日志把这档默认打印成 `localhost`，
  * 进一步误导用户。修复前后实测对照见
- * `.reverse/40-remote-control/SECURITY-SERVER-DEFAULTS.md`。
+ * `.local/reports/remote/workspace-registry-m1/SECURITY-SERVER-DEFAULTS.md`。
  */
 export const DEFAULT_HTTP_LISTEN_HOST = "127.0.0.1";
 
@@ -1070,7 +1070,7 @@ export function createHttpServer(
   // 若本 gate 注册在其后，一个被令牌面封禁的地址打 /bot/** 会拿到 403 而不是 404
   // （「渠道未启用」的语义），且 bot 入站会被令牌面的封禁误伤。
   // 放在之前 ⇒ 既有令牌中间件零改动，隔离是结构性的而非条件式的。
-  // 详见 botIngress.ts 的文件头与 .reverse/93-bot-ingress/BOT-INGRESS-SPEC.md §4.3（方案 D1）。
+  // 详见 botIngress.ts 的文件头与 .local/reports/bots/im-bot-ingress/BOT-INGRESS-SPEC.md §4.3（方案 D1）。
   //
   // 无条件注册：未启用时 gate 在第一个判断就返回 c.notFound()，零 I/O，与
   // 「这条路由根本不存在」逐字节相同（spec §8.4 R3/R15）⇒ 默认攻击面为零。

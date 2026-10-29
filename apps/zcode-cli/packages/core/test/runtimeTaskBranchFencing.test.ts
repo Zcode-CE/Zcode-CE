@@ -16,7 +16,7 @@ import type {
 } from "@zcode/contracts";
 
 /**
- * T1 修复单测（zcode-plugins issue #64 / .reverse/102 T1）：
+ * T1 修复单测（zcode-plugins issue #64 / .local/reports/audit/upstream-audit T1）：
  * 编辑消息重发（conversation rewind）导致后台智能体完成通知与终态事件被
  * stale-branch fencing 静默丢弃（debug 级、无返回值），UI 永久「运行中」。
  *

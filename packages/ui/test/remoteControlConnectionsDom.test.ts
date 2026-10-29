@@ -102,7 +102,7 @@ test("DOM：桌面面板存在令牌轮换入口（决策④：只有桌面才�
 /* ────────────────────────────────────────────────────────────────────────────
  * 反向验证的核心两条：把能力门控去掉 ⇒ 下面两条断言必须变红。
  *
- * 复现方式（已实测，结果见 .reverse/98-ce4/IMPL-CONNECTIONS-UI.md）：
+ * 复现方式（已实测，结果见 .local/reports/audit/ce4-candidate-pool/IMPL-CONNECTIONS-UI.md）：
  *   ① 把 RemoteControlServiceSection.tsx 的 `{onRotateToken ? (` 改成 `{true ? (`
  *      （无视能力、无条件渲染轮换）⇒ 「Web 能力下轮换不存在」变红；
  *   ② 把 RemoteControlDevicesSection.tsx 的 `{onRevoke ? (` 与

@@ -767,7 +767,7 @@ export function App({
         // fix.2 / Task F1：这里以前是 addTab，而 addTab 会把工作区写进 lastWorkspaceSession
         // （useTabPersistence 的 300ms 防抖订阅整个 store）—— 点一下侧栏的注册表行，
         // 该路径就永久变成「本客户端的显示偏好」，枚举重新由设置决定。这正是
-        // docs/development/131-workspace-path-titled-entries.md 第 3 节 (d) 判定的缺陷。
+        // .local/reports/remote/workspace-path-titled-entries.md 第 3 节 (d) 判定的缺陷。
         //
         // 改成 activateOrOpenWorkspaceTab：没有已打开的 tab 时创建一条 viewOnly tab，
         // 它只承载激活态（activeWorkspacePath/activeTabId 被 Root 与多处 hook 读取），

@@ -250,7 +250,7 @@ curl -sS -o /dev/null -w "%{http_code}\n" "https://<域名>/no-such-file.json"
 ## 13. 本项目的具体值在哪里
 
 账户 ID、zone ID、bucket 名、客户端基址、本机凭据路径、列举对象的命令 —— **全部只写在本地私密笔记里**
-（`.reverse/41-remote-cdn/PRIVATE-ACCOUNT.md`，该目录被 `.git/info/exclude` 忽略，不入库、不推送）。
+（`.local/reports/security/remote-assets-cdn/PRIVATE-ACCOUNT.md`，该目录被 `.git/info/exclude` 忽略，不入库、不推送）。
 本文刻意只用占位符，是为了让这份文档可以公开、也为了让别人照着它自建发布点。
 
 ---

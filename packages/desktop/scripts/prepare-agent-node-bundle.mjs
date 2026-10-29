@@ -157,7 +157,7 @@ const contentPluginPackages = [
 // pdf 插件：内容（技能/生成器/校验器/字体助手）+ 单独的 Node 载荷（pdfkit/fontkit bundle）。
 // 载荷由 stagePdfNodePayloads() 在 stageOfficialPlugins() **之后**落盘，所以这里只钉源码树里
 // 已存在的资产；载荷路径钉在 bootstrap/official-plugin-definitions.ts 的 requiredSeedPaths 上
-// —— 那一条是运行期闸门（缺载荷就不注册，见 .reverse/38-pdf/COMMIT-SHAPE.md）。
+// —— 那一条是运行期闸门（缺载荷就不注册，见 .local/reports/office-pdf-cua/pdf/COMMIT-SHAPE.md）。
 const pdfPluginPackages = [
   {
     name: "pdf",

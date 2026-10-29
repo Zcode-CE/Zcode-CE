@@ -53,7 +53,7 @@ export const MANUAL_CLAIM_CAPTCHA_BUTTON_ID = "zcode-manual-claim-captcha-button
 
 /**
  * 初始化超时的失败分类 token（逐字对齐官方 3.14.4 的 initialization_timeout 分类，见
- * .reverse/99-v3144/UPDATE-ANALYSIS.md §2.3 C1/C2）。
+ * .local/reports/upstream/version-3.14.4/UPDATE-ANALYSIS.md §2.3 C1/C2）。
  *
  * 官方在渲染层把以「Captcha initialization timed out.」开头的错误归为 initialization_timeout；
  * CE 的分类走结构化字段（ManualClaimCaptchaFailureStage 的 initialization），这个 token 只作为

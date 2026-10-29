@@ -10,7 +10,7 @@ import type { ZCodeApp } from "../src/app/types.js";
 import type { TraceContext } from "@zcode/contracts";
 
 /**
- * T2 单测（zcode-plugins issue #60 / .reverse/102 T2）：CronCreate 标题冻结。
+ * T2 单测（zcode-plugins issue #60 / .local/reports/audit/upstream-audit T2）：CronCreate 标题冻结。
  *
  * 修复前 automation-port 在 CronCreate 成功后无条件 setCustomSessionTitle，
  * 不检查 titleSource——用户手动命名被 automation 标题反复覆盖（实测一天 4 次）。

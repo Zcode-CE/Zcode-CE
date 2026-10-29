@@ -16,7 +16,7 @@ import {
 /**
  * 转录种子门（`holdsOnlySeedMessages`）的判据测试。
  *
- * 缺陷背景（.reverse/98-ce4/PROTOCOL-V4-LANDING.md §④.7，已用 HEAD 真实代码实测复现）：
+ * 缺陷背景（.local/reports/audit/ce4-candidate-pool/PROTOCOL-V4-LANDING.md §④.7，已用 HEAD 真实代码实测复现）：
  * `inFlight.messageBoundary` 取自前驱会话此刻的消息条数，是导入缓存里**唯一一个不是 journal
  * 事实**的数。它在两次构建之间变大时，修订 run 的一次普通「停止 → resume」就会带着更大的 M
  * 再次调进 `seedActorTranscript`；若目标会话此时已有自己的 live 消息、但总数仍 < M，
