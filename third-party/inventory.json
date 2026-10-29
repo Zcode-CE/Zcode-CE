@@ -255,7 +255,7 @@
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/mcp-ui/sessionAccess.ts": "f87a3194651891c195b5c01f3e533e2ff3d68ad7e6c2b1928ed63b5754e2bc60",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/plugin-ui-surfaces.ts": "c6785f6e48396e045b60a6ff0f8c9f27cc94be70d8735c2feef15a254cb82fe9",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/saved-workflows-run.ts": "a2b22171f72e69ecc304105dcb6916daaede682c5d40befcd76523a23c6060a4",
-    "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts": "2cc904b88402fcfa5f771071c113a4361979225eca01f749f6fae7802734c513",
+    "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts": "9b6111572d1579c20a65babae15bce1d2d9664dfe39cd31eb079b694761b6ccf",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/topic-resource-port.ts": "e42a70ce21f4f83f77091e03ab23fec8522b5dc044540e382e5dd224173df0e4",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workflow-settings-answer.ts": "45f85148a19dfc16d77b1ab3fbb772f33319bbf172fbaa43b8b9fb5e480c23b8",
     "apps/zcode-cli/packages/browser-use-plugin/package.json": "d337449807ae7d897a2387c11b62270830e965e9f1c152a9533d37cec6005f3b",
@@ -1679,7 +1679,7 @@
     "packages/services/src/gen-ui/module.ts": "a8b844795cbd629c1036351a4768e98db1466251b61a55fd18530d4fff60fd9b",
     "packages/services/src/gen-ui/node.ts": "a6047379a2ad34185cd98f3d0ada603d376fd034744eb86b9184eb10547d48fd",
     "packages/services/src/index.ts": "8cd472c577249a27317c178f4d9bfa584a7e5c6661519e8d854f08fbae571413",
-    "packages/services/src/node.ts": "c35055fbbec2931840a45a50c0fe0225510240a0b702f400587e17e133c033e1",
+    "packages/services/src/node.ts": "02eded9a9fd92d926d85fa0a49a28b0abe2cdb531d475afbf5fcb47f2d6b5fc0",
     "packages/services/src/plugin-ui-bridge/appToolsContract.ts": "13543dee77d43a67af4066fd9b98706cc0d2e478d9edf7508f1da155f6b3176c",
     "packages/services/src/plugin-ui-bridge/contract.example.ts": "7c0e4a5ab6ba1178de7b0efd0621a92a3561baa2682f3e9273b6f41d9c54d072",
     "packages/services/src/plugin-ui-bridge/CONTRACT.md": "4f60abf0876f83177be041332540e76c340a888f75d51d60c056a566e84ba800",
@@ -1713,7 +1713,7 @@
     "packages/shared/src/gen-ui/module.ts": "e2ce94c157dee72a908d44e6c39e97fb8df62f0e7d88533e7f19a75a123f115f",
     "packages/shared/src/gen-ui/tweakProtocol.ts": "474b7bc47a6c4d6fca8620834ac5c09b056c81e8cd938a585d8565200d1cd05a",
     "packages/shared/src/highspeed.ts": "29ba3aa286c36751c89cae4a445fb52a0ab9251c5a086ddde2491e11d85b54b2",
-    "packages/shared/src/index.ts": "789188bfc5d9b3f84341777ca3315ea70813a610f9450f45f5b41a2bb19745bd",
+    "packages/shared/src/index.ts": "42e2f78b50dd35f75982fc53a9dabe64c628c6e802e374b96f52386d90a6ebe1",
     "packages/shared/src/mcp-apps/appTools.ts": "56e79ed990a404269084450bb4eec4297df07b43de5a5b0399123c56342483b4",
     "packages/shared/src/mcp-apps/content.ts": "1675b0b89b82c70573b8e60ddd75b25e6a81c8620ce9d2e49d8363900b207056",
     "packages/shared/src/mcp-apps/contract.example.ts": "17189b1f889d1ad128cde9de4cf09b2990e598c61ed926bd641b35a63179c035",
@@ -1731,7 +1731,7 @@
     "packages/shared/src/node.ts": "1964469bfb5f6f8b1c46a44a8372914158c8693b17d8603a0aab0f9295503e39",
     "packages/shared/src/node/genUiPaths.ts": "9fe594b8a77cc74114d09146ee2a2f55e9ac2730fad7bfcacdaea82be63b7675",
     "packages/shared/src/platform.ts": "004a5f11c31e114706f879d7d241d4a63eec6acc89878192c6505f7560754caf",
-    "packages/shared/src/protocol.ts": "58fb4a274769ad85fc7935369ecff9c1509ee11ce9db85cb714afa98e2bd4ef9",
+    "packages/shared/src/protocol.ts": "ac32e69f3e7665dbc7a359c61c526e695e0ffa1fb8a72be55a7dd589e5a7b2bf",
     "packages/shared/src/request-security-edition/index.ts": "12735d8622bfd0b1b4e566cb5bf773e530805c976880fab37d85a9cbfb8941e4",
     "packages/shared/src/request-security-edition/policy.ts": "b3c87d9f01bf3c9477188399d841dd8f63a6e6a02737f78777bce0a6c4201c42",
     "packages/shared/src/request-security-edition/verification-policy.ts": "8cc61deede90d2456e1bd077b885ac600692efa8e62baf6beaa984f76f59d7b5",
@@ -1740,7 +1740,7 @@
     "packages/shared/src/task-realtime-core.ts": "0915d0969491e237a384d5bcfd689733409ce69ac35dace9d336beaaa40952bf",
     "packages/shared/src/test-ids.ts": "71b3f87b939bd6258d533f57c45584a7a486803ae22acc2ba8cf656f93fbff4e",
     "packages/shared/src/validation.ts": "f056037eabdd28cd730e90961577e93cc72145672d1ac1744d2497d832e66709",
-    "packages/shared/src/validationAppSettings.ts": "8fe87bbc536c926650422bed6f4f0cffe8d24fa09b8430f89fb02affc33819dc",
+    "packages/shared/src/validationAppSettings.ts": "621c39cdd7b6a584db2ebe8b9e947e4ffa572aeda7cd27d0d7388bbbb697c973",
     "packages/shared/src/zcode-agent-model-state.ts": "87e868e6737ee8ef577df9327d9e9c88f167c659022d59a544f87dec78ef9906",
     "packages/shared/src/zcode-agent-policy.ts": "8d7145c732b8f50585b85becb52f6c13d40d424aacbf4bfa48c9faee2c985de1",
     "packages/shared/src/zcode-protocol-legacy-types.ts": "eba9d511ba6c4e7907f32359f1c98cd5103b0af9eeb3a6144fe9149754761bcb",
@@ -2055,8 +2055,8 @@
     "packages/ui/src/hooks/useBrowserSitePermissions.ts": "75d84af4d726b95d0d7cd166b1977514dc56d1644122b5857724cfc349ff0faa",
     "packages/ui/src/hooks/useCodingPlanQuotaResetUi.ts": "eed75a370ca2a08fa78ecd9129ac36355017b4ab9ed5d05c7c603d252587b6b4",
     "packages/ui/src/hooks/useWorkflowRunSave.ts": "e29d0d84541ecc772c8295255fefab7c537f9c75948210147838a82ec3dbc40d",
-    "packages/ui/src/i18n/locales/en-US.ts": "e23580560e04f1483a50232b3b9a015c853565387a9a6e05806093b438e03d98",
-    "packages/ui/src/i18n/locales/zh-CN.ts": "28af5e0d1ee73e839ca4a2f6e3a1d830efcb42a6d26b07f617ece86f91360dc6",
+    "packages/ui/src/i18n/locales/en-US.ts": "f921d9e10da85091faff002691130f04027eab656884b63db559b7e9e6c2e0ee",
+    "packages/ui/src/i18n/locales/zh-CN.ts": "27f2faf886654d91ec88f777c19e0ad99f6dfccf2defeef4bca7fe67e2109ddf",
     "packages/ui/src/lib/assistantDirectiveParser.ts": "c64b119e46f917e2d869658559cb1113cc40caae1a89d68328b256ee4d76e09f",
     "packages/ui/src/lib/builtinSkillI18n.ts": "fbb44f7044214b70148f64dbafc1cea5ea550531e8084965ea978c5defc06deb",
     "packages/ui/src/lib/codingPlanQuotaResetUi.ts": "9ff69e18487e842d56136283b15fe9bfdfd383b79d911b25f967ec69f65af11f",
@@ -32865,15 +32865,15 @@
         },
         {
           "file": "packages/shared/src/protocol.ts",
-          "sha256": "58fb4a274769ad85fc7935369ecff9c1509ee11ce9db85cb714afa98e2bd4ef9"
+          "sha256": "ac32e69f3e7665dbc7a359c61c526e695e0ffa1fb8a72be55a7dd589e5a7b2bf"
         },
         {
           "file": "packages/shared/src/validationAppSettings.ts",
-          "sha256": "8fe87bbc536c926650422bed6f4f0cffe8d24fa09b8430f89fb02affc33819dc"
+          "sha256": "621c39cdd7b6a584db2ebe8b9e947e4ffa572aeda7cd27d0d7388bbbb697c973"
         },
         {
           "file": "packages/shared/src/index.ts",
-          "sha256": "789188bfc5d9b3f84341777ca3315ea70813a610f9450f45f5b41a2bb19745bd"
+          "sha256": "42e2f78b50dd35f75982fc53a9dabe64c628c6e802e374b96f52386d90a6ebe1"
         },
         {
           "file": "packages/shared/src/test-ids.ts",
@@ -33055,7 +33055,7 @@
         },
         {
           "file": "packages/services/src/node.ts",
-          "sha256": "c35055fbbec2931840a45a50c0fe0225510240a0b702f400587e17e133c033e1"
+          "sha256": "02eded9a9fd92d926d85fa0a49a28b0abe2cdb531d475afbf5fcb47f2d6b5fc0"
         },
         {
           "file": "packages/services/src/accessor.ts",
@@ -33106,7 +33106,7 @@
       "files": [
         {
           "file": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts",
-          "sha256": "2cc904b88402fcfa5f771071c113a4361979225eca01f749f6fae7802734c513"
+          "sha256": "9b6111572d1579c20a65babae15bce1d2d9664dfe39cd31eb079b694761b6ccf"
         },
         {
           "file": "apps/zcode-cli/packages/core/src/runtime/types.ts",
@@ -33961,11 +33961,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "28af5e0d1ee73e839ca4a2f6e3a1d830efcb42a6d26b07f617ece86f91360dc6"
+          "sha256": "27f2faf886654d91ec88f777c19e0ad99f6dfccf2defeef4bca7fe67e2109ddf"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "e23580560e04f1483a50232b3b9a015c853565387a9a6e05806093b438e03d98"
+          "sha256": "f921d9e10da85091faff002691130f04027eab656884b63db559b7e9e6c2e0ee"
         },
         {
           "file": "packages/ui/src/v4/WorkflowNotificationToolRow.tsx",
@@ -34793,11 +34793,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "28af5e0d1ee73e839ca4a2f6e3a1d830efcb42a6d26b07f617ece86f91360dc6"
+          "sha256": "27f2faf886654d91ec88f777c19e0ad99f6dfccf2defeef4bca7fe67e2109ddf"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "e23580560e04f1483a50232b3b9a015c853565387a9a6e05806093b438e03d98"
+          "sha256": "f921d9e10da85091faff002691130f04027eab656884b63db559b7e9e6c2e0ee"
         }
       ]
     },

@@ -10,6 +10,7 @@ import {
 } from "react";
 import type {
   AppSettings,
+  AppToolSearchMode,
   DangerousCommandPolicy,
   IntegratedTerminalShellOption,
   IntegratedTerminalShellSelection,
@@ -898,6 +899,17 @@ export function SettingsPage({
           stateAfter: enabled ? "enabled" : "disabled",
         },
       });
+    },
+    [updateSharedSettings],
+  );
+  const handleToolSearchModeChange = useCallback(
+    async (next: AppToolSearchMode) => {
+      setToolPolicySaving(true);
+      try {
+        await updateSharedSettings({ toolSearchMode: next });
+      } finally {
+        setToolPolicySaving(false);
+      }
     },
     [updateSharedSettings],
   );
@@ -1992,8 +2004,10 @@ export function SettingsPage({
                           // 与当前打开哪个 workspace 无关。资源级启停归各自资源页。
                           <ToolPolicySection
                             policy={sharedSettings?.dangerousCommandPolicy}
+                            toolSearchMode={sharedSettings?.toolSearchMode}
                             saving={toolPolicySaving}
                             onChange={handleDangerousCommandPolicyChange}
+                            onToolSearchModeChange={handleToolSearchModeChange}
                           />
                         ) : activeSection === "feedback" ? (
                           // 「反馈与诊断」只依赖本机能力（GitHub 预填链接 / 本地日志归档），

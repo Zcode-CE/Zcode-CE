@@ -2367,6 +2367,8 @@ export function createLocalServices(options: {
                 settings.askUserQuestionAutoResolutionEnabled !== false,
               nativeSearchEnhancementsEnabled: settings.nativeSearchEnhancementsEnabled !== false,
               memoryEnabled: settings.memoryEnabled === true,
+              // F14：工具搜索模式随 runtime-materialization 下发；缺席（老配置）= off。
+              ...(settings.toolSearchMode ? { toolSearchMode: settings.toolSearchMode } : {}),
               modelContextBudgetStrategy,
               // 工具与权限页的危险命令策略。缺席即严格（CLI 侧解释），所以这里原样透传
               // undefined 而不是补一份默认值 —— 补默认值会让"用户没配过"与"用户显式选了严格"

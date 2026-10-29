@@ -2,7 +2,7 @@
 
 模型可见工具面的按需交付：常驻工具照旧进请求，其余工具只公告名字，模型用 `ToolSearch`
 取定义、用 `DeferredToolCall` 调用。上游 3.16.2 的同名能力，分三轮落地：wave1 契约与纯模块
-（task-56）、wave2 运行时接线（task-14）、wave3 协议/设置/UI（未做）。
+（task-56）、wave2 运行时接线（task-14）、wave3 协议与设置面（task-58）。
 
 ## 模式与解析
 
@@ -17,8 +17,15 @@
   （不发 beta、不带 `defer_loading`），定义在真实 tool result 位置展开成 `<functions>` 文本。
 - `auto`：provider 声明 `defaultEnabled` 走 native，否则按工具调用能力退回 local/off。
 
-入口：CLI `--toolsearch-mode`（`apps/zcode-cli/packages/cli/src/tool-search-flag.ts`）。
-运行期取值固定在 `runtimeConfig.toolSearch.mode`，子 Agent 继承，不写 session。
+入口两处、优先级不同：
+
+1. 设置页「工具与权限 → 工具搜索」（`AppSettings.toolSearchMode`）——桌面/远控的常规入口。
+   Host 在会话创建/恢复时经 runtime preferences 下发（`toolSearchMode`），CLI 写进
+   `runtimeConfig.toolSearch.mode`；已运行会话不重读，改动只对新建会话生效。
+2. CLI `--toolsearch-mode`（`apps/zcode-cli/packages/cli/src/tool-search-flag.ts`）—— 直连 CLI
+   时显式指定；它不经过协议装配，因此不受设置页影响。
+
+两处最终都写入 `runtimeConfig.toolSearch.mode`，子 Agent 继承，不写 session。
 
 ## 状态所有者
 
@@ -75,6 +82,7 @@ turn-model-step（进入 assistant 历史之前）、turn-tools（part/事件/�
 - `off` 与接入前逐字节一致：tools 列表、messages、tool part metadata 三处都有断言
   （`core/test/toolSearchWiring.test.ts`）。
 - `native` 未声明能力时发送前失败；`local` 不发送 `toolSearchEnabled`。
-- 仍缺（wave3）：shared 协议字段 `toolSearchMode`、bootstrap server-operations、设置页开关、
-  TUI/桌面工具卡片与 help 文案。辅助请求（memory / goal verifier / compact summary）目前仍
-  发送完整目录，未走曝光决策。
+- 设置面：`AppSettings.toolSearchMode` 四态经 runtime preferences 下发；老配置缺字段 = off，
+  与接入前行为一致（`packages/shared/test/toolSearchMode.test.ts`）。
+- 仍缺：TUI/桌面工具卡片与 help 文案；辅助请求（memory / goal verifier / compact summary）
+  目前仍发送完整目录，未走曝光决策；真实 provider E2E 与 executor 级完整桩测试。

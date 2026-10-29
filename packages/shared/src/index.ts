@@ -325,4 +325,5 @@ export * from "./request-security-edition/verification-policy.js";
 export * from "./conversationSelection.js";
 export * from "./subagent-runtime-config.js";
 export * from "./subagent-profile.js";
+export * from "./toolSearch.js";
 export { redactFeedbackText } from "./feedbackPrivacy.js";

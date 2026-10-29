@@ -11,6 +11,7 @@ import {
 } from "../mcp-apps/appTools.js";
 import { mcpAppsSamplingParamsSchema, mcpAppsSamplingResultSchema } from "../mcp-apps/sampling.js";
 import { mcpAppInstanceSchema } from "../mcp-apps/instance.js";
+import { appToolSearchModeSchema } from "../toolSearch.js";
 export { conversationQuoteSchema, conversationQuotesSchema } from "../conversationSelection.js";
 export { attachmentSourceKindSchema, type AttachmentSourceKind } from "../attachment-source.js";
 import { PROTOCOL_V4_LIMITS } from "../zcode-protocol-v4/core.js";
@@ -2034,6 +2035,8 @@ export const zcodeSessionRuntimePreferencesResultSchema = z
     // X16：Host 在 runtime-materialization 时机解析出的附加目录。optional，且刻意不给默认值：
     // 旧 Host 不回该键 ⇒ 无附加目录（回落成 [] 会伪造「已解析且为空」的事实）。
     additionalDirectories: z.array(nonEmptyString).max(256).optional(),
+    // F14：Host 侧设置的工具搜索模式。optional，旧 Host 不回 ⇒ CLI 按 off（引入前行为）。
+    toolSearchMode: appToolSearchModeSchema.optional(),
     nativeSearchEnhancementsEnabled: z.boolean(),
     memoryEnabled: z.boolean().default(false),
     askUserQuestionAutoResolutionEnabled: z.boolean().default(true),

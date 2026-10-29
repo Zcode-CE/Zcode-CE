@@ -8,6 +8,7 @@ import {
   type SessionId,
   type SessionTaskType,
   type SessionStorePort,
+  type ToolSearchMode,
   type TraceContext,
 } from "@zcode/contracts";
 import type { McpTelemetryTracker } from "@zcode/adapters";
@@ -90,6 +91,8 @@ export interface ZCodeProtocolSessionRecord {
    * 用 `DangerousCommandPolicy` 的可选字段语义（缺席即严格），不用 null 表示"没配置"。
    */
   dangerousCommandPolicy?: DangerousCommandPolicy;
+  /** F14：创建/恢复时冻结的工具搜索模式；子会话 inherit 时原样继承。缺席 = off。 */
+  toolSearchMode?: ToolSearchMode;
   modelContextBudgetStrategy: ZCodeModelContextBudgetStrategy;
   createdAt: number;
   deliveryKind?: ZCodeDeliveryKind;

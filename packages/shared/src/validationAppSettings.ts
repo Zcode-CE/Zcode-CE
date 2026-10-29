@@ -16,6 +16,7 @@ import {
   MAX_WORKSPACE_ADDITIONAL_DIRECTORIES,
   normalizeWorkspaceAdditionalDirectories,
 } from "./workspaceAdditionalDirectories.js";
+import { appToolSearchModeSchema } from "./toolSearch.js";
 import {
   MAX_CUSTOM_DANGEROUS_ENTRIES,
   MAX_DANGEROUS_PATTERN_LENGTH,
@@ -581,6 +582,8 @@ const appSettingsObjectSchema = z.object({
   lastActiveTabIndex: z.number().int().nonnegative().default(0),
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
   workspaceAdditionalDirectories: workspaceAdditionalDirectoriesSchema.optional(),
+  // 工具搜索模式：缺席 = off。不设 default，避免给老配置写进显式值。
+  toolSearchMode: appToolSearchModeSchema.optional(),
   dataBaseDir: z.string().trim().min(1).optional(),
   pendingPostUpdateReleaseNotes: postUpdateReleaseNotesPayloadSchema.optional(),
   receivePreviewUpdates: z.boolean().default(false),
@@ -674,6 +677,7 @@ export const appSettingsPatchSchema = z.object({
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
   // 设置页按单键补丁写入（空列表 = 删除该键）；服务端按键合并，避免跨客户端 last-write-wins。
   workspaceAdditionalDirectories: workspaceAdditionalDirectoriesPatchSchema.optional(),
+  toolSearchMode: appToolSearchModeSchema.optional(),
   dataBaseDir: z.string().trim().min(1).optional(),
   pendingPostUpdateReleaseNotes: postUpdateReleaseNotesPayloadSchema.optional(),
   receivePreviewUpdates: z.boolean().optional(),

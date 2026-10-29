@@ -2025,6 +2025,13 @@ const enUS: Record<string, string> = {
     "This upgrade turns it off by default: dangerous commands you previously remembered now ask again.",
   "settings.toolPolicy.appliesToNewSessions":
     "Applies to new sessions; sessions already open keep their current setting.",
+  "settings.toolPolicy.toolSearch.label": "Tool search",
+  "settings.toolPolicy.toolSearch.description":
+    "When there are many tools, the model can search and load tool definitions on demand instead of fitting every definition into context. Auto prefers the model-side capability when supported and otherwise falls back to client-side search.",
+  "settings.toolPolicy.toolSearch.mode.off": "Off",
+  "settings.toolPolicy.toolSearch.mode.auto": "Auto",
+  "settings.toolPolicy.toolSearch.mode.native": "Model-side (requires support)",
+  "settings.toolPolicy.toolSearch.mode.local": "Client-side search",
   "settings.toolPolicy.list.title": "Dangerous commands",
   "settings.toolPolicy.list.hint":
     "Turning an entry off relaxes it: it is no longer treated as dangerous.",

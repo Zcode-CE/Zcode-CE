@@ -7,6 +7,7 @@ import type { WorkspacePurpose } from "./workspacePurpose.js";
 import type { EmbeddedBrowserViewportPreference } from "./browser-use/command-metadata.js";
 import type { DangerousCommandPolicy } from "./dangerousCommands.js";
 import type { WorkspaceAdditionalDirectories } from "./workspaceAdditionalDirectories.js";
+import type { AppToolSearchMode } from "./toolSearch.js";
 
 // ── Domain types ──
 
@@ -366,6 +367,12 @@ export interface AppSettings {
    * 的归一化：去空白、去空串、去重、每个工作区 ≤256）。
    */
   workspaceAdditionalDirectories?: WorkspaceAdditionalDirectories;
+  /**
+   * 工具搜索模式（F14）：off / auto / native / local。缺席 = off（与引入前行为一致）。
+   * 与 CLI contracts 的 ToolSearchMode 同词表；Host 在会话创建/恢复时经 runtime preferences
+   * 下发给 CLI，已运行会话不重新读取。
+   */
+  toolSearchMode?: AppToolSearchMode;
   /** 数据目录的根路径（替代 homedir），默认为 os.homedir()；.zcode/v2 后缀不变 */
   dataBaseDir?: string;
   /** 自动更新安装完成后，等待首次启动展示的版本说明 */

@@ -1888,6 +1888,13 @@ const zhCN: Record<string, string> = {
   "settings.toolPolicy.persistent.behaviorChange":
     "本次升级默认改为关闭：以前能被记住的危险命令，现在每次都会重新询问。",
   "settings.toolPolicy.appliesToNewSessions": "对新建的会话生效；当前已打开的会话保持原有设置。",
+  "settings.toolPolicy.toolSearch.label": "工具搜索",
+  "settings.toolPolicy.toolSearch.description":
+    "工具很多时，模型可以按需搜索并加载工具定义，而不是把所有定义一次性放进上下文。自动：模型支持时优先用模型侧能力，否则退回客户端搜索。",
+  "settings.toolPolicy.toolSearch.mode.off": "关闭",
+  "settings.toolPolicy.toolSearch.mode.auto": "自动",
+  "settings.toolPolicy.toolSearch.mode.native": "模型侧（需要模型支持）",
+  "settings.toolPolicy.toolSearch.mode.local": "客户端搜索",
   "settings.toolPolicy.list.title": "危险命令",
   "settings.toolPolicy.list.hint": "关闭某项即放宽该项：它不再被特殊对待。",
   "settings.toolPolicy.list.defaultsNotDeletable":

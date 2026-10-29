@@ -7,10 +7,18 @@ import {
   PRIVILEGE_WRAPPERS,
   normalizeDangerousPattern,
   resolveDangerousCommandPolicy,
+  type AppToolSearchMode,
   type DangerousCommandPolicy,
 } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select.js";
 import { Switch } from "@/components/ui/switch.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
@@ -115,12 +123,16 @@ function DangerousEntryRow({
 
 export function ToolPolicySection({
   policy,
+  toolSearchMode,
   saving,
   onChange,
+  onToolSearchModeChange,
 }: {
   policy: DangerousCommandPolicy | undefined;
+  toolSearchMode: AppToolSearchMode | undefined;
   saving: boolean;
   onChange: (next: DangerousCommandPolicy) => Promise<void>;
+  onToolSearchModeChange: (next: AppToolSearchMode) => Promise<void>;
 }) {
   const { intl } = useZCodeIntl();
   const [draft, setDraft] = useState<PolicyDraft>(() => toDraft(policy));
@@ -181,6 +193,43 @@ export function ToolPolicySection({
 
   return (
     <div className="space-y-4">
+      <SettingsGroupCard>
+        <SettingsRow
+          label={intl.formatMessage({ id: "settings.toolPolicy.toolSearch.label" })}
+          description={
+            <span className="block space-y-1">
+              <span className="block">
+                {intl.formatMessage({ id: "settings.toolPolicy.toolSearch.description" })}
+              </span>
+              <span className="block text-foreground-subtlest">
+                {intl.formatMessage({ id: "settings.toolPolicy.appliesToNewSessions" })}
+              </span>
+            </span>
+          }
+          control={
+            <Select
+              value={toolSearchMode ?? "off"}
+              disabled={saving}
+              onValueChange={(value) => void onToolSearchModeChange(value as AppToolSearchMode)}
+            >
+              <SelectTrigger
+                className="w-48"
+                aria-label={intl.formatMessage({ id: "settings.toolPolicy.toolSearch.label" })}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(["off", "auto", "native", "local"] as const).map((mode) => (
+                  <SelectItem key={mode} value={mode}>
+                    {intl.formatMessage({ id: `settings.toolPolicy.toolSearch.mode.${mode}` })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          }
+        />
+      </SettingsGroupCard>
+
       <SettingsGroupCard>
         <SettingsRow
           controlLayout="stacked"

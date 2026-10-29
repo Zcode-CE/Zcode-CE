@@ -36,6 +36,7 @@ import {
   type TargetCompletionVerificationPayload,
   type TraceId,
   type TurnBackgroundAttribution,
+  type ToolSearchMode,
   type TurnId,
   type UsageStorePort,
   type WorkspaceId,
@@ -150,6 +151,8 @@ interface SessionStartupPreferences {
   nativeSearchEnhancementsEnabled: boolean;
   /** 工具与权限页的危险命令策略。缺席即严格（core 侧解释）。 */
   dangerousCommandPolicy?: DangerousCommandPolicy;
+  /** F14：Host 侧工具搜索模式；缺席 = off（与引入前行为一致）。 */
+  toolSearchMode?: ToolSearchMode;
   resolveInitialBashShellSelection: () => Promise<ExecutionShellSelection | undefined>;
 }
 
@@ -3306,6 +3309,7 @@ async function resolveSessionStartupPreferences(
       // 子会话继承父会话冻结的策略，而不是重新去问 Host：
       // 否则「新建会话后生效」会在子代理上变成"立即生效"，用户看到的语义就不一致了。
       dangerousCommandPolicy: source.parent.dangerousCommandPolicy,
+      ...(source.parent.toolSearchMode ? { toolSearchMode: source.parent.toolSearchMode } : {}),
       resolveInitialBashShellSelection: async () => inheritedShellSelection,
     };
   }
@@ -3331,6 +3335,7 @@ async function resolveSessionStartupPreferences(
     modelContextBudgetStrategy: DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
     nativeSearchEnhancementsEnabled: runtimePreferences.nativeSearchEnhancementsEnabled,
     dangerousCommandPolicy: runtimePreferences.dangerousCommandPolicy,
+    ...(runtimePreferences.toolSearchMode ? { toolSearchMode: runtimePreferences.toolSearchMode } : {}),
     resolveInitialBashShellSelection: async () => {
       const executionPreferences = await requestSessionRuntimePreferences(
         context,
@@ -3423,6 +3428,10 @@ async function createRecord(
       toolAllowlist: "toolAllowlist" in params ? params.toolAllowlist : undefined,
       toolDisallowlist: "toolDenylist" in params ? params.toolDenylist : undefined,
       nativeSearchEnhancementsEnabled: startupPreferences.nativeSearchEnhancementsEnabled,
+      // F14：工具搜索只有创建/恢复期生效；CLI 直连（--toolsearch-mode）不走这里。
+      ...(startupPreferences.toolSearchMode
+        ? { toolSearch: { mode: startupPreferences.toolSearchMode } }
+        : {}),
       modelContextBudgetStrategy: startupPreferences.modelContextBudgetStrategy,
       // 危险命令策略是 session 级冻结的授权面：只在创建/恢复边界写入 runtimeConfig。
       ...(startupPreferences.dangerousCommandPolicy
@@ -3492,6 +3501,9 @@ async function createRecord(
     // 记在 record 上供子会话 inherit（见 resolveSessionStartupPreferences 的 inherit 分支）。
     ...(startupPreferences.dangerousCommandPolicy
       ? { dangerousCommandPolicy: startupPreferences.dangerousCommandPolicy }
+      : {}),
+    ...(startupPreferences.toolSearchMode
+      ? { toolSearchMode: startupPreferences.toolSearchMode }
       : {}),
     ...(parentSessionId ? { parentSessionId } : {}),
     persistence: "persistence" in params ? (params.persistence ?? "immediate") : "immediate",
