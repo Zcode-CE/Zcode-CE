@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { isSidePaneFullViewShortcut } from "../src/app-shell/sidePaneFullViewShortcut.js";
 import enUS from "../src/i18n/locales/en-US.js";
 import zhCN from "../src/i18n/locales/zh-CN.js";
 
@@ -36,9 +37,20 @@ test("关闭面板或切换 owner 会退出全视图", () => {
 
 test("快捷键只在桌面注册，按钮与文案在位", () => {
   assert.match(layoutSource, /if \(!isDesktop\) return;/u);
-  assert.match(layoutSource, /event\.key\.toLowerCase\(\) !== "f"/u);
+  assert.match(layoutSource, /isSidePaneFullViewShortcut\(event\)/u);
   assert.match(layoutSource, /onToggleFullView=\{toggleSidePaneFullView\}/u);
   assert.match(panelSource, /sidePane\.fullView\.enter/u);
   assert.ok("sidePane.fullView.enter" in zhCN);
   assert.ok("sidePane.fullView.exit" in enUS);
+});
+
+test("快捷键判定：⌘/Ctrl+Shift+F，排除 Alt、无 Shift 与非 F 键", () => {
+  const base = { key: "f", metaKey: false, ctrlKey: false, shiftKey: true, altKey: false };
+  assert.equal(isSidePaneFullViewShortcut({ ...base, metaKey: true }), true);
+  assert.equal(isSidePaneFullViewShortcut({ ...base, ctrlKey: true }), true);
+  assert.equal(isSidePaneFullViewShortcut({ ...base, key: "F", ctrlKey: true }), true);
+  assert.equal(isSidePaneFullViewShortcut({ ...base, ctrlKey: true, altKey: true }), false);
+  assert.equal(isSidePaneFullViewShortcut({ ...base, ctrlKey: true, shiftKey: false }), false);
+  assert.equal(isSidePaneFullViewShortcut({ ...base, ctrlKey: true, key: "g" }), false);
+  assert.equal(isSidePaneFullViewShortcut({ ...base }), false);
 });

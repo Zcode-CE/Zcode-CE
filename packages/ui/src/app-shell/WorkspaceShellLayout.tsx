@@ -57,6 +57,7 @@ import {
 } from "@/browser-use/useBrowserScreenshotSurfaceRequest.js";
 import { AnimatedTerminalPanel } from "@/app-shell/AnimatedTerminalPanel.js";
 import { SIDE_PANE_DEFAULT_EXPANDED_SIZE } from "@/app-shell/sidePaneLayout.js";
+import { isSidePaneFullViewShortcut } from "@/app-shell/sidePaneFullViewShortcut.js";
 import { useAnimatedResizablePanel } from "@/app-shell/useAnimatedResizablePanel.js";
 import { ensureTaskNavigationWorkspace } from "@/app-shell/taskNavigationWorkspace.js";
 
@@ -479,9 +480,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   useEffect(() => {
     if (!isDesktop) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || !event.shiftKey || event.key.toLowerCase() !== "f") {
-        return;
-      }
+      if (!isSidePaneFullViewShortcut(event)) return;
       if (!isSidePaneVisible) return;
       event.preventDefault();
       toggleSidePaneFullView();
