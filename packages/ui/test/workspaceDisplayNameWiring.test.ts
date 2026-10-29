@@ -15,6 +15,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 const itemSource = readFileSync(resolve(here, "../src/WorkspaceSidebarItem.tsx"), "utf8");
 const sidebarSource = readFileSync(resolve(here, "../src/WorkspaceSidebar.tsx"), "utf8");
 const sortableSource = readFileSync(resolve(here, "../src/SortableWorkspaceSidebar.tsx"), "utf8");
+const archivedSource = readFileSync(
+  resolve(here, "../src/WorkspaceArchivedTasksFlatSection.tsx"),
+  "utf8",
+);
 
 test("侧栏行优先使用展示名，回落 tab.label", () => {
   assert.match(itemSource, /displayNameOverride\?\.trim\(\) \|\| tab\.label/u);
@@ -35,11 +39,10 @@ test("文件树请求的 workspaceName 也使用展示名", () => {
   assert.match(itemSource, /workspaceName: displayNameOverride\?\.trim\(\) \|\| tab\.label/u);
 });
 
-test("归档平铺列表的工作区标签使用展示名并回落", () => {
-  const archivedSource = readFileSync(
-    resolve(here, "../src/WorkspaceArchivedTasksFlatSection.tsx"),
-    "utf8",
-  );
+test("归档列表按工作区分组，且工作区标签使用展示名并回落", () => {
+  assert.match(archivedSource, /archivedGroups/u, "缺少按工作区分组");
+  assert.match(archivedSource, /collapsedWorkspaceKeys/u, "缺少分组折叠");
+  assert.match(archivedSource, /showArchivedGroupHeaders/u, "单工作区不应显示组头");
   assert.match(archivedSource, /sharedSettings\?\.workspaceDisplayNames\?\./u);
   assert.match(archivedSource, /override \|\| tab\.label \|\| getPathLeaf/u);
 });
