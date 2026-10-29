@@ -90,5 +90,7 @@ turn-model-step（进入 assistant 历史之前）、turn-tools（part/事件/�
   （`tools: []`）与 compact summary 都走 `prepareRuntimeProviderRequest`；off 下三者与改动前
   逐字节一致（`core/test/toolSearchWiring.test.ts` 的 deepEqual 断言）。
 - CLI help（zh/en）包含 `--toolsearch-mode` 四态。
-- 仍缺：真实 provider E2E（native 的 beta 头与 `tool_reference` 网关行为）、executor 级完整
-  `ToolExecutorDeps` 桩测试；TUI/桌面是否需要专门的 ToolSearch 卡片待评估（通用工具渲染未见异常）。
+- Executor 级准入：`core/test/toolSearchExecutorAdmission.test.ts` 直接驱动 `executeToolCall`，
+  断言 off 与「目录里没有目标」两条拒绝分支都不执行目标 handler、且发出配对失败事件。
+- 仍缺：真实 provider E2E（native 的 beta 头与 `tool_reference` 网关行为）；TUI/桌面是否需要
+  专门的 ToolSearch 卡片待评估（通用工具渲染未见异常）。
