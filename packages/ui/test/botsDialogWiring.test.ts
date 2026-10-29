@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import zhCN from "../src/i18n/locales/zh-CN.js";
 import enUS from "../src/i18n/locales/en-US.js";
 import { BOT_REPLY_GRANULARITIES } from "../src/botsUi.js";
@@ -36,27 +37,70 @@ function botsKeys(locale: Record<string, string>): string[] {
     .sort();
 }
 
-test("i18n：两份 locale 的 bots.* 键集完全一致（259 键，无单语缺漏）", () => {
+test("i18n：两份 locale 的 bots.* 键集完全一致（无单语缺漏）", () => {
   const zh = botsKeys(zhCN);
   const en = botsKeys(enUS);
-  assert.equal(zh.length, 259, "zh-CN 的 bots.* 键数必须是 259");
-  assert.equal(en.length, 259, "en-US 的 bots.* 键数必须是 259");
+  // 不写死键数：它会随功能漂移。钉住的是「双语一致」与「F8 族在位」。
+  assert.ok(zh.length > 200, "bots.* 键数异常少，检查字典是否被截断");
   assert.deepEqual(zh, en, "两份 locale 的键集必须逐键一致");
+  for (const key of [
+    "bots.boundGroups.title",
+    "bots.boundGroups.count",
+    "bots.privateDelivery.retry",
+  ]) {
+    assert.ok(key in zhCN && key in enUS, "F8 群/话题与私聊重试的键必须在位：" + key);
+  }
 });
 
+/** 取一个表达式里的字面量字符串（含三元两支）；只有它们能静态判定。 */
+function literalStrings(node: ts.Expression): string[] {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return [node.text];
+  if (ts.isConditionalExpression(node)) {
+    return [...literalStrings(node.whenTrue), ...literalStrings(node.whenFalse)];
+  }
+  if (ts.isParenthesizedExpression(node)) return literalStrings(node.expression);
+  return [];
+}
+
+/**
+ * AST 提取组件里的消息 id。
+ *
+ * 为什么不用正则（2026-10-29 审计 P0-2）：原实现只扫 4 个文件、正则不认三元 id，
+ * 13 条群/话题与私聊重试的键因此全漏，测试一直绿而界面显示键名。
+ * 这里覆盖 `id`/`messageId` 属性（含三元）与 `t()` 字面量；动态拼接仍不可静态判定。
+ */
+function extractMessageIds(relPath: string): string[] {
+  const file = join(packageRoot, relPath);
+  const source = readFileSync(file, "utf8");
+  const sf = ts.createSourceFile(file, source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TSX);
+  const out: string[] = [];
+  function walk(node: ts.Node): void {
+    if (ts.isPropertyAssignment(node)) {
+      const name =
+        ts.isIdentifier(node.name) || ts.isStringLiteral(node.name) ? node.name.text : null;
+      if (name === "id" || name === "messageId") out.push(...literalStrings(node.initializer));
+    }
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+      if (["t", "translate"].includes(node.expression.text) && node.arguments[0]) {
+        out.push(...literalStrings(node.arguments[0]));
+      }
+    }
+    ts.forEachChild(node, walk);
+  }
+  walk(sf);
+  return out;
+}
+
 test("i18n：组件引用的每一条消息键都在两份 locale 里（含动态模板族）", () => {
-  // 静态键：从组件源码里提取所有 intl.formatMessage({ id: ... }) / t("...") 字面量。
-  const sources = [
+  // 静态键：扫 BotsDialog 主文件与 BotsDialog/ 下全部子组件（新增组件自动纳入）。
+  const botDialogDir = join(packageRoot, "src/BotsDialog");
+  const componentFiles = [
     "src/BotsDialog.tsx",
-    "src/BotsDialog/BotSummaryCard.tsx",
-    "src/BotsDialog/ProviderSettingsCard.tsx",
-    "src/BotsDialog/WorkspaceAccessCard.tsx",
-  ]
-    .map((rel) => readSource(rel))
-    .join("\n");
-  const staticIds = [...sources.matchAll(/(?:id|messageId):\s*"([a-zA-Z0-9.]+)"/g)].map(
-    (m) => m[1]!,
-  );
+    ...readdirSync(botDialogDir)
+      .filter((name) => name.endsWith(".tsx"))
+      .map((name) => "src/BotsDialog/" + name),
+  ];
+  const staticIds = componentFiles.flatMap((rel) => extractMessageIds(rel));
 
   // 动态模板族：botsUi 的 provider 列表 × 渠道文案 / 描述 / 状态。
   const providers = ["weixin", "feishu", "lark", "telegram", "webhook"];

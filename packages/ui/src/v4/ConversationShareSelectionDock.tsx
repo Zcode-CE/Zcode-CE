@@ -97,7 +97,6 @@ function ConversationShareSelectionDockImpl({
     allowedFormats: formatConversationShareAllowedArtifacts(issue, locale),
     actual: formatValue(issue.actual, issue.code),
     limit: formatValue(issue.limit, issue.code),
-    phase: issue.phase ?? "—",
   });
 
   return (

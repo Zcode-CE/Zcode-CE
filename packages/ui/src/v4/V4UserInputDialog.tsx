@@ -7,6 +7,7 @@ import {
 } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
+import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import type { V4UserInputViewModel } from "@/v4/pendingInteractionAdapter.js";
 import { runUserAction } from "@/lib/userActionTelemetry.js";
 
@@ -18,6 +19,7 @@ interface V4UserInputDialogProps {
 /** v4 userInput 交互最小弹窗（竖切）。 */
 export function V4UserInputDialog({ model, onSubmit }: V4UserInputDialogProps) {
   const [freeText, setFreeText] = useState("");
+  const { intl } = useZCodeIntl();
 
   const handleOption = useCallback(
     (optionId: string) => {
@@ -72,7 +74,7 @@ export function V4UserInputDialog({ model, onSubmit }: V4UserInputDialogProps) {
               data-testid={TID_V4_USER_INPUT_TEXT}
             />
             <Button type="button" onClick={handleFreeTextSubmit}>
-              提交
+              {intl.formatMessage({ id: "v4.userInput.submit" })}
             </Button>
           </div>
         ) : null}

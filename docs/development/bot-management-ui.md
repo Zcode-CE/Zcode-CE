@@ -1,9 +1,8 @@
-# 135 · Bot 管理面（桌面端 UI 接线）与 botDeliveryTarget 消费链
+# Bot 管理面（桌面端 UI 接线）与 botDeliveryTarget 消费链
 
-> 状态：**已实现（ce.5，工作树待提交）**。本文覆盖 backlog「ce.5 第一件事（桌面端 bot UI 接线，代价 L）」与同批项
+> 状态：**已实现（ce.5）**。本文覆盖 backlog「ce.5 第一件事（桌面端 bot UI 接线，代价 L）」与同批项
 > 「botDeliveryTarget 消费链打通（代价 M）」——两者是同一条链的两端：UI 让用户能「同意」，
 > 消费链让「回推地址」能落库。只做一端会给出「看起来能用、实际不生效」的形态。
-> 编号说明：任务书写的「132-号」已被 `132-not-started-state-semantics.md` 占用（131×2/132/133/134 均已存在），故取下一可用号 **135**。
 
 ## 0. 开工前读了什么 / 结论一致性
 
@@ -20,7 +19,7 @@
 
 ## 1. 产品规则（bot 管理面）
 
-1. **默认关闭是状态，不是缺失入口**：远控面板「IM 机器人」标签页在宿主注入通道后渲染；未注入（Web 客户端、旧 host）时按 `canRenderRemoteControlImBotTab` 整块不渲染（fix.2 纪律：不渲染点了没结果的按钮）。
+1. **默认关闭是状态，不是缺失入口**：远控面板「IM 机器人」标签页在宿主注入通道后渲染（`botsService` 是必填访问器，Web 与手机客户端同样注入）。只有旧 host / 测试 double 不注入通道时才按 `canRenderRemoteControlImBotTab` 整块不渲染（fix.2 纪律：不渲染点了没结果的按钮）。
 2. **「同意后即可使用」是可验收动作**：用户在标签页点「启用」→ 确认弹窗（三条事实 + 重启生效提示，P4 已落地）→ `onEnable` 结算后**打开 BotsDialog**（bot 管理面）。BotsDialog 提供：建 bot、配渠道（ telegram/飞书/Lark/微信/webhook）、扫码绑定（飞书/Lark/微信）、Telegram token、webhook secret、工作区授权、回复粒度、启停、删除。**同意动作的落点必须是真实能力**，不得停在「已请求」。
 3. **Webhook 渠道受入站面约束**：webhook bot 的 secret 保存后，入站回调需服务重启才生效（BOT-INGRESS-SPEC §2.3 P4）。该提示已在 `REMOTE_CONTROL_IM_BOT_RESTART_NOTICE_MESSAGE_ID` 常显，BotsDialog 内不重复。
 4. **不搬 \`WebRemoteControlDialog\`**：上游把 BotsDialog 挂在该弹窗下；CE 的远控面板（RemoteControlPanel 标签页共存）是既定入口，BotsDialog 从宿主层挂载（§4.2）。这是**有意偏离上游形态**，理由：CE 的伞名/命名纪律（「Web 控制」/「IM 机器人」两页共存）已由 `RemoteControlPanel.tsx` 落地，再搬上游弹窗会出现两个重叠入口。
@@ -60,8 +59,8 @@
 ### 4.1 服务访问（`IServiceAccessor` + 客户端访问器）
 
 \`\`\`ts
-// packages/services/src/accessor.ts —— 新增（可选，旧 host/测试 double 可不提供）
-readonly botsService?: IBotsService;
+// packages/services/src/accessor.ts —— 新增（必填；与上游一致）
+readonly botsService: IBotsService;
 
 // packages/client/src/remoteServiceAccess.ts —— 新增（channel 由 exposeOnChannelServer 自动暴露）
 readonly botsService: IBotsService; // constructor: ProxyChannel.toService(channelClient.getChannel(IBotsService.channelName))
@@ -88,19 +87,19 @@ onEnable: () => void | Promise<void>;
 \`\`\`tsx
 BotsDialog({ open, onOpenChange, workspacePath, workspaceIdentity, entryProvider? })
 \`\`\`
-子组件 \`BotSummaryCard\`/\`ProviderSettingsCard\`/\`WorkspaceAccessCard\`/\`shared\` + \`botsUi.ts\` 一并搬运；`useServices()` 取 `botsService`（服务经 hooks 访问，符合「UI 与平台边界」纪律——§0 已登记该结论对 §3.3 的修正）。
+子组件 \`BotSummaryCard\`/\`ProviderSettingsCard\`/\`WorkspaceAccessCard\`/\`BoundGroupsCard\`/\`PrivateDeliveryRetry\`/\`shared\` + \`botsUi.ts\` 一并搬运（后两者是 F8 群/话题与私聊重试的同批新增卡片）；`useServices()` 取 `botsService`（服务经 hooks 访问，符合「UI 与平台边界」纪律——§0 已登记该结论对 §3.3 的修正）。
 
 ## 5. 验收场景
 
 | #   | 场景                                   | 判据                                                                                                                                                                                                                                                                                                                         |
 | --- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A1  | 通道未注入（Web 客户端）               | 「IM 机器人」标签触发器与内容整块不渲染（既有 \`canRenderRemoteControlImBotTab\` 护栏，remoteControlPanel.test.ts 已覆盖，变更后须仍绿）                                                                                                                                                                                     |
+| A1  | 通道未注入（旧 host / 测试 double）    | 「IM 机器人」标签触发器与内容整块不渲染（\`canRenderRemoteControlImBotTab\` 护栏，remoteControlPanel.test.ts 覆盖）。Web 客户端会注入必填的 \`botsService\`，因此正常渲染                                                                                                                                                    |
 | A2  | 注入后点「启用」→ 确认 → `onEnable`    | BotsDialog 出现（标题 \`bots.title\`、侧栏「添加机器人」）；面板落到 \`requested\` 档                                                                                                                                                                                                                                        |
 | A3  | 建 bot                                 | 选渠道 → 保存 → 侧栏出现该 bot（\`formatBotDisplayName\` + 渠道名）；`saveBot\` 落盘后 \`getConfig()\` 可见                                                                                                                                                                                                                  |
 | A4  | 扫码绑定（飞书/Lark/微信）             | 二维码区域出现；轮询 \`poll\*Registration\` 成功后收起并 toast                                                                                                                                                                                                                                                               |
 | A5  | 工作区授权                             | \`WorkspaceAccessCard\` all/selected 切换 + 逐工作区勾选 → \`allowedWorkspaces\` 落盘                                                                                                                                                                                                                                        |
 | A6  | 启停                                   | \`Switch\` 翻 \`enabled\` → \`saveBot\` 落盘；侧栏圆点 \`runtimeDot\` 随之变化                                                                                                                                                                                                                                               |
-| A7  | i18n                                   | 259 个 \`bots.\*\` 键中英双语均在位；渲染无 \`missing key\` 回退字面量                                                                                                                                                                                                                                                       |
+| A7  | i18n                                   | 组件引用的字面量键 ⊆ 两份字典（\`i18nKeyCoverage.test.ts\` 全仓护栏，含三元 id）；真渲染不出现键名回退                                                                                                                                                                                                                       |
 | A8  | 通道 status                            | 有已启用 bot ⇒ 徽标「已启用」、无「启用」按钮；无 bot ⇒ 反之                                                                                                                                                                                                                                                                 |
 | B1  | 回推地址落库（**必须打到最终消费点**） | 从 \`botsService\` 发起带 \`botDeliveryTarget\` 的 prompt → 值活着穿过 adapter（\`sendPrompt\`/\`sendPromptToAgent\`）→ v4 \`prompt-turn\` 写 \`record.activeBotDeliveryTarget\` → \`automation-port\` 注入 → CronCreate → \`automationRepo.getBotDeliveryTarget(id)\` 返回该值（即 INSERT 已落 \`bot_delivery_target\` 列） |
 | B2  | 终态回推                               | scheduler 读 \`getBotDeliveryTarget\` 得到的目标，其 \`provider/botId/providerUserId/chatType\` 与发起时一致                                                                                                                                                                                                                 |
