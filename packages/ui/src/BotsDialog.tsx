@@ -1027,7 +1027,7 @@ export function BotsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex h-[calc(100vh-6rem)] max-h-168 max-w-4xl flex-col overflow-hidden rounded-2xl"
+        className="flex h-[calc(100dvh-6rem)] max-h-168 w-[calc(100vw-1.5rem)] max-w-4xl flex-col overflow-hidden rounded-2xl"
         onEscapeKeyDown={handleDialogEscapeKeyDown}
       >
         <DialogHeader>
@@ -1042,8 +1042,9 @@ export function BotsDialog({
           </div>
         </DialogHeader>
 
-        <div className="flex min-h-0 flex-1 gap-3">
-          <aside className="flex w-64 shrink-0 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 md:flex-row">
+          {/* 手机浏览器也能进入本弹窗：窄屏时列表在上、详情在下，避免固定 256px 侧栏把主区挤成一条。 */}
+          <aside className="flex max-h-48 w-full shrink-0 flex-col md:max-h-none md:w-64">
             <div className="min-h-0 flex-1 overflow-y-auto">
               <Button
                 type="button"

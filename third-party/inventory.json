@@ -1832,7 +1832,7 @@
     "packages/ui/src/assets/highspeed/share-dialog-noise-light.png": "ffa76336412d87372d6d8b9e1d25a4133df7bea61ef507c60f8666a321835d2b",
     "packages/ui/src/assets/highspeed/share-dialog-noise.png": "ffa76336412d87372d6d8b9e1d25a4133df7bea61ef507c60f8666a321835d2b",
     "packages/ui/src/assets/highspeed/zai-logo.png": "63d482066b87a832367e95ffe771710ac0b5c88eaace1d374bb23ee922623106",
-    "packages/ui/src/BotsDialog.tsx": "d03bed86353f58d6ae34622b358d7989bf55763997ff4cf6e71f4a2196b7fdb9",
+    "packages/ui/src/BotsDialog.tsx": "4a14730abf1268d1ab148a141e9ca1098c53c68179edef5b28243b5b2b85a2e4",
     "packages/ui/src/BotsDialog/BotSummaryCard.tsx": "2f816010375d3efc2d07c01f4c3793d31d4786d2d2cb938ad857f13f6a1bed9d",
     "packages/ui/src/BotsDialog/BoundGroupsCard.tsx": "5810929801733b2fda0e70eca2af2cfe4b1989123c5227052568ba4b740bf86d",
     "packages/ui/src/BotsDialog/PrivateDeliveryRetry.tsx": "4155b4c6b2c955281df720e1e219bc5441e1ae415e071cdcee449374bac1892b",
@@ -31776,7 +31776,7 @@
       "files": [
         {
           "file": "packages/ui/src/BotsDialog.tsx",
-          "sha256": "d03bed86353f58d6ae34622b358d7989bf55763997ff4cf6e71f4a2196b7fdb9"
+          "sha256": "4a14730abf1268d1ab148a141e9ca1098c53c68179edef5b28243b5b2b85a2e4"
         },
         {
           "file": "packages/ui/src/BotsDialog/BotSummaryCard.tsx",
