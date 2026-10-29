@@ -1772,6 +1772,7 @@ const enUS: Record<string, string> = {
   "preview.image.downloadStarted": "Image download started",
   "preview.image.downloadFailed": "Couldn't download the image. Try again.",
   "preview.image.addToChatFailed": "No composer is available to add this image to.",
+  "preview.image.actionsMenu": "Image actions",
   "taskList.justNow": "now",
   "taskList.minutesAgo": "{minutes}m",
   "taskList.hoursAgo": "{hours}h",

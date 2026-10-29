@@ -1,5 +1,17 @@
 import type { CSSProperties, SyntheticEvent } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu.js";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu.js";
 import { toast } from "@/components/ui/toast.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { dispatchWorkspaceFileAddToChat } from "@/lib/workspaceFileDrag.js";
@@ -218,45 +230,96 @@ export function ImagePreviewContent({
     ? "h-full max-h-full w-full max-w-full object-contain"
     : "h-auto max-h-full w-auto max-w-full object-contain";
 
+  const menuItems = (
+    <>
+      <ContextMenuItem disabled={!sourcePath} onSelect={handleAddToChat}>
+        {intl.formatMessage({ id: "workspaceFileTree.addToChat" })}
+      </ContextMenuItem>
+      <ContextMenuItem
+        disabled={!imageLoaded || downloading}
+        onSelect={() => void handleDownloadImage()}
+      >
+        {intl.formatMessage({ id: "preview.image.download" })}
+      </ContextMenuItem>
+      <ContextMenuItem disabled={!imageLoaded || copying} onSelect={() => void handleCopyImage()}>
+        {intl.formatMessage({ id: "preview.image.copy" })}
+      </ContextMenuItem>
+    </>
+  );
+
   return (
-    <div
-      className={`relative flex h-full min-h-0 items-center justify-center overflow-hidden p-10 ${IMAGE_PREVIEW_CHECKERBOARD_CLASS}`}
-    >
-      <div className="absolute right-3 top-3 z-10 flex flex-wrap items-center justify-end gap-2">
-        <button
-          type="button"
-          className="inline-flex h-8 items-center rounded-lg border-0 bg-surface/90 px-3 text-ui-base font-medium text-foreground shadow-sm transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={!imageLoaded || !sourcePath}
-          onClick={handleAddToChat}
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          className={`relative flex h-full min-h-0 items-center justify-center overflow-hidden p-10 ${IMAGE_PREVIEW_CHECKERBOARD_CLASS}`}
         >
-          {intl.formatMessage({ id: "workspaceFileTree.addToChat" })}
-        </button>
-        <button
-          type="button"
-          className="inline-flex h-8 items-center rounded-lg border-0 bg-surface/90 px-3 text-ui-base font-medium text-foreground shadow-sm transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={!imageLoaded || downloading}
-          onClick={() => void handleDownloadImage()}
-        >
-          {intl.formatMessage({ id: "preview.image.download" })}
-        </button>
-        <button
-          type="button"
-          className="inline-flex h-8 items-center rounded-lg border-0 bg-surface/90 px-3 text-ui-base font-medium text-foreground shadow-sm transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={!imageLoaded || copying}
-          onClick={() => void handleCopyImage()}
-        >
-          {intl.formatMessage({ id: "preview.image.copy" })}
-        </button>
-      </div>
-      <img
-        ref={imageRef}
-        alt={title}
-        className={imageClassName}
-        onLoad={handleLoad}
-        src={imageSource}
-        style={imageStyle}
-      />
-    </div>
+          <div className="absolute right-3 top-3 z-10 hidden items-center gap-2 md:flex">
+            <button
+              type="button"
+              className="inline-flex h-8 items-center rounded-lg border-0 bg-surface/90 px-3 text-ui-base font-medium text-foreground shadow-sm transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!imageLoaded || !sourcePath}
+              onClick={handleAddToChat}
+            >
+              {intl.formatMessage({ id: "workspaceFileTree.addToChat" })}
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-8 items-center rounded-lg border-0 bg-surface/90 px-3 text-ui-base font-medium text-foreground shadow-sm transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!imageLoaded || downloading}
+              onClick={() => void handleDownloadImage()}
+            >
+              {intl.formatMessage({ id: "preview.image.download" })}
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-8 items-center rounded-lg border-0 bg-surface/90 px-3 text-ui-base font-medium text-foreground shadow-sm transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!imageLoaded || copying}
+              onClick={() => void handleCopyImage()}
+            >
+              {intl.formatMessage({ id: "preview.image.copy" })}
+            </button>
+          </div>
+          <div className="absolute right-3 top-3 z-10 md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-8 items-center rounded-lg border-0 bg-surface/90 px-3 text-ui-base font-medium text-foreground shadow-sm transition-colors hover:bg-hover"
+                >
+                  {intl.formatMessage({ id: "preview.image.actionsMenu" })}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem disabled={!sourcePath} onSelect={handleAddToChat}>
+                  {intl.formatMessage({ id: "workspaceFileTree.addToChat" })}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!imageLoaded || downloading}
+                  onSelect={() => void handleDownloadImage()}
+                >
+                  {intl.formatMessage({ id: "preview.image.download" })}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!imageLoaded || copying}
+                  onSelect={() => void handleCopyImage()}
+                >
+                  {intl.formatMessage({ id: "preview.image.copy" })}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <img
+            ref={imageRef}
+            alt={title}
+            className={imageClassName}
+            onLoad={handleLoad}
+            src={imageSource}
+            style={imageStyle}
+          />
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>{menuItems}</ContextMenuContent>
+    </ContextMenu>
   );
 }
 

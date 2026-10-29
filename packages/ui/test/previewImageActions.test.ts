@@ -49,3 +49,13 @@ test("添加到聊天走文件 mention 事件：工作区内相对、工作区�
   assert.ok("preview.image.addToChatFailed" in zhCN);
   assert.ok("preview.image.addToChatFailed" in enUS);
 });
+
+test("桌面右键菜单与窄屏操作菜单复用同一组动作", () => {
+  assert.match(source, /<ContextMenu>/u);
+  assert.match(source, /<ContextMenuTrigger asChild>/u);
+  assert.match(source, /DropdownMenuTrigger/u);
+  assert.match(source, /preview\.image\.actionsMenu/u);
+  assert.match(source, /md:hidden/u);
+  assert.ok("preview.image.actionsMenu" in zhCN);
+  assert.ok("preview.image.actionsMenu" in enUS);
+});

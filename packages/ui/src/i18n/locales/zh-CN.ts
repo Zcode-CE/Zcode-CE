@@ -1645,6 +1645,7 @@ const zhCN: Record<string, string> = {
   "preview.image.downloadStarted": "图片下载已开始",
   "preview.image.downloadFailed": "下载图片失败，请重试。",
   "preview.image.addToChatFailed": "没有可接收的输入框，无法添加到聊天。",
+  "preview.image.actionsMenu": "图片操作",
   "taskList.justNow": "刚刚",
   "taskList.minutesAgo": "{minutes}分",
   "taskList.hoursAgo": "{hours}小时",
