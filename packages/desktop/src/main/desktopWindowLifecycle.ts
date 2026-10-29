@@ -12,6 +12,7 @@ import {
   sumWindowUnreadCounts,
   syncAppUnreadBadge,
 } from "./unreadBadge.js";
+import { createUnreadOverlayIcon } from "./unreadOverlayIcon.js";
 import { attachDesktopWindowSizePersistence, type DesktopWindowSize } from "./desktopWindowSize.js";
 import {
   registerMainApplicationWindow,
@@ -323,6 +324,13 @@ export function syncApplicationUnreadBadge(windowUnreadCountMap: Map<number, num
     totalUnreadCount: sumWindowUnreadCounts(windowUnreadCountMap),
     setBadgeCount: (count) => {
       app.setBadgeCount(count);
+    },
+    setOverlayIcon: (count) => {
+      // Windows：overlay 是窗口级的，广播给所有窗口；0 即清除。
+      const icon = count > 0 ? createUnreadOverlayIcon() : null;
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.setOverlayIcon(icon, count > 0 ? `${count} unread` : "");
+      }
     },
   });
 }

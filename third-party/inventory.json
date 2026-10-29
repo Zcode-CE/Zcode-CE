@@ -408,7 +408,7 @@
     "packages/desktop/src/main/desktopOAuthDeepLink.ts": "d37eee3fc71564e8e12aa8f61dfb1feb479e1f6be693d4347c1fd8b7d36eae57",
     "packages/desktop/src/main/desktopTray.ts": "b61985e57d812f59510e0f9b18d5ea2287182018c0cf33bd8122263ea0815d44",
     "packages/desktop/src/main/desktopTraySupport.ts": "c261d42996f445e21b7d3d57a766361c243dae88897a450d61185d8701516078",
-    "packages/desktop/src/main/desktopWindowLifecycle.ts": "79b131f6b5cec4cb4b62d99cb3c6d7e3bae9d11c4619905d95a15f3e937c3544",
+    "packages/desktop/src/main/desktopWindowLifecycle.ts": "72f2d9ee1143a336ebbd35b31283705e2ffc412285b75281d7f18ff31399544d",
     "packages/desktop/src/main/embeddedBrowserBluetoothGuard.ts": "09bc0674fc65ebd8aa5ca742ee88a2117340e6fcc65897ba7de738ae89a841e9",
     "packages/desktop/src/main/embeddedBrowserDeviceOptions.ts": "e75152aacec8c19f6acffee13034e10565d758222cb915c22e669eacb6192910",
     "packages/desktop/src/main/embeddedBrowserPermissionPolicy.ts": "375d603b2d61588a3dbf52f2038390be7cc9a299955162b17cf24287472cb600",
@@ -33226,7 +33226,7 @@
         },
         {
           "file": "packages/desktop/src/main/desktopWindowLifecycle.ts",
-          "sha256": "79b131f6b5cec4cb4b62d99cb3c6d7e3bae9d11c4619905d95a15f3e937c3544"
+          "sha256": "72f2d9ee1143a336ebbd35b31283705e2ffc412285b75281d7f18ff31399544d"
         }
       ]
     },
