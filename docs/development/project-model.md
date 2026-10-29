@@ -100,8 +100,8 @@
    `packages/services/src/zcode-agent/zcodeAgentService.ts` 的 `subscribeConversationV4`。
    该路径本轮**没有下发方**（改动范围不含 `packages/services`）：重启后恢复的会话沿用 CLI
    自己的恢复结果，不重新读设置。
-2. 其它 `createSession` 入口未接：`useSavedWorkflowLauncher`、`useSavedWorkflowPromote`
-   （保存的工作流 / Automation 新建会话）。
+2. 中枢入口已接：`useSavedWorkflowLauncher` / `useSavedWorkflowPromote` 的 `createSession`
+   会带上该工作区的附加目录（2026-10-30 补齐）。Automation 派生的会话仍由对应消费方决定。
 3. 已打开的草稿预热会话：目录变化会让预热会话按 owner key 换代（未提升的 draft 会话被回收重建），
    已预传到旧会话的附件需要重新添加；已运行的会话不受影响。
 

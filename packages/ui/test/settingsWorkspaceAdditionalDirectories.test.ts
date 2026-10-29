@@ -66,3 +66,22 @@ test("★渲染分支存在且指向 WorkspaceAdditionalDirectoriesSection（防
     "SettingsPage.tsx 的三元渲染链里缺少该分支 —— 分区会显示为空白",
   );
 });
+
+test("★中枢「运行」与「提升为全局」的 createSession 也带附加目录", () => {
+  for (const relative of [
+    "src/settings/saved-workflows/useSavedWorkflowLauncher.ts",
+    "src/settings/saved-workflows/useSavedWorkflowPromote.ts",
+  ]) {
+    const source = readFileSync(resolve(here, "..", relative), "utf8");
+    assert.match(
+      source,
+      /buildAdditionalDirectoriesPayload\(/u,
+      `${relative} 缺少附加目录 payload`,
+    );
+    assert.match(
+      source,
+      /resolveWorkspaceAdditionalDirectories\(/u,
+      `${relative} 没从设置里取该工作区的目录`,
+    );
+  }
+});

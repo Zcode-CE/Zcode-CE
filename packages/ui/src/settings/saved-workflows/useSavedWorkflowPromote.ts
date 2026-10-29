@@ -13,6 +13,11 @@ import { useCallback, useRef, useState } from "react";
 import { createCommandEnvelope } from "@/v4/commandFactory.js";
 import type { WorkspaceConnectionAgentService } from "@/v4/workspaceConnectionRegistry.js";
 import { logger } from "@/logger.js";
+import { useSettings } from "@/hooks/useSettingService.js";
+import {
+  buildAdditionalDirectoriesPayload,
+  resolveWorkspaceAdditionalDirectories,
+} from "@zcode/shared";
 import { buildSavedWorkflowPromotePrompt } from "@/settings/saved-workflows/savedWorkflowLaunchPrompt.js";
 import {
   acquireLaunchLease,
@@ -56,6 +61,7 @@ export function useSavedWorkflowPromote(params: {
   onNavigate?: (target: SavedWorkflowLaunchTarget, sessionId: string) => void;
 }): UseSavedWorkflowPromoteResult {
   const { agentService, onNavigate } = params;
+  const { settings } = useSettings();
   const [pending, setPending] = useState(false);
   // 同一帧内防重入的同步事实源（setPending 异步，单靠 state 挡不住双击）。
   const pendingRef = useRef(false);
@@ -70,6 +76,10 @@ export function useSavedWorkflowPromote(params: {
       }
       pendingRef.current = true;
       setPending(true);
+      const additionalDirectories = resolveWorkspaceAdditionalDirectories(
+        settings?.workspaceAdditionalDirectories,
+        launchWorkspaceId(target),
+      );
       const lease = acquireLaunchLease(target, agentService);
       try {
         const ack = await lease.transport.sendCommand(
@@ -77,6 +87,7 @@ export function useSavedWorkflowPromote(params: {
             type: "createSession",
             payload: {
               workspaceId: launchWorkspaceId(target),
+              ...buildAdditionalDirectoriesPayload(additionalDirectories),
               firstInput: { text: buildSavedWorkflowPromotePrompt(request) },
             },
             sessionId: null,
@@ -109,7 +120,7 @@ export function useSavedWorkflowPromote(params: {
         setPending(false);
       }
     },
-    [agentService, onNavigate],
+    [agentService, onNavigate, settings?.workspaceAdditionalDirectories],
   );
 
   return { promote, pending };

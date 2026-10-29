@@ -16,6 +16,11 @@ import {
   type WorkspaceConnectionAgentService,
 } from "@/v4/workspaceConnectionRegistry.js";
 import { logger } from "@/logger.js";
+import { useSettings } from "@/hooks/useSettingService.js";
+import {
+  buildAdditionalDirectoriesPayload,
+  resolveWorkspaceAdditionalDirectories,
+} from "@zcode/shared";
 
 /** 目标项目坐标（工作流所属项目，绝不取活动项目；不变式 7）；remoteSessionId 决定连接 endpoint。 */
 export interface SavedWorkflowLaunchTarget {
@@ -113,6 +118,7 @@ export function useSavedWorkflowLauncher(params: {
   onNavigate?: (target: SavedWorkflowLaunchTarget, sessionId: string) => void;
 }): UseSavedWorkflowLauncherResult {
   const { agentService, onNavigate } = params;
+  const { settings } = useSettings();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<SavedWorkflowLaunchError | null>(null);
   // pending 的同步事实源：防同一帧内重复触发（setPending 异步，单靠 state 挡不住）。
@@ -133,6 +139,11 @@ export function useSavedWorkflowLauncher(params: {
       setError(null);
 
       const workspaceId = launchWorkspaceId(target);
+      // 附加目录是创建期参数：中枢启动的会话同属该工作区，必须一起带上。
+      const additionalDirectories = resolveWorkspaceAdditionalDirectories(
+        settings?.workspaceAdditionalDirectories,
+        workspaceId,
+      );
       const lease = acquireLaunchLease(target, agentService);
 
       const deleteCreatedSession = (sessionId: string) => {
@@ -158,7 +169,7 @@ export function useSavedWorkflowLauncher(params: {
         const createAck = await lease.transport.sendCommand(
           createCommandEnvelope({
             type: "createSession",
-            payload: { workspaceId },
+            payload: { workspaceId, ...buildAdditionalDirectoriesPayload(additionalDirectories) },
             sessionId: null,
           }),
         );
@@ -221,7 +232,7 @@ export function useSavedWorkflowLauncher(params: {
         setPending(false);
       }
     },
-    [agentService, onNavigate],
+    [agentService, onNavigate, settings?.workspaceAdditionalDirectories],
   );
 
   return { launch, pending, error, clearError };
