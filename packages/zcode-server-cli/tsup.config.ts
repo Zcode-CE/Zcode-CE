@@ -47,6 +47,14 @@ export default defineConfig({
     // 外部依赖、交给 Node 原生加载，不引入新的 require shim 机制。
     "yazl",
     "yauzl",
+    // 飞书 SDK 是可选依赖（services 里动态 import，缺包时降级到 webhook channel），
+    // 与 desktop 的 externals 同口径保留外部；内联会把 qs → object-inspect 的 CJS
+    // util.inspect 带进 ESM bundle，触发同一个 __require 兜底。
+    "@larksuiteoapi/node-sdk",
+    // services 的 workspaceFileIgnore 引入 CJS 包 ignore（require("fs")/require("path")）；
+    // 内联进 ESM bundle 会落到同一个 __require 兜底，distEntrypoints 测试会因此变红。
+    // 与 yazl/yauzl 同处理：保留为外部依赖，交给 Node 原生加载。
+    "ignore",
     "@lydell/node-pty-darwin-arm64",
     "@lydell/node-pty-darwin-x64",
     "@lydell/node-pty-linux-arm64",
