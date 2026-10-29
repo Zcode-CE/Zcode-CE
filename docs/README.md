@@ -17,6 +17,7 @@
 | [上游同步台账](development/upstream-sync.md)                             | 每个上游版本同步了什么、有意未同步什么、确认过不存在的结论    |
 | [网页远控（无头服务器 + 浏览器面板）](development/web-remote-control.md) | 自托管网页远控：启动方式、安全默认值、手机使用、未测边界      |
 | [远程工作区（SSH / Docker / WSL）](development/remote-workspace.md)      | 远程工作区的默认行为、自建发布点、验收与排障                  |
+| [项目模型：现状与路线](development/project-model.md)                     | 项目/工作区实体、附加目录持久化、三条落地路线与推荐           |
 | [工作区可见性](development/workspace-registry.md)                        | 可见工作区的真相源、能全看不默认全看、未启动态                |
 | [IM 机器人管理面](development/bot-management-ui.md)                      | 建机器人 / 绑定渠道 / 授权工作区 / 群与话题的管理界面与消费链 |
 | [内置浏览器权限](development/embedded-browser-permissions.md)            | 站点权限 fail-closed、持久同意、弹窗桥与蓝牙守卫              |
