@@ -13,7 +13,7 @@ const root = resolve(import.meta.dirname, "..");
 const uiSrc = join(root, "packages", "ui", "src");
 
 // 与 packages/ui/test/designTokenRatchet.test.ts 保持同一组正则（改一处必须改两处）。
-export const RAW_FONT_SIZE_PATTERN = /\btext-(xs|sm|base|lg|xl|[2-9]xl)\b/g;
+export const RAW_FONT_SIZE_PATTERN = /(?<!font-)\btext-(xs|sm|base|lg|xl|[2-9]xl)\b/g;
 export const RAW_COLOR_PATTERN = /(?:text|border|bg)-(?:white|black)\/\d+|\[#[0-9a-fA-F]{3,8}\]/g;
 
 function collectFiles(directory) {

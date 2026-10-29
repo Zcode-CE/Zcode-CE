@@ -877,7 +877,7 @@ export function AnimatedSidePanePanel({
       <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-5 py-10">
         <div className="side-pane-open-tab-content flex w-full max-w-[20rem] flex-col gap-5">
           <div className="flex flex-col gap-2 text-center">
-            <h2 className="text-xl font-semibold leading-7 text-foreground">
+            <h2 className="text-ui-xl font-semibold leading-7 text-foreground">
               {intl.formatMessage({ id: "sidePane.openTab" })}
             </h2>
             <p className="text-ui-base leading-5 text-foreground-subtle">

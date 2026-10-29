@@ -2214,7 +2214,7 @@ function ConversationComposerImpl({
             </Button>
           </DialogClose>
           <DialogHeader className="gap-3 pr-8">
-            <DialogTitle className="text-xl font-semibold sm:text-2xl">
+            <DialogTitle className="text-ui-xl font-semibold sm:text-2xl">
               {intl.formatMessage({ id: "chat.queue.sendConfirm.title" })}
             </DialogTitle>
             <DialogDescription className="text-ui-base sm:text-ui-lg">

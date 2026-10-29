@@ -151,7 +151,7 @@ export function RemoteConnectionWizardHeader({
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-4">
-        <DialogTitle className="text-lg font-medium">{title}</DialogTitle>
+        <DialogTitle className="text-ui-lg font-medium">{title}</DialogTitle>
         <div className="flex shrink-0 items-center gap-1">
           {onMinimize ? (
             <Button

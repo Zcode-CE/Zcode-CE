@@ -680,7 +680,7 @@ export function ComputerUseSection({
       </Button>
       {verifyTimedOut && !restarting ? (
         <div className="flex flex-col items-start gap-1">
-          <span className="text-xs text-foreground-subtlest">
+          <span className="text-ui-xs text-foreground-subtlest">
             {intl.formatMessage({ id: "cuaPermission.modal.relaunchAppHint" })}
           </span>
           <Button type="button" variant="ghost" size="sm" onClick={() => void onRelaunchApp()}>

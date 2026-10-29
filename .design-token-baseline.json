@@ -1,10 +1,6 @@
 {
-  "total": 85,
+  "total": 62,
   "files": {
-    "packages/ui/src/BotsDialog.tsx": {
-      "size": 1,
-      "color": 0
-    },
     "packages/ui/src/ChatErrorBanner.tsx": {
       "size": 0,
       "color": 2
@@ -13,18 +9,6 @@
       "size": 0,
       "color": 1
     },
-    "packages/ui/src/ErrorBoundary.tsx": {
-      "size": 1,
-      "color": 0
-    },
-    "packages/ui/src/GitActionMenu.tsx": {
-      "size": 1,
-      "color": 0
-    },
-    "packages/ui/src/RemoteConnectionWizardChrome.tsx": {
-      "size": 1,
-      "color": 0
-    },
     "packages/ui/src/SettingsPage.tsx": {
       "size": 2,
       "color": 0
@@ -32,10 +16,6 @@
     "packages/ui/src/WelcomeScreen.tsx": {
       "size": 1,
       "color": 1
-    },
-    "packages/ui/src/app-shell/AnimatedSidePanePanel.tsx": {
-      "size": 1,
-      "color": 0
     },
     "packages/ui/src/components/ai-elements/attachments.tsx": {
       "size": 0,
@@ -49,25 +29,13 @@
       "size": 0,
       "color": 1
     },
-    "packages/ui/src/gen-ui/adapters/theme.ts": {
-      "size": 1,
-      "color": 0
-    },
     "packages/ui/src/gen-ui/components/GenUiCard.tsx": {
       "size": 0,
       "color": 1
     },
-    "packages/ui/src/git-branch-switcher/GitBranchDialogs.tsx": {
-      "size": 3,
-      "color": 0
-    },
     "packages/ui/src/highspeed/HighspeedShareNoticeCard.tsx": {
       "size": 0,
       "color": 1
-    },
-    "packages/ui/src/onboarding/OnboardingDialogParts.tsx": {
-      "size": 1,
-      "color": 0
     },
     "packages/ui/src/onboarding/OnboardingFlowParts.tsx": {
       "size": 1,
@@ -85,14 +53,6 @@
       "size": 0,
       "color": 8
     },
-    "packages/ui/src/plugin-ui/domain/pluginUiStyleVariables.ts": {
-      "size": 6,
-      "color": 0
-    },
-    "packages/ui/src/previewPaneOfficeXlsxContent.tsx": {
-      "size": 2,
-      "color": 0
-    },
     "packages/ui/src/root/RootStartupLoading.tsx": {
       "size": 0,
       "color": 1
@@ -100,10 +60,6 @@
     "packages/ui/src/settings/AutomationEditView.tsx": {
       "size": 0,
       "color": 10
-    },
-    "packages/ui/src/settings/ComputerUseSection.tsx": {
-      "size": 1,
-      "color": 0
     },
     "packages/ui/src/settings/OffPeakEditActionsMenu.tsx": {
       "size": 0,
@@ -130,7 +86,7 @@
       "color": 0
     },
     "packages/ui/src/settings/model-provider-section/Detail.tsx": {
-      "size": 4,
+      "size": 1,
       "color": 1
     },
     "packages/ui/src/settings/model-provider-section/StartPlanCard.tsx": {
@@ -138,7 +94,7 @@
       "color": 0
     },
     "packages/ui/src/v4/ConversationComposer.tsx": {
-      "size": 2,
+      "size": 1,
       "color": 0
     },
     "packages/ui/src/v4/ConversationDraftEmptyState.tsx": {

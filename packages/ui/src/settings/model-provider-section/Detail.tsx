@@ -1044,7 +1044,7 @@ function CodingPlanPurchaseChoiceBanners({
                   locale={locale}
                 />
               ) : item.priceState?.kind === "soldOut" ? (
-                <span className="mt-1 block text-lg font-semibold leading-6 text-foreground">
+                <span className="mt-1 block text-ui-lg font-semibold leading-6 text-foreground">
                   {intl.formatMessage({
                     id: "settings.modelProvider.codingPlan.purchaseBanner.temporarilySoldOut",
                   })}
@@ -1162,7 +1162,7 @@ function PurchaseChoiceBannerPrice({
   const isChineseLocale = locale.toLowerCase().startsWith("zh");
   if (!isChineseLocale) {
     return (
-      <span className="mt-1 block text-lg font-semibold leading-6 text-foreground">
+      <span className="mt-1 block text-ui-lg font-semibold leading-6 text-foreground">
         {intl.formatMessage(
           { id: "settings.modelProvider.codingPlan.purchase.fromPrice" },
           { price: formattedAmount },
@@ -1175,7 +1175,7 @@ function PurchaseChoiceBannerPrice({
   const label = labelParts.join(" ").trim();
   return (
     <span className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-      <span className="text-lg font-semibold leading-6 text-foreground">{amount}</span>
+      <span className="text-ui-lg font-semibold leading-6 text-foreground">{amount}</span>
       <span className="text-ui-base font-medium text-foreground-subtle">
         {[
           label,

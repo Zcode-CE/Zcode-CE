@@ -44,7 +44,7 @@ export function GitBranchCreateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg gap-0 rounded-2xl p-0 overflow-hidden">
         <DialogHeader className="gap-2 px-6 py-5 pb-0">
-          <DialogTitle className="text-lg font-medium text-foreground">
+          <DialogTitle className="text-ui-lg font-medium text-foreground">
             {intl.formatMessage({
               id: "git.branchSwitcher.createDialog.title",
             })}
@@ -167,7 +167,7 @@ export function GitBranchSwitchAssistDialog({
       {step === "blocked" && state ? (
         <DialogContent className="max-w-lg gap-0 rounded-2xl p-0 overflow-hidden">
           <DialogHeader className="gap-2 px-6 py-5 pb-0">
-            <DialogTitle className="text-lg font-medium text-foreground">
+            <DialogTitle className="text-ui-lg font-medium text-foreground">
               {intl.formatMessage({
                 id: "git.branchSwitcher.blockedDialog.title",
               })}
@@ -260,7 +260,7 @@ export function GitBranchSwitchAssistDialog({
       {step === "commit" && state ? (
         <DialogContent className="max-w-lg gap-0 rounded-2xl p-0 overflow-hidden">
           <DialogHeader className="gap-2 px-6 py-5 pb-0">
-            <DialogTitle className="text-lg font-medium text-foreground">
+            <DialogTitle className="text-ui-lg font-medium text-foreground">
               {intl.formatMessage({
                 id: "git.branchSwitcher.commitDialog.title",
               })}

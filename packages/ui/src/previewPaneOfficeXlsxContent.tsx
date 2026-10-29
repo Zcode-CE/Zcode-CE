@@ -117,7 +117,7 @@ function XlsxPreviewError({
   }, [error, sourcePath]);
 
   return (
-    <div className="p-3 text-sm text-destructive" role="alert">
+    <div className="p-3 text-ui-sm text-destructive" role="alert">
       {message}
     </div>
   );
@@ -178,7 +178,7 @@ export function PreviewPaneOfficeXlsxContent({
           <XlsxPreviewError error={error} message={errorMessage} sourcePath={sourcePath} />
         )}
         fileTooLargeState={() => (
-          <div className="p-3 text-sm text-destructive" role="alert">
+          <div className="p-3 text-ui-sm text-destructive" role="alert">
             {errorMessage}
           </div>
         )}

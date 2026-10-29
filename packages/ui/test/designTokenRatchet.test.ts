@@ -21,7 +21,7 @@ const uiSrc = resolve(repoRoot, "packages/ui/src");
 const baselinePath = resolve(repoRoot, ".design-token-baseline.json");
 
 // 与 scripts/design-token-baseline.mjs 保持同一组正则（改一处必须改两处）。
-const RAW_FONT_SIZE_PATTERN = /\btext-(xs|sm|base|lg|xl|[2-9]xl)\b/g;
+const RAW_FONT_SIZE_PATTERN = /(?<!font-)\btext-(xs|sm|base|lg|xl|[2-9]xl)\b/g;
 const RAW_COLOR_PATTERN = /(?:text|border|bg)-(?:white|black)\/\d+|\[#[0-9a-fA-F]{3,8}\]/g;
 
 function collectFiles(directory: string): string[] {

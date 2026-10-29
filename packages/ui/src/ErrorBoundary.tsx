@@ -137,7 +137,7 @@ function ErrorFallback({
             <AlertTriangleIcon className="size-5" />
           </div>
 
-          <h1 className="mt-4 text-lg font-semibold text-foreground">
+          <h1 className="mt-4 text-ui-lg font-semibold text-foreground">
             {formatBoundaryMessage("appError.title")}
           </h1>
           <p className="mt-2 text-ui-base leading-6 text-on-surface-muted">
