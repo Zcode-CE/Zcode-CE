@@ -22,6 +22,18 @@
 不能承担上游 `VirtualProject` 的职责；而 `additionalDirectories` 的下发需要一个可编辑、可持久化的
 存放点。
 
+## 1.5 CE 已有的分组/organization 能力（先盘点，避免造第四套概念）
+
+| 能力                                      | 事实                                                                                                                   | 位置                                                                                                       | 与上游 Project 的关系                                                                         |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 工作区注册表                              | 只读索引：key/path/identity/活动时间/会话计数；无根集合、无名称覆盖                                                    | `session/workspaceRegistry*`                                                                               | 对应「项目列表」，但不承载配置                                                                |
+| `task_groups` 系                          | 手动任务分组：`group_id/title/color`、成员（跨 workspace 的 task 集合）、视图排序；侧栏已有分组 UI（拖拽、颜色、折叠） | `tasksDatabase/schema-v1.ts`、`taskIndexRepo.ts`、`ui/src/workspace-grouped-tasks/*`、`useGroupedTaskView` | 与上游 Project 的「任务归属」形似但语义不同：分组是用户自建的文件夹式集合，不是任务的项目归属 |
+| `recentProjects` / `lastWorkspaceSession` | 打开历史（最多 10 条），不承载根/名称                                                                                  | `AppSettings`                                                                                              | 只是入口历史                                                                                  |
+| X16 附加目录                              | 每工作区的额外根（`AppSettings.workspaceAdditionalDirectories`）                                                       | task-51/52/53                                                                                              | 对应 `roots[1..]`（非主根）                                                                   |
+
+因此 CE 的「项目」信息分散在四处：主根 / 附加根 / 名称 / 分组。上游 `VirtualProject` 只是把这些
+字段放进一条记录；CE 没有一条记录，但**能力并非全缺**。这直接改变了路线选择（见 §3B′）。
+
 ## 2. 上游 3.16.2 的项目模型（参考，不照搬）
 
 - `ProjectStorageContract`：Host 库版本化迁移（`sqlite-migrations`，BEGIN IMMEDIATE 串行、touchedTables
@@ -35,7 +47,7 @@
 代价：新表 + 新迁移子系统 + 协议/服务/UI 全链；上游 71 个源文件、27 篇规格里相当一部分是这套模型
 的周边（source server、远端项目校验），与 CE 的自托管形态并不一一对应。
 
-## 3. 三条路线
+## 3. 路线
 
 ### A. AppSettings 存附加目录（已落地，2026-10-30）
 
@@ -57,15 +69,29 @@
   没有干净答案。AppSettings 归属**宿主**（`setting.json`），同一 Host 的所有客户端读到同一份，
   跨 Host 不同步；而目录路径本来就是每台机器的事实，这个差异是合理的。
 
-### B. 最小项目表（中）
+### B′. 组合既有能力（推荐，不建新表）
+
+把四处现有事实读成一份「项目投影」，不新增 schema：
+
+- **主根** = `workspacePath`（已是会话执行根）；**附加根** = `AppSettings.workspaceAdditionalDirectories`
+  （X16，已落地）；**名称** = 新增 `AppSettings.workspaceDisplayNames?`（仅展示名，不改身份/路径）；
+  **置顶/排序** = 客户端设置（与 `pinnedKeys` 同型）；**任务归组** = 既有 `task_groups`（F4 归档分组直接
+  复用这套表与侧栏 UI，不引第二套）。
+- 缺的只是「一份投影函数 + UI 读它」：`resolveWorkspaceProjectView(workspaceKey)` 聚合上述四处，供侧栏/
+  F1 目录编辑器读取。
+- F1 多文件夹：`selectDirectories`（多选）写回附加根列表 —— 不需要新表，也不需要项目实体。
+- 与上游差异：没有 `projectId`、没有 `hostId`、没有跨 Host 项目库；这些只在需要「任务跨 Host 迁移」或
+  「远端项目校验」时才需要（对应 C 的重开条件）。
+
+### B0. 最小项目表（仅当需要任务归属/跨 Host 时）
 
 新建 `projects(id, host_id, name, pinned, position, created_at, updated_at)` +
 `project_roots(project_id, root_path, position, is_primary)` + `tasks.project_id`（可空）：
 
-- 支持 F1（多文件夹、改名）、X15（主根可用性）、F4（归档分组）的基础数据面。
-- 代价：一次真正的 schema 设计 + 回填（未归类任务 `project_id = null` 的展示口径）+ 侧栏读取面改造；
-  迁移需要在上游 `BEGIN IMMEDIATE` 形态与 CE 现有迁移器之间选一个（不建议两套并存）。
+- 支持上游式「任务归属项目」与跨 Host 项目库；代价是一次真正的 schema 设计 + 回填（未归类任务
+  `project_id = null` 的展示口径）+ 侧栏读取面改造；迁移只能选一套迁移器（不建议两套并存）。
 - 与上游差异：不搬 `legacy-single-root` 投影、不搬远端项目校验、不搬 `task-facts`。
+- 重开条件：出现「任务需要跟着项目走（跨 Host/远端）」的真实诉求。
 
 ### C. 整块搬 project-storage（大，不建议默认做）
 
@@ -75,12 +101,13 @@
 
 ## 4. 推荐
 
-**A 已落地（AppSettings 版）；B 按需，不做 C。**
+**A 已落地（AppSettings 版）；下一步做 B′（组合既有能力）；B0 仅在需要任务归属/跨 Host 时启动；不做 C。**
 
 - A 用最小代价让 X16 从「协议已支持但没人下发」变成真实可用（不新增表、不新增迁移、无协议
   breaking），并验证「附加目录」这个产品点是否有人用（用量数据决定要不要继续投 B）。
-- 只有在出现「一个项目多个文件夹」「项目改名/归档分组」的真实诉求时，再启动 B；B 的 schema 设计
-  应直接参考上游字段名与语义（`roots/isPrimary/pinned/archived`），避免二次改名。
+- B′ 用既有表/设置组合出「项目投影」，W4 的多文件夹（F1）、改名、归档分组（F4）都可在其上实现；
+  `task_groups` 已有的拖拽/颜色/折叠 UI 直接复用，**不要再造一套 project 分组**。
+- 若未来需要任务随项目跨 Host 迁移，再按 B0 建表；字段名仍对齐上游（`roots/isPrimary/pinned/archived`）。
 - C 的重开条件：决定跟进 Source Server / 远端项目体系（当前已裁定不跟进，见 backlog 有意不做）。
 
 ## 5. A 的验收与非目标
