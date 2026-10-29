@@ -1,6 +1,7 @@
 import type { CSSProperties, SyntheticEvent } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "@/components/ui/toast.js";
+import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
 interface ImagePreviewContentProps {
@@ -46,6 +47,38 @@ function imageToPngBlob(image: HTMLImageElement): Promise<Blob> {
   });
 }
 
+const IMAGE_EXTENSION_BY_MEDIA_TYPE: Record<string, string> = {
+  "image/png": "png",
+  "image/apng": "apng",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/avif": "avif",
+  "image/bmp": "bmp",
+  "image/x-icon": "ico",
+  "image/vnd.microsoft.icon": "ico",
+  "image/svg+xml": "svg",
+};
+
+function dataUrlBytes(dataUrl: string): { bytes: Uint8Array; mediaType: string } | null {
+  const match = /^data:([^;,]+)(?:;charset=[^;,]+)?;base64,(.*)$/u.exec(dataUrl);
+  if (!match?.[1] || !match[2]) return null;
+  try {
+    const binary = atob(match[2]);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return { bytes, mediaType: match[1] };
+  } catch {
+    return null;
+  }
+}
+
+function downloadBaseName(title: string, sourcePath?: string): string {
+  const raw = (sourcePath ?? title).replace(/\\/gu, "/").split("/").at(-1) ?? title;
+  const withoutExtension = raw.replace(/\.[^./]+$/u, "");
+  return withoutExtension.trim() || "image";
+}
+
 export function ImagePreviewContent({
   title,
   fitToContainer = false,
@@ -53,10 +86,12 @@ export function ImagePreviewContent({
   sourcePath,
 }: ImagePreviewContentProps) {
   const { intl } = useZCodeIntl();
+  const platform = usePlatform();
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [naturalSize, setNaturalSize] = useState<ImageNaturalSize | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const pixelRatio = useMemo(
     () => getImagePreviewPixelRatio(sourcePath ?? title),
     [sourcePath, title],
@@ -97,6 +132,42 @@ export function ImagePreviewContent({
     }
   }, [copying, imageLoaded, intl]);
 
+  const handleDownloadImage = useCallback(async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      // 下载的是预览读到的原始字节（SVG 不会变成截图）；文件名按 MIME 对齐扩展名。
+      const parsed = dataUrlBytes(imageSource);
+      if (!parsed) throw new Error("image bytes unavailable");
+      const extension = IMAGE_EXTENSION_BY_MEDIA_TYPE[parsed.mediaType.toLowerCase()] ?? "png";
+      const suggestedName = `${downloadBaseName(title, sourcePath)}.${extension}`;
+      // 显式复制到新的 ArrayBuffer：Uint8Array.buffer 的类型是 ArrayBufferLike（可能共享）。
+      const data = new ArrayBuffer(parsed.bytes.byteLength);
+      new Uint8Array(data).set(parsed.bytes);
+      if (platform.saveFile) {
+        const result = await platform.saveFile({ data, suggestedName });
+        if (result.canceled) return;
+        if (!result.success) throw new Error(result.error ?? "save_failed");
+        // 原生保存成功只确认「下载成功」，不展示本机路径。
+        toast(intl.formatMessage({ id: "preview.image.downloadSuccess" }));
+        return;
+      }
+      const objectUrl = URL.createObjectURL(new Blob([data], { type: parsed.mediaType }));
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = suggestedName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      toast(intl.formatMessage({ id: "preview.image.downloadStarted" }));
+    } catch {
+      toast(intl.formatMessage({ id: "preview.image.downloadFailed" }));
+    } finally {
+      setDownloading(false);
+    }
+  }, [downloading, imageSource, intl, platform, sourcePath, title]);
+
   const handleLoad = useCallback(
     (event: SyntheticEvent<HTMLImageElement>) => {
       setImageLoaded(true);
@@ -122,14 +193,24 @@ export function ImagePreviewContent({
     <div
       className={`relative flex h-full min-h-0 items-center justify-center overflow-hidden p-10 ${IMAGE_PREVIEW_CHECKERBOARD_CLASS}`}
     >
-      <button
-        type="button"
-        className="absolute right-3 top-3 z-10 inline-flex h-8 items-center rounded-lg border-0 bg-surface/90 px-3 text-ui-base font-medium text-foreground shadow-sm transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={!imageLoaded || copying}
-        onClick={() => void handleCopyImage()}
-      >
-        {intl.formatMessage({ id: "preview.image.copy" })}
-      </button>
+      <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+        <button
+          type="button"
+          className="inline-flex h-8 items-center rounded-lg border-0 bg-surface/90 px-3 text-ui-base font-medium text-foreground shadow-sm transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!imageLoaded || downloading}
+          onClick={() => void handleDownloadImage()}
+        >
+          {intl.formatMessage({ id: "preview.image.download" })}
+        </button>
+        <button
+          type="button"
+          className="inline-flex h-8 items-center rounded-lg border-0 bg-surface/90 px-3 text-ui-base font-medium text-foreground shadow-sm transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!imageLoaded || copying}
+          onClick={() => void handleCopyImage()}
+        >
+          {intl.formatMessage({ id: "preview.image.copy" })}
+        </button>
+      </div>
       <img
         ref={imageRef}
         alt={title}

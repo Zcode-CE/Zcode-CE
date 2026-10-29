@@ -31,3 +31,12 @@ test("加载完成前与复制中都禁用入口，失败走失败提示", () =>
   assert.ok("preview.image.copySuccess" in zhCN);
   assert.ok("preview.image.copySuccess" in enUS);
 });
+
+test("下载保存原始字节：按 MIME 对齐扩展名，成功提示不带路径", () => {
+  assert.match(source, /dataUrlBytes\(imageSource\)/u);
+  assert.match(source, /IMAGE_EXTENSION_BY_MEDIA_TYPE/u);
+  assert.match(source, /platform\.saveFile\(\{ data, suggestedName \}\)/u);
+  assert.match(source, /preview\.image\.downloadSuccess/u);
+  assert.ok("preview.image.download" in zhCN);
+  assert.ok("preview.image.download" in enUS);
+});
