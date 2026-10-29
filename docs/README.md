@@ -21,7 +21,8 @@
 | [工作区可见性](development/workspace-registry.md)                        | 可见工作区的真相源、能全看不默认全看、未启动态                |
 | [IM 机器人管理面](development/bot-management-ui.md)                      | 建机器人 / 绑定渠道 / 授权工作区 / 群与话题的管理界面与消费链 |
 | [内置浏览器权限](development/embedded-browser-permissions.md)            | 站点权限 fail-closed、持久同意、弹窗桥与蓝牙守卫              |
-| [图片预览操作](development/preview-image-actions.md)                     | 复制图片（已实现）与下载/添加到聊天的边界                     |
+| [图片预览操作](development/preview-image-actions.md)                     | 复制/下载/添加到聊天与右键菜单                                |
+| [侧边面板全视图](development/side-pane-full-view.md)                     | 面板铺满内容区的最小全视图；不含浮动输入窗                    |
 | [插件 UI 沙箱](development/plugin-ui-sandbox.md)                         | MCP App / UI 插件的宿主沙箱：main/renderer/preload 三面边界   |
 | [MCP Apps](development/mcp-apps.md)                                      | mcp-ui 契约、运行时消费与降级边界                             |
 | [工具与权限](development/tool-policy.md)                                 | 危险命令判定、MCP 单工具启停、持久授权策略                    |

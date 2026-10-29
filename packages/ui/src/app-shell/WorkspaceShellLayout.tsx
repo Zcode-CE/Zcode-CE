@@ -462,6 +462,33 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
     rememberExpandedSize: true,
     resizeOnInitialVisibleMount: false,
   });
+  const [isSidePaneFullView, setIsSidePaneFullView] = useState(false);
+  const sidePaneFullViewOwnerRef = useRef(sidePaneOwnerId);
+  // 全视图按 owner 记忆：切换任务/草稿直接复位，避免新任务沿用上一个任务的布局意图。
+  useEffect(() => {
+    if (sidePaneFullViewOwnerRef.current === sidePaneOwnerId) return;
+    sidePaneFullViewOwnerRef.current = sidePaneOwnerId;
+    setIsSidePaneFullView(false);
+  }, [sidePaneOwnerId]);
+  useEffect(() => {
+    if (!isSidePaneVisible) setIsSidePaneFullView(false);
+  }, [isSidePaneVisible]);
+  const toggleSidePaneFullView = useCallback(() => {
+    setIsSidePaneFullView((current) => !current);
+  }, []);
+  useEffect(() => {
+    if (!isDesktop) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || !event.shiftKey || event.key.toLowerCase() !== "f") {
+        return;
+      }
+      if (!isSidePaneVisible) return;
+      event.preventDefault();
+      toggleSidePaneFullView();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isDesktop, isSidePaneVisible, toggleSidePaneFullView]);
   const workspaceSessionActionDisabled =
     Boolean(workspaceReadOnlyReason) || reloadSessionDisabled || reloadSessionPending;
   // 文件树打开时任务列表整屏滑出，侧栏里的 New Task 入口也随之不可见。
@@ -1508,6 +1535,8 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
       })}
       showWindowControls={usesInlineWindowControls}
       isVisible={isSidePaneVisible}
+      fullView={isSidePaneFullView}
+      onToggleFullView={toggleSidePaneFullView}
       onCloseSidePane={handleToggleSidePane}
       toggleSidePaneShortcutLabel={toggleSidePaneShortcutLabel}
       sidePaneState={sidePaneState}
@@ -1730,7 +1759,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
           <ResizablePanelGroup
             layoutId="workspace-body-layout"
             panelIds={WORKSPACE_BODY_PANEL_IDS}
-            className="min-h-0 flex-1"
+            className="relative min-h-0 flex-1"
           >
             <ResizablePanel
               id="conversation-column"

@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- Side pane 当前集中承载 tabs、browser/git/code-viewer 内容；完整拆分需按 pane 功能边界继续推进。 */
+import { Maximize2, Minimize2 } from "lucide-react";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
@@ -343,6 +344,8 @@ export function AnimatedSidePanePanel({
   showWindowControls,
   onCloseSidePane,
   toggleSidePaneShortcutLabel,
+  fullView = false,
+  onToggleFullView,
   mobileOverlay = false,
   mobileStacked = false,
 }: {
@@ -352,6 +355,9 @@ export function AnimatedSidePanePanel({
   showWindowControls?: boolean;
   onCloseSidePane?: () => void;
   toggleSidePaneShortcutLabel?: string;
+  /** 侧边面板全视图：面板 absolute 覆盖内容区，对话区保持挂载。 */
+  fullView?: boolean;
+  onToggleFullView?: () => void;
   isDesktop?: boolean;
   isWindowsDesktop?: boolean;
   isVisible: boolean;
@@ -831,6 +837,22 @@ export function AnimatedSidePanePanel({
   const closeSidePaneButton =
     isVisible && !mobileOverlay && onCloseSidePane ? (
       <div className="flex shrink-0 items-center gap-0.5 [app-region:no-drag]">
+        {onToggleFullView ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={intl.formatMessage({
+              id: fullView ? "sidePane.fullView.exit" : "sidePane.fullView.enter",
+            })}
+            title={intl.formatMessage({
+              id: fullView ? "sidePane.fullView.exit" : "sidePane.fullView.enter",
+            })}
+            onClick={onToggleFullView}
+          >
+            {fullView ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+          </Button>
+        ) : null}
         <WorkspaceSidePaneToggleButton
           isSidePaneOpen
           onToggleSidePane={onCloseSidePane}
@@ -1412,6 +1434,7 @@ export function AnimatedSidePanePanel({
             "after:pointer-events-none after:absolute after:rounded-full after:bg-foreground-subtlest/50 after:opacity-0 after:transition-opacity after:content-[''] after:inset-y-[var(--workspace-panel-radius,var(--radius-xl))] after:w-0.5",
             "hover:after:opacity-100 data-[separator=hover]:after:opacity-100 data-[separator=active]:after:opacity-100 focus-visible:after:opacity-100",
             mobileStacked && "max-md:hidden",
+            fullView && "hidden",
           )}
         />
       ) : null}
@@ -1431,6 +1454,7 @@ export function AnimatedSidePanePanel({
         disabled={isResizeDisabled}
         className={cn(
           "!overflow-hidden transition-opacity duration-200 ease-out",
+          fullView && "!absolute !inset-0 !z-20 !h-full !w-full !min-w-0 !max-w-none !flex-none",
           mobileOverlay &&
             "max-md:!h-full max-md:!w-full max-md:!min-w-0 max-md:!max-w-none max-md:!flex-1 max-md:!basis-auto max-md:border-l",
           mobileStacked &&
