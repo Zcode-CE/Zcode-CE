@@ -320,7 +320,7 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - @modelcontextprotocol/ext-apps@2.0.4 — MIT
 
-- @modelcontextprotocol/sdk@1.29.0 — MIT
+- @modelcontextprotocol/sdk@1.32.2 — MIT
 
 - @modelcontextprotocol/server@2.4.0 — Apache-2.0
 
@@ -4953,7 +4953,7 @@ the full license text.
 
 ### Notice 5e13dbbc1d120fc2a03cecde7c91424ae2d7de11b63d58ded2f4431e261ee50d
 
-- @modelcontextprotocol/sdk@1.29.0: LICENSE
+- @modelcontextprotocol/sdk@1.32.2: LICENSE
 
 
 
@@ -4984,7 +4984,7 @@ SOFTWARE.
 
 ### Notice fde378dc2165c395ec906b2fc84fad5e80f79c9664b70d30e0fd4073f2d3f58d
 
-- @modelcontextprotocol/sdk@1.29.0: README.md (license section)
+- @modelcontextprotocol/sdk@1.32.2: README.md (license section)
 
 
 
