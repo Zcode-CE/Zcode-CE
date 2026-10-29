@@ -142,10 +142,17 @@ export function WorkspaceAdditionalDirectoriesSection({
   );
 
   const handleAdd = useCallback(async () => {
-    const picked = await platform.selectDirectory();
-    const trimmed = picked?.trim();
-    if (!trimmed || directories.includes(trimmed)) return;
-    await save([...directories, trimmed]);
+    // F1 地基：平台支持多选时一次加入多个目录；不支持时退回单选。
+    const picked = platform.selectDirectories
+      ? await platform.selectDirectories()
+      : [await platform.selectDirectory()];
+    const next = [...directories];
+    for (const candidate of picked) {
+      const trimmed = candidate?.trim();
+      if (trimmed && !next.includes(trimmed)) next.push(trimmed);
+    }
+    if (next.length === directories.length) return;
+    await save(next);
   }, [directories, platform, save]);
 
   const handleRemove = useCallback(

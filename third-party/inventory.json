@@ -1703,7 +1703,7 @@
     "packages/shared/src/attachment-source.ts": "1ab5985a30d2be53e9e3af364e04c8a902ce4a6dc3b9bcc18e8d81c227d37069",
     "packages/shared/src/bots.ts": "c9ae67d700e4f744118348e3cb4517968393d9f86fa7d0e8cbf5c957b3ba315d",
     "packages/shared/src/channel-mention.ts": "0266aa4b95b1d8d86ac41be66a7ae9e3f9be0a945c11dedba358c5892ab94ebf",
-    "packages/shared/src/channels.ts": "35cd91a46de7012494f6ab2ebb2507facadf9272b16c4f20f3025850934b821d",
+    "packages/shared/src/channels.ts": "05ac95b87bc1475f4fa1b615b2c61e823ac87751818805601a241896296cd5f7",
     "packages/shared/src/conversationSelection.ts": "b76e80d143f71afea20dcddee9414324c4964f1d1ef36e836a39a810a6960e75",
     "packages/shared/src/execution-state.ts": "f038842aaab66675fe3f6a430cacfc72536480029b8b3544f995d860ddb8533c",
     "packages/shared/src/gen-ui/contract.example.ts": "41fbfd962f28bff286be97e59675634c99450fb2d8de7b54f81c10140e8cea48",
@@ -1730,7 +1730,7 @@
     "packages/shared/src/model-execution.ts": "aa551dafe176fe47e49d27da32c141e65ffdea057096fbaf5824576e797049d2",
     "packages/shared/src/node.ts": "1964469bfb5f6f8b1c46a44a8372914158c8693b17d8603a0aab0f9295503e39",
     "packages/shared/src/node/genUiPaths.ts": "9fe594b8a77cc74114d09146ee2a2f55e9ac2730fad7bfcacdaea82be63b7675",
-    "packages/shared/src/platform.ts": "004a5f11c31e114706f879d7d241d4a63eec6acc89878192c6505f7560754caf",
+    "packages/shared/src/platform.ts": "6e64ad04542eb9de47d97f219768b79aee1d22466fd5836680cd42f47d79a251",
     "packages/shared/src/protocol.ts": "ac32e69f3e7665dbc7a359c61c526e695e0ffa1fb8a72be55a7dd589e5a7b2bf",
     "packages/shared/src/request-security-edition/index.ts": "12735d8622bfd0b1b4e566cb5bf773e530805c976880fab37d85a9cbfb8941e4",
     "packages/shared/src/request-security-edition/policy.ts": "b3c87d9f01bf3c9477188399d841dd8f63a6e6a02737f78777bce0a6c4201c42",
@@ -32853,11 +32853,11 @@
       "files": [
         {
           "file": "packages/shared/src/platform.ts",
-          "sha256": "004a5f11c31e114706f879d7d241d4a63eec6acc89878192c6505f7560754caf"
+          "sha256": "6e64ad04542eb9de47d97f219768b79aee1d22466fd5836680cd42f47d79a251"
         },
         {
           "file": "packages/shared/src/channels.ts",
-          "sha256": "35cd91a46de7012494f6ab2ebb2507facadf9272b16c4f20f3025850934b821d"
+          "sha256": "05ac95b87bc1475f4fa1b615b2c61e823ac87751818805601a241896296cd5f7"
         },
         {
           "file": "packages/shared/src/validation.ts",

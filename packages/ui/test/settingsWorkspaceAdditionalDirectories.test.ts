@@ -85,3 +85,12 @@ test("★中枢「运行」与「提升为全局」的 createSession 也带附�
     );
   }
 });
+
+test("★添加目录优先走多选，平台不支持时退回单选", () => {
+  const sectionSource = readFileSync(
+    resolve(here, "../src/settings/WorkspaceAdditionalDirectoriesSection.tsx"),
+    "utf8",
+  );
+  assert.match(sectionSource, /platform\.selectDirectories/u, "未接平台多选");
+  assert.match(sectionSource, /platform\.selectDirectory\(\)/u, "缺少单选回退");
+});

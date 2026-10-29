@@ -131,6 +131,16 @@ export function registerPlatformIpcHandlers(options: {
     return result.filePaths[0];
   });
 
+  ipcMain.handle(PlatformChannels.SelectDirectories, async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ["openDirectory", "multiSelections", "createDirectory"],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return [];
+    }
+    return result.filePaths;
+  });
+
   ipcMain.handle(PlatformChannels.SelectFiles, async () => {
     const result = await dialog.showOpenDialog({
       properties: ["openFile", "multiSelections"],

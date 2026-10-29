@@ -169,6 +169,8 @@ export const PlatformChannels = {
   PluginSandboxOwnerWebContentsId: "zcode:plugin-sandbox-owner-web-contents-id",
   /** 打开系统目录选择框 */
   SelectDirectory: "zcode:select-directory",
+  /** 打开系统目录选择框（多选）；取消时返回空数组 */
+  SelectDirectories: "zcode:select-directories",
   /** 打开系统文件选择框 */
   SelectFile: "zcode:select-file",
   /** 打开系统多文件选择框 */
@@ -728,6 +730,10 @@ export interface PlatformChannelMap {
   [PlatformChannels.SelectDirectory]: {
     request: void;
     response: string | null;
+  };
+  [PlatformChannels.SelectDirectories]: {
+    request: void;
+    response: string[];
   };
   [PlatformChannels.SelectFile]: {
     request: void;
