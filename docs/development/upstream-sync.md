@@ -74,7 +74,7 @@
 
 ## v3.15.1（来源：开源仓库 tag `aac47556`；官方公告 2026-10-12）
 
-> 对比依据：上游共享只读 worktree `.local/references/upstream-checkout/zai-org-ZCode-3151`（detached @ `aac47556`）。
+> 对比依据：上游共享只读 worktree `.local/references/upstream-checkout/3.16.2`（detached @ `3c5b2276`）；3.15.1 的临时检出已随 `.local` 整理移除，需要时按 tag `aac47556` 重建。
 > 官方 changelog（zcode.z.ai/cn/changelog）的 11 项新功能 + 12 项修复与本台账条目逐条核对一致（2026-10-13 核验）。
 > 上游为**单 squash 提交**（`feat: update to v3.15.1`，唯一父提交 `29628c9a`），无法按提交拆分 increment；
 > 条目以公告条目 + 源码形态切分。CE 以 3.15.1 为新基线，发 `3.15.1-ce.1`（语义新增 ⇒ 升 ce.N）。
