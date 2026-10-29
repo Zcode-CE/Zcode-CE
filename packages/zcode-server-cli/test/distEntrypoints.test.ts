@@ -16,10 +16,12 @@ const exec = promisify(execFile);
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = join(packageRoot, "dist");
 
-test("tsup 配置把 CJS ZIP 依赖保留为 external（yazl/yauzl）", () => {
+test("tsup 配置把 CJS 依赖保留为 external（yazl/yauzl/ignore/飞书 SDK）", () => {
   const config = readFileSync(join(packageRoot, "tsup.config.ts"), "utf8");
   const externalBlock = config.slice(config.indexOf("external: ["));
-  for (const name of ["yazl", "yauzl"]) {
+  // ignore 与 @larksuiteoapi/node-sdk 是 2026-10-30 重建产物时暴露的同类缺陷：
+  // 内联后分别带 require(fs/path) 与 qs → object-inspect 的 __require(util)。
+  for (const name of ["yazl", "yauzl", "ignore", "@larksuiteoapi/node-sdk"]) {
     assert.ok(
       externalBlock.includes('"' + name + '"'),
       `tsup external 列表缺少 ${name}：内联它会让 ESM bundle 命中 __require 兜底并在加载时崩溃`,

@@ -148,8 +148,8 @@ jobs:
 
       # 为什么必须先构建：exposureGateHttp 等测试断言的是**构建产物**，干净检出没有 dist
       # 时会显式 skip（且 dist 早于 src 也 skip）⇒ 安全断言在 CI 一次都没跑过。
-      - name: Build server/web dist (for dist-dependent tests)
-        run: pnpm --filter @zcode/server --filter @zcode/web build
+      - name: Build server/web/server-cli dist (for dist-dependent tests)
+        run: pnpm --filter @zcode/server --filter @zcode/web --filter @zcode/server-cli build
 
       - name: Test
         run: pnpm test
