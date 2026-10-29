@@ -2055,8 +2055,8 @@
     "packages/ui/src/hooks/useBrowserSitePermissions.ts": "75d84af4d726b95d0d7cd166b1977514dc56d1644122b5857724cfc349ff0faa",
     "packages/ui/src/hooks/useCodingPlanQuotaResetUi.ts": "eed75a370ca2a08fa78ecd9129ac36355017b4ab9ed5d05c7c603d252587b6b4",
     "packages/ui/src/hooks/useWorkflowRunSave.ts": "e29d0d84541ecc772c8295255fefab7c537f9c75948210147838a82ec3dbc40d",
-    "packages/ui/src/i18n/locales/en-US.ts": "b5d06784f7621bc33f3e9c30b2dbc03046d772a48c5ae590d6e053888917acb1",
-    "packages/ui/src/i18n/locales/zh-CN.ts": "a90652208c247201c5777a8823b3b4a527e916b808cc39fe13259e8060e650ee",
+    "packages/ui/src/i18n/locales/en-US.ts": "dd50eb619392a4bbe689988c7689e977e395b243acd0804fb9f9bf9c99089649",
+    "packages/ui/src/i18n/locales/zh-CN.ts": "3c0bcb92444d4fc767f1e9883d6fd36336f87bf35039d9926bbfbeee00e3bee6",
     "packages/ui/src/lib/assistantDirectiveParser.ts": "c64b119e46f917e2d869658559cb1113cc40caae1a89d68328b256ee4d76e09f",
     "packages/ui/src/lib/builtinSkillI18n.ts": "fbb44f7044214b70148f64dbafc1cea5ea550531e8084965ea978c5defc06deb",
     "packages/ui/src/lib/codingPlanQuotaResetUi.ts": "9ff69e18487e842d56136283b15fe9bfdfd383b79d911b25f967ec69f65af11f",
@@ -33961,11 +33961,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "a90652208c247201c5777a8823b3b4a527e916b808cc39fe13259e8060e650ee"
+          "sha256": "3c0bcb92444d4fc767f1e9883d6fd36336f87bf35039d9926bbfbeee00e3bee6"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "b5d06784f7621bc33f3e9c30b2dbc03046d772a48c5ae590d6e053888917acb1"
+          "sha256": "dd50eb619392a4bbe689988c7689e977e395b243acd0804fb9f9bf9c99089649"
         },
         {
           "file": "packages/ui/src/v4/WorkflowNotificationToolRow.tsx",
@@ -34793,11 +34793,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "a90652208c247201c5777a8823b3b4a527e916b808cc39fe13259e8060e650ee"
+          "sha256": "3c0bcb92444d4fc767f1e9883d6fd36336f87bf35039d9926bbfbeee00e3bee6"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "b5d06784f7621bc33f3e9c30b2dbc03046d772a48c5ae590d6e053888917acb1"
+          "sha256": "dd50eb619392a4bbe689988c7689e977e395b243acd0804fb9f9bf9c99089649"
         }
       ]
     },

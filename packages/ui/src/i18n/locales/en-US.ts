@@ -4289,6 +4289,9 @@ const enUS: Record<string, string> = {
   "settings.workspaceAdditionalDirectories.remove": "Remove",
   "settings.workspaceAdditionalDirectories.removeLabel": "Remove {path}",
   "settings.workspaceAdditionalDirectories.saved": "Saved; new sessions will use it",
+  "settings.workspaceAdditionalDirectories.primaryRootLabel": "Primary root",
+  "settings.workspaceAdditionalDirectories.primaryRootDescription":
+    "Sessions, commands and Git run from here; additional directories only extend what the model can see.",
   "settings.workspaceAdditionalDirectories.displayNameLabel": "Display name",
   "settings.workspaceAdditionalDirectories.displayNameDescription":
     "Only affects this device's sidebar and titles; the project path and identity are unchanged. Leave empty to use the folder name.",

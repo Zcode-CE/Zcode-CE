@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   MAX_WORKSPACE_ADDITIONAL_DIRECTORIES,
   resolveWorkspaceAdditionalDirectories,
+  resolveWorkspaceProjectView,
   resolveWorkspaceRegistryKey,
   buildWorkspaceAdditionalDirectoriesPatch,
   buildWorkspaceDisplayNamePatch,
@@ -119,6 +120,15 @@ export function WorkspaceAdditionalDirectoriesSection({
   const canEdit = settingsReady && !saving && targetKey !== null;
   const canAdd = canEdit && !targetOption?.remote && !atLimit;
   const displayName = targetKey ? (settings?.workspaceDisplayNames?.[targetKey] ?? "") : "";
+  // B′ 投影：主根 = 工作区路径；展示名覆盖优先、路径末段兜底。附加根即下方列表。
+  const projectView = targetKey
+    ? resolveWorkspaceProjectView({
+        workspaceKey: targetKey,
+        workspacePath: targetOption?.label ?? targetKey,
+        additionalRoots: directories,
+        displayNames: settings?.workspaceDisplayNames,
+      })
+    : null;
 
   const handleSaveDisplayName = useCallback(
     async (rawName: string) => {
@@ -203,6 +213,23 @@ export function WorkspaceAdditionalDirectoriesSection({
       <div className="text-ui-base font-medium text-foreground-subtle">
         {intl.formatMessage({ id: "settings.workspaceAdditionalDirectories.description" })}
       </div>
+
+      <SettingsGroupCard>
+        <SettingsRow
+          label={intl.formatMessage({
+            id: "settings.workspaceAdditionalDirectories.primaryRootLabel",
+          })}
+          description={intl.formatMessage({
+            id: "settings.workspaceAdditionalDirectories.primaryRootDescription",
+          })}
+          control={
+            <span className="min-w-0 truncate font-mono text-ui-sm text-foreground-subtle">
+              {projectView?.primaryRoot ?? ""}
+            </span>
+          }
+        />
+      </SettingsGroupCard>
+
       <SettingsGroupCard>
         <SettingsRow
           label={intl.formatMessage({
@@ -215,7 +242,7 @@ export function WorkspaceAdditionalDirectoriesSection({
             <Input
               key={`${targetKey}:${displayName}`}
               defaultValue={displayName}
-              placeholder={targetOption?.label ?? ""}
+              placeholder={projectView?.displayName ?? targetOption?.label ?? ""}
               disabled={!settingsReady || savingName}
               maxLength={120}
               onBlur={(event) => void handleSaveDisplayName(event.currentTarget.value)}

@@ -4014,6 +4014,9 @@ const zhCN: Record<string, string> = {
   "settings.workspaceAdditionalDirectories.remove": "移除",
   "settings.workspaceAdditionalDirectories.removeLabel": "移除 {path}",
   "settings.workspaceAdditionalDirectories.saved": "已保存，新建会话生效",
+  "settings.workspaceAdditionalDirectories.primaryRootLabel": "主根（执行根）",
+  "settings.workspaceAdditionalDirectories.primaryRootDescription":
+    "会话、命令与 Git 都以它执行；附加目录只扩展模型可见范围。",
   "settings.workspaceAdditionalDirectories.displayNameLabel": "显示名称",
   "settings.workspaceAdditionalDirectories.displayNameDescription":
     "仅用于本机侧栏与标题展示，不改变项目路径或身份；留空则使用目录名。",
