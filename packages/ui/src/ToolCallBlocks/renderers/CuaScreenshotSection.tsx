@@ -33,7 +33,7 @@ export function CuaScreenshotSection({ screenshot }: { screenshot: CuaScreenshot
 
   return (
     <section className="space-y-2 border-t border-border pt-3">
-      <h4 className="text-sm text-foreground-subtle">{intl.formatMessage({ id: titleId })}</h4>
+      <h4 className="text-ui-sm text-foreground-subtle">{intl.formatMessage({ id: titleId })}</h4>
       {screenshot.dataUrl ? (
         <Dialog>
           <DialogTrigger asChild>
@@ -58,7 +58,7 @@ export function CuaScreenshotSection({ screenshot }: { screenshot: CuaScreenshot
           </DialogContent>
         </Dialog>
       ) : (
-        <div className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface px-3 py-6 text-sm text-foreground-subtle">
+        <div className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface px-3 py-6 text-ui-sm text-foreground-subtle">
           <ImageIcon className="size-5 text-foreground-subtlest" />
           <span>
             {intl.formatMessage({
@@ -70,7 +70,7 @@ export function CuaScreenshotSection({ screenshot }: { screenshot: CuaScreenshot
         </div>
       )}
       {metadata.length ? (
-        <dl className="grid grid-cols-[minmax(4rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
+        <dl className="grid grid-cols-[minmax(4rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-ui-sm">
           {metadata.map(([labelId, value]) => (
             <div key={labelId} className="contents">
               <dt className="text-foreground-subtlest">{intl.formatMessage({ id: labelId })}</dt>

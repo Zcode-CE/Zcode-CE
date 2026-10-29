@@ -1,5 +1,5 @@
 {
-  "total": 109,
+  "total": 85,
   "files": {
     "packages/ui/src/BotsDialog.tsx": {
       "size": 1,
@@ -29,18 +29,6 @@
       "size": 2,
       "color": 0
     },
-    "packages/ui/src/ToolCallBlocks/renderers/CuaScreenshotSection.tsx": {
-      "size": 3,
-      "color": 0
-    },
-    "packages/ui/src/ToolCallBlocks/renderers/cuaDetails.tsx": {
-      "size": 12,
-      "color": 0
-    },
-    "packages/ui/src/ToolCallBlocks/renderers/cuaListDetails.tsx": {
-      "size": 6,
-      "color": 0
-    },
     "packages/ui/src/WelcomeScreen.tsx": {
       "size": 1,
       "color": 1
@@ -60,10 +48,6 @@
     "packages/ui/src/components/ui/dialog.tsx": {
       "size": 0,
       "color": 1
-    },
-    "packages/ui/src/components/ui/toast.tsx": {
-      "size": 1,
-      "color": 0
     },
     "packages/ui/src/gen-ui/adapters/theme.ts": {
       "size": 1,
@@ -118,7 +102,7 @@
       "color": 10
     },
     "packages/ui/src/settings/ComputerUseSection.tsx": {
-      "size": 3,
+      "size": 1,
       "color": 0
     },
     "packages/ui/src/settings/OffPeakEditActionsMenu.tsx": {

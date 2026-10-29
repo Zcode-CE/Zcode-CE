@@ -1965,7 +1965,7 @@
     "packages/ui/src/components/ui/switch.tsx": "1a6490eb3c47b3a86b76c8469e5702608ea57da7853df5de00fffa9a4a472adf",
     "packages/ui/src/components/ui/tabs.tsx": "adc59a0469c80118e9d60c08bf0222d55664ef95e6c522496b5c201011b347f0",
     "packages/ui/src/components/ui/textarea.tsx": "a839574ce1301fbaa9ba917fdb980900eb9118bffa7c6c4e469f3293b122ed30",
-    "packages/ui/src/components/ui/toast.tsx": "0f8894c6fc30e4cec44caa4cffe70e111f9c41ff9bf3699ec8e91696ea631671",
+    "packages/ui/src/components/ui/toast.tsx": "3458c4042cd620bb4b930a570aebaa347b6fbc6057208c5219179c39626b90e6",
     "packages/ui/src/components/ui/tooltip.tsx": "301dbf3a6f8b1bc496f9bdc6fbc5fe6202ed373182897f39cd1ecd19b00fdfbe",
     "packages/ui/src/components/ui/usePdfZoomOverlay.ts": "c8c91b003ce2fded32c7a2369dc6eac43aa4b9dc9c830a0f5ceccb21d366b610",
     "packages/ui/src/components/ui/ZCodeAboutLogo.tsx": "1e5b7c2e8a9dc98a3c597cbe34122521319eaeb89825e4c41641e77715d1407a",
@@ -20438,7 +20438,7 @@
         },
         {
           "file": "packages/ui/src/components/ui/toast.tsx",
-          "sha256": "0f8894c6fc30e4cec44caa4cffe70e111f9c41ff9bf3699ec8e91696ea631671"
+          "sha256": "3458c4042cd620bb4b930a570aebaa347b6fbc6057208c5219179c39626b90e6"
         },
         {
           "file": "packages/ui/src/components/ui/tooltip.tsx",

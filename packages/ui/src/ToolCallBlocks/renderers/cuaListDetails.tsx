@@ -160,9 +160,9 @@ function CuaAppList({ items }: { items: CuaAppItem[] }) {
           ) : (
             <AppWindow className="size-4 shrink-0 text-foreground-subtle" />
           )}
-          <span className="min-w-0 flex-1 truncate text-sm text-foreground">{item.name}</span>
+          <span className="min-w-0 flex-1 truncate text-ui-sm text-foreground">{item.name}</span>
           {item.active ? (
-            <span className="shrink-0 text-sm text-foreground-subtle">
+            <span className="shrink-0 text-ui-sm text-foreground-subtle">
               {intl.formatMessage({ id: "chat.toolCall.cua.details.active" })}
             </span>
           ) : null}
@@ -183,11 +183,11 @@ function CuaWindowList({ items }: { items: CuaWindowItem[] }) {
         >
           <AppWindow className="size-4 shrink-0 text-foreground-subtle" />
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm text-foreground">
+            <div className="truncate text-ui-sm text-foreground">
               {item.title ?? intl.formatMessage({ id: "chat.toolCall.cua.details.untitledWindow" })}
             </div>
             {item.main || item.focused ? (
-              <div className="flex flex-wrap gap-x-2 text-sm text-foreground-subtle">
+              <div className="flex flex-wrap gap-x-2 text-ui-sm text-foreground-subtle">
                 {item.main ? (
                   <span>{intl.formatMessage({ id: "chat.toolCall.cua.details.mainWindow" })}</span>
                 ) : null}
@@ -198,7 +198,7 @@ function CuaWindowList({ items }: { items: CuaWindowItem[] }) {
             ) : null}
           </div>
           {item.width !== null && item.height !== null ? (
-            <span className="shrink-0 font-mono text-sm text-foreground-subtle">
+            <span className="shrink-0 font-mono text-ui-sm text-foreground-subtle">
               {item.width} × {item.height}
             </span>
           ) : null}
@@ -212,7 +212,7 @@ export function CuaDetailListSection({ list }: { list: CuaDetailList }) {
   const { intl } = useZCodeIntl();
   return (
     <section className="space-y-2 border-t border-border pt-3">
-      <h4 className="text-sm text-foreground-subtle">
+      <h4 className="text-ui-sm text-foreground-subtle">
         {intl.formatMessage({
           id:
             list.kind === "apps"

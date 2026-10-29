@@ -918,7 +918,7 @@ export function ComputerUseSection({
           必须显式告知能力边界，而不是让用户以为「开了就能用」。
           该提示与启用态无关——未启用时也要先讲清楚门槛。 */}
       {supportsLocalLinuxWorkspace ? (
-        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-ui-sm text-warning">
           <p className="font-medium">
             {intl.formatMessage({ id: "settings.computerUse.experimental.title" })}
           </p>
@@ -934,7 +934,7 @@ export function ComputerUseSection({
           {/* macOS 版本低于 CUA Helper 承诺地板时，授权在低版本系统上无法完成
               （Helper 被 LaunchServices -10825 拒启），整卡替换为升级提示。 */}
           {macOsBelowCuaFloor ? (
-            <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+            <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-ui-sm text-warning">
               <p className="font-medium">
                 {intl.formatMessage(
                   { id: "cuaPermission.osFloorTitle" },
