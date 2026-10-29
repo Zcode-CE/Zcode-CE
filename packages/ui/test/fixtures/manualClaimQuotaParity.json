@@ -1,0 +1,203 @@
+{
+  "provenance": {
+    "source": "官方 3.14.3 桌面安装包 marketing 横幅 bundle 的 quota.js —— resolveMarketingQuota（按单位分组、每组一次性优先、不同单位不相加的那一版）",
+    "sourceSha256": "16a7222c83cf50f70449c88c501724602bc7165f86611593fd43103270b13439",
+    "sourcePathAtCapture": ".reverse/94-account-capability/weekend-banner-bundle/47e733112e863678220ea40e211823a1b88e322b8efd6e9c6a1451d746b7245d/quota.js",
+    "capturedAt": "2026-10-29",
+    "inputShape": "raw = { zcode_plan: { entitlements: [{ show_name, meter, unit_type, grant_units, period }] } } —— 官方函数读服务端原始 snake_case 载荷",
+    "locales": ["zh-CN", "en-US"]
+  },
+  "payloads": {
+    "weekend": {
+      "zcode_plan": {
+        "entitlements": [
+          {
+            "show_name": "GLM-5.3-Flash",
+            "meter": "model_usage",
+            "unit_type": "token",
+            "grant_units": 300000000,
+            "period": "one_time"
+          }
+        ]
+      }
+    },
+    "mixed": {
+      "zcode_plan": {
+        "entitlements": [
+          {
+            "show_name": "GLM-5.3-Flash",
+            "meter": "model_usage",
+            "unit_type": "token",
+            "grant_units": 300000000,
+            "period": "one_time"
+          },
+          {
+            "show_name": "Bonus Credits",
+            "meter": "model_usage",
+            "unit_type": "credits",
+            "grant_units": 500,
+            "period": "one_time"
+          }
+        ]
+      }
+    },
+    "credits": {
+      "zcode_plan": {
+        "entitlements": [
+          {
+            "show_name": "GLM-5.3-Flash",
+            "meter": "model_usage",
+            "unit_type": "credits",
+            "grant_units": 1200,
+            "period": "one_time"
+          }
+        ]
+      }
+    },
+    "daily": {
+      "zcode_plan": {
+        "entitlements": [
+          {
+            "show_name": "GLM-5.3",
+            "meter": "model_usage",
+            "unit_type": "token",
+            "grant_units": 3000000,
+            "period": "daily"
+          },
+          {
+            "show_name": "GLM-5.3-Flash",
+            "meter": "model_usage",
+            "unit_type": "token",
+            "grant_units": 5000000,
+            "period": "daily"
+          }
+        ]
+      }
+    },
+    "empty": {
+      "zcode_plan": {
+        "entitlements": []
+      }
+    },
+    "dirty": {
+      "zcode_plan": {
+        "entitlements": [
+          {
+            "show_name": "GLM-5.3-Flash",
+            "meter": "model_usage",
+            "unit_type": "token",
+            "grant_units": 7,
+            "period": "one_time"
+          },
+          {
+            "show_name": "GLM-5.3-Flash",
+            "meter": "mcp_usage",
+            "unit_type": "token",
+            "grant_units": 100,
+            "period": "one_time"
+          },
+          {
+            "show_name": "GLM-5.3-Flash",
+            "meter": "model_usage",
+            "unit_type": "token",
+            "grant_units": 100,
+            "period": "weekly"
+          },
+          {
+            "show_name": "GLM-5.3-Flash",
+            "meter": "model_usage",
+            "unit_type": "token",
+            "grant_units": -5,
+            "period": "one_time"
+          }
+        ]
+      }
+    }
+  },
+  "outputs": {
+    "weekend": {
+      "zh-CN": {
+        "amountValue": "300,000,000",
+        "amountUnit": "tokens",
+        "benefits": ["GLM-5.3-Flash · 3亿 tokens"],
+        "mixed": false
+      },
+      "en-US": {
+        "amountValue": "300,000,000",
+        "amountUnit": "tokens",
+        "benefits": ["GLM-5.3-Flash · 300M tokens"],
+        "mixed": false
+      }
+    },
+    "mixed": {
+      "zh-CN": {
+        "amountValue": "3亿 tokens + 500 积分",
+        "amountUnit": "",
+        "benefits": ["GLM-5.3-Flash · 3亿 tokens", "Bonus Credits · 500 积分"],
+        "mixed": true
+      },
+      "en-US": {
+        "amountValue": "300M tokens + 500 credits",
+        "amountUnit": "",
+        "benefits": ["GLM-5.3-Flash · 300M tokens", "Bonus Credits · 500 credits"],
+        "mixed": true
+      }
+    },
+    "credits": {
+      "zh-CN": {
+        "amountValue": "1,200",
+        "amountUnit": "积分",
+        "benefits": ["GLM-5.3-Flash · 1200 积分"],
+        "mixed": false
+      },
+      "en-US": {
+        "amountValue": "1,200",
+        "amountUnit": "credits",
+        "benefits": ["GLM-5.3-Flash · 1.2K credits"],
+        "mixed": false
+      }
+    },
+    "daily": {
+      "zh-CN": {
+        "amountValue": "8,000,000",
+        "amountUnit": "tokens / 天",
+        "benefits": ["GLM-5.3 · 300万 tokens / 天", "GLM-5.3-Flash · 500万 tokens / 天"],
+        "mixed": false
+      },
+      "en-US": {
+        "amountValue": "8,000,000",
+        "amountUnit": "tokens / day",
+        "benefits": ["GLM-5.3 · 3M tokens / day", "GLM-5.3-Flash · 5M tokens / day"],
+        "mixed": false
+      }
+    },
+    "empty": {
+      "zh-CN": {
+        "amountValue": "0",
+        "amountUnit": "tokens",
+        "benefits": [],
+        "mixed": false
+      },
+      "en-US": {
+        "amountValue": "0",
+        "amountUnit": "tokens",
+        "benefits": [],
+        "mixed": false
+      }
+    },
+    "dirty": {
+      "zh-CN": {
+        "amountValue": "7",
+        "amountUnit": "tokens",
+        "benefits": ["GLM-5.3-Flash · 7 tokens"],
+        "mixed": false
+      },
+      "en-US": {
+        "amountValue": "7",
+        "amountUnit": "tokens",
+        "benefits": ["GLM-5.3-Flash · 7 tokens"],
+        "mixed": false
+      }
+    }
+  }
+}

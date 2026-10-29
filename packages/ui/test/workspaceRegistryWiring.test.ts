@@ -493,7 +493,7 @@ test("点击路径不得用 addTab 打开工作区（那会把注册表行物化
 });
 
 test("注册表缺口的 tab 仍可见：数据侧没有记录的工作区不得从侧栏消失", () => {
-  // 实测本机 3 个目录（/home/sixiao/aicode/fix/ZCode-CE、/tmp/pr1/ws、digital_ecosystemV2/）
+  // 实测本机 3 个目录（本仓库检出目录、/tmp/pr1/ws、digital_ecosystemV2/）
   // 只存在于客户端设置，任务索引库与会话库都没有它们。
   // 见 docs/development/workspace-registry.md 第 6 节「未实施项 3」与
   // taskIndexRepo.ts 的 listWorkspaceRegistryEntries 只合并任务索引单源。

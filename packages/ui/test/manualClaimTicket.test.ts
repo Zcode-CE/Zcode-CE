@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ManualClaimPlanEntitlement, ManualClaimPlanPreview } from "@zcode/shared";
 import {
   buildManualClaimTicket,
+  type ManualClaimQuota,
   resolveManualClaimQuota,
 } from "../src/settings/model-provider-section/manualClaimTicket.js";
 import { resolveManualClaimPlanCardView } from "../src/settings/model-provider-section/ManualClaimPlanCard.js";
@@ -308,90 +309,91 @@ test("判据 11 的文案护栏：票券四条文案中英齐备，且沿用既�
 });
 
 /**
- * 与官方归档件的逐条对照。
+ * 与官方横幅版的逐条对照（判据 12）。
  *
- * 为什么在测试里直接跑官方那份 quota.js：只对照「我抄下来的期望值」证明不了等价 ——
- * 期望值本身可能抄错。这里读归档原文求值，比的是同一批载荷下的两份真实输出。
+ * 为什么要有这条：判据 1–6 的期望值是人从官方渲染物读出来的，读错时测试只会跟着错。
+ * 这里拿官方横幅版 `resolveMarketingQuota` 在同一批载荷上的真实输出当参照。
  *
- * 归档件在 .reverse/ 下（该目录不进 CI 的 git 索引），因此缺失时显式 skip，
- * 不静默通过：上面判据 1 到 6 的期望值就是这条对照的固化结果，CI 上仍然有牙齿。
+ * 为什么读受追踪的 fixture 而不直接跑官方 `quota.js`：官方归档件在 `.reverse/`
+ * （本地私有目录，不追踪、不在 CI 检出里）。旧写法在文件缺失时 skip，而 CI 永远缺
+ * ⇒ 这条对照在 CI 上从未执行。现在官方函数在六类载荷 × 中英两 locale 上的输出固化在
+ * `test/fixtures/manualClaimQuotaParity.json`，断言在 CI 上真实生效。
+ *
+ * 取数方式与再生成（仅当本地载荷变了、或换了官方归档件时才需要）：
+ * 归档件里导出的是 resolveMarketingQuota，输入是服务端原始 snake_case 的 plan 快照。
+ * 本地载荷与 fixture 的 payloads 不一致时本断言会先报「载荷漂移」，此时更新 payloads，
+ * 再用归档件重算 outputs：
+ *
+ *   node -e 'const fs=require("node:fs");const f=JSON.parse(fs.readFileSync("packages/ui/test/fixtures/manualClaimQuotaParity.json","utf8"));const q=new Function(fs.readFileSync(process.argv[1],"utf8")+"; return resolveMarketingQuota;")();for(const [n,raw] of Object.entries(f.payloads))for(const l of f.provenance.locales){const r=q(raw,l);console.log(n,l,JSON.stringify({amountValue:r.amountValue,amountUnit:r.amountUnit,benefits:r.benefits,mixed:r.mixed}))}' <归档件 quota.js 路径>
+ *
+ * 归档件的 sha256 记在 fixture 的 provenance.sourceSha256：换了官方版本它就是另一个哈希，
+ * 换档时把 provenance 一起更新，而不是只改 outputs。
  */
-const OFFICIAL_QUOTA = resolve(
-  here,
-  "../../.reverse/94-account-capability/weekend-banner-bundle/47e733112e863678220ea40e211823a1b88e322b8efd6e9c6a1451d746b7245d/quota.js",
-);
+const QUOTA_PARITY = JSON.parse(
+  readFileSync(resolve(here, "test/fixtures/manualClaimQuotaParity.json"), "utf8"),
+) as {
+  provenance: { sourceSha256: string; locales: string[] };
+  payloads: Record<string, unknown>;
+  outputs: Record<string, Record<string, ManualClaimQuota>>;
+};
 
-test(
-  "判据 12：与官方横幅版 quota.js 在同一批载荷上逐条一致",
-  { skip: !existsSync(OFFICIAL_QUOTA) },
-  () => {
-    const source = readFileSync(OFFICIAL_QUOTA, "utf8");
-    const official = new Function(source + "; return resolveMarketingQuota;")() as (
-      data: unknown,
-      locale: string,
-    ) => { amountValue: string; amountUnit: string; benefits: string[]; mixed: boolean };
-    const payloads: { name: string; entitlements: ManualClaimPlanEntitlement[] }[] = [
-      { name: "weekend", entitlements: WEEKEND_PLAN.entitlements },
-      { name: "mixed", entitlements: MIXED_UNITS },
-      {
-        name: "credits",
-        entitlements: [entitlement({ entitlementId: "c", unitType: "credits", grantUnits: 1200 })],
-      },
-      {
-        name: "daily",
-        entitlements: [
-          entitlement({
-            entitlementId: "d1",
-            showName: "GLM-5.3",
-            grantUnits: 3000000,
-            period: "daily",
-          }),
-          entitlement({ entitlementId: "d2", grantUnits: 5000000, period: "daily" }),
-        ],
-      },
-      { name: "empty", entitlements: [] },
-      {
-        name: "dirty",
-        entitlements: [
-          entitlement({ entitlementId: "keep", grantUnits: 7 }),
-          entitlement({ entitlementId: "meter", meter: "mcp_usage", grantUnits: 100 }),
-          entitlement({ entitlementId: "period", period: "weekly", grantUnits: 100 }),
-          entitlement({ entitlementId: "negative", grantUnits: -5 }),
-        ],
-      },
-    ];
-    for (const locale of ["zh-CN", "en-US"]) {
-      for (const payload of payloads) {
-        // 官方读的是服务端原始 snake_case 载荷；这里按同形还原，保证比的是同一份输入。
-        const raw = {
-          zcode_plan: {
-            entitlements: payload.entitlements.map((entry) => ({
-              show_name: entry.showName,
-              meter: entry.meter,
-              unit_type: entry.unitType,
-              grant_units: entry.grantUnits,
-              period: entry.period,
-            })),
-          },
-        };
-        const expected = official(raw, locale);
-        const actual = resolveManualClaimQuota(payload.entitlements, locale);
-        assert.deepEqual(
-          {
-            amountValue: actual.amountValue,
-            amountUnit: actual.amountUnit,
-            benefits: actual.benefits,
-            mixed: actual.mixed,
-          },
-          {
-            amountValue: expected.amountValue,
-            amountUnit: expected.amountUnit,
-            benefits: expected.benefits,
-            mixed: expected.mixed,
-          },
-          locale + " / " + payload.name + " 与官方横幅版输出不一致",
-        );
-      }
+/** 判据 12 的载荷集合：key 必须与 fixture 的 payloads / outputs 一一对应。 */
+const QUOTA_PARITY_PAYLOADS: Record<string, ManualClaimPlanEntitlement[]> = {
+  weekend: WEEKEND_PLAN.entitlements,
+  mixed: MIXED_UNITS,
+  credits: [entitlement({ entitlementId: "c", unitType: "credits", grantUnits: 1200 })],
+  daily: [
+    entitlement({ entitlementId: "d1", showName: "GLM-5.3", grantUnits: 3000000, period: "daily" }),
+    entitlement({ entitlementId: "d2", grantUnits: 5000000, period: "daily" }),
+  ],
+  empty: [],
+  dirty: [
+    entitlement({ entitlementId: "keep", grantUnits: 7 }),
+    entitlement({ entitlementId: "meter", meter: "mcp_usage", grantUnits: 100 }),
+    entitlement({ entitlementId: "period", period: "weekly", grantUnits: 100 }),
+    entitlement({ entitlementId: "negative", grantUnits: -5 }),
+  ],
+};
+
+/** 官方函数读服务端原始 snake_case 载荷；这里按同形还原，保证比的是同一份输入。 */
+function toOfficialPayload(entitlements: ManualClaimPlanEntitlement[]): unknown {
+  return {
+    zcode_plan: {
+      entitlements: entitlements.map((entry) => ({
+        show_name: entry.showName,
+        meter: entry.meter,
+        unit_type: entry.unitType,
+        grant_units: entry.grantUnits,
+        period: entry.period,
+      })),
+    },
+  };
+}
+
+test("判据 12：本地实现与官方横幅版 quota.js 的固化输出逐条一致", () => {
+  const names = Object.keys(QUOTA_PARITY_PAYLOADS).sort();
+  assert.deepEqual(
+    {
+      payloads: Object.keys(QUOTA_PARITY.payloads).sort(),
+      outputs: Object.keys(QUOTA_PARITY.outputs).sort(),
+    },
+    { payloads: names, outputs: names },
+    "fixture 的载荷集合与测试的载荷集合不一致",
+  );
+  for (const [name, entitlements] of Object.entries(QUOTA_PARITY_PAYLOADS)) {
+    assert.deepEqual(
+      toOfficialPayload(entitlements),
+      QUOTA_PARITY.payloads[name],
+      name + "：本地载荷与 fixture 记录的输入不一致 —— 改了载荷就必须重算 fixture（见上方注释）",
+    );
+    for (const locale of QUOTA_PARITY.provenance.locales) {
+      const expected = QUOTA_PARITY.outputs[name]?.[locale];
+      assert.ok(expected, "fixture 缺 " + name + " / " + locale + " 的官方输出");
+      assert.deepEqual(
+        resolveManualClaimQuota(entitlements, locale),
+        expected,
+        locale + " / " + name + " 与官方横幅版输出不一致",
+      );
     }
-  },
-);
+  }
+});

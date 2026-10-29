@@ -16,7 +16,7 @@ import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
  * 两条不可动摇的约束：
  * ① 主序列只由注册表决定：行的存在与顺序都来自注册表条目（lastActivityAt 降序）。
  * ② 注册表缺口的 tab 必须补列在后面（见下方 gap tabs 一段）：实测本机有 3 个目录
- *    （/home/sixiao/aicode/fix/ZCode-CE、/tmp/pr1/ws、digital_ecosystemV2/）只存在于客户端设置，
+ *    （本仓库检出目录、/tmp/pr1/ws、digital_ecosystemV2/）只存在于客户端设置，
  *    任务索引库与会话库都没有它们。纯注册表枚举会让用户已经打开的工作区从侧栏消失。
  *    这是服务端枚举的已知缺口，不是「tab 决定枚举」：
  *    docs/development/workspace-registry.md 第 6 节「未实施项 3：只有会话、没有任务行的工作区尚不在册」；
