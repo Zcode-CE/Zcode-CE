@@ -27,6 +27,7 @@ import { cn } from "@/components/lib/utils.js";
 import { toast } from "@/components/ui/toast.js";
 import { useGlobalTaskList } from "@/hooks/useGlobalTaskList.js";
 import { useServices } from "@/hooks/useServices.js";
+import { useSettings } from "@/hooks/useSettingService.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { FileDisplayIcon, resolveFileDisplayDescriptor } from "@/lib/fileDisplay.js";
 import { formatTaskRelativeTime } from "@/lib/taskListItemPresentation.js";
@@ -489,15 +490,17 @@ export const CommandCenterDialog = memo(function CommandCenterDialogComponent({
         ? COMMAND_CENTER_TASK_RESULT_LIMIT + (activeTaskId ? 1 : 0)
         : COMMAND_CENTER_CONTEXT_SECTION_LIMIT + (activeTaskId ? 1 : 0),
   });
+  const { settings: sharedSettings } = useSettings();
   const workspaceLabelByKey = useMemo(
     () =>
       new Map(
-        effectiveWorkspaceTabs.map((tab) => [
-          tab.workspaceIdentity?.trim() || tab.workspacePath,
-          tab.label,
-        ]),
+        effectiveWorkspaceTabs.map((tab) => {
+          const key = tab.workspaceIdentity?.trim() || tab.workspacePath;
+          const override = sharedSettings?.workspaceDisplayNames?.[key]?.trim();
+          return [key, override || tab.label] as const;
+        }),
       ),
-    [effectiveWorkspaceTabs],
+    [effectiveWorkspaceTabs, sharedSettings?.workspaceDisplayNames],
   );
   const commandOptions = useMemo(
     () =>

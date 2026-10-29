@@ -43,3 +43,12 @@ test("归档平铺列表的工作区标签使用展示名并回落", () => {
   assert.match(archivedSource, /sharedSettings\?\.workspaceDisplayNames\?\./u);
   assert.match(archivedSource, /override \|\| tab\.label \|\| getPathLeaf/u);
 });
+
+test("命令中心的工作区标签使用展示名并回落", () => {
+  const commandCenterSource = readFileSync(
+    resolve(here, "../src/command-center/CommandCenterDialog.tsx"),
+    "utf8",
+  );
+  assert.match(commandCenterSource, /sharedSettings\?\.workspaceDisplayNames\?\./u);
+  assert.match(commandCenterSource, /override \|\| tab\.label/u);
+});
