@@ -97,6 +97,8 @@ export const taskStopToolEntry: ToolEntry = {
   aliases: ["KillShell", "KillBash"],
   capability: "Stop a running background task by ID",
   metadata: {
+    shouldDefer: true,
+    searchHint: "kill a running background task",
     name: TASK_STOP_TOOL_NAME,
     description: TASK_STOP_PROVIDER_DESCRIPTION,
     readOnly: false,

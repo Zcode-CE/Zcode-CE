@@ -36,6 +36,8 @@ export interface TokenUsageLike {
 export interface BuildManualCompactBoundaryInput {
   autoCompactThreshold?: number;
   boundaryId: string;
+  /** compact 前已发现的 deferred 工具名：冷恢复靠它把交付过的引用继续算作已发现。 */
+  preCompactDiscoveredTools?: string[];
   compactReason?: CompactReason;
   customInstructions?: string;
   keptMessageCount?: number;
@@ -79,6 +81,9 @@ export function buildManualCompactBoundary(
 ): CompactBoundaryPayload {
   return {
     boundaryId: input.boundaryId,
+    ...(input.preCompactDiscoveredTools
+      ? { preCompactDiscoveredTools: input.preCompactDiscoveredTools }
+      : {}),
     trigger: input.trigger ?? CompactTrigger.Manual,
     phase: input.phase,
     compactReason: input.compactReason,

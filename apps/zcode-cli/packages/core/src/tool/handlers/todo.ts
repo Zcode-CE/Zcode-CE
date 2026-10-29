@@ -74,6 +74,7 @@ const todoWriteHandler: ToolHandler = async (input, context) => {
 export const todoReadToolEntry: ToolEntry = {
   capability: "Read the current session todo list without modifying external state",
   metadata: {
+    shouldDefer: true,
     name: "TodoRead",
     description: "Read the current session todo list",
     readOnly: true,
@@ -131,6 +132,8 @@ export const todoWriteToolEntry: ToolEntry = {
   capability:
     "Replace the current session todo list to track multi-step task progress and resume state",
   metadata: {
+    shouldDefer: true,
+    searchHint: "manage the session task checklist",
     name: "TodoWrite",
     description: `Create and update a task list for the current session. The list is rendered to the user as your working plan.
 

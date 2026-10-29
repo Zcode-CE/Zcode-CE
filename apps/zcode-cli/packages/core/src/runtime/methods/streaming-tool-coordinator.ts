@@ -1,3 +1,4 @@
+import type { ToolSearchExecutionContext } from "@zcode/contracts";
 import { TurnMachineImpl, createPartId } from "../deps.js";
 import type {
   MessageId,
@@ -57,6 +58,8 @@ export function createStreamingToolCoordinator(
   options: {
     assistantMessageId: MessageId;
     model: Model;
+    /** 传给 executor 的搜索上下文：DeferredToolCall 的准入在 executor 公共边界完成。 */
+    toolSearch?: ToolSearchExecutionContext;
     traceContext: TraceContext;
   },
 ): StreamingToolCoordinator {
@@ -84,6 +87,7 @@ export function createStreamingToolCoordinator(
         // model admission 已去重；只读工具可能先落盘，序号必须来自全部本地声明。
         declarationIndex: acceptedToolCalls.size - 1,
         model: options.model,
+        toolSearch: options.toolSearch,
         toolCall: normalizedToolCall,
         traceContext: options.traceContext,
       }).catch(async (error) => {
@@ -193,6 +197,7 @@ export function createStreamingToolCoordinator(
       ]);
       state.turnMachine = new TurnMachineImpl(state.turnMachine.receiveModelResponse(""));
       await executeToolCallsForModelStep.call(runtime, state, {
+        toolSearch: options.toolSearch,
         assistantCreatedAt,
         assistantMessageId: options.assistantMessageId,
         modelTraceContext: options.traceContext,
@@ -227,6 +232,7 @@ async function executeDuringStream(
     assistantMessageId: MessageId;
     declarationIndex: number;
     model: Model;
+    toolSearch?: ToolSearchExecutionContext;
     toolCall: ModelToolCall;
     traceContext: TraceContext;
   },
@@ -287,6 +293,7 @@ async function executeDuringStream(
   const execution = await runtime.executeTools([toolCall], schedule, {
     subagentModelOverride: state.subagentModelOverride,
     model: state.model,
+    toolSearch: options.toolSearch,
     automationTurn: isAutomationMutationRestrictedTurn(state),
     offPeakTurn: isOffPeakCreateRestrictedTurn(state),
     signal: options.abortSignal,

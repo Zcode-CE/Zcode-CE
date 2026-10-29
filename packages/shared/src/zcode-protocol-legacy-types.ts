@@ -28,6 +28,9 @@ export const zcodeSyntheticUserMessageSourceSchema = z.enum([
   // app/agent 共用的承重消息 schema 必须与 CLI contracts 使用同一来源词表。
   "subagent_message",
   "todo_reminder",
+  // ToolSearch 的目录变化公告（模型可见、UI/transcript 隐藏）。必须与 contracts 的
+  // SYNTHETIC_USER_MESSAGE_SOURCES 同词表，否则 v3 mapper 收窄该 source 会 tsc 失败。
+  "tool_search_announcement",
   // 中枢直接启动工作流的启动轮 source；与 contracts 的
   // SYNTHETIC_USER_MESSAGE_SOURCES 保持同一词表，否则 v3 mapper 收窄该 source 会 tsc 失败。
   "workflow_launch",

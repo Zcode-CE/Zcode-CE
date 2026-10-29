@@ -1,4 +1,4 @@
-import type { RuntimeInputPresentation } from "@zcode/contracts";
+import type { RuntimeInputPresentation, ToolSearchExecutionContext } from "@zcode/contracts";
 /* eslint-disable max-lines -- Runtime 类型集中承载 core/runtime 对外结构，拆分需要单独迁移。 */
 import { PermissionService, ToolScheduler } from "./deps.js";
 import type {
@@ -757,6 +757,8 @@ export interface PermissionDecisionResult {
 }
 
 export interface ExecuteToolsOptions {
+  /** 本次请求的搜索上下文：executor 用它做 DeferredToolCall 准入，ToolSearch handler 用它读目录。 */
+  toolSearch?: ToolSearchExecutionContext;
   automationTurn?: boolean;
   offPeakTurn?: boolean;
   signal?: AbortSignal;
@@ -860,6 +862,8 @@ export interface RunModelTextRequestOptions {
   onModelNetworkStatus?: (event: ModelNetworkStatusEvent) => void;
   streamRecovery?: ModelStreamRecoveryStatus;
   tools: ModelToolContract[];
+  /** native 模式的 provider 侧延迟加载标记；local/off 不设置（不发 beta/defer_loading）。 */
+  toolSearchEnabled?: boolean;
   traceContext: TraceContext;
 }
 

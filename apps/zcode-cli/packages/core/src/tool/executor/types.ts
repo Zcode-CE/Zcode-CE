@@ -29,6 +29,7 @@ import type {
   SubagentRunOptions,
   SubagentPort,
   ToolArtifactStorePort,
+  ToolSearchExecutionContext,
   TraceContext,
   TurnId,
   WorkflowPort,
@@ -179,6 +180,11 @@ export interface ToolExecutor {
 }
 
 export interface ToolExecuteOptions {
+  /**
+   * 本次请求的搜索上下文。executor 用它做 DeferredToolCall 准入（包装解包或拒绝），
+   * 并原样放进 ToolExecutionContext 供 ToolSearch handler 读取目录。
+   */
+  toolSearch?: ToolSearchExecutionContext;
   automationTurn?: boolean;
   offPeakTurn?: boolean;
   signal?: AbortSignal;

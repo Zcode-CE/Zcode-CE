@@ -83,6 +83,8 @@ function syntheticUserNoticeKind(source: SyntheticUserMessageSource): MessageSem
       return "subagent_notification";
     case "todo_reminder":
       return "todo_reminder";
+    case "tool_search_announcement":
+      return "system_reminder";
     // 直接启动的启动轮不走这条 synthetic-notice 铸造路（它要 origin=real_user、kind=user_prompt，
     // 由 message-persistence 的专用落盘直接给出）。这里只为穷举完备而登记同一个 kind。
     case "workflow_launch":

@@ -18,6 +18,9 @@ import {
 } from "../deps.js";
 import type { SessionEvent, TraceContext } from "../deps.js";
 import { resolveModelRequestSessionTypeFromTaskType } from "./model-request-session-type.js";
+import { TOOL_SEARCH_NAME } from "@zcode/contracts";
+import { buildToolSearchAnnouncement } from "../../tool/search/exposure.js";
+import { collectDiscoveredTools, compactDiscoveryMetadata } from "../../tool/search/history.js";
 import {
   defaultCompactPhaseForTrigger,
   defaultCompactReasonForTrigger,
@@ -492,12 +495,32 @@ async function compactActiveConversationImpl(
             workspaceRoot: this.workspaceRoot,
           })
         : undefined;
+      // Bug 根因：compact 丢弃旧公告后曾依赖下一次请求补齐，纯 Continue 没有正常收集机会。
+      // 检查点写入发现名称、并按保留历史重建公告；两者与摘要同批落盘。
+      throwIfTurnAborted(options.abortSignal);
+      const preCompactDiscoveredTools = collectDiscoveredTools(activeEntries);
+      const discovery = compactDiscoveryMetadata({
+        boundaryId: createCompactBoundaryId(),
+        preCompactDiscoveredTools: [...preCompactDiscoveredTools],
+      });
+      // 新检查点尚未提交；公告使用同一发现集，避免把即将提升的工具重新公告为待加载。
+      const toolAnnouncement = buildToolSearchAnnouncement(
+        {
+          model: compactModel,
+          mode: this.config.toolSearch?.mode,
+          tools: this.getTools(compactModel),
+          registry: this.getToolRegistry(),
+          entries: preservedEntries,
+        },
+        preCompactDiscoveredTools,
+      );
       const postCompactReminderEntries = [
         ...(planFileReferenceEntry ? [planFileReferenceEntry] : []),
         ...buildPostCompactReadStateReminderEntries({
           preservedEntries,
           readFileState: this.readFileState,
         }),
+        ...(toolAnnouncement ? [toolAnnouncement] : []),
       ];
 
       const modelCompleteEvent = this.createEvent(
@@ -535,7 +558,8 @@ async function compactActiveConversationImpl(
             role: "user",
             content: summaryMessageContent,
           },
-          metadata: legacySyntheticRuntimeMetadata(),
+          // 摘要条目承载发现检查点：请求投影据此把 compact 前的发现继续算作已发现。
+          metadata: { ...legacySyntheticRuntimeMetadata(), compactBoundary: discovery },
         },
         {
           postCompactReminderEntries,
@@ -547,7 +571,7 @@ async function compactActiveConversationImpl(
       });
       const providerPostCompactTokenCount = getUsageTotalTokens(result.usage);
       const compactBoundary = buildManualCompactBoundary({
-        boundaryId: createCompactBoundaryId(),
+        ...discovery,
         autoCompactThreshold: options.autoCompactThreshold,
         compactReason,
         customInstructions,

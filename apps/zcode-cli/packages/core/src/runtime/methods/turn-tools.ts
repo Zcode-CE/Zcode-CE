@@ -1,3 +1,5 @@
+import type { ModelCallWrapper, ToolSearchExecutionContext } from "@zcode/contracts";
+import { resolveDeferredToolCall } from "../../tool/deferred-call.js";
 import { createPartId, traceContextToLogContext, TurnMachineImpl } from "../deps.js";
 import type {
   MessageId,
@@ -50,6 +52,7 @@ export async function executeToolCallsForModelStep(
     result: RuntimeModelTextResult;
     streamedToolResults?: StreamedToolExecutionResult[];
     toolCalls: ModelToolCall[];
+    toolSearch?: ToolSearchExecutionContext;
   },
 ): Promise<"continue" | "break"> {
   const model = state.model;
@@ -57,13 +60,22 @@ export async function executeToolCallsForModelStep(
     throw new Error("Model-backed tool execution requires the loop Model");
   }
   const modelSelection = { providerId: model.providerId, modelId: model.modelId };
-  const coreToolCalls: ToolCall[] = options.toolCalls.map((tc) => ({
-    id: tc.id as ToolCallId,
-    // Model step admission 已完成类型/ID 校验；这里保留可恢复的原始空白名称，
-    // 让 executor 强制走 registry miss，而不是把 storage 占位值当成真实工具。
-    name: tc.name,
-    input: tc.input,
-  }));
+  // 包装调用的解包必须早于任何 part / 事件 / 调度：tool part、ToolCall* 事件与内部历史
+  // 统一使用目标身份，包装标记只留在 part metadata 与 ToolCall 上供协议出口还原。
+  // 准入失败的调用保持包装身份，由 executor 的公共准入给出配对的失败结果。
+  const wrapperByCallId = new Map<string, ModelCallWrapper>();
+  const coreToolCalls: ToolCall[] = options.toolCalls.map((tc) => {
+    // Model step admission 已完成类型/ID 校验；空名按原值保留，让 executor 强制走 registry miss，
+    // 而不是把 storage 占位值当成真实工具。
+    const admission = resolveDeferredToolCall<ToolCall>(
+      { ...tc, id: tc.id as ToolCallId },
+      options.toolSearch,
+      this.registry,
+    );
+    if (admission.call.modelCallWrapper)
+      wrapperByCallId.set(admission.call.id, admission.call.modelCallWrapper);
+    return admission.call;
+  });
   const streamedResultsById = new Map(
     (options.streamedToolResults ?? []).map((entry) => [entry.toolCallId, entry]),
   );
@@ -95,7 +107,11 @@ export async function executeToolCallsForModelStep(
           toolCall,
           traceContext: options.modelTraceContext,
           model,
-          metadata: mcpToolPartMetadata(this.registry.getMetadata(toolCall.name)?.mcpPresentation),
+          metadata: withModelCallWrapper(
+            mcpToolPartMetadata(this.registry.getMetadata(toolCall.name)?.mcpPresentation),
+            wrapperByCallId,
+            toolCall.id,
+          ),
         });
         await emitStreamingToolLedgerUpdate(this, state.events, options.modelTraceContext, {
           assistantMessageId: options.assistantMessageId,
@@ -129,7 +145,11 @@ export async function executeToolCallsForModelStep(
       toolCall,
       traceContext: options.modelTraceContext,
       model,
-      metadata: mcpToolPartMetadata(this.registry.getMetadata(toolCall.name)?.mcpPresentation),
+      metadata: withModelCallWrapper(
+        mcpToolPartMetadata(this.registry.getMetadata(toolCall.name)?.mcpPresentation),
+        wrapperByCallId,
+        toolCall.id,
+      ),
     });
     await emitStreamingToolLedgerUpdate(this, state.events, options.modelTraceContext, {
       assistantMessageId: options.assistantMessageId,
@@ -178,6 +198,7 @@ export async function executeToolCallsForModelStep(
       tools: pendingToolCalls.map((tc) => tc.name),
     });
     const execution = await this.executeTools(pendingToolCalls, pendingSchedule, {
+      toolSearch: options.toolSearch,
       automationTurn: isAutomationMutationRestrictedTurn(state),
       offPeakTurn: isOffPeakCreateRestrictedTurn(state),
       signal: state.turnAbortSignal,
@@ -204,7 +225,11 @@ export async function executeToolCallsForModelStep(
               callID: toolCall.id,
               declarationIndex: persisted.declarationIndex,
               tool: projectedToolName.toolName,
-              metadata: projectedToolName.metadata,
+              metadata: withModelCallWrapper(
+                projectedToolName.metadata,
+                wrapperByCallId,
+                toolCall.id,
+              ),
               state: {
                 status: "running",
                 input: persisted.input,
@@ -308,7 +333,12 @@ export async function executeToolCallsForModelStep(
           callID: result.toolCallId,
           declarationIndex: persisted.declarationIndex,
           tool: projectedResultToolName.toolName,
-          metadata: projectedResultToolName.metadata,
+          // 包装标记必须活到 completed/error：冷恢复按它还原模型协议里的外层调用。
+          metadata: withModelCallWrapper(
+            projectedResultToolName.metadata,
+            wrapperByCallId,
+            result.toolCallId,
+          ),
           state: result.success
             ? {
                 status: "completed",
@@ -525,3 +555,19 @@ async function enqueueFollowUpUserInputFromToolResult(
     toolName: result.toolName,
   });
 }
+
+/**
+ * 在 part-level metadata 上附加包装标记（保留原有展示等字段）。
+ * 目标 part 从 pending 起就保存 modelCallWrapper，重存、历史复制与分支恢复都保留它；
+ * 冷恢复据此在 provider 请求里还原外层 DeferredToolCall 调用（见 session-history-hydrator）。
+ */
+function withModelCallWrapper(
+  metadata: Record<string, unknown> | undefined,
+  wrapperByCallId: ReadonlyMap<string, ModelCallWrapper>,
+  toolCallId: string,
+): Record<string, unknown> | undefined {
+  const wrapper = wrapperByCallId.get(toolCallId);
+  if (!wrapper) return metadata;
+  return { ...metadata, modelCallWrapper: wrapper };
+}
+

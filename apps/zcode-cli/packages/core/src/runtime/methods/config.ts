@@ -1,3 +1,5 @@
+import { resolveToolSearchMode } from "../../tool/search/exposure.js";
+import { DEFERRED_TOOL_CALL_NAME, TOOL_SEARCH_NAME } from "@zcode/contracts";
 import type {
   CollaborationMode,
   ExecutionShellSelection,
@@ -138,6 +140,14 @@ export function getTools(this: AgentRuntimeInternal, model?: Model): ModelToolCo
     this.cachedTools = filterRuntimeVisibleTools.call(this, this.registry.toContracts());
   }
   return this.cachedTools
+    // 两个控制入口只在搜索真正开启的请求里出现；off（含 native/local 能力不足退回 off）
+    // 时唯余完整目录，模型不该看到自己用不了的入口。
+    .filter(
+      (tool) =>
+        (tool.name !== TOOL_SEARCH_NAME && tool.name !== DEFERRED_TOOL_CALL_NAME) ||
+        !model ||
+        resolveToolSearchMode(model, this.config.toolSearch?.mode) !== "off",
+    )
     .filter((tool) => tool.name !== "WebSearch" || shouldExposeWebSearch.call(this, model))
     .map((tool) =>
       projectToolModelContract(tool, this.registry.get(tool.name), {

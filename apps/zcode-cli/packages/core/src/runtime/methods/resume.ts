@@ -150,6 +150,7 @@ export async function resumeFromStore(
     traceContext,
   );
   const hydration = await hydrateMessageHistoryFromSession({
+    logger: this.logger,
     artifactStore: this.artifactStore,
     branchCutAfterMessageId,
     history: this.messageHistory,

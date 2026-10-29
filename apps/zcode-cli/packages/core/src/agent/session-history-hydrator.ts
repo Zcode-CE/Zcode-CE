@@ -3,8 +3,18 @@ import { runtimeInputMetadata } from "./runtime-input-presentation.js";
 // Session History Hydration - rebuild provider-visible context
 // ============================================================
 
-import { modelMessageContentToText, selectActiveConversationBranch } from "@zcode/contracts";
+import {
+  ModelCallWrapperSchema,
+  modelMessageContentToText,
+  selectActiveConversationBranch,
+} from "@zcode/contracts";
+import {
+  hydrateCompactDiscovery,
+  hydrateToolSearchAnnouncement,
+  hydrateToolSearchContent,
+} from "./tool-search-hydration.js";
 import type {
+  Logger,
   FilePart,
   MessagePart,
   MessageWithParts,
@@ -52,6 +62,7 @@ export interface SessionHistoryHydrationResult {
 }
 
 export async function hydrateMessageHistoryFromSession(input: {
+  logger?: Logger;
   artifactStore?: ToolArtifactStorePort;
   branchCutAfterMessageId?: MessageId;
   history: MessageHistory;
@@ -131,11 +142,13 @@ export async function hydrateMessageHistoryFromSession(input: {
 
     input.history.addAssistant(
       text,
+      // 内部历史按目标身份重建；包装标记随调用一起恢复（协议出口再还原外层调用）。
       toolParts.map(
         (part): ToolCallInput => ({
           id: part.callID,
           input: part.state.input,
-          name: providerToolNameFromPart(part),
+          modelCallWrapper: modelCallWrapperFromPart(part),
+          name: historyToolNameFromPart(part),
         }),
       ),
       reasoning,
@@ -147,7 +160,8 @@ export async function hydrateMessageHistoryFromSession(input: {
     appliedMessageCount++;
 
     for (const part of toolParts) {
-      const providerToolName = providerToolNameFromPart(part);
+      const toolName = historyToolNameFromPart(part);
+      const modelCallWrapper = modelCallWrapperFromPart(part);
       if (part.state.status === "completed") {
         // live tool result 使用结构化媒体，但旧恢复只读取 output 摘要，
         // 导致模型切换或冷恢复后丢失 Read/MCP 产生的真实媒体。
@@ -167,8 +181,19 @@ export async function hydrateMessageHistoryFromSession(input: {
                 attachmentBlocks,
               )
             : undefined;
-        const content = projectedMediaContent ?? part.state.output;
-        input.history.addToolResult(part.callID, providerToolName, content, true);
+        // 引用块优先于媒体投影与纯文本 output：它才是模型当时真实收到的内容。
+        const content =
+          hydrateToolSearchContent(part.state.metadata?.modelContent, input.logger) ??
+          projectedMediaContent ??
+          part.state.output;
+        input.history.addToolResult(
+          part.callID,
+          toolName,
+          content,
+          true,
+          false,
+          modelCallWrapper,
+        );
         continue;
       }
 
@@ -178,15 +203,24 @@ export async function hydrateMessageHistoryFromSession(input: {
         // 面向 UI / 日志的 state.error；优先使用持久化字符串并兼容旧 session。
         input.history.addToolResult(
           part.callID,
-          providerToolName,
+          toolName,
           typeof persistedModelContent === "string" ? persistedModelContent : part.state.error,
           false,
+          true,
+          modelCallWrapper,
         );
         continue;
       }
 
       interruptedToolCount++;
-      input.history.addToolResult(part.callID, providerToolName, INTERRUPTED_TOOL_RESULT, false);
+      input.history.addToolResult(
+        part.callID,
+        toolName,
+        INTERRUPTED_TOOL_RESULT,
+        false,
+        true,
+        modelCallWrapper,
+      );
     }
   }
 
@@ -439,13 +473,23 @@ function syntheticSystemReminderAttachmentFromTextPart(
 ): SyntheticSystemReminderAttachment | undefined {
   if (!part.synthetic) return undefined;
   if (part.text.trim().length === 0) return undefined;
-  if (isProviderWrappedSystemReminderText(part.text)) return undefined;
   const metadata = metadataFromSyntheticTextPart(part);
+  // 只凭已校验的公告身份适配旧包装，不从普通用户正文推断提醒来源。
+  const announcement = metadata.toolSearchAnnouncement;
+  const wrapped = isProviderWrappedSystemReminderText(part.text);
+  if (wrapped && !announcement) return undefined;
   if (!isRestorableSystemReminderAttachmentSource(metadata.source)) return undefined;
 
   return {
     source: metadata.source,
-    content: part.text,
+    // 公告落盘时正文已带 provider 包装（旧格式），恢复时剥掉外壳由投影统一重包。
+    content:
+      wrapped && announcement
+        ? part.text
+            .trim()
+            .replace(/^<system-reminder>\s*/, "")
+            .replace(/\s*<\/system-reminder>$/, "")
+        : part.text,
   };
 }
 
@@ -530,8 +574,14 @@ function runtimeMessageMetadataFromPartMetadata(
   if (source === "real_user") {
     return realUserRuntimeMetadata();
   }
-  if (source === "legacy_synthetic") {
-    return legacySyntheticRuntimeMetadata();
+  if (source === "legacy_synthetic" || source === "tool_search_announcement") {
+    const announcement = hydrateToolSearchAnnouncement(runtimeMessage.toolSearchAnnouncement);
+    return {
+      ...legacySyntheticRuntimeMetadata(),
+      ...(announcement
+        ? { source: "tool_search_announcement" as const, toolSearchAnnouncement: announcement }
+        : {}),
+    };
   }
   if (source === "todo_reminder") {
     return todoReminderRuntimeMetadata();
@@ -579,7 +629,12 @@ function isToolPart(part: MessagePart): part is ToolPart {
   return part.type === "tool";
 }
 
-function providerToolNameFromPart(part: ToolPart): string {
+function modelCallWrapperFromPart(part: ToolPart) {
+  const parsed = ModelCallWrapperSchema.safeParse(part.metadata?.modelCallWrapper);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function historyToolNameFromPart(part: ToolPart): string {
   const providerToolName = part.metadata?.providerToolName;
   // 空字符串在 cold hydration 中曾只能依赖 non-empty ToolPart.tool；
   // 必须按字段存在性恢复原值，不能用 truthy 判断把空名重新覆盖成占位值。

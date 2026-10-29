@@ -13,13 +13,16 @@ import {
   buildTodoReminderBody,
   buildRuntimeProviderRequestMessages,
   createCompactRapidRefillError,
+  prepareRuntimeProviderRequest,
   throwIfTurnAborted,
   shouldBuildTodoReminder,
 } from "../helpers/index.js";
 import {
+  isRuntimeAttachmentEntry,
   systemReminderAttachmentEntry,
   todoReminderRuntimeMetadata,
 } from "../../agent/message-history.js";
+import { buildToolSearchAnnouncement } from "../../tool/search/exposure.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 import { runModelBackedTurnStep } from "./turn-model-step.js";
 import {
@@ -165,22 +168,57 @@ export async function runRegularTurnLoop(
         systemReminderAttachmentEntry("output_style", outputStyleReminderBody),
       ]);
     }
+    if (!outputTokenRecoveryActive) {
+      // 公告先落盘再进内存历史：正文与增量事实必须一起成为持久事实，否则 fork/resume
+      // 会把已公告的工具重新当成首次出现（模型会收到重复名单）。
+      const announcement = buildToolSearchAnnouncement({
+        model: state.model,
+        mode: this.config.toolSearch?.mode,
+        tools,
+        registry: this.getToolRegistry(),
+        entries: state.turnRequestState.entries,
+      });
+      if (announcement && isRuntimeAttachmentEntry(announcement)) {
+        await this.persistSyntheticUserNoticeForSession({
+          messageID: createMessageId(),
+          metadata: { runtimeMessage: announcement.metadata },
+          sessionId: this.sessionId,
+          source: "tool_search_announcement",
+          text: announcement.content,
+          traceContext: state.turnTraceContext,
+        });
+        commitTurnRequestEntries(this, state.turnRequestState, [announcement]);
+      }
+    }
     const providerEntries = [...state.turnRequestState.entries];
     const requestEntries = providerEntries;
     // provider-visible user ordering projection 会改变最终 latest user 落点，
     // cache-control 必须在 projection 后统一设置，避免 raw synthetic entry 抢占缓存锚点。
-    const providerProjection = buildRuntimeProviderRequestMessages(this, {
+    // ToolSearch 的曝光决策同样只在这里做一次：目录过滤、历史引用投影与发送的 tools 配套产出。
+    const prepared = prepareRuntimeProviderRequest(this, {
+      model: state.model,
+      tools,
+      registry: this.getToolRegistry(),
       entries: requestEntries,
       applyCacheControl: true,
-      model: state.model,
     });
-    const { messages } = providerProjection;
-    const recordableEntries = filterOutputTokenContinuationEntries(requestEntries);
+    this.logger?.debug("ToolSearch request exposure", {
+      event: "tool.search.exposure",
+      enabled: prepared.toolSearch.enabled,
+      mode: prepared.toolSearch.mode,
+      reason: prepared.reason,
+      catalogSize: prepared.toolSearch.catalog.length,
+      schemaCount: prepared.request.tools.length,
+    });
+    const providerProjection = prepared.projection;
+    const { messages } = prepared.request;
+    const recordableEntries = filterOutputTokenContinuationEntries(prepared.entries);
     const recordableProjection =
-      recordableEntries === requestEntries
+      recordableEntries === prepared.entries
         ? providerProjection
         : buildRuntimeProviderRequestMessages(this, {
             entries: recordableEntries,
+            loadedToolCallIds: prepared.loadedToolCallIds,
             applyCacheControl: true,
             model: state.model,
           });
@@ -209,7 +247,8 @@ export async function runRegularTurnLoop(
       sourceEntries: providerProjection.sourceEntries,
       requestEntries,
       recordedMessages: recordableProjection.messages,
-      tools,
+      tools: prepared.request.tools,
+      toolSearch: prepared.toolSearch,
     });
 
     if (result === "break") {

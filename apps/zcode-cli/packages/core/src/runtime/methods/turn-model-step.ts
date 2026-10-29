@@ -1,4 +1,7 @@
 import { beginLocalTurnPreparation } from "@zcode/contracts";
+import type { ToolSearchExecutionContext } from "@zcode/contracts";
+import type { ToolCall } from "../../agent/turn-state.js";
+import { resolveDeferredToolCall } from "../../tool/deferred-call.js";
 import {
   CompactTrigger,
   CoreErrorType,
@@ -96,6 +99,7 @@ export async function runModelBackedTurnStep(
     recordedMessages: RunModelTextRequestOptions["messages"];
     requestEntries: readonly RuntimeMessageEntry[];
     tools: ModelToolContract[];
+    toolSearch?: ToolSearchExecutionContext;
   },
 ): Promise<ModelStepResult> {
   const assistantMessageId = createMessageId();
@@ -141,6 +145,7 @@ async function runModelBackedTurnStepImpl(
     recordedMessages: RunModelTextRequestOptions["messages"];
     requestEntries: readonly RuntimeMessageEntry[];
     tools: ModelToolContract[];
+    toolSearch?: ToolSearchExecutionContext;
   },
   assistantMessageId: MessageId,
 ): Promise<ModelStepResult> {
@@ -209,6 +214,7 @@ async function runModelBackedTurnStepImpl(
   const streamingToolCoordinator = createStreamingToolCoordinator(this, state, {
     assistantMessageId,
     model,
+    toolSearch: options.toolSearch,
     traceContext: modelTraceContext,
   });
   const networkEventStartIndex = state.events.length;
@@ -258,6 +264,7 @@ async function runModelBackedTurnStepImpl(
       onStreamToolCall: (toolCall) => streamingToolCoordinator.accept(toolCall),
       streamRecovery: streamRecoveryRequest,
       tools: options.tools,
+      toolSearchEnabled: options.toolSearch?.mode === "native",
       traceContext: modelTraceContext,
     });
     throwIfTurnAborted(state.turnAbortSignal);
@@ -642,7 +649,13 @@ async function runModelBackedTurnStepImpl(
     toolCallCount: toolCalls.length,
   });
 
-  const executableToolCalls = toolCalls.filter((toolCall) => !toolCall.providerExecuted);
+  // 包装调用在进入历史与执行之前解包：assistant tool_use 与 tool result 必须同为目标身份，
+  // 包装标记随调用进入 part metadata，只在模型协议出口还原外层调用。
+  const executableToolCalls: ToolCall[] = toolCalls
+    .filter((toolCall) => !toolCall.providerExecuted)
+    .map((toolCall) =>
+      resolveDeferredToolCall<ToolCall>({ ...toolCall }, options.toolSearch, this.registry).call,
+    );
   const streamedToolResults = await streamingToolCoordinator.drain(executableToolCalls);
   if (outputTokenContinuation !== "none") {
     // 首次命中 output-limit 时，当前 request 可能带有一次性的 project-memory attachment；
@@ -722,6 +735,7 @@ async function runModelBackedTurnStepImpl(
     recordModelHistoryRound(state);
   }
   const toolStepResult = await executeToolCallsForModelStep.call(this, state, {
+    toolSearch: options.toolSearch,
     assistantCreatedAt,
     assistantMessageId,
     modelTraceContext,

@@ -1,3 +1,4 @@
+import { PersistedToolSearchContentSchema } from "@zcode/contracts";
 import {
   COMPLETED_TOOL_PART_METADATA_SCHEMA_VERSION,
   type CompletedToolPartMetadata,
@@ -19,6 +20,9 @@ export function mcpToolPartMetadata(
 export function completedToolPartMetadata(
   result: ToolExecutionResult,
 ): CompletedToolPartMetadata {
+  // 引用块必须原样进 metadata：冷恢复靠它重建 provider 请求里的 tool_reference，
+  // 退化成纯文本会让已交付的 deferred 定义在恢复后丢失。
+  const modelContent = PersistedToolSearchContentSchema.safeParse(result.modelContent);
   const serialization = result.serialization
     ? {
         truncated: result.serialization.truncated,
@@ -32,6 +36,7 @@ export function completedToolPartMetadata(
     : undefined;
   return {
     schemaVersion: COMPLETED_TOOL_PART_METADATA_SCHEMA_VERSION,
+    ...(modelContent.success ? { modelContent: modelContent.data } : {}),
     ...(result.display ? { display: result.display } : {}),
     ...(serialization ? { serialization } : {}),
     // resume 需要恢复模型当时真实读到的文件快照；只依赖 tool_result 文本

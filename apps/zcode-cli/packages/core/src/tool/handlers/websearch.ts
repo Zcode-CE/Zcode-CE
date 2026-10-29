@@ -130,6 +130,8 @@ export const webSearchToolEntry: ToolEntry = {
   ...WEBSEARCH_TOOL_CONTRACT,
   providerNative: undefined,
   metadata: {
+    shouldDefer: true,
+    searchHint: "search the web for current information",
     name: WEBSEARCH_TOOL_NAME,
     // 写死月份会导致模型可见的 WebSearch 描述过期。
     // 每次读取时重新生成，避免长驻进程跨月后继续投递旧月份。

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { OFFICIAL_MCP_TOOL_ERROR_CODES } from "@zcode/shared";
+import { PersistedToolSearchContentSchema } from "./tool-search.js";
 
 import {
   CREATE_WORKFLOW_DISPLAY_MAX_DIAGNOSTICS,
@@ -294,6 +295,8 @@ export type ToolResultSerializationMetadata = z.infer<typeof toolResultSerializa
 
 export const completedToolPartMetadataSchema = z
   .object({
+    // 错误结果沿用字符串内容；仅接受数组会使 V4 冷恢复丢弃整份 metadata，包括 display。
+    modelContent: z.union([z.string(), PersistedToolSearchContentSchema]).optional(),
     schemaVersion: z.literal(COMPLETED_TOOL_PART_METADATA_SCHEMA_VERSION),
     display: toolResultDisplayPayloadSchema.optional(),
     serialization: toolResultSerializationMetadataSchema.optional(),

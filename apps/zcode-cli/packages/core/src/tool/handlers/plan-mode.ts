@@ -107,6 +107,8 @@ export const enterPlanModeToolEntry: ToolEntry = {
   capability: "Enter read-only planning mode before implementation",
   requiresUserInteraction: false,
   metadata: {
+    shouldDefer: true,
+    searchHint: "switch to plan mode to design an approach before coding",
     name: ENTER_PLAN_MODE_TOOL_NAME,
     description: ENTER_PLAN_MODE_PROVIDER_DESCRIPTION,
     readOnly: false,
@@ -154,6 +156,8 @@ export const exitPlanModeToolEntry: ToolEntry = {
   capability: "Request user approval for the plan and exit planning mode before coding",
   requiresUserInteraction: true,
   metadata: {
+    shouldDefer: true,
+    searchHint: "present plan for approval and start coding (plan mode only)",
     name: EXIT_PLAN_MODE_TOOL_NAME,
     description: EXIT_PLAN_MODE_DESCRIPTION,
     readOnly: false,

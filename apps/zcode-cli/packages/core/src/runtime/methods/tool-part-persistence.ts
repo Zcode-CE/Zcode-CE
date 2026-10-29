@@ -36,7 +36,8 @@ export async function persistPendingToolPart(
     partID: PartId;
     toolCall: ToolCall;
     traceContext: TraceContext;
-    metadata?: CompletedToolPartMetadata;
+    /** part-level metadata：MCP 展示 + 包装标记等结构化附加项，原样落盘供冷恢复读取。 */
+    metadata?: Record<string, unknown>;
     model: Model;
   },
 ): Promise<void> {

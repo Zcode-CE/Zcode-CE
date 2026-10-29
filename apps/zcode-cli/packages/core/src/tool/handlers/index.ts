@@ -18,6 +18,8 @@ import {
 } from "@zcode/contracts";
 import type { ToolEntry } from "../types.js";
 import type { AgentProfile } from "../../subagent/profile.js";
+import { deferredToolCallEntry } from "./deferred-tool-call.js";
+import { toolSearchToolEntry } from "./tool-search.js";
 import { readToolEntry } from "./read.js";
 import { writeToolEntry } from "./write.js";
 import { editToolEntry } from "./edit.js";
@@ -74,6 +76,9 @@ import { createToolRuleNameSet } from "../tool-visibility.js";
 // 统一隐藏 Glob/Grep，并通过 Bash find/grep 接管搜索。
 
 export const builtInTools: ToolEntry[] = [
+  // F14 两个控制入口：off 模式下由请求装配按 mode 过滤掉，不靠注册面区分。
+  toolSearchToolEntry,
+  deferredToolCallEntry,
   readToolEntry,
   writeToolEntry,
   editToolEntry,

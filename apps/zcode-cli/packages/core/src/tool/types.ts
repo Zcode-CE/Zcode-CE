@@ -20,6 +20,7 @@ import type {
   CoordinatorResponsePort,
   DynamicWorkflowRunPort,
   DynamicWorkflowSnippetPort,
+  ModelCallWrapper,
   ModelCatalogPort,
   RiskLevel,
   SessionId,
@@ -31,6 +32,7 @@ import type {
   SubagentRunOptions,
   SubagentPort,
   ToolArtifactStorePort,
+  ToolSearchExecutionContext,
   TraceContext,
   TraceId,
   TurnId,
@@ -147,6 +149,11 @@ export interface BackgroundTaskControlPort {
 }
 
 export interface ToolExecutionContext {
+  /**
+   * 本次请求生效的搜索上下文（mode、完整目录、已交付集合）；off 模式缺席。
+   * Handler 只读它做自我校验（ToolSearch 要求 enabled），不据此放宽准入。
+   */
+  toolSearch?: ToolSearchExecutionContext;
   toolCallId: string;
   /**
    * 当前 Tool 的实时观测写入器。Handler 只能通过窄接口写事实，不能接触原始 OTel Span。
@@ -537,6 +544,11 @@ export interface ToolBatchResult {
 // -----------------------------------------------
 
 export interface ExecutableToolCall {
+  /**
+   * 仅当这次调用由 DeferredToolCall 包装产生时存在：name/input 已是目标工具的真实身份，
+   * 本字段只用于在模型协议出口还原外层包装调用，不得用于执行期身份判定。
+   */
+  modelCallWrapper?: ModelCallWrapper;
   id: string;
   name: string;
   input: unknown;

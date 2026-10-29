@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "ad06fcc064a66b3a3305ede7dd59233c1479b70bb9439f510bf5132e2dfc49df",
+  "noticesSha256": "c225f6c1a840ad6388410c08913af95d27dca08b3559be593d25f2bb8d16a061",
   "inputs": {
     ".agents/skills/agent-browser/references/authentication.md": "e2c3b0f4a1dc1368dee821f03c000d818a48421d09f3872525dddffe73f2112b",
     ".agents/skills/agent-browser/references/commands.md": "17522fc56d742663f47231ff06c4811abc87e12c7f78e11f94d253ddd540a909",
@@ -271,15 +271,18 @@
     "apps/zcode-cli/packages/contracts/src/tools/deferred-tool-call.ts": "f60bccc785e769bf889583145dd48f7c3acfa2d98cc71cb5b293b8a3474a071e",
     "apps/zcode-cli/packages/contracts/src/tools/tool-search.ts": "e8f17a2bc359822a3e50cc78a8bab105e70821b9db8717571a769f6108e20384",
     "apps/zcode-cli/packages/core/package.json": "abf5a6c8715fe87ea4b5ef3a48b225f94980dc386fe2ccfe98844347aa16bcd8",
+    "apps/zcode-cli/packages/core/src/agent/tool-search-hydration.ts": "df1c2c14c0dc51a4d7294aa10d31873287dcb62be0aef9cc01010bb99bd35988",
     "apps/zcode-cli/packages/core/src/mcp/app-tools.ts": "711d3c33a956f5bbfec34c53d4d23dc4c7649288803e84d5108c2c4a70427c72",
     "apps/zcode-cli/packages/core/src/permission/broker.ts": "8b277e3be0821abfe49d1a64225b6c31dc10f9a500db698bc26e774bded61e68",
     "apps/zcode-cli/packages/core/src/permission/service.ts": "fa1ca7abed2dd10c5090d3183e7bc5c8664a01487a9467af36977a62a7c93dd8",
     "apps/zcode-cli/packages/core/src/runtime/methods/prompt-admission.ts": "193e9142b32de493f3746c30311fc4a84dde37620bc2910a65f228e1e0948ab8",
-    "apps/zcode-cli/packages/core/src/runtime/types.ts": "d3bc75fc62efdc15a9f27e4c79c1929669b2117cbd22435d979cb4f39ea1fb11",
+    "apps/zcode-cli/packages/core/src/runtime/types.ts": "b41fb4db19f146ccdfc2233d38550ce75216dd66371f49d434f6d9a738f32d45",
+    "apps/zcode-cli/packages/core/src/tool/deferred-call.ts": "e05bf2f52f3f0ad7e79ce0add6612a276b702a2a9caa620fac79693b352c1232",
     "apps/zcode-cli/packages/core/src/tool/executor/permission-flow.ts": "cf014f6d16bd39056a8d7681130afeda8ee69d962a56f5b5bc0264befef945d6",
     "apps/zcode-cli/packages/core/src/tool/executor/permission-input-adjustments.ts": "3c2c5fd9a839969cc76baa8725e54a30a3ecea82c47c9479ccd421d31399bf2f",
     "apps/zcode-cli/packages/core/src/tool/handlers/bash-command-parser.ts": "3b902ba16313b10b0091023f6a93d96b1b307ee38b1abeee5e1b491031ed8184",
     "apps/zcode-cli/packages/core/src/tool/handlers/bash.ts": "d1a4020ab22ff6ef1e25bbf8431e0c6b89c0c93e87c9a3c3363213e27cab1b47",
+    "apps/zcode-cli/packages/core/src/tool/handlers/deferred-tool-call.ts": "cfc4a053fdc9dfc969ecd6926be407b1d20df63d363bb1166f7249c036663713",
     "apps/zcode-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts": "60fa5acd9f5c357f4e51b1d1e944ee39da92680e4bc5e98dd708f1457fcf612b",
     "apps/zcode-cli/packages/core/src/tool/handlers/guarded/cmd.ts": "978dde92fd72a610b9d5fd8e24bbc1846a8ea83530b19c786bca7bcbc150a2eb",
     "apps/zcode-cli/packages/core/src/tool/handlers/guarded/command.ts": "6b90b4e26f8ef47cc82c67e30f6ed5fc782c61bf6ecaccd0f55d3a4ff1ab5d32",
@@ -289,13 +292,14 @@
     "apps/zcode-cli/packages/core/src/tool/handlers/guarded/windows-delete.ts": "3d7cebbf49e47640710ada450e157adbc3d55496699603abf2d5ec7f64b188a2",
     "apps/zcode-cli/packages/core/src/tool/handlers/guarded/word.ts": "aac8014c9bdff4d96af77e0a8c644f113d590ea868aa764f47fb3713a905f4f9",
     "apps/zcode-cli/packages/core/src/tool/handlers/guarded/wrappers.ts": "06a9b64afb34adda8f59c987978ac631dd9f01542a2090fe907f924e4dd287f4",
+    "apps/zcode-cli/packages/core/src/tool/handlers/tool-search.ts": "84dd497ff5b83406699ef2958dbc6d9b02c32f95c50b47759521c329cbca34f5",
     "apps/zcode-cli/packages/core/src/tool/handlers/workflow-settings-adjustment.ts": "1044ffa65ce7da63b13a5c024b809292692a20572a1f438e9d5494023c7dae69",
     "apps/zcode-cli/packages/core/src/tool/search/description.ts": "e8e92b2c7b8136dc6b1893ca623aaf1825df12740a48db9ab1fca9ccb044acff",
     "apps/zcode-cli/packages/core/src/tool/search/exposure.ts": "c3c192586e1e9afa219d4b5149c6db55ef7d4d57af766a7f6da0ad0b9b5b72b7",
     "apps/zcode-cli/packages/core/src/tool/search/history.ts": "31745af6ee407d85c65ecc31bbc66900fda1d7a73d04c791e2d8db88fde4f857",
     "apps/zcode-cli/packages/core/src/tool/search/local-projection.ts": "e802e8d2d5ab4c1e6ff2cbb648a3d9846c28ea53c53942f923b1c3673bd49f62",
     "apps/zcode-cli/packages/core/src/tool/search/search.ts": "affa3e53d0095a7af990e5d5ea2054c009138ac95ed9cbbfe96c5c6aea27f871",
-    "apps/zcode-cli/packages/core/src/tool/types.ts": "33195bd7a5e9a5ac51101f1865e52b7d370d6cc71b59394559b8c2d3f9ae7c46",
+    "apps/zcode-cli/packages/core/src/tool/types.ts": "e38a8dbe471afaa0d062d61c6235ac49aa10e28bf4f34ec77934c9558bb31516",
     "apps/zcode-cli/packages/debug/package.json": "16e6a402d995d3a56ed6e97665cd81f0dd22f03280350d5e0a70c14a2cc4b2ca",
     "apps/zcode-cli/packages/documents-plugin/.zcode-plugin/plugin.json": "3af405c9b123eb9186f0825a5923432e3d7235264724bb2c77a0570a0c41be35",
     "apps/zcode-cli/packages/documents-plugin/agents/visual-judge.md": "fc6b9fc1b45a949998f62c767a205d25c3725268f84bcea9824bf782f68099cf",
@@ -1739,7 +1743,7 @@
     "packages/shared/src/validationAppSettings.ts": "8fe87bbc536c926650422bed6f4f0cffe8d24fa09b8430f89fb02affc33819dc",
     "packages/shared/src/zcode-agent-model-state.ts": "87e868e6737ee8ef577df9327d9e9c88f167c659022d59a544f87dec78ef9906",
     "packages/shared/src/zcode-agent-policy.ts": "8d7145c732b8f50585b85becb52f6c13d40d424aacbf4bfa48c9faee2c985de1",
-    "packages/shared/src/zcode-protocol-legacy-types.ts": "65ccbf8b925bd4cc3c4dbb9429c7c4d47c1e33a377602e690beec77c77dd4a17",
+    "packages/shared/src/zcode-protocol-legacy-types.ts": "eba9d511ba6c4e7907f32359f1c98cd5103b0af9eeb3a6144fe9149754761bcb",
     "packages/shared/src/zcode-protocol-v4/apply.ts": "03bc4dd8d76d9a07c34199e344b47d38cf8492a31c37570c1b26600a6a3c1564",
     "packages/shared/src/zcode-protocol-v4/attachment-faults.ts": "ae2b8c42801069eac4f62230b9da41f91458e766fa441a3ee91bd15dee49340b",
     "packages/shared/src/zcode-protocol-v4/attachment-ref.ts": "aac64e061641380dbfa3df523a9c84eac5c485e6bec770723480e005a7107c52",
@@ -3317,7 +3321,7 @@
     "scripts/license-texts/MPL-2.0.txt": "5eba353fe5076ac3432177f8ab1cf75e3afcd0584251e37c3bfead5f447d040e",
     "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
     "scripts/remote-native-search-tools-config.mjs": "472322a66f84c7452f96aa9e16e9c4e0600f7c2588a03dc6bc869229161b1cb2",
-    "third-party/copied-components.json": "0febe6322ad8fc56003158ed51711f4ed2a8c15f5bf6fc0910220075b81a6684",
+    "third-party/copied-components.json": "2bf042a41695b24f2c537f6cd92fcef6e62011d4961766aaea31b9bc32238501",
     "third-party/embedded-components.json": "1160d4b37e297584099e640998b75599a9ac237dc39dc29d49f2a538e514bb4e",
     "third-party/native-search/licenses/00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce.txt": "00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce",
     "third-party/native-search/licenses/01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f.txt": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
@@ -32380,7 +32384,7 @@
         },
         {
           "file": "packages/shared/src/zcode-protocol-legacy-types.ts",
-          "sha256": "65ccbf8b925bd4cc3c4dbb9429c7c4d47c1e33a377602e690beec77c77dd4a17"
+          "sha256": "eba9d511ba6c4e7907f32359f1c98cd5103b0af9eeb3a6144fe9149754761bcb"
         },
         {
           "file": "packages/shared/src/zcode-task-mode-schema.ts",
@@ -32488,7 +32492,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/core/src/tool/types.ts",
-          "sha256": "33195bd7a5e9a5ac51101f1865e52b7d370d6cc71b59394559b8c2d3f9ae7c46"
+          "sha256": "e38a8dbe471afaa0d062d61c6235ac49aa10e28bf4f34ec77934c9558bb31516"
         },
         {
           "file": "apps/zcode-cli/packages/core/src/permission/service.ts",
@@ -33106,7 +33110,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/core/src/runtime/types.ts",
-          "sha256": "d3bc75fc62efdc15a9f27e4c79c1929669b2117cbd22435d979cb4f39ea1fb11"
+          "sha256": "b41fb4db19f146ccdfc2233d38550ce75216dd66371f49d434f6d9a738f32d45"
         },
         {
           "file": "apps/zcode-cli/packages/bootstrap/src/app/types.ts",
@@ -34804,7 +34808,7 @@
       "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
       "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
       "importRevision": "3c5b227649371507ddc4eb46ac5133afe6db1cab",
-      "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision 3c5b2276 (v3.16.2). The upstream repository declares Apache-2.0; the LICENSE snapshot pinned here is that repository's text (sha256 verified byte-for-byte). The five core/tool/search modules are byte-identical to upstream. Adapted, not byte-identical: contracts/tools/tool-search.ts and contracts/tools/deferred-tool-call.ts convert their input schemas through CE's toToolJsonSchema (normalized JSON Schema + $schema marker) instead of a raw zodToJsonSchema call, and carry Chinese comments explaining CE-side constraints; adapters/model/tool-search.ts carries the same adaptation plus comments. cli/src/tool-search-flag.ts is CE-authored: upstream parses --toolsearch-mode inline in run.ts, CE keeps the parsing/default/scope messages in one testable module. Upstream records no per-file copyright header.",
+      "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision 3c5b2276 (v3.16.2). The upstream repository declares Apache-2.0; the LICENSE snapshot pinned here is that repository's text (sha256 verified byte-for-byte). The five core/tool/search modules are byte-identical to upstream. Adapted, not byte-identical: contracts/tools/tool-search.ts and contracts/tools/deferred-tool-call.ts convert their input schemas through CE's toToolJsonSchema (normalized JSON Schema + $schema marker) instead of a raw zodToJsonSchema call, and carry Chinese comments explaining CE-side constraints; adapters/model/tool-search.ts carries the same adaptation plus comments. cli/src/tool-search-flag.ts is CE-authored: upstream parses --toolsearch-mode inline in run.ts, CE keeps the parsing/default/scope messages in one testable module. Wave 2's four core files are adapted, not byte-identical: imports follow CE's module layout (CE has no upstream topic-resource/runtime-reminder helpers), DeferredToolCall schema conversion uses CE's toToolJsonSchema, and the request-announcement persistence goes through CE's persistSyntheticUserNoticeForSession rather than upstream's persistRuntimeReminderMessage. Upstream records no per-file copyright header.",
       "roots": [
         "apps/zcode-cli/packages/contracts/src/tools/tool-search.ts",
         "apps/zcode-cli/packages/contracts/src/tools/deferred-tool-call.ts",
@@ -34813,10 +34817,14 @@
         "apps/zcode-cli/packages/core/src/tool/search/history.ts",
         "apps/zcode-cli/packages/core/src/tool/search/local-projection.ts",
         "apps/zcode-cli/packages/core/src/tool/search/exposure.ts",
+        "apps/zcode-cli/packages/core/src/tool/deferred-call.ts",
+        "apps/zcode-cli/packages/core/src/tool/handlers/tool-search.ts",
+        "apps/zcode-cli/packages/core/src/tool/handlers/deferred-tool-call.ts",
+        "apps/zcode-cli/packages/core/src/agent/tool-search-hydration.ts",
         "apps/zcode-cli/packages/adapters/src/model/tool-search.ts",
         "apps/zcode-cli/packages/cli/src/tool-search-flag.ts"
       ],
-      "scope": "F14 tool search, wave 1: ToolSearch/DeferredToolCall contracts, the five core search/exposure modules, adapters capability + anthropic-beta header + deferLoading/tool_reference encoding, and the CLI --toolsearch-mode switch (four states, invalid-value and scope errors). Runtime exposure (tool registry entries, request preparation, announcement persistence, compact discovery, DeferredToolCall resolution) is NOT wired yet; wave 2 carries it together with the shared protocol/settings/UI surface. Fourteen CE-pre-existing files received upstream-derived fragments for the same feature (contract/model union + request flag + capability, tool metadata deferral fields, runtime message metadata, reminder source, runtime config, model execution/runner/tool-transform/transform, media block switches, CLI argument/routing).",
+      "scope": "F14 tool search, waves 1-2. Wave 1: ToolSearch/DeferredToolCall contracts, the five core search/exposure modules, adapters capability + anthropic-beta header + deferLoading/tool_reference encoding, and the CLI --toolsearch-mode switch (four states, invalid-value and scope errors). Wave 2 wires the runtime: the two control-tool entries (core/tool/handlers/tool-search.ts, deferred-tool-call.ts), the shared admission boundary (core/tool/deferred-call.ts), cold-recovery hydration (core/agent/tool-search-hydration.ts), the request assembly that turns buildToolExposure into the provider tools/messages (prepareRuntimeProviderRequest, per-turn announcement persistence via a system reminder, executor admission with wrapper unwrapping, tool-part metadata carrying modelContent/tool_reference plus the modelCallWrapper marker, and compact discovery checkpoints). CE-pre-existing files received upstream-derived fragments for the same feature in both waves (contract/model unions + request flag + capability, tool metadata deferral fields + shouldDefer/searchHint on the deferred builtins, runtime message metadata + wrapper plumbing, reminder source, runtime config, model execution/runner/tool-transform/transform, media block switches, CLI argument/routing, executor call-runner/batch-runner, runtime methods config/model/tools/turn-loop/turn-model-step/turn-tools/streaming-tool-coordinator/compact-active/tool-part-metadata, session-history-hydrator, message-persistence/synthetic-notice-metadata). Still not wired in this repo (wave 3): shared protocol field, App settings switch, and desktop/TUI surfaces.",
       "license": "Apache-2.0",
       "files": [
         {
@@ -34846,6 +34854,22 @@
         {
           "file": "apps/zcode-cli/packages/core/src/tool/search/exposure.ts",
           "sha256": "c3c192586e1e9afa219d4b5149c6db55ef7d4d57af766a7f6da0ad0b9b5b72b7"
+        },
+        {
+          "file": "apps/zcode-cli/packages/core/src/tool/deferred-call.ts",
+          "sha256": "e05bf2f52f3f0ad7e79ce0add6612a276b702a2a9caa620fac79693b352c1232"
+        },
+        {
+          "file": "apps/zcode-cli/packages/core/src/tool/handlers/tool-search.ts",
+          "sha256": "84dd497ff5b83406699ef2958dbc6d9b02c32f95c50b47759521c329cbca34f5"
+        },
+        {
+          "file": "apps/zcode-cli/packages/core/src/tool/handlers/deferred-tool-call.ts",
+          "sha256": "cfc4a053fdc9dfc969ecd6926be407b1d20df63d363bb1166f7249c036663713"
+        },
+        {
+          "file": "apps/zcode-cli/packages/core/src/agent/tool-search-hydration.ts",
+          "sha256": "df1c2c14c0dc51a4d7294aa10d31873287dcb62be0aef9cc01010bb99bd35988"
         },
         {
           "file": "apps/zcode-cli/packages/adapters/src/model/tool-search.ts",
