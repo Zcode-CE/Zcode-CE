@@ -93,6 +93,10 @@
 
 - 支持上游式「任务归属项目」与跨 Host 项目库；代价是一次真正的 schema 设计 + 回填（未归类任务
   `project_id = null` 的展示口径）+ 侧栏读取面改造；迁移只能选一套迁移器（不建议两套并存）。
+- **表名必须避开官方应用**：CE 与官方 ZCode 共用 `~/.zcode/v2/tasks-index.sqlite`（实测该库已含官方
+  写入的 `projects` / `project_roots` / `hosts` / `remote_project_entries` / `schema_migrations`）。
+  B0 若直接建 `projects`，会与官方应用的同名表冲突。用独立前缀（如 `ce_projects` / `ce_project_roots`）
+  或独立数据库文件，并在迁移里先探测同名表再决定拒绝启动还是跳过。
 - 与上游差异：不搬 `legacy-single-root` 投影、不搬远端项目校验、不搬 `task-facts`。
 - 重开条件：出现「任务需要跟着项目走（跨 Host/远端）」的真实诉求。
 
