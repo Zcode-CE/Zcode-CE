@@ -4278,6 +4278,9 @@ const enUS: Record<string, string> = {
   "settings.workspaceAdditionalDirectories.remove": "Remove",
   "settings.workspaceAdditionalDirectories.removeLabel": "Remove {path}",
   "settings.workspaceAdditionalDirectories.saved": "Saved; new sessions will use it",
+  "settings.workspaceAdditionalDirectories.displayNameLabel": "Display name",
+  "settings.workspaceAdditionalDirectories.displayNameDescription":
+    "Only affects this device's sidebar and titles; the project path and identity are unchanged. Leave empty to use the folder name.",
   "settings.workspaceAdditionalDirectories.saveFailed": "Save failed; check the logs",
   "settings.workspaceAdditionalDirectories.noWorkspace":
     "No workspace is open. Open one to configure additional directories.",

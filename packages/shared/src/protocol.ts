@@ -8,6 +8,7 @@ import type { EmbeddedBrowserViewportPreference } from "./browser-use/command-me
 import type { DangerousCommandPolicy } from "./dangerousCommands.js";
 import type { WorkspaceAdditionalDirectories } from "./workspaceAdditionalDirectories.js";
 import type { AppToolSearchMode } from "./toolSearch.js";
+import type { WorkspaceDisplayNames } from "./workspaceProjectView.js";
 
 // ── Domain types ──
 
@@ -367,6 +368,13 @@ export interface AppSettings {
    * 的归一化：去空白、去空串、去重、每个工作区 ≤256）。
    */
   workspaceAdditionalDirectories?: WorkspaceAdditionalDirectories;
+  /**
+   * 每个工作区的展示名（B′ 项目投影）：键 = workspaceKey，值 = 用户覆盖的显示名称。
+   *
+   * 只影响本机展示（侧栏/标题），不写入路径、不参与身份判定；缺席 = 用路径末段。
+   * 写入按单键补丁合并（空串 = 删除该键），与附加目录同一套并发语义。
+   */
+  workspaceDisplayNames?: WorkspaceDisplayNames;
   /**
    * 工具搜索模式（F14）：off / auto / native / local。缺席 = off（与引入前行为一致）。
    * 与 CLI contracts 的 ToolSearchMode 同词表；Host 在会话创建/恢复时经 runtime preferences

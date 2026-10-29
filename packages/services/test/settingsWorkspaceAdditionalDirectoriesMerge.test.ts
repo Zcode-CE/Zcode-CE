@@ -43,3 +43,27 @@ test("附加目录按工作区合并：不同 key 互不覆盖，空列表删除
   settings = await service.get();
   assert.equal("workspaceAdditionalDirectories" in settings, false);
 });
+
+test("展示名按工作区合并：空串删除、不同 key 互不覆盖", async (t) => {
+  const home = await mkdtemp(join(tmpdir(), "zcode-settings-names-"));
+  const previous = process.env.ZCODE_DESKTOP_HOME_DIR;
+  process.env.ZCODE_DESKTOP_HOME_DIR = home;
+  t.after(async () => {
+    if (previous === undefined) delete process.env.ZCODE_DESKTOP_HOME_DIR;
+    else process.env.ZCODE_DESKTOP_HOME_DIR = previous;
+    await rm(home, { recursive: true, force: true }).catch(() => undefined);
+  });
+
+  const service = createSettingService();
+  await service.update({ workspaceDisplayNames: { "/work/a": "Backend" } });
+  await service.update({ workspaceDisplayNames: { "/work/b": "Tools" } });
+  let settings = await service.get();
+  assert.deepEqual(settings.workspaceDisplayNames, {
+    "/work/a": "Backend",
+    "/work/b": "Tools",
+  });
+
+  await service.update({ workspaceDisplayNames: { "/work/a": "" } });
+  settings = await service.get();
+  assert.deepEqual(settings.workspaceDisplayNames, { "/work/b": "Tools" });
+});

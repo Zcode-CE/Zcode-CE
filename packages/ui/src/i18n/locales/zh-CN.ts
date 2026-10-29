@@ -4003,6 +4003,9 @@ const zhCN: Record<string, string> = {
   "settings.workspaceAdditionalDirectories.remove": "移除",
   "settings.workspaceAdditionalDirectories.removeLabel": "移除 {path}",
   "settings.workspaceAdditionalDirectories.saved": "已保存，新建会话生效",
+  "settings.workspaceAdditionalDirectories.displayNameLabel": "显示名称",
+  "settings.workspaceAdditionalDirectories.displayNameDescription":
+    "仅用于本机侧栏与标题展示，不改变项目路径或身份；留空则使用目录名。",
   "settings.workspaceAdditionalDirectories.saveFailed": "保存失败，请查看日志",
   "settings.workspaceAdditionalDirectories.noWorkspace":
     "当前没有打开的项目，先打开一个工作区再配置附加目录。",

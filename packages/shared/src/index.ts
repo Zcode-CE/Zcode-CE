@@ -109,6 +109,7 @@ export * from "./server-remote.js";
 export * from "./workspace-registry.js";
 // 工作区附加目录（X16）：设置页写入、v4 createSession 下发的唯一来源。
 export * from "./workspaceAdditionalDirectories.js";
+export * from "./workspaceProjectView.js";
 
 export interface ICredentialStore {
   get(key: string): Promise<string | null>;

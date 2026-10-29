@@ -1713,7 +1713,7 @@
     "packages/shared/src/gen-ui/module.ts": "e2ce94c157dee72a908d44e6c39e97fb8df62f0e7d88533e7f19a75a123f115f",
     "packages/shared/src/gen-ui/tweakProtocol.ts": "474b7bc47a6c4d6fca8620834ac5c09b056c81e8cd938a585d8565200d1cd05a",
     "packages/shared/src/highspeed.ts": "29ba3aa286c36751c89cae4a445fb52a0ab9251c5a086ddde2491e11d85b54b2",
-    "packages/shared/src/index.ts": "42e2f78b50dd35f75982fc53a9dabe64c628c6e802e374b96f52386d90a6ebe1",
+    "packages/shared/src/index.ts": "1534d4301d8885b0e4fe7b8ecd88123627457c48a9d049f1764a6c3cf6b863b1",
     "packages/shared/src/mcp-apps/appTools.ts": "56e79ed990a404269084450bb4eec4297df07b43de5a5b0399123c56342483b4",
     "packages/shared/src/mcp-apps/content.ts": "1675b0b89b82c70573b8e60ddd75b25e6a81c8620ce9d2e49d8363900b207056",
     "packages/shared/src/mcp-apps/contract.example.ts": "17189b1f889d1ad128cde9de4cf09b2990e598c61ed926bd641b35a63179c035",
@@ -1731,7 +1731,7 @@
     "packages/shared/src/node.ts": "1964469bfb5f6f8b1c46a44a8372914158c8693b17d8603a0aab0f9295503e39",
     "packages/shared/src/node/genUiPaths.ts": "9fe594b8a77cc74114d09146ee2a2f55e9ac2730fad7bfcacdaea82be63b7675",
     "packages/shared/src/platform.ts": "6e64ad04542eb9de47d97f219768b79aee1d22466fd5836680cd42f47d79a251",
-    "packages/shared/src/protocol.ts": "ac32e69f3e7665dbc7a359c61c526e695e0ffa1fb8a72be55a7dd589e5a7b2bf",
+    "packages/shared/src/protocol.ts": "b4c5c120aafb0252faf787a81136002f6474cb6843deabec911745f0f0b6f809",
     "packages/shared/src/request-security-edition/index.ts": "12735d8622bfd0b1b4e566cb5bf773e530805c976880fab37d85a9cbfb8941e4",
     "packages/shared/src/request-security-edition/policy.ts": "b3c87d9f01bf3c9477188399d841dd8f63a6e6a02737f78777bce0a6c4201c42",
     "packages/shared/src/request-security-edition/verification-policy.ts": "8cc61deede90d2456e1bd077b885ac600692efa8e62baf6beaa984f76f59d7b5",
@@ -1740,7 +1740,7 @@
     "packages/shared/src/task-realtime-core.ts": "0915d0969491e237a384d5bcfd689733409ce69ac35dace9d336beaaa40952bf",
     "packages/shared/src/test-ids.ts": "71b3f87b939bd6258d533f57c45584a7a486803ae22acc2ba8cf656f93fbff4e",
     "packages/shared/src/validation.ts": "f056037eabdd28cd730e90961577e93cc72145672d1ac1744d2497d832e66709",
-    "packages/shared/src/validationAppSettings.ts": "621c39cdd7b6a584db2ebe8b9e947e4ffa572aeda7cd27d0d7388bbbb697c973",
+    "packages/shared/src/validationAppSettings.ts": "bab57015b058ee756bc5b947b636e7092f14d2672c7d74fd948caa2da510b5c8",
     "packages/shared/src/zcode-agent-model-state.ts": "87e868e6737ee8ef577df9327d9e9c88f167c659022d59a544f87dec78ef9906",
     "packages/shared/src/zcode-agent-policy.ts": "8d7145c732b8f50585b85becb52f6c13d40d424aacbf4bfa48c9faee2c985de1",
     "packages/shared/src/zcode-protocol-legacy-types.ts": "eba9d511ba6c4e7907f32359f1c98cd5103b0af9eeb3a6144fe9149754761bcb",
@@ -2055,8 +2055,8 @@
     "packages/ui/src/hooks/useBrowserSitePermissions.ts": "75d84af4d726b95d0d7cd166b1977514dc56d1644122b5857724cfc349ff0faa",
     "packages/ui/src/hooks/useCodingPlanQuotaResetUi.ts": "eed75a370ca2a08fa78ecd9129ac36355017b4ab9ed5d05c7c603d252587b6b4",
     "packages/ui/src/hooks/useWorkflowRunSave.ts": "e29d0d84541ecc772c8295255fefab7c537f9c75948210147838a82ec3dbc40d",
-    "packages/ui/src/i18n/locales/en-US.ts": "143484bbcbabdbae8c7e0ee4ad5e4ddc0c5d4a622418e1bed7fed6d119e9852d",
-    "packages/ui/src/i18n/locales/zh-CN.ts": "e78a8d7fb24126c7d6441e732ce84fef71ad4e17bcfc116acf080f7360431154",
+    "packages/ui/src/i18n/locales/en-US.ts": "42c09eb58d1cf439d615c1edc4acf30847d8e4b9974874ab290ec9ba3d523562",
+    "packages/ui/src/i18n/locales/zh-CN.ts": "71a3afc86869e41616f31cd7d67d23f42fe39d4ba2554b1b22259d922d08acef",
     "packages/ui/src/lib/assistantDirectiveParser.ts": "c64b119e46f917e2d869658559cb1113cc40caae1a89d68328b256ee4d76e09f",
     "packages/ui/src/lib/builtinSkillI18n.ts": "fbb44f7044214b70148f64dbafc1cea5ea550531e8084965ea978c5defc06deb",
     "packages/ui/src/lib/codingPlanQuotaResetUi.ts": "9ff69e18487e842d56136283b15fe9bfdfd383b79d911b25f967ec69f65af11f",
@@ -32865,15 +32865,15 @@
         },
         {
           "file": "packages/shared/src/protocol.ts",
-          "sha256": "ac32e69f3e7665dbc7a359c61c526e695e0ffa1fb8a72be55a7dd589e5a7b2bf"
+          "sha256": "b4c5c120aafb0252faf787a81136002f6474cb6843deabec911745f0f0b6f809"
         },
         {
           "file": "packages/shared/src/validationAppSettings.ts",
-          "sha256": "621c39cdd7b6a584db2ebe8b9e947e4ffa572aeda7cd27d0d7388bbbb697c973"
+          "sha256": "bab57015b058ee756bc5b947b636e7092f14d2672c7d74fd948caa2da510b5c8"
         },
         {
           "file": "packages/shared/src/index.ts",
-          "sha256": "42e2f78b50dd35f75982fc53a9dabe64c628c6e802e374b96f52386d90a6ebe1"
+          "sha256": "1534d4301d8885b0e4fe7b8ecd88123627457c48a9d049f1764a6c3cf6b863b1"
         },
         {
           "file": "packages/shared/src/test-ids.ts",
@@ -33961,11 +33961,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "e78a8d7fb24126c7d6441e732ce84fef71ad4e17bcfc116acf080f7360431154"
+          "sha256": "71a3afc86869e41616f31cd7d67d23f42fe39d4ba2554b1b22259d922d08acef"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "143484bbcbabdbae8c7e0ee4ad5e4ddc0c5d4a622418e1bed7fed6d119e9852d"
+          "sha256": "42c09eb58d1cf439d615c1edc4acf30847d8e4b9974874ab290ec9ba3d523562"
         },
         {
           "file": "packages/ui/src/v4/WorkflowNotificationToolRow.tsx",
@@ -34793,11 +34793,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "e78a8d7fb24126c7d6441e732ce84fef71ad4e17bcfc116acf080f7360431154"
+          "sha256": "71a3afc86869e41616f31cd7d67d23f42fe39d4ba2554b1b22259d922d08acef"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "143484bbcbabdbae8c7e0ee4ad5e4ddc0c5d4a622418e1bed7fed6d119e9852d"
+          "sha256": "42c09eb58d1cf439d615c1edc4acf30847d8e4b9974874ab290ec9ba3d523562"
         }
       ]
     },

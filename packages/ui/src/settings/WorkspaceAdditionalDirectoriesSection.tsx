@@ -5,9 +5,12 @@ import {
   resolveWorkspaceAdditionalDirectories,
   resolveWorkspaceRegistryKey,
   buildWorkspaceAdditionalDirectoriesPatch,
+  buildWorkspaceDisplayNamePatch,
+  normalizeWorkspaceDisplayName,
   type WorkspaceRegistryEntry,
 } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
 import {
   Select,
   SelectContent,
@@ -91,6 +94,7 @@ export function WorkspaceAdditionalDirectoriesSection({
   const registry = useWorkspaceRegistry();
   const [explicitKey, setExplicitKey] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingName, setSavingName] = useState(false);
 
   const activeKey = workspacePath
     ? resolveWorkspaceRegistryKey({ workspacePath, workspaceIdentity })
@@ -114,6 +118,30 @@ export function WorkspaceAdditionalDirectoriesSection({
   const atLimit = directories.length >= MAX_WORKSPACE_ADDITIONAL_DIRECTORIES;
   const canEdit = settingsReady && !saving && targetKey !== null;
   const canAdd = canEdit && !targetOption?.remote && !atLimit;
+  const displayName = targetKey ? (settings?.workspaceDisplayNames?.[targetKey] ?? "") : "";
+
+  const handleSaveDisplayName = useCallback(
+    async (rawName: string) => {
+      if (!targetKey) return;
+      const normalized = normalizeWorkspaceDisplayName(rawName) ?? "";
+      if (normalized === displayName) return;
+      setSavingName(true);
+      try {
+        await update({
+          workspaceDisplayNames: buildWorkspaceDisplayNamePatch(targetKey, normalized),
+        });
+      } catch (error) {
+        logger.warn("[WorkspaceAdditionalDirectoriesSection] 保存展示名失败", {
+          workspaceKey: targetKey,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        toast(intl.formatMessage({ id: "settings.workspaceAdditionalDirectories.saveFailed" }));
+      } finally {
+        setSavingName(false);
+      }
+    },
+    [displayName, intl, targetKey, update],
+  );
 
   const save = useCallback(
     async (nextDirectories: readonly string[]) => {
@@ -175,6 +203,30 @@ export function WorkspaceAdditionalDirectoriesSection({
       <div className="text-ui-base font-medium text-foreground-subtle">
         {intl.formatMessage({ id: "settings.workspaceAdditionalDirectories.description" })}
       </div>
+      <SettingsGroupCard>
+        <SettingsRow
+          label={intl.formatMessage({
+            id: "settings.workspaceAdditionalDirectories.displayNameLabel",
+          })}
+          description={intl.formatMessage({
+            id: "settings.workspaceAdditionalDirectories.displayNameDescription",
+          })}
+          control={
+            <Input
+              key={`${targetKey}:${displayName}`}
+              defaultValue={displayName}
+              placeholder={targetOption?.label ?? ""}
+              disabled={!settingsReady || savingName}
+              maxLength={120}
+              onBlur={(event) => void handleSaveDisplayName(event.currentTarget.value)}
+              aria-label={intl.formatMessage({
+                id: "settings.workspaceAdditionalDirectories.displayNameLabel",
+              })}
+            />
+          }
+        />
+      </SettingsGroupCard>
+
       <SettingsGroupCard>
         <SettingsRow
           controlLayout="stacked"

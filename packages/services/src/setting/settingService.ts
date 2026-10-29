@@ -12,6 +12,7 @@ import {
   formatLogPrefix,
   formatZodError,
   mergeWorkspaceAdditionalDirectories,
+  mergeWorkspaceDisplayNames,
 } from "@zcode/shared";
 import type { ISettingService } from "./setting.js";
 import { normalizeSettingsPatch } from "#src/setting/normalizeSettingsPatch.js";
@@ -319,6 +320,13 @@ export function createSettingServiceWithMigrations(): {
           mergedSource.workspaceAdditionalDirectories = mergeWorkspaceAdditionalDirectories(
             current.workspaceAdditionalDirectories,
             validatedPatch.workspaceAdditionalDirectories,
+          );
+        }
+        // 展示名与附加目录同一套单键合并：空串删除该键，跨客户端编辑不同工作区不互相覆盖。
+        if (validatedPatch.workspaceDisplayNames) {
+          mergedSource.workspaceDisplayNames = mergeWorkspaceDisplayNames(
+            current.workspaceDisplayNames,
+            validatedPatch.workspaceDisplayNames,
           );
         }
         const merged = appSettingsSchema.parse(mergedSource);

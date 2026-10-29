@@ -17,6 +17,7 @@ import {
   normalizeWorkspaceAdditionalDirectories,
 } from "./workspaceAdditionalDirectories.js";
 import { appToolSearchModeSchema } from "./toolSearch.js";
+import { normalizeWorkspaceDisplayNames } from "./workspaceProjectView.js";
 import {
   MAX_CUSTOM_DANGEROUS_ENTRIES,
   MAX_DANGEROUS_PATTERN_LENGTH,
@@ -88,6 +89,12 @@ const workspaceAdditionalDirectoriesPatchSchema = z.record(
   z.string(),
   z.array(z.string()).max(MAX_WORKSPACE_ADDITIONAL_DIRECTORIES),
 );
+
+/** 工作区展示名（B′ 项目投影）：读盘归一；补丁保留空串作为删除信号。 */
+const workspaceDisplayNamesSchema = z
+  .record(z.string(), z.string())
+  .transform((value) => normalizeWorkspaceDisplayNames(value));
+const workspaceDisplayNamesPatchSchema = z.record(z.string(), z.string());
 
 /**
  * 危险命令清单的用户偏差。三项都是可选的：**缺席即默认**（严格 + 默认项全开），
@@ -582,6 +589,7 @@ const appSettingsObjectSchema = z.object({
   lastActiveTabIndex: z.number().int().nonnegative().default(0),
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
   workspaceAdditionalDirectories: workspaceAdditionalDirectoriesSchema.optional(),
+  workspaceDisplayNames: workspaceDisplayNamesSchema.optional(),
   // 工具搜索模式：缺席 = off。不设 default，避免给老配置写进显式值。
   toolSearchMode: appToolSearchModeSchema.optional(),
   dataBaseDir: z.string().trim().min(1).optional(),
@@ -677,6 +685,7 @@ export const appSettingsPatchSchema = z.object({
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
   // 设置页按单键补丁写入（空列表 = 删除该键）；服务端按键合并，避免跨客户端 last-write-wins。
   workspaceAdditionalDirectories: workspaceAdditionalDirectoriesPatchSchema.optional(),
+  workspaceDisplayNames: workspaceDisplayNamesPatchSchema.optional(),
   toolSearchMode: appToolSearchModeSchema.optional(),
   dataBaseDir: z.string().trim().min(1).optional(),
   pendingPostUpdateReleaseNotes: postUpdateReleaseNotesPayloadSchema.optional(),
