@@ -14,6 +14,7 @@ import {
 import { registerMemoryDiagnosticsProvider } from "#src/memoryDiagnostics.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { assertLocalTerminalNativeSupported, type LocalLibcSnapshot } from "./localLibcSupport.js";
+import { createBufferedTerminalOutputEmitter } from "./terminalOutputBuffer.js";
 
 const require = createRequire(import.meta.url);
 type NodePtyModule = typeof import("node-pty");
@@ -387,7 +388,9 @@ export function createTerminalService(dependencies: {
       });
       const nodePty = await (dependencies.loadNodePty ?? loadNodePtyModule)();
       ensureNodePtySpawnHelperExecutable();
-      const dataEmitter = new Emitter<string>();
+      // 首监听者到来前的输出必须缓存并回放，否则远端终端首次提示符（spawn 后 ~10ms）会丢。
+      const terminalOutput = createBufferedTerminalOutputEmitter();
+      const dataEmitter = terminalOutput.emitter;
       const exitEmitter = new Emitter<number>();
 
       let p: IPty;
@@ -406,7 +409,7 @@ export function createTerminalService(dependencies: {
         );
       }
 
-      p.onData((data) => dataEmitter.fire(data));
+      p.onData((data) => terminalOutput.push(data));
       p.onExit(({ exitCode }) => {
         exitEmitter.fire(exitCode);
         dataEmitter.dispose();

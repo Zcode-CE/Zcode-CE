@@ -481,6 +481,11 @@ export interface AttachmentStorageMetadata {
   storageKind?: "inline" | "artifact" | "local_ref" | "remote_ref" | "metadata_only";
   artifactUri?: string;
   originalUrl?: string;
+  /**
+   * 已发给模型的「按本地路径引用」说明原文。冷恢复时直接还原它，而不是重新读取文件或推测降级原因 ——
+   * 否则恢复出的历史前缀会与原始请求不同（附件错乱，上游 3.16.2 X4）。
+   */
+  pathReferenceText?: string;
   recoverability?: "provider_ready" | "rebuildable" | "preview_only" | "metadata_only" | "missing";
   preview?: {
     text?: string;
