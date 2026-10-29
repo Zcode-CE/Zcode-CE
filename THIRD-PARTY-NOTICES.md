@@ -314,15 +314,15 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - @mermaid-js/parser@1.1.0 — MIT
 
-- @modelcontextprotocol/client@2.0.0 — MIT
+- @modelcontextprotocol/client@2.4.0 — Apache-2.0
 
-- @modelcontextprotocol/core@2.0.0 — MIT
+- @modelcontextprotocol/core@2.4.0 — Apache-2.0
 
-- @modelcontextprotocol/ext-apps@2.0.0 — MIT
+- @modelcontextprotocol/ext-apps@2.0.4 — MIT
 
 - @modelcontextprotocol/sdk@1.29.0 — MIT
 
-- @modelcontextprotocol/server@2.0.0 — MIT
+- @modelcontextprotocol/server@2.4.0 — Apache-2.0
 
 - @mswjs/interceptors@0.41.3 — MIT
 
@@ -2264,9 +2264,9 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - undici-types@7.19.2 — MIT
 
-- undici@6.24.1 — MIT
+- undici@6.29.1 — MIT
 
-- undici@7.25.0 — MIT
+- undici@7.30.1 — MIT
 
 - unicode-properties@1.4.1 — MIT
 
@@ -3955,9 +3955,9 @@ SOFTWARE.
 
 - ts-dedent@2.2.0: README.md (license section)
 
-- undici@6.24.1: README.md (license section)
+- undici@6.29.1: README.md (license section)
 
-- undici@7.25.0: README.md (license section)
+- undici@7.30.1: README.md (license section)
 
 - unicode-properties@1.4.1: readme.md (license section)
 
@@ -4719,13 +4719,13 @@ SOFTWARE.
 
 ### Notice 0382b0057770ca05e9c350a50aa3b1c1fea84da0bc81d723bf00b9aa841be58a
 
-- @modelcontextprotocol/client@2.0.0: LICENSE
+- @modelcontextprotocol/client@2.4.0: LICENSE
 
-- @modelcontextprotocol/core@2.0.0: LICENSE
+- @modelcontextprotocol/core@2.4.0: LICENSE
 
-- @modelcontextprotocol/ext-apps@2.0.0: LICENSE
+- @modelcontextprotocol/ext-apps@2.0.4: LICENSE
 
-- @modelcontextprotocol/server@2.0.0: LICENSE
+- @modelcontextprotocol/server@2.4.0: LICENSE
 
 
 
@@ -37556,9 +37556,9 @@ ISC
 
 - undici-types@7.19.2: LICENSE
 
-- undici@6.24.1: LICENSE
+- undici@6.29.1: LICENSE
 
-- undici@7.25.0: LICENSE
+- undici@7.30.1: LICENSE
 
 
 
@@ -37589,9 +37589,9 @@ SOFTWARE.
 
 ### Notice a21d6c8d3fc631198b97e57584697f7f9c37805c71c6cf9a12e4442b40394b88
 
-- undici@6.24.1: lib/web/fetch/LICENSE
+- undici@6.29.1: lib/web/fetch/LICENSE
 
-- undici@7.25.0: lib/web/fetch/LICENSE
+- undici@7.30.1: lib/web/fetch/LICENSE
 
 
 

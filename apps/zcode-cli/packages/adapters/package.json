@@ -102,7 +102,7 @@
     "@ai-sdk/anthropic": "3.0.81",
     "@ai-sdk/openai": "^3.0.58",
     "@ai-sdk/openai-compatible": "^2.0.58",
-    "@modelcontextprotocol/client": "2.0.0",
+    "@modelcontextprotocol/client": "2.4.0",
     "@zcode/contracts": "workspace:*",
     "@zcode/dynamic-workflow": "workspace:*",
     "@zcode/model-option-map": "workspace:*",
