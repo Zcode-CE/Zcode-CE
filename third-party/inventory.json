@@ -1831,7 +1831,7 @@
     "packages/ui/src/app-shell/workflowWorkspaceLogbook.ts": "6909254a892a08e0a660cbf44abc7e37bdffc0b4be095ed9bb8e28239fc5e481",
     "packages/ui/src/app-shell/WorkflowWorkspacePeek.tsx": "d6065ee01c849003aff59937eaeb0a7b9eacf4378b1fcfe12de1da82928bd090",
     "packages/ui/src/app-shell/workflowWorkspaceTranscript.ts": "dea2401f5da70d20ade6b3e333af7b18343dea4c5c283ca72f07c4cb9377bcdd",
-    "packages/ui/src/app-shell/WorkspaceShellLayout.tsx": "b1f65447305951ef5dfa85b386ed0519fbe909e492fe2810d6cd3fee72f4935e",
+    "packages/ui/src/app-shell/WorkspaceShellLayout.tsx": "3841d2e74dcfa058ecbf3153befd8d0687b9b096d49eaee3074c2069832ecda9",
     "packages/ui/src/assets/channel-icons/icon-dingding@2x.png": "61ffd13c4bc10cdb6641e41530883a6555b774517325326c8f7b3091fdd0ac8e",
     "packages/ui/src/assets/channel-icons/icon-discord@2x.png": "a0bfaf4674ee3d8439d6918f3933af81a888344fc204ac275b46b7e46232a4c5",
     "packages/ui/src/assets/channel-icons/icon-feishu@2x.png": "2d1b25fec5efdde3778245428effe525afa783370834683d9484a8ca9c323969",
@@ -34503,7 +34503,7 @@
         },
         {
           "file": "packages/ui/src/app-shell/WorkspaceShellLayout.tsx",
-          "sha256": "b1f65447305951ef5dfa85b386ed0519fbe909e492fe2810d6cd3fee72f4935e"
+          "sha256": "3841d2e74dcfa058ecbf3153befd8d0687b9b096d49eaee3074c2069832ecda9"
         },
         {
           "file": "packages/ui/src/components/workflow-timeline/draft-scan.ts",
