@@ -507,6 +507,9 @@ export class ZCodeProtocolAgentServer {
         this.requireV4Gateway().unsubscribe(request.params);
         return {};
       }
+      // ── sessions-index 校准（只读；能力缺席由 gateway 报 unavailable）──
+      case V4_METHODS.sessionsIndexReconcile:
+        return await this.requireV4Gateway().reconcileSessions(request.params);
       // ── 行分页 query（独立分支，便于与帧分派改动合并）──
       case V4_METHODS.conversationRowsRange:
         return await this.requireV4Gateway().rowsRange(request.params);

@@ -1,3 +1,5 @@
+// Modified by ZCode: 追加上游 3.16.2 的 sessionsIndexReconcileParams/ResultSchema 与两个类型（逐字搬运，
+// 仅此一处新增）；其余与上游 v3.15.1 一致。
 // sessions-index topic：列表活性数据源；conflated 最新态，永不溢出。
 import { z } from "zod";
 import { timestampSchema } from "./core.js";
@@ -71,6 +73,41 @@ export const sessionsIndexDeltaSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("session.removed"), sessionId: z.string() }),
 ]);
 export type SessionsIndexDelta = z.infer<typeof sessionsIndexDeltaSchema>;
+
+/** snapshot 缺席不是删除；按明确 ID 查询持久事实，不会创建或恢复运行实例。 */
+export const sessionsIndexReconcileParamsSchema = z
+  .object({
+    workspaceId: z.string().min(1),
+    sessionIds: z.array(z.string().min(1)).max(256),
+  })
+  .strict();
+export type SessionsIndexReconcileParams = z.infer<typeof sessionsIndexReconcileParamsSchema>;
+export const sessionsIndexReconcileResultSchema = z
+  .object({
+    sessions: z
+      .array(
+        z.discriminatedUnion("exists", [
+          z
+            .object({ sessionId: z.string(), exists: z.literal(false), deleted: z.literal(false) })
+            .strict(),
+          z
+            .object({
+              sessionId: z.string(),
+              exists: z.literal(true),
+              deleted: z.boolean(),
+              title: z.string(),
+              titleSource: sessionMetaStateSchema.shape.titleSource,
+              createdAt: timestampSchema,
+              updatedAt: timestampSchema,
+              lastOutcome: z.enum(["completed", "error", "interrupted"]).optional(),
+            })
+            .strict(),
+        ]),
+      )
+      .max(256),
+  })
+  .strict();
+export type SessionsIndexReconcileResult = z.infer<typeof sessionsIndexReconcileResultSchema>;
 
 /** sessions-index topic key 构造（与 parseSessionsIndexTopic 对偶）。 */
 export function sessionsIndexTopic(workspaceId: string): string {

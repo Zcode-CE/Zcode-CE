@@ -90,6 +90,7 @@ import type {
   CuaPermissionObservation,
   ConversationRowTarget,
   HelloMessage,
+  SessionsIndexReconcileResult,
   SessionsIndexTopicWireCandidate,
   V4AttachmentBeginResult,
   V4AttachmentChunkResult,
@@ -992,6 +993,13 @@ export interface IZCodeAgentService {
   ): Event<ConversationTelemetryFact>;
   /** 当前窗口全部本地 live task 的 CUA 权限观察；历史、远程与 replayable 不在此事件面。 */
   onDynamicCuaPermissionObservation(): Event<ZCodeAgentCuaPermissionObservation>;
+  /**
+   * sessions-index：只读 CLI 持久事实（exists/deleted + 摘要），供索引漂移校准。
+   * 不恢复会话运行实例；旧 CLI 不提供该能力时缺席，调用方按能力探测跳过。
+   */
+  reconcileSessionsIndexV4?(
+    params: ZCodeAgentWorkspaceTarget & { sessionIds: string[] },
+  ): Promise<SessionsIndexReconcileResult>;
   // ── sessions-index 通道（列表活性）──
   subscribeSessionsIndexV4(
     params: ZCodeAgentSessionsIndexSubscribeParams,

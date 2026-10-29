@@ -46,6 +46,8 @@ import type {
   RoutedTopicFrame,
   RoutedTopicWireFrame,
   SessionSummary,
+  SessionsIndexReconcileParams,
+  SessionsIndexReconcileResult,
   SessionsIndexTopicFrame,
   SubscribeAck,
   V4AttachmentBeginResult,
@@ -121,6 +123,8 @@ import {
   v4ConversationResyncParamsSchema,
   v4ConversationSubscribeParamsSchema,
   v4ConversationUnsubscribeParamsSchema,
+  sessionsIndexReconcileParamsSchema,
+  sessionsIndexReconcileResultSchema,
 } from "@zcode/shared/zcode-protocol-v4";
 import { AttachmentUploadRegistry } from "./attachment-upload-registry.js";
 import {
@@ -279,6 +283,13 @@ export interface V4GatewayHost {
    * store 读取是异步的，故允许返回 Promise（gateway 订阅时 await；同步 stub 直接返回数组）。
    */
   getStoredSessionSummaries?(workspaceId: string): Promise<SessionSummary[]> | SessionSummary[];
+  /**
+   * sessions-index：按明确 ID 查询持久事实（exists/deleted + 摘要），供桌面索引校准。
+   * 未实现（旧宿主 / 测试桩）→ reconcile 明确报 unavailable，不以"查不到"退化成"不存在"。
+   */
+  reconcileSessions?(
+    params: SessionsIndexReconcileParams,
+  ): Promise<SessionsIndexReconcileResult> | SessionsIndexReconcileResult;
   /**
    * 3.3.6 远端历史兼容：用精确 task allowlist 幂等认领后返回严格 identity 摘要。
    * 非远端 workspace 返回 null；失败可降级为空数组，后续携带 allowlist 的订阅会重试。
@@ -489,6 +500,8 @@ interface ProjectionEventCommitWaiter {
 }
 
 const PROJECTION_EVENT_COMMIT_TIMEOUT_MS = 25_000;
+/** sessionsIndex/reconcile 能力缺席的固定文案：与上游 3.16.2 逐字一致，客户端按能力探测消费。 */
+const SESSIONS_INDEX_RECONCILE_UNAVAILABLE_MESSAGE = "sessionsIndex/reconcile is unavailable";
 const MAX_TELEMETRY_EVENT_IDS = 2_000;
 /** detached subagent child 终态后无订阅者时，publisher 由低频 tick 释放前的保留时长。 */
 const DETACHED_CHILD_PUBLISHER_GRACE_MS = 120_000;
@@ -1170,6 +1183,19 @@ export class ConversationV4Gateway {
         this.host.onError?.("v4.sessionsIndex.emit", error);
       }
     }
+  }
+
+  /**
+   * sessions-index reconcile：按明确 ID 查持久事实，只读、不创建/恢复运行实例。
+   * 宿主没有该能力时明确报 unavailable，不能把"能力缺席"退化成"会话不存在"——
+   * 后者会让索引校准静默删掉仍存在的任务行。
+   */
+  async reconcileSessions(rawParams: unknown): Promise<SessionsIndexReconcileResult> {
+    const params = sessionsIndexReconcileParamsSchema.parse(rawParams);
+    if (!this.host.reconcileSessions) {
+      throw new Error(SESSIONS_INDEX_RECONCILE_UNAVAILABLE_MESSAGE);
+    }
+    return sessionsIndexReconcileResultSchema.parse(await this.host.reconcileSessions(params));
   }
 
   /**

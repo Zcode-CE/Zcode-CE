@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- task index 的 v4 帧摄入、snapshot upsert 和 workspace 广播必须共享同一份闭包状态。 */
+import { reconcileTaskIndexDrift } from "#src/zcode-agent/reconcileTaskIndexDrift.js";
 import { repairSubagentTaskIndex } from "#src/zcode-agent/repairSubagentTaskIndex.js";
 import {
   deriveZCodeTaskStatusFromSessionSnapshot,
@@ -1019,6 +1020,23 @@ export function createZCodeTaskIndexSyncer(
         state.seeded = true;
         void seedMissingRowsFromInitialSnapshot(state, nextSummaries.values());
         const generation = state.indexSubscriptionGeneration;
+        // 快照只覆盖列表可见会话；索引里被快照略过的行由 CLI 持久事实裁定
+        // （只消费明确删除，不少见多怪地按缺席删行）。与子代理索引修复并列，
+        // 同为冷基线后的一次性校准，不参与轮询。
+        void reconcileTaskIndexDrift({
+          target: state.target,
+          visibleSessionIds: new Set(nextSummaries.keys()),
+          agentService,
+          taskIndexRepo,
+          isCurrent: () => isLiveState(state) && state.indexSubscriptionGeneration === generation,
+          onRemoved: () => emitWorkspaceTaskListChanged(state.target, undefined, "task_deleted"),
+        }).catch((error) => {
+          logger.warn(
+            undefined,
+            `task index 漂移对账失败 workspace=${resolveWorkspaceKey(state.target)}`,
+            error,
+          );
+        });
         void repairSubagentTaskIndex({
           target: state.target,
           visibleSessionIds: new Set(nextSummaries.keys()),

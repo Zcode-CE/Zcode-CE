@@ -1682,9 +1682,9 @@
     "packages/services/src/zcode-agent/botTopicAdmission.ts": "10e2878cca354e31336a66e0739bd643db48dda9f967ed9f4edb012fe164a268",
     "packages/services/src/zcode-agent/groupAttachmentUpload.ts": "00216e365c8f2547c2cf40487c3963295e34174929dc16eb35a6af32f7081c06",
     "packages/services/src/zcode-agent/groupRuntimeSnapshot.ts": "826cbd314a164d9e2e2f330984002e4b9565780ac714825febe764d36d040edb",
-    "packages/services/src/zcode-agent/zcodeAgent.ts": "ac737e66953c9ff18a15c74a6afc350c573f82a95006ecdced3dad95b2029305",
+    "packages/services/src/zcode-agent/zcodeAgent.ts": "bb7557ce5a86fa87e005d64f2606e7af3e234d89f71560887eea9b2be52477a6",
     "packages/services/src/zcode-agent/zcodeAgentPluginParams.ts": "4cc744012ab424eaa819812bc7b9e376bc5de6f1979da88cb9e4c924a7c6b811",
-    "packages/services/src/zcode-agent/zcodeAgentService.ts": "85e3b05612b9d242bf33e593398ee07ff1de34ccec25aa36fe2e5ff7c40a2c9a",
+    "packages/services/src/zcode-agent/zcodeAgentService.ts": "9900aaf782c3d2bf0f149d009330d04201238f21ffefd0028e9256a5d6a81de1",
     "packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts": "c4b4d37afc67faf95ae20b1c664eecb65b9e48fddfd6c76a0df3a9999b2f434c",
     "packages/shared/package.json": "99a9ef13ce255b28106f0c7f5a4cba14ff44c9ebabd6027c0ccc8ffe2c2d7f94",
     "packages/shared/src/attachment-source.ts": "1ab5985a30d2be53e9e3af364e04c8a902ce4a6dc3b9bcc18e8d81c227d37069",
@@ -1749,14 +1749,14 @@
     "packages/shared/src/zcode-protocol-v4/rows.ts": "a9bcf5dc0f47641b58d7257d9dc57db8e6b8a25675a26febf8edd2e9c869827e",
     "packages/shared/src/zcode-protocol-v4/session-config.ts": "9a261de2b2c5bfc7d6cf8dd10598a9dc681bc54dbe1b46e753cf9909fd9b51a0",
     "packages/shared/src/zcode-protocol-v4/sessions-index-workflow-activity.ts": "08b11f05ef4c70d3bd9a41806ab1819498491d1419e9dfbb9d8f18aefb4086d3",
-    "packages/shared/src/zcode-protocol-v4/sessions-index.ts": "494b2007dd8fc3c1f35098bc5778a8fa3d2f66d9183be340b3e21a5c59a86aa7",
+    "packages/shared/src/zcode-protocol-v4/sessions-index.ts": "938daae0e06f7ad8491e86f42e17468a2d3fb2e694a435259e0a9adf88ec3e4d",
     "packages/shared/src/zcode-protocol-v4/shared-context-import.ts": "fcd422a4cb073af2ed2d4e74862e8360f14a7a94f58a736d7a3e09110f88f5de",
     "packages/shared/src/zcode-protocol-v4/shared-context-ref.ts": "660f6beb529f853660994f22a56149761cb7c775abb3ea047b3fdd5518294c76",
     "packages/shared/src/zcode-protocol-v4/snapshot.ts": "a2d0427c2c6f9cbfb0445a2dd90fae55d224757ebed77f1391a5e8345857997f",
     "packages/shared/src/zcode-protocol-v4/submission.ts": "aba9b3d2140065615398429fe1404806b453ae5d854dce05e7c3b4271b0b3c57",
     "packages/shared/src/zcode-protocol-v4/telemetry.ts": "056f2359c1a1ba87fe0b364d19e400bda17a03ad95aa06b1814793251d0bf00d",
     "packages/shared/src/zcode-protocol-v4/toolDisplay.ts": "caf2de66ef01420889911292f2873a05b5ae372331da0362360bbe23cdfd4d4b",
-    "packages/shared/src/zcode-protocol-v4/transport.ts": "b054790cac2f2368985d44e27132f4e364978aeb14674ca91866b4a989a30382",
+    "packages/shared/src/zcode-protocol-v4/transport.ts": "c5ed46bfc16b080943a773457c47f27148f8b99b18703a8a251b66c21d489b3d",
     "packages/shared/src/zcode-protocol-v4/wire-assembler.ts": "ad15fb1af701f8155912e251fe9f38b04d2cfa2d2c1548868a52fc96953c3a4c",
     "packages/shared/src/zcode-protocol-v4/wire-binary.ts": "28f287c5764d3d7afa56b6291e3cc67f4234ccb5749f365a66cc7260ddcfbfee",
     "packages/shared/src/zcode-protocol-v4/wire-codec.ts": "ac2494a3acc795c809c94ee9393f50271a9c2a0fd33813459e5ab93842ceef75",
@@ -3308,7 +3308,7 @@
     "scripts/license-texts/MPL-2.0.txt": "5eba353fe5076ac3432177f8ab1cf75e3afcd0584251e37c3bfead5f447d040e",
     "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
     "scripts/remote-native-search-tools-config.mjs": "472322a66f84c7452f96aa9e16e9c4e0600f7c2588a03dc6bc869229161b1cb2",
-    "third-party/copied-components.json": "03918f3708206c8d2939878fde72b0a61924364033ce23df4db7b439aa9266c7",
+    "third-party/copied-components.json": "23fe2c2b940fd02c45c7489e688a1c4c75998d51bb5c476b5be4aaffe60ace29",
     "third-party/embedded-components.json": "1160d4b37e297584099e640998b75599a9ac237dc39dc29d49f2a538e514bb4e",
     "third-party/native-search/licenses/00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce.txt": "00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce",
     "third-party/native-search/licenses/01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f.txt": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
@@ -32006,7 +32006,7 @@
       "roots": [
         "packages/shared/src/zcode-protocol-v4"
       ],
-      "scope": "The whole packages/shared/src/zcode-protocol-v4 directory as of the v3.15.1 sync: 31 pre-existing files replaced wholesale plus new files (create-session-config, workflow-command-rejections, workflow-runs-actor-session, workflow-runs-holes) and index. Content is the upstream v3.15.1 protocol drift: default-concurrency-D model (run-started records concurrencyCeiling; shared bucket may grow to 2D), ceiling vs limit two-bounds semantics, actor.model (F7 per-subagent model), actor sessionId semantics (X2), holes/extractions. 32 of the files carry the 'Modified by ZCode:' marker because comments containing markdown emphasis were de-emphasized per docs/development/copy-and-format.md §3 (copyFormatGuard ratchet); listed in modifiedFiles.",
+      "scope": "The whole packages/shared/src/zcode-protocol-v4 directory as of the v3.15.1 sync: 31 pre-existing files replaced wholesale plus new files (create-session-config, workflow-command-rejections, workflow-runs-actor-session, workflow-runs-holes) and index. Content is the upstream v3.15.1 protocol drift: default-concurrency-D model (run-started records concurrencyCeiling; shared bucket may grow to 2D), ceiling vs limit two-bounds semantics, actor.model (F7 per-subagent model), actor sessionId semantics (X2), holes/extractions. 33 of the files carry the 'Modified by ZCode:' marker because comments containing markdown emphasis were de-emphasized per docs/development/copy-and-format.md §3 (copyFormatGuard ratchet); listed in modifiedFiles. packages/shared/src/zcode-protocol-v4/sessions-index.ts additionally received the upstream 3.16.2 (3c5b2276) sessionsIndexReconcile params/result schemas and V4 route constant; that addition is registered here because the file already belongs to this entry.",
       "license": "Apache-2.0",
       "modifiedFiles": [
         "packages/shared/src/zcode-protocol-v4/coalesce.ts",
@@ -32040,7 +32040,8 @@
         "packages/shared/src/zcode-protocol-v4/workflow-runs-tables.ts",
         "packages/shared/src/zcode-protocol-v4/workflow-runs-unlisted.ts",
         "packages/shared/src/zcode-protocol-v4/workflow-runs.ts",
-        "packages/shared/src/zcode-protocol-v4/workflow-workspace.ts"
+        "packages/shared/src/zcode-protocol-v4/workflow-workspace.ts",
+        "packages/shared/src/zcode-protocol-v4/sessions-index.ts"
       ],
       "files": [
         {
@@ -32117,7 +32118,7 @@
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/sessions-index.ts",
-          "sha256": "494b2007dd8fc3c1f35098bc5778a8fa3d2f66d9183be340b3e21a5c59a86aa7"
+          "sha256": "938daae0e06f7ad8491e86f42e17468a2d3fb2e694a435259e0a9adf88ec3e4d"
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/shared-context-import.ts",
@@ -32145,7 +32146,7 @@
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/transport.ts",
-          "sha256": "b054790cac2f2368985d44e27132f4e364978aeb14674ca91866b4a989a30382"
+          "sha256": "c5ed46bfc16b080943a773457c47f27148f8b99b18703a8a251b66c21d489b3d"
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/wire-assembler.ts",
@@ -33029,11 +33030,11 @@
       "files": [
         {
           "file": "packages/services/src/zcode-agent/zcodeAgent.ts",
-          "sha256": "ac737e66953c9ff18a15c74a6afc350c573f82a95006ecdced3dad95b2029305"
+          "sha256": "bb7557ce5a86fa87e005d64f2606e7af3e234d89f71560887eea9b2be52477a6"
         },
         {
           "file": "packages/services/src/zcode-agent/zcodeAgentService.ts",
-          "sha256": "85e3b05612b9d242bf33e593398ee07ff1de34ccec25aa36fe2e5ff7c40a2c9a"
+          "sha256": "9900aaf782c3d2bf0f149d009330d04201238f21ffefd0028e9256a5d6a81de1"
         },
         {
           "file": "packages/services/src/zcode-agent/zcodeAgentPluginParams.ts",

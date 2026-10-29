@@ -275,6 +275,7 @@ import {
   conversationTopicWireCandidateSchema,
   conversationTelemetryFactSchema,
   cuaPermissionObservationSchema,
+  sessionsIndexReconcileResultSchema,
   sessionsIndexTopic,
   sessionsIndexTopicWireCandidateSchema,
   MAX_LEGACY_TASK_IDS_PER_SUBSCRIBE,
@@ -6165,6 +6166,17 @@ export function createZCodeAgentService(
 
     // ── sessions-index 通道（列表活性）：复用 conversationSubscribe RPC，
     // 按 topic 前缀由 CLI server 分派 ──
+
+    async reconcileSessionsIndexV4(params: ZCodeAgentWorkspaceTarget & { sessionIds: string[] }) {
+      // 索引校准是观察者路径：existing-only 缺 runtime 时直接抛 runtimeUnavailable，
+      // 不能为了对账拉起新进程（那会把一次列表校准变成一次冷启动）。
+      const client = await getReadOnlyClient(params, "existing-only");
+      return client.request(
+        V4_METHODS.sessionsIndexReconcile,
+        { workspaceId: resolveWorkspaceKey(params), sessionIds: params.sessionIds },
+        sessionsIndexReconcileResultSchema,
+      );
+    },
 
     async subscribeSessionsIndexV4(params: ZCodeAgentSessionsIndexSubscribeParams) {
       // 侧栏会同时登记所有 restored workspace。被动订阅若使用启动型 client，

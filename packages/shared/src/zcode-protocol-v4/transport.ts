@@ -336,6 +336,9 @@ export const V4_METHODS = {
   controllerResync: "v4/controller/resync",
   controllerUnsubscribe: "v4/controller/unsubscribe",
   conversationSubscribe: "v4/conversation/subscribe",
+  // 按明确 ID 查持久事实（exists/deleted + 摘要）：只读、无状态、超时重发安全，
+  // 且绝不创建/恢复运行实例（见 sessions-index.ts 的 reconcile params/result schema）。
+  sessionsIndexReconcile: "v4/sessionsIndex/reconcile",
   conversationResync: "v4/conversation/resync",
   conversationUnsubscribe: "v4/conversation/unsubscribe",
   // 行分页 query（rows/range）：只读、无状态、超时重发安全。

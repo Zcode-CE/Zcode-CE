@@ -1,4 +1,8 @@
 import { readBackgroundBashOutputFromOwner } from "./background-work-owner.js";
+import {
+  normalizeStoredTitleSource,
+  reconcileStoredSessions,
+} from "./sessions-index-reconcile.js";
 // v4 网关 binder。
 // 定位：ConversationV4Gateway 是域无关的通道运行时，本文件把它绑到协议服务器上下文：
 // - 帧出口 = context.notify（stdio NDJSON notification，与旧 session/event 同一条管道并存）；
@@ -24,7 +28,6 @@ import {
   type ConversationInputIntent,
   type V4ConversationFileChangesResult,
   type V4ConversationFileRewindPreviewResult,
-  type SessionSummary,
 } from "@zcode/shared/zcode-protocol-v4";
 import { V4CommandExecutor } from "../zcode-protocol-v4/commands/executor.js";
 import { V4QueuePromotionLeaseUnavailableError } from "../zcode-protocol-v4/commands/handlers/queue.js";
@@ -102,14 +105,6 @@ import type {
   ZCodeProtocolSessionRecord,
 } from "./server-types.js";
 import { createProtocolLogger } from "./server-types.js";
-
-function normalizeStoredTitleSource(
-  source: string | undefined,
-): NonNullable<SessionSummary["titleSource"]> {
-  if (source === "custom") return "custom";
-  if (source === "default") return "default";
-  return "generated";
-}
 
 function sessionUsageSeedFromRuntimeContextUsage(
   contextUsage: ZCodeSessionContextUsage | undefined,
@@ -1591,6 +1586,14 @@ export function createConversationV4Gateway(
     // ── workspace-config hook（配置目录订阅种子；live session 快路径，避免临时 app）──
     getWorkspaceConfig: (workspaceId) => buildLiveWorkspaceConfigStateV4(context, workspaceId),
     getStoredSessionSummaries: loadStoredSessionSummaries,
+    // sessions-index reconcile：按明确 ID 读持久 store，绝不激活 runtime（查询面只取
+    // getSession）。store 缺席是宿主装配缺件，必须报错——静默返回空结果会让桌面把
+    // 全部在册会话当成"不存在"。
+    reconcileSessions: async ({ workspaceId, sessionIds }) => {
+      const store = context.deps.sessionStore;
+      if (!store) throw new Error("Session store is unavailable");
+      return reconcileStoredSessions({ store, workspaceId, sessionIds });
+    },
     refreshLegacySessionSummaries: (workspaceId, legacyTaskIds) =>
       parseRemoteWorkspaceIdentity(workspaceId)
         ? loadStoredSessionSummaries(workspaceId, legacyTaskIds)

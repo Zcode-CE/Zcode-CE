@@ -438,7 +438,7 @@
     "importRevision": "aac4755666d09fdcd70272fcf063c077a639015f",
     "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision aac47556 (tag v3.15.1, commit \"feat: update to v3.15.1\") as part of the 3.15.1-ce.1 upstream sync. Upstream declares license Apache-2.0 in package.json; the pinned LICENSE snapshot is byte-identical to the earlier ZCode entries (Apache-2.0 text unchanged since 29628c9, sha256 verified). Verified via the shared read-only worktree .local/91-upstream-checkout/zai-org-ZCode-3151 (detached @ aac47556); no re-download or re-extraction of any distribution package was performed.",
     "roots": ["packages/shared/src/zcode-protocol-v4"],
-    "scope": "The whole packages/shared/src/zcode-protocol-v4 directory as of the v3.15.1 sync: 31 pre-existing files replaced wholesale plus new files (create-session-config, workflow-command-rejections, workflow-runs-actor-session, workflow-runs-holes) and index. Content is the upstream v3.15.1 protocol drift: default-concurrency-D model (run-started records concurrencyCeiling; shared bucket may grow to 2D), ceiling vs limit two-bounds semantics, actor.model (F7 per-subagent model), actor sessionId semantics (X2), holes/extractions. 32 of the files carry the 'Modified by ZCode:' marker because comments containing markdown emphasis were de-emphasized per docs/development/copy-and-format.md §3 (copyFormatGuard ratchet); listed in modifiedFiles.",
+    "scope": "The whole packages/shared/src/zcode-protocol-v4 directory as of the v3.15.1 sync: 31 pre-existing files replaced wholesale plus new files (create-session-config, workflow-command-rejections, workflow-runs-actor-session, workflow-runs-holes) and index. Content is the upstream v3.15.1 protocol drift: default-concurrency-D model (run-started records concurrencyCeiling; shared bucket may grow to 2D), ceiling vs limit two-bounds semantics, actor.model (F7 per-subagent model), actor sessionId semantics (X2), holes/extractions. 33 of the files carry the 'Modified by ZCode:' marker because comments containing markdown emphasis were de-emphasized per docs/development/copy-and-format.md §3 (copyFormatGuard ratchet); listed in modifiedFiles. packages/shared/src/zcode-protocol-v4/sessions-index.ts additionally received the upstream 3.16.2 (3c5b2276) sessionsIndexReconcile params/result schemas and V4 route constant; that addition is registered here because the file already belongs to this entry.",
     "license": "Apache-2.0",
     "modifiedFiles": [
       "packages/shared/src/zcode-protocol-v4/coalesce.ts",
@@ -472,7 +472,8 @@
       "packages/shared/src/zcode-protocol-v4/workflow-runs-tables.ts",
       "packages/shared/src/zcode-protocol-v4/workflow-runs-unlisted.ts",
       "packages/shared/src/zcode-protocol-v4/workflow-runs.ts",
-      "packages/shared/src/zcode-protocol-v4/workflow-workspace.ts"
+      "packages/shared/src/zcode-protocol-v4/workflow-workspace.ts",
+      "packages/shared/src/zcode-protocol-v4/sessions-index.ts"
     ]
   },
   {
