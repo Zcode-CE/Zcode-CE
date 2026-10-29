@@ -237,6 +237,11 @@ export interface IZCodeTaskService {
     deferPersistenceUntilFirstPrompt?: boolean;
     /** Bot/host 使用 v4 原生 createSession 建立 draft，再配置并发送。 */
     v4Create?: boolean;
+    /**
+     * X16 附加目录：缺省时由 adapter 从 settingService 按 workspaceKey 解析（调度/机器人/闲时任务），
+     * 显式传入优先。远端会话不注入 —— 目录是本机事实。
+     */
+    additionalDirectories?: string[];
   }): Promise<ZCodeTaskCreateResult>;
 
   // Modified by ZCode: 增量自上游 aac47556——Bot 群/话题输入与执行的 task service 契约。

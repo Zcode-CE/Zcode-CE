@@ -248,6 +248,11 @@ export interface ZCodeAgentCreateSessionParams extends ZCodeAgentWorkspaceTarget
   toolAllowlist?: string[];
   toolDenylist?: string[];
   importedHistory?: ZCodeSessionImportHistory;
+  /**
+   * X16 附加目录：模型可见范围与技能/命令根的扩展。optional；缺省即无附加目录。
+   * 旧 CLI 的 strict schema 不认时由 compat 重试省略（见 SessionCreateCompatField）。
+   */
+  additionalDirectories?: string[];
 }
 
 export interface ZCodeAgentListSessionsParams extends ZCodeAgentWorkspaceTarget {

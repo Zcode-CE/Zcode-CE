@@ -1691,14 +1691,14 @@
     "packages/services/src/plugin-ui-bridge/pluginUiBridgeService.ts": "9911c3493750a29cd0528a01c80548df1dbc82c6eb93f605312d70125394d22f",
     "packages/services/src/plugin-ui-bridge/pluginUiSamplingService.ts": "90d7bc70795178b4d1326911c1d99cfecc3c9e3ff62dba41109eb8e8907a4b9a",
     "packages/services/src/plugin-ui-bridge/samplingContract.ts": "be0c9b969692511f4acaa8d1a1a49222bcb6f36fa77a542c178a441d01eeafec",
-    "packages/services/src/session/zcodeTaskService.ts": "750638a712e011ea34c9c589f7c09f1232fc44878b9253d99b223e0cda96ff74",
+    "packages/services/src/session/zcodeTaskService.ts": "f0ee332166c09b468cabf9280ace7328299d72e1682720a65d41b6342c1152e3",
     "packages/services/src/zcode-agent/botTopicAdmission.ts": "10e2878cca354e31336a66e0739bd643db48dda9f967ed9f4edb012fe164a268",
     "packages/services/src/zcode-agent/groupAttachmentUpload.ts": "00216e365c8f2547c2cf40487c3963295e34174929dc16eb35a6af32f7081c06",
     "packages/services/src/zcode-agent/groupRuntimeSnapshot.ts": "826cbd314a164d9e2e2f330984002e4b9565780ac714825febe764d36d040edb",
-    "packages/services/src/zcode-agent/zcodeAgent.ts": "bb7557ce5a86fa87e005d64f2606e7af3e234d89f71560887eea9b2be52477a6",
+    "packages/services/src/zcode-agent/zcodeAgent.ts": "1972d4ce2ee152d5d8bb9f093ea4ff688986ad5b3ff9afbbdb2f22cd9a8b58f4",
     "packages/services/src/zcode-agent/zcodeAgentPluginParams.ts": "4cc744012ab424eaa819812bc7b9e376bc5de6f1979da88cb9e4c924a7c6b811",
-    "packages/services/src/zcode-agent/zcodeAgentService.ts": "5541fefd1928022d4176174b28eb8b99e93bd4ca9640be28f21cfadddea48898",
-    "packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts": "c4b4d37afc67faf95ae20b1c664eecb65b9e48fddfd6c76a0df3a9999b2f434c",
+    "packages/services/src/zcode-agent/zcodeAgentService.ts": "56acbd22d48f4f9a8221dea23bc6e94c4ffe22a33e6e6d091dc2af3e6ae5d075",
+    "packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts": "5ec39387fe66285fd2d4ed35e47fa1a15adbae0f4b416c3490aaf6ca3f253d94",
     "packages/shared/package.json": "99a9ef13ce255b28106f0c7f5a4cba14ff44c9ebabd6027c0ccc8ffe2c2d7f94",
     "packages/shared/src/attachment-source.ts": "1ab5985a30d2be53e9e3af364e04c8a902ce4a6dc3b9bcc18e8d81c227d37069",
     "packages/shared/src/bots.ts": "c9ae67d700e4f744118348e3cb4517968393d9f86fa7d0e8cbf5c957b3ba315d",
@@ -33043,11 +33043,11 @@
       "files": [
         {
           "file": "packages/services/src/zcode-agent/zcodeAgent.ts",
-          "sha256": "bb7557ce5a86fa87e005d64f2606e7af3e234d89f71560887eea9b2be52477a6"
+          "sha256": "1972d4ce2ee152d5d8bb9f093ea4ff688986ad5b3ff9afbbdb2f22cd9a8b58f4"
         },
         {
           "file": "packages/services/src/zcode-agent/zcodeAgentService.ts",
-          "sha256": "5541fefd1928022d4176174b28eb8b99e93bd4ca9640be28f21cfadddea48898"
+          "sha256": "56acbd22d48f4f9a8221dea23bc6e94c4ffe22a33e6e6d091dc2af3e6ae5d075"
         },
         {
           "file": "packages/services/src/zcode-agent/zcodeAgentPluginParams.ts",
@@ -34265,11 +34265,11 @@
         },
         {
           "file": "packages/services/src/session/zcodeTaskService.ts",
-          "sha256": "750638a712e011ea34c9c589f7c09f1232fc44878b9253d99b223e0cda96ff74"
+          "sha256": "f0ee332166c09b468cabf9280ace7328299d72e1682720a65d41b6342c1152e3"
         },
         {
           "file": "packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts",
-          "sha256": "c4b4d37afc67faf95ae20b1c664eecb65b9e48fddfd6c76a0df3a9999b2f434c"
+          "sha256": "5ec39387fe66285fd2d4ed35e47fa1a15adbae0f4b416c3490aaf6ca3f253d94"
         }
       ]
     },

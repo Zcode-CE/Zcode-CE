@@ -28,6 +28,7 @@ import {
   parseZCodeBackgroundTaskControlItems,
   parseZCodeBackgroundTaskNotificationText,
   parseModelPickerValue as parseSharedModelSelection,
+  resolveWorkspaceAdditionalDirectories,
   resolveWorkspaceKey,
   resolveZCodeVisibleSessionTitle,
   textFromZCodeMessageParts,
@@ -183,6 +184,24 @@ interface CreateZCodeTaskServiceAdapterOptions {
   taskIndexSyncer: ZCodeTaskIndexSyncer;
   settingService?: Pick<ISettingService, "get">;
   cuaProductMcpServerResolver?: CuaProductMcpServerResolver;
+}
+
+/**
+ * X16：调度/机器人/闲时任务没有 UI 侧的下发点，由 adapter 在创建会话时从宿主设置解析附加目录。
+ * 远端会话不注入 —— 附加目录是本机路径事实，远端 Host 自己持有设置。
+ */
+export async function resolveTaskAdditionalDirectories(
+  settingService: Pick<ISettingService, "get"> | undefined,
+  target: { workspacePath: string; workspaceIdentity?: string; remoteSessionId?: string },
+): Promise<string[] | undefined> {
+  if (!settingService || target.remoteSessionId) return undefined;
+  const settings = await settingService.get();
+  const workspaceKey = target.workspaceIdentity?.trim() || target.workspacePath;
+  const directories = resolveWorkspaceAdditionalDirectories(
+    settings.workspaceAdditionalDirectories,
+    workspaceKey,
+  );
+  return directories.length > 0 ? directories : undefined;
 }
 
 interface TaskTarget {
@@ -1812,6 +1831,9 @@ export function createZCodeTaskServiceAdapter(
 
     async createTask(params): Promise<ZCodeTaskCreateResult> {
       const target = normalizeWorkspaceParams(params);
+      const additionalDirectories =
+        params.additionalDirectories ??
+        (await resolveTaskAdditionalDirectories(options.settingService, target));
       const requestedSelection =
         params.modelSelection ??
         (params.model
@@ -1872,6 +1894,7 @@ export function createZCodeTaskServiceAdapter(
         // 迁移属 v4 生命周期收口。
         snapshot = await options.zcodeAgentService.createSession({
           ...target,
+          ...(additionalDirectories ? { additionalDirectories } : {}),
           sessionTraceId: createSessionTraceId(),
           mode: toZCodeMode(params.mode),
           model: requestedSelection,

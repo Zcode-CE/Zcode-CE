@@ -387,6 +387,7 @@ type SessionCreateCompatField =
   | "mcpServers"
   | "toolAllowlist"
   | "toolDenylist"
+  | "additionalDirectories"
   | "offPeakToolEnabled"
   | "dynamicWorkflowEnabled";
 type SessionResumeCompatField =
@@ -412,6 +413,8 @@ const SESSION_CREATE_OPTIONAL_COMPAT_FIELDS = new Set<SessionCreateCompatField>(
   // 的 .strict() schema 不认，需可降级重试而不是整个 createSession 硬失败。
   "toolAllowlist",
   "toolDenylist",
+  // X16 附加目录：旧 app-server 的 strict schema 不认时省略重试（创建会话不携带附加目录）。
+  "additionalDirectories",
   // Off-Peak 工具面 flag 同为可降级字段；旧 app-server 不认时省略重试（工具随之不注册，fail-closed）。
   "offPeakToolEnabled",
   // 动态工作流灰度 flag 同理：旧 CLI 不认时
@@ -674,6 +677,10 @@ function buildSessionCreateParams(
     // MCP 是 runtime 启动期配置，必须在 create/resume 请求边界显式传递，后续 sendPrompt 无法补上。
     ...(params.mcpServers !== undefined && !omittedFields.has("mcpServers")
       ? { mcpServers: params.mcpServers }
+      : {}),
+    // X16 附加目录：创建期参数，事后补不了；旧 CLI 不认时经 compat 省略（等价于无附加目录）。
+    ...(params.additionalDirectories !== undefined && !omittedFields.has("additionalDirectories")
+      ? { additionalDirectories: params.additionalDirectories }
       : {}),
     // CUA 工具隔离字段是可降级的：旧 app-server 的 .strict() schema 若不认，兼容重试会把它们放进
     // omittedFields 省略后重试（而不是硬失败）。故这里必须同样受 omittedFields 门控。

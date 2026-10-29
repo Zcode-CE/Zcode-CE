@@ -8,7 +8,7 @@
 ## 1. CE 现状（按源码）
 
 | 事实                                                                                               | 位置                                                                                                                  |
-| -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --- |
 | 身份键 = `workspaceIdentity?.trim() \|\| workspacePath`                                            | `packages/shared/src/workspace-registry.ts` 的 `resolveWorkspaceRegistryKey`                                          |
 | 可见工作区集合 = 服务端注册表（只读 RPC），跨客户端一致                                            | `packages/services/src/session/workspaceRegistry.ts` + `workspaceRegistryRepo.ts`（tasks DB 表 `workspace_registry`） |
 | 注册表条目字段：key/path/identity/firstSeen/lastActivity/sessionCount/activeSessionCount/sources   | `workspaceRegistryEntrySchema`                                                                                        |
@@ -16,7 +16,7 @@
 | 迁移机制：tasks DB 的 0001–0005 分支登记在 `tasksDatabase/migrations.ts`，新增迁移必须登记并有测试 | `packages/services/src/session/tasksDatabase/`                                                                        |
 | CLI 已支持会话级 `additionalDirectories`（协议 5 处 schema + 环境 prompt + 技能/命令根 + 冷恢复）  | task-45（`f3a7962c`）                                                                                                 |
 | 附加目录的存放与下发：`AppSettings.workspaceAdditionalDirectories` + 新建会话注入                  | `packages/shared/src/workspaceAdditionalDirectories.ts`、`packages/ui/src/v4/SessionPane.tsx`（见 §3A）               |
-| 调度/机器人仍**没有**附加目录来源                                                                  | 全仓 0 命中（消费方未跟进，见 `upstream-sync.md` X16 行）                                                             |
+| 调度/机器人经 task adapter 解析附加目录（2026-10-30）                                              | `resolveTaskAdditionalDirectories`：createTask 缺省时从宿主设置按 workspaceKey 解析；远端会话跳过                     |     |
 
 结论：CE 已有「工作区注册表」这个近似的项目索引，但它**只是索引**（只读、无根集合、无归属编辑），
 不能承担上游 `VirtualProject` 的职责；而 `additionalDirectories` 的下发需要一个可编辑、可持久化的
