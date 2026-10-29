@@ -119,13 +119,11 @@ import { ConversationSelectionReferenceChip } from "@/v4/composer/ConversationSe
 import { PptxElementReferenceChip } from "@/v4/composer/PptxElementReferenceChip.js";
 import { useOpenPptxElementReference } from "@/v4/composer/useOpenPptxElementReference.js";
 import { ConversationFileRewindDialog } from "@/v4/ConversationFileRewindDialog.js";
-import { ConversationUserInputBody } from "@/v4/ConversationUserInputBody.js";
-import { ConversationUserInputContent } from "@/v4/ConversationUserInputContent.js";
-import {
-  ConversationUserInputEpilogue,
-  splitUserInputEpilogue,
-} from "@/v4/ConversationUserInputEpilogue.js";
+import { splitUserInputEpilogue } from "@/v4/ConversationUserInputEpilogue.js";
+import { ConnectedBotGroupDeliveryAction } from "@/v4/BotGroupDeliveryAction.js";
+import { BotGroupSourceLabel } from "@/v4/BotGroupSourceLabel.js";
 import { ConversationHookDetailsAction } from "@/v4/ConversationHookDetailsAction.js";
+import { ConversationUserInputBubble } from "@/v4/ConversationUserInputBubble.js";
 import { formatModelChangeLabel } from "@/v4/composer/modelTriggerDisplay.js";
 import { formatMessageTimeLabel } from "@/v4/messageTimeLabel.js";
 import { parseConversationShareContext } from "@/lib/conversationShareContext.js";
@@ -1203,6 +1201,12 @@ const UserInputRowView = memo(function UserInputRowView({
 
   return (
     <RowShell rowId={row.rowId} className="group/user-row flex flex-col items-end">
+      {row.botGroupSource ? (
+        // 群来源原先插在材料与正文之间，割裂同一输入；统一放在材料之前（上游 3.16.2 形态）。
+        <div data-v4-user-input-source="true" className="mb-2 flex min-w-0 max-w-full">
+          <BotGroupSourceLabel source={row.botGroupSource} />
+        </div>
+      ) : null}
       {hasAttachmentArea ? (
         <div
           data-v4-user-input-attachments="true"
@@ -1264,21 +1268,14 @@ const UserInputRowView = memo(function UserInputRowView({
         // 附件和上下文引用只属于消息行，不属于气泡；否则仅附件消息会留下空气泡。
         // 同一 row 会渲染在主会话和 Subagent 侧栏，固定宽度会忽略实际宿主宽度。
         // 气泡保留 flex item 的自动宽度；宿主至少 624px 时再以 36rem 封顶并保留 48px 余量。
-        <div
-          data-v4-user-input-bubble="true"
-          className="flex max-w-full flex-col gap-2 rounded-xl rounded-tr-xs border border-border bg-surface px-4 py-3 text-ui-base text-foreground @min-[624px]/conversation:max-w-xl"
-        >
-          {hasVisibleText ? (
-            <ConversationUserInputBody contentText={visibleText} rowId={row.rowId}>
-              <ConversationUserInputContent
-                text={visibleText}
-                attachments={row.attachments}
-                contextAttachmentCount={countComposerPromptContexts(parsedPrompt)}
-              />
-            </ConversationUserInputBody>
-          ) : null}
-          {epilogue === undefined ? null : <ConversationUserInputEpilogue text={epilogue} />}
-        </div>
+        // 与群话题准备态共用 ConversationUserInputBubble（同一拆分，避免两套气泡样式漂移）。
+        <ConversationUserInputBubble
+          text={visibleText}
+          rowId={row.rowId}
+          attachments={row.attachments}
+          contextAttachmentCount={countComposerPromptContexts(parsedPrompt)}
+          epilogue={epilogue}
+        />
       ) : null}
       {status ? (
         <div
@@ -1317,6 +1314,8 @@ const UserInputRowView = memo(function UserInputRowView({
   );
 });
 
+const EMPTY_SOURCE_COMMAND_IDS: readonly string[] = [];
+
 export const ConversationAssistantTextActions = memo(function ConversationAssistantTextActions({
   rowId,
   entityId,
@@ -1326,6 +1325,7 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
   feedback = null,
   hookInvocations,
   turnId,
+  sourceCommandIds = EMPTY_SOURCE_COMMAND_IDS,
   onFork,
   onFeedbackChange,
   copyScope = "row",
@@ -1342,6 +1342,8 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
   feedback?: AssistantMessageFeedback | null;
   hookInvocations?: readonly HookInvocationRow[];
   turnId?: string;
+  /** 该轮对应的 CLI command id（header + 用户输入行）；群投递回执按它关联到本轮。 */
+  sourceCommandIds?: readonly string[];
   onFork?: (target: ConversationRowTarget) => void;
   onRetry?: (target: ConversationRowTarget) => void;
   onFeedbackChange?: AssistantFeedbackHandler;
@@ -1406,7 +1408,7 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
     }
   }, [entityId, onFork, rowId]);
   return (
-    <MessageActions className={cn(className)}>
+    <MessageActions className={cn(className, "has-[[data-bot-group-delivery]]:opacity-100")}>
       <CopyRowAction
         text={text}
         rowId={rowId}
@@ -1472,6 +1474,9 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
           时间是 row.createdAt 的只读派生展示，不新增 renderer 状态。 */}
       {timeLabel ? (
         <span className="select-none text-ui-sm text-foreground-subtlest">{timeLabel}</span>
+      ) : null}
+      {turnId ? (
+        <ConnectedBotGroupDeliveryAction turnId={turnId} sourceCommandIds={sourceCommandIds} />
       ) : null}
     </MessageActions>
   );

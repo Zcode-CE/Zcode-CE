@@ -41,6 +41,8 @@ import { ConversationTurnNavigator } from "@/v4/ConversationTurnNavigator.js";
 import { syncConversationShareSelectionPanelLayout } from "@/v4/conversationShareSelectionPanelLayout.js";
 import type { ConversationRowRenderContext } from "@/v4/conversationRowContext.js";
 import { splitConversationTimelineLiveTail } from "@/v4/conversationTimelineLiveTail.js";
+import { useBotTopicPreparations } from "@/v4/BotTopicPreparation.js";
+import { withTopicPreparationMessages } from "@/v4/topicPreparationRenderUnits.js";
 import {
   getConversationContentWidthClassName,
   getConversationStatusPanelOffsetClassName,
@@ -417,13 +419,19 @@ function ConversationTimelineImpl({
     return () => observer.disconnect();
   }, [hasHeaderSlot]);
   const [liveNowMs, setLiveNowMs] = useState(() => Date.now());
+  // 群话题准备态：未接受的群材料投影进最后一条轮次，不伪造 CLI row（不产生任务/轮次/可编辑假消息）。
+  const topicPreparations = useBotTopicPreparations();
   const renderUnits = useMemo(
     () =>
-      buildConversationTurnRenderUnits(rows, {
-        nowMs: liveNowMs,
-        sessionPhase,
-      }),
-    [liveNowMs, rows, sessionPhase],
+      withTopicPreparationMessages(
+        buildConversationTurnRenderUnits(rows, {
+          nowMs: liveNowMs,
+          sessionPhase,
+        }),
+        rows,
+        topicPreparations,
+      ),
+    [liveNowMs, rows, sessionPhase, topicPreparations],
   );
   const { virtualizedUnits, liveUnit, liveUnitIndex } = useMemo(
     () => splitConversationTimelineLiveTail(renderUnits),

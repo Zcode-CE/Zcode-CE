@@ -156,6 +156,7 @@ import {
 import { buildConversationTurnRenderUnits } from "@/v4/conversationTurnRenderUnits.js";
 import { buildConversationTurnNavigatorItems } from "@/v4/conversationTurnNavigatorHelpers.js";
 import { SessionPluginReferenceIconBoundary } from "@/v4/SessionPluginReferenceIconProvider.js";
+import { BotGroupDeliveryProvider } from "@/v4/BotGroupDeliveryAction.js";
 import {
   resolveConversationStatusPanelVariant,
   shouldUseConversationStatusPanelInlineLayout,
@@ -4511,100 +4512,110 @@ export function SessionPane({
             workspaceIdentity={workspaceIdentity}
             workspacePath={workspacePath}
           >
-            <ConversationTimeline
-              scrollToBottomActionRef={timelineScrollToBottomRef}
-              scrollToQueryActionRef={timelineScrollToQueryRef}
-              selectionPanelLayoutContainerRef={conversationLayoutContainerRef}
-              rows={timelineSnapshot?.rows.window ?? []}
-              pendingGuides={timelineSnapshot ? pendingGuideProjection?.pendingGuides : []}
-              apiRetry={timelineSnapshot?.control.apiRetry ?? null}
-              totalCount={timelineSnapshot?.rows.totalCount ?? 0}
-              sessionKey={sessionId ?? "draft"}
-              scrollMemoryKey={timelineScrollMemoryKey}
-              rowContext={rowContext}
-              onFork={forkActionsEnabled ? handleFork : undefined}
-              onRetry={retryActionsEnabled ? handleRetry : undefined}
-              onFeedbackChange={
-                !readOnly && !selectionSideChat && sessionId ? handleAssistantFeedback : undefined
-              }
-              onEdit={editActionsEnabled ? handleEdit : undefined}
-              canLoadOlder={timelineSnapshot ? hasOlderRows(timelineSnapshot) : false}
-              loadingOlder={timelineSnapshot ? state.loadingOlder : false}
-              onLoadOlder={handleLoadOlder}
-              onLoadAllOlder={handleLoadAllOlder}
-              turnNavigatorDirectoryRevision={state.turnNavigatorDirectoryRevision}
-              bottomDock={conversationBottomDock}
-              hideTurnNavigator={shareActive && shareInSelectionStage}
-              backgroundScrollLocked={resolveConversationShareBackgroundScrollLocked({
-                partialShareActive: shareActive,
-                stage: shareDraft?.stage ?? "selection",
-                view: shareDraft?.view,
-              })}
-              headerSlot={
-                // unsupportedRowCount 也要开这个门：整份副本的行都被本 build 跳过时
-                // rows 为空，但只读块必须留下来显示「需要更新 ZCode」，不能整块消失。
-                importedShare &&
-                (importedShare.rows.length > 0 || importedShare.unsupportedRowCount > 0) ? (
-                  <ConversationShareImportNotice
-                    rows={importedShare.rows}
-                    unsupportedRowCount={importedShare.unsupportedRowCount}
-                    artifactNames={importedShareArtifactNames}
-                    artifactWorkspaceRelativePaths={importedShareArtifactWorkspaceRelativePaths}
-                    workspacePath={workspacePath}
-                    {...(workspaceIdentity ? { workspaceIdentity } : {})}
-                    {...(remoteSessionId ? { workspaceRemoteSessionId: remoteSessionId } : {})}
-                    locale={locale}
-                    theme={theme}
-                    codePreviewSettings={codePreviewSettings}
-                    onOpenShareUrl={onOpenBrowserUrl ? handleOpenImportedShareUrl : undefined}
-                    onOpenFileLink={onOpenFileLink}
-                    onOpenCodeViewer={onOpenCodeViewer}
-                  />
-                ) : null
-              }
-              emptyState={
-                isDraft ? (
-                  <div data-testid={TID_CHAT_EMPTY} className="w-full">
-                    <ConversationDraftEmptyState />
-                  </div>
-                ) : null
-              }
-              centerEmptyStateWithDock={isDraft}
-              summaryPanelLayout={statusPanelLayout}
-              conversationFindQuery={!isDraft && focused ? conversationFindQuery : ""}
-              conversationFindActiveIndex={!isDraft && focused ? conversationFindActiveIndex : -1}
-              conversationFindNavigationRequestId={
-                !isDraft && focused ? conversationFindNavigationRequestId : 0
-              }
-              onConversationFindMatchStateChange={
-                !isDraft && focused ? onConversationFindMatchStateChange : undefined
-              }
-              searchResultHighlightRequest={isDraft ? null : searchResultHighlightRequest}
-              onSearchResultHighlightDone={onSearchResultHighlightDone}
-              sessionPhase={isDraft ? undefined : snapshot?.control.phase}
-              shareSelection={
-                shareActive && shareInSelectionStage && shareDraft?.view === "timeline" && sessionId
-                  ? {
-                      eligibleRowIds: eligibleShareRowIds,
-                      selectedRowIds: selectedShareRowIds,
-                      onToggle: handleShareSelectionToggle,
-                    }
-                  : undefined
-              }
-              selectionActions={
-                !isDraft && sessionId && !readOnly && !selectionSideChat
-                  ? {
-                      enabled: resolveConversationSelectionTooltipEnabled({
-                        selectionActionsEnabled: focused && !blockingInteractionId,
-                        partialShareActive: shareActive,
-                      }),
-                      sideActionDisabled: selectionSideActionBlocked,
-                      onAddToCurrentTask: handleAddSelectionToCurrentTask,
-                      onAskInSideChat: handleOpenSelectionSideConversation,
-                    }
-                  : undefined
-              }
-            />
+            {/* 群同步状态装一次（任务级）：轮次投递动作与话题准备态都从这里读，不各自请求。 */}
+            <BotGroupDeliveryProvider
+              taskId={sessionId}
+              workspacePath={workspacePath}
+              workspaceIdentity={workspaceIdentity}
+            >
+              <ConversationTimeline
+                scrollToBottomActionRef={timelineScrollToBottomRef}
+                scrollToQueryActionRef={timelineScrollToQueryRef}
+                selectionPanelLayoutContainerRef={conversationLayoutContainerRef}
+                rows={timelineSnapshot?.rows.window ?? []}
+                pendingGuides={timelineSnapshot ? pendingGuideProjection?.pendingGuides : []}
+                apiRetry={timelineSnapshot?.control.apiRetry ?? null}
+                totalCount={timelineSnapshot?.rows.totalCount ?? 0}
+                sessionKey={sessionId ?? "draft"}
+                scrollMemoryKey={timelineScrollMemoryKey}
+                rowContext={rowContext}
+                onFork={forkActionsEnabled ? handleFork : undefined}
+                onRetry={retryActionsEnabled ? handleRetry : undefined}
+                onFeedbackChange={
+                  !readOnly && !selectionSideChat && sessionId ? handleAssistantFeedback : undefined
+                }
+                onEdit={editActionsEnabled ? handleEdit : undefined}
+                canLoadOlder={timelineSnapshot ? hasOlderRows(timelineSnapshot) : false}
+                loadingOlder={timelineSnapshot ? state.loadingOlder : false}
+                onLoadOlder={handleLoadOlder}
+                onLoadAllOlder={handleLoadAllOlder}
+                turnNavigatorDirectoryRevision={state.turnNavigatorDirectoryRevision}
+                bottomDock={conversationBottomDock}
+                hideTurnNavigator={shareActive && shareInSelectionStage}
+                backgroundScrollLocked={resolveConversationShareBackgroundScrollLocked({
+                  partialShareActive: shareActive,
+                  stage: shareDraft?.stage ?? "selection",
+                  view: shareDraft?.view,
+                })}
+                headerSlot={
+                  // unsupportedRowCount 也要开这个门：整份副本的行都被本 build 跳过时
+                  // rows 为空，但只读块必须留下来显示「需要更新 ZCode」，不能整块消失。
+                  importedShare &&
+                  (importedShare.rows.length > 0 || importedShare.unsupportedRowCount > 0) ? (
+                    <ConversationShareImportNotice
+                      rows={importedShare.rows}
+                      unsupportedRowCount={importedShare.unsupportedRowCount}
+                      artifactNames={importedShareArtifactNames}
+                      artifactWorkspaceRelativePaths={importedShareArtifactWorkspaceRelativePaths}
+                      workspacePath={workspacePath}
+                      {...(workspaceIdentity ? { workspaceIdentity } : {})}
+                      {...(remoteSessionId ? { workspaceRemoteSessionId: remoteSessionId } : {})}
+                      locale={locale}
+                      theme={theme}
+                      codePreviewSettings={codePreviewSettings}
+                      onOpenShareUrl={onOpenBrowserUrl ? handleOpenImportedShareUrl : undefined}
+                      onOpenFileLink={onOpenFileLink}
+                      onOpenCodeViewer={onOpenCodeViewer}
+                    />
+                  ) : null
+                }
+                emptyState={
+                  isDraft ? (
+                    <div data-testid={TID_CHAT_EMPTY} className="w-full">
+                      <ConversationDraftEmptyState />
+                    </div>
+                  ) : null
+                }
+                centerEmptyStateWithDock={isDraft}
+                summaryPanelLayout={statusPanelLayout}
+                conversationFindQuery={!isDraft && focused ? conversationFindQuery : ""}
+                conversationFindActiveIndex={!isDraft && focused ? conversationFindActiveIndex : -1}
+                conversationFindNavigationRequestId={
+                  !isDraft && focused ? conversationFindNavigationRequestId : 0
+                }
+                onConversationFindMatchStateChange={
+                  !isDraft && focused ? onConversationFindMatchStateChange : undefined
+                }
+                searchResultHighlightRequest={isDraft ? null : searchResultHighlightRequest}
+                onSearchResultHighlightDone={onSearchResultHighlightDone}
+                sessionPhase={isDraft ? undefined : snapshot?.control.phase}
+                shareSelection={
+                  shareActive &&
+                  shareInSelectionStage &&
+                  shareDraft?.view === "timeline" &&
+                  sessionId
+                    ? {
+                        eligibleRowIds: eligibleShareRowIds,
+                        selectedRowIds: selectedShareRowIds,
+                        onToggle: handleShareSelectionToggle,
+                      }
+                    : undefined
+                }
+                selectionActions={
+                  !isDraft && sessionId && !readOnly && !selectionSideChat
+                    ? {
+                        enabled: resolveConversationSelectionTooltipEnabled({
+                          selectionActionsEnabled: focused && !blockingInteractionId,
+                          partialShareActive: shareActive,
+                        }),
+                        sideActionDisabled: selectionSideActionBlocked,
+                        onAddToCurrentTask: handleAddSelectionToCurrentTask,
+                        onAskInSideChat: handleOpenSelectionSideConversation,
+                      }
+                    : undefined
+                }
+              />
+            </BotGroupDeliveryProvider>
           </SessionPluginReferenceIconBoundary>
         )}
       </div>

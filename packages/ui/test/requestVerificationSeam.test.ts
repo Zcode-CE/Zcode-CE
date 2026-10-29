@@ -23,7 +23,10 @@ import {
 test("判据 1：3007 归入验证码语义，其它业务码不分流", () => {
   assert.equal(resolveRequestVerificationBusinessCode("3007", "任意文案"), "3007");
   assert.equal(resolveRequestVerificationBusinessCode("1006", "请完成安全验证"), undefined);
-  assert.equal(resolveRequestVerificationBusinessCode(undefined, "security verification"), undefined);
+  assert.equal(
+    resolveRequestVerificationBusinessCode(undefined, "security verification"),
+    undefined,
+  );
   assert.equal(isRequestVerificationTerminalError({ code: "3007" }), true);
   assert.equal(isRequestVerificationTerminalError({ code: "1005", message: "x" }), false);
 });

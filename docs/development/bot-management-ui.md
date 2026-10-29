@@ -87,7 +87,7 @@ onEnable: () => void | Promise<void>;
 \`\`\`tsx
 BotsDialog({ open, onOpenChange, workspacePath, workspaceIdentity, entryProvider? })
 \`\`\`
-子组件 \`BotSummaryCard\`/\`ProviderSettingsCard\`/\`WorkspaceAccessCard\`/\`BoundGroupsCard\`/\`PrivateDeliveryRetry\`/\`shared\` + \`botsUi.ts\` 一并搬运（后两者是 F8 群/话题与私聊重试的同批新增卡片）；`useServices()` 取 `botsService`（服务经 hooks 访问，符合「UI 与平台边界」纪律——§0 已登记该结论对 §3.3 的修正）。
+子组件 \`BotSummaryCard\`/\`ProviderSettingsCard\`/\`WorkspaceAccessCard\`/\`BoundGroupsCard\`/\`PrivateDeliveryRetry\`/\`shared\` + \`botsUi.ts\` 一并搬运（后两者是 F8 群/话题与私聊重试的同批新增卡片）。**会话面**（2026-10-30）另接 BotGroupSourceLabel（群来源标签）、BotGroupDeliveryAction（投递回执：已收到/未收到/重发）、BotTopicPreparation（话题准备态）与 botGroupDeliveryContext（任务级一次订阅 + 被群消息中断判定）；`useServices()` 取 `botsService`（服务经 hooks 访问，符合「UI 与平台边界」纪律——§0 已登记该结论对 §3.3 的修正）。
 
 ## 5. 验收场景
 
@@ -149,5 +149,6 @@ BotsDialog({ open, onOpenChange, workspacePath, workspaceIdentity, entryProvider
 ## 9. 测试落点
 
 - B1/B2/B3：`packages/services/test/`（`automationRepo` 真实 sqlite + adapter 真实转发，不停在 safeParse 层——§5 B3 判据）。
+- 会话面：`packages/ui/test/botGroupConversationWiring.test.ts`（来源标签 SSR 姓名优先级、投递回执三态、准备态投影、结构接线）。
 - A1/A2：`packages/ui/test/remoteControlPanel.test.ts`（既有，通道注入后断言不回退）+ 新增 \`botsDialogWiring.test.ts\`（宿主注入通道 ⇒ 标签页出现 + onEnable 打开 BotsDialog）。
 - 搬运源码的逐字节核对：`cmp` 与上游（允许 oxfmt 差异与 §7 登记的本地适配）。

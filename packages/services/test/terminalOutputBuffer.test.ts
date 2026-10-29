@@ -45,7 +45,13 @@ function createService(pty: IPty) {
   });
 }
 
-async function withTerminal(run: (ctx: { emit: (d: string) => void; id: string; service: ReturnType<typeof createService> }) => void | Promise<void>) {
+async function withTerminal(
+  run: (ctx: {
+    emit: (d: string) => void;
+    id: string;
+    service: ReturnType<typeof createService>;
+  }) => void | Promise<void>,
+) {
   const previousShell = process.env.SHELL;
   const previousHome = process.env.HOME;
   process.env.SHELL = process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "/bin/sh";

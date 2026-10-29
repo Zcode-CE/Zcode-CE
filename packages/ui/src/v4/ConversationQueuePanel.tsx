@@ -26,6 +26,7 @@ import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { BotGroupSourceLabel } from "@/v4/BotGroupSourceLabel.js";
 import { runUserAction, runUserActionAsync } from "@/lib/userActionTelemetry.js";
 
 interface ConversationQueuePanelProps {
@@ -199,11 +200,13 @@ const QueueRow = memo(function QueueRow({
       </ControlHintTooltip>
       <span
         className={cn(
-          "flex min-w-0 flex-1 items-center gap-2 truncate text-ui-base text-foreground",
+          "flex min-w-0 flex-1 flex-col gap-1 text-ui-base text-foreground",
           isCompact ? "font-mono" : null,
         )}
         title={item.text}
       >
+        {/* 群来源是「谁在哪个群发的」，属于这一条输入本身的属性，排在正文上方。 */}
+        {item.botGroupSource ? <BotGroupSourceLabel source={item.botGroupSource} /> : null}
         <span className="truncate">{isCompact ? "/compact" : item.text}</span>
       </span>
       {onSendNow ? (

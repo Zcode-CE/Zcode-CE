@@ -1188,5 +1188,33 @@
       "packages/ui/src/components/workflow-timeline/WorkflowTimeline.tsx",
       "packages/ui/src/ToolCallBlocks/renderers/createWorkflowInput.ts"
     ]
+  },
+  {
+    "id": "ZCode bot group/topic conversation UI v3.16.2 (Z.ai)",
+    "referenceRevision": "3c5b227649371507ddc4eb46ac5133afe6db1cab",
+    "source": "https://raw.githubusercontent.com/zai-org/ZCode/3c5b227649371507ddc4eb46ac5133afe6db1cab/LICENSE",
+    "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
+    "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
+    "importRevision": "3c5b227649371507ddc4eb46ac5133afe6db1cab",
+    "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision 3c5b2276 (v3.16.2). The upstream repository declares Apache-2.0; the LICENSE snapshot pinned here is that repository's text (sha256 verified byte-for-byte; identical to the 29628c9 snapshot). Seven UI files are adapted, not byte-identical: CE import aliases, the ChannelMentionContent branch omitted (CE has no mention renderer yet), ConversationUserInputBody rowId widened to string | number for preparation-state remount keys, and comment style normalized. Six CE-pre-existing files received upstream-derived fragments. The 24 bots.group.* / bots.topic.* / chat.topicPreparation.* / chat.history.topicInterrupted i18n keys use the upstream zh-CN/en-US text. Upstream records no per-file copyright header.",
+    "roots": [
+      "packages/ui/src/v4/BotGroupSourceLabel.tsx",
+      "packages/ui/src/v4/BotGroupDeliveryAction.tsx",
+      "packages/ui/src/v4/BotTopicPreparation.tsx",
+      "packages/ui/src/v4/botGroupDeliveryContext.ts",
+      "packages/ui/src/v4/BotGroupMemberNamesContext.ts",
+      "packages/ui/src/v4/topicPreparationRenderUnits.ts",
+      "packages/ui/src/v4/ConversationUserInputBubble.tsx",
+      "packages/ui/src/v4/ConversationRowView.tsx",
+      "packages/ui/src/v4/ConversationTurnGroup.tsx",
+      "packages/ui/src/v4/ConversationTimeline.tsx",
+      "packages/ui/src/v4/SessionPane.tsx",
+      "packages/ui/src/v4/ConversationQueuePanel.tsx",
+      "packages/ui/src/v4/ConversationUserInputBody.tsx",
+      "packages/ui/src/i18n/locales/zh-CN.ts",
+      "packages/ui/src/i18n/locales/en-US.ts"
+    ],
+    "scope": "F8 bot group/topic conversation surface: channel+sender source label, delivery receipts (confirm received / not received / resend), topic preparation projection and 'interrupted by a new group message' status. The group/topic service side and the Bot management UI were copied earlier (see the two ZCode Bot entries). Intentionally not copied: the topic-details dialog and its failed-preparation retry entry (no consumer UI yet; retryPreparation is exposed by the hook for later wiring), and ChannelMention content rendering.",
+    "license": "Apache-2.0"
   }
 ]

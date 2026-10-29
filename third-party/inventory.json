@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "94d6f72dd688e4028d5785f4bf70bb5d23600825474c282fc6ae5cf400dbaa4c",
+  "noticesSha256": "c5b80e2da50b96cb253226c5d78289b9525bd6fc08c83eb9417a74f41679934a",
   "inputs": {
     ".agents/skills/agent-browser/references/authentication.md": "e2c3b0f4a1dc1368dee821f03c000d818a48421d09f3872525dddffe73f2112b",
     ".agents/skills/agent-browser/references/commands.md": "17522fc56d742663f47231ff06c4811abc87e12c7f78e11f94d253ddd540a909",
@@ -385,7 +385,7 @@
     "apps/zcode-cli/packages/zcode-guide-plugin/skills/zcode-configuration-guide/SKILL.md": "c173c54d3d125e5a3228f01a154c6a55e760dce07835226f0fa8dea644b0570d",
     "apps/zcode-cli/tools/prompt-trajectory/package.json": "7f161fc87f36691f01eb8c2034bd89cf28107da36db02bc20e76f059edd36af6",
     "apps/zcode-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
-    "package.json": "93bd371070af269b21458eecf1bad49895f74f5fd0c60c37290b6b298e29de77",
+    "package.json": "4f0800a64f6950928b14c1856f721210cb71ff74e7394167ddb1dd7c43280534",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
     "packages/desktop/package.json": "38526bfdbc37fbd0668bbae587de884466810bc60f66b5c0997aebbf5e047ee2",
     "packages/desktop/src/host/index.ts": "78dd4aba92e9bcf42b6673316902bcbcc586ff605461b6a8f375b1170ee78ca1",
@@ -2042,8 +2042,8 @@
     "packages/ui/src/hooks/useBrowserSitePermissions.ts": "75d84af4d726b95d0d7cd166b1977514dc56d1644122b5857724cfc349ff0faa",
     "packages/ui/src/hooks/useCodingPlanQuotaResetUi.ts": "eed75a370ca2a08fa78ecd9129ac36355017b4ab9ed5d05c7c603d252587b6b4",
     "packages/ui/src/hooks/useWorkflowRunSave.ts": "e29d0d84541ecc772c8295255fefab7c537f9c75948210147838a82ec3dbc40d",
-    "packages/ui/src/i18n/locales/en-US.ts": "8a2c30facc8ef2c8217d0d8b02ed3c385ab6e042d03c49348901a0e0a7a4d0c8",
-    "packages/ui/src/i18n/locales/zh-CN.ts": "4777e1ca94c9b78ae97e218f5d1a1e35e1ae906bdc36aaea236f2328b3016f0d",
+    "packages/ui/src/i18n/locales/en-US.ts": "c1c58e688343e8f98b9072e1c908af48b9bf891f172b46dd4e2d193ebf88b1a9",
+    "packages/ui/src/i18n/locales/zh-CN.ts": "739b284ab235e32b3d14d7b3240af1870fa0abd5cc544b7c2957cb8fb57be900",
     "packages/ui/src/lib/assistantDirectiveParser.ts": "c64b119e46f917e2d869658559cb1113cc40caae1a89d68328b256ee4d76e09f",
     "packages/ui/src/lib/builtinSkillI18n.ts": "fbb44f7044214b70148f64dbafc1cea5ea550531e8084965ea978c5defc06deb",
     "packages/ui/src/lib/codingPlanQuotaResetUi.ts": "9ff69e18487e842d56136283b15fe9bfdfd383b79d911b25f967ec69f65af11f",
@@ -2126,18 +2126,27 @@
     "packages/ui/src/ToolCallBlocks/fileSummaryTypes.ts": "7f84c4b12c55126b97ead99440fa90bf118dc32b77068ea654442f9a48ca767f",
     "packages/ui/src/ToolCallBlocks/renderers/createWorkflowHoleInput.ts": "5e3e0840a6f7daf4f960cc032136894eed2a1e1cacb00a7b5db7a2b841311db5",
     "packages/ui/src/ToolCallBlocks/renderers/createWorkflowInput.ts": "8c487c384cf7b252dbd2acefab11df5589d95732a63f6af178d669a4317a458a",
+    "packages/ui/src/v4/BotGroupDeliveryAction.tsx": "0c46d91d496df57b5a26f2ede907deb32d5c601bd34abbe288cbf3f03218d24a",
+    "packages/ui/src/v4/botGroupDeliveryContext.ts": "a9e9717f1239581e266f004094aa5bb81933f004bb27126d123a9d9be4f0763c",
+    "packages/ui/src/v4/BotGroupMemberNamesContext.ts": "73df2500b0af2f26c688c81dba9037dbc5b3a557284f077324a100f595073caa",
+    "packages/ui/src/v4/BotGroupSourceLabel.tsx": "02dc3b63aed046ef2c113f8bb5847d16fd38886912813cd8c58d104477ebc930",
+    "packages/ui/src/v4/BotTopicPreparation.tsx": "5d3dd5b3e06bd210aab06459f3fe801655f27979f57f814097e42409efd60167",
     "packages/ui/src/v4/ConversationFileSummaryPanel.tsx": "48dbcdbd47b23b8328ea6adf7511a5550aa1a8b099fd942e5e7e0b64fc06a900",
     "packages/ui/src/v4/conversationProjectionStore.ts": "b6bd9aa7f64b40458fd09c77eb0c90cb3b10a549be11260ca5b34e35f88e2902",
+    "packages/ui/src/v4/ConversationQueuePanel.tsx": "c3393a54146a7dd7d9ec9821ff43b6c371844a252f1b12fd9eee01c006778568",
     "packages/ui/src/v4/conversationRowContext.ts": "34fa5876e83014c3e58e7ddeb6c096020f4dd0f85a7e0471618adbaa5188140f",
-    "packages/ui/src/v4/ConversationRowView.tsx": "0bb39aaae10a286654df198c4d6566047943b571055834fa77fadcf1e49d8e8f",
-    "packages/ui/src/v4/ConversationTimeline.tsx": "a1dab943d12e833399432793c2f8faa0271825a3eb93f817f86a27f17d68ac41",
-    "packages/ui/src/v4/ConversationTurnGroup.tsx": "f962a01b1f86ac22de571eb71aade0ff2636187185ebd408dc59cb3a18202644",
+    "packages/ui/src/v4/ConversationRowView.tsx": "a384b9d9f0bd6cc8854b9b2d9bf9e9f32cb406164efe3a61a01f1618b9f0de5b",
+    "packages/ui/src/v4/ConversationTimeline.tsx": "ba0d8f1ebc742235098944160f75ae004544ae7b32adb7940ed8546d6f18bd82",
+    "packages/ui/src/v4/ConversationTurnGroup.tsx": "d5f92543cb4e3eb3169b20a8b33c13e2d49dfa56996220c286b1dbfd996b63f7",
     "packages/ui/src/v4/conversationTurnRenderUnits.ts": "2520f97b696bc4e97f6062022aeebd77a2619b5e052c6e451cde8aeee740092d",
     "packages/ui/src/v4/conversationTurnRenderUnitTypes.ts": "2142207cb277d8bbda6798506d9a893a1602e9af90589d7194bb99f87d5b4df3",
+    "packages/ui/src/v4/ConversationUserInputBody.tsx": "17eafa6f50fcf609a30857fa7e9a5cb6892987f57e6035d820f5d3d360f1a6d3",
+    "packages/ui/src/v4/ConversationUserInputBubble.tsx": "affa3cc0d4f79ffe4d7b0f5525117733e4948547d363d710d2c0a1e3d2f027b7",
     "packages/ui/src/v4/highspeed/highSpeedDiffusion.ts": "06f152f95bcb40836c9411254b77ac90cf473b1653a53840f675a2fb50ee231e",
     "packages/ui/src/v4/highspeed/HighSpeedDiffusionCanvas.tsx": "51bfbaf34b5311cca05975b1ab349a7b0f7c832dbb120bb1d73df929ae8449b3",
     "packages/ui/src/v4/savedWorkflowHubContext.tsx": "9935faefc8001f8ca8efd293753d7b05a8a10507023566f0429ad6a057791c1c",
-    "packages/ui/src/v4/SessionPane.tsx": "53e637aab63c2a40e47b8dd713e5244756d733b08b425cf4f7ff98c1828e78a3",
+    "packages/ui/src/v4/SessionPane.tsx": "f10f648f609287b36a8eac4ff72491fc1eac9455c71d6046179a3a7720d54c6b",
+    "packages/ui/src/v4/topicPreparationRenderUnits.ts": "098c586ab653a7a4edb5a785cc61cb3fb7d18c6da94df1cb6fa664865b08d716",
     "packages/ui/src/v4/useAssistantPreviewCardsForRow.ts": "497fd3b4cf5be6eeff845e48c5f2144fad0a9deef3a5598ce645d8f2bafd9482",
     "packages/ui/src/v4/WorkflowNotificationToolRow.tsx": "e823a6f4451fd8e45b18a9237f1d3a338ffefd7d45a12d0603292428e12af38f",
     "packages/ui/src/v4/workflowRunCardJoin.ts": "1fdc3b26c262551c172f011789575a4a1510731dc2384c02407b1a7970c8fa34",
@@ -3299,7 +3308,7 @@
     "scripts/license-texts/MPL-2.0.txt": "5eba353fe5076ac3432177f8ab1cf75e3afcd0584251e37c3bfead5f447d040e",
     "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
     "scripts/remote-native-search-tools-config.mjs": "472322a66f84c7452f96aa9e16e9c4e0600f7c2588a03dc6bc869229161b1cb2",
-    "third-party/copied-components.json": "848c3a3377277e3000b8d2dcc63d4b3a95d16a5655ce7c8c255ba2f3f1e9a73d",
+    "third-party/copied-components.json": "03918f3708206c8d2939878fde72b0a61924364033ce23df4db7b439aa9266c7",
     "third-party/embedded-components.json": "1160d4b37e297584099e640998b75599a9ac237dc39dc29d49f2a538e514bb4e",
     "third-party/native-search/licenses/00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce.txt": "00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce",
     "third-party/native-search/licenses/01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f.txt": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
@@ -33369,7 +33378,7 @@
         },
         {
           "file": "packages/ui/src/v4/ConversationTurnGroup.tsx",
-          "sha256": "f962a01b1f86ac22de571eb71aade0ff2636187185ebd408dc59cb3a18202644"
+          "sha256": "d5f92543cb4e3eb3169b20a8b33c13e2d49dfa56996220c286b1dbfd996b63f7"
         },
         {
           "file": "packages/ui/src/v4/conversationRowContext.ts",
@@ -33377,7 +33386,7 @@
         },
         {
           "file": "packages/ui/src/v4/ConversationRowView.tsx",
-          "sha256": "0bb39aaae10a286654df198c4d6566047943b571055834fa77fadcf1e49d8e8f"
+          "sha256": "a384b9d9f0bd6cc8854b9b2d9bf9e9f32cb406164efe3a61a01f1618b9f0de5b"
         }
       ]
     },
@@ -33930,7 +33939,7 @@
         },
         {
           "file": "packages/ui/src/v4/ConversationTimeline.tsx",
-          "sha256": "a1dab943d12e833399432793c2f8faa0271825a3eb93f817f86a27f17d68ac41"
+          "sha256": "ba0d8f1ebc742235098944160f75ae004544ae7b32adb7940ed8546d6f18bd82"
         },
         {
           "file": "packages/ui/src/WorkspaceSidebarFooter.tsx",
@@ -33938,11 +33947,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "4777e1ca94c9b78ae97e218f5d1a1e35e1ae906bdc36aaea236f2328b3016f0d"
+          "sha256": "739b284ab235e32b3d14d7b3240af1870fa0abd5cc544b7c2957cb8fb57be900"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "8a2c30facc8ef2c8217d0d8b02ed3c385ab6e042d03c49348901a0e0a7a4d0c8"
+          "sha256": "c1c58e688343e8f98b9072e1c908af48b9bf891f172b46dd4e2d193ebf88b1a9"
         },
         {
           "file": "packages/ui/src/v4/WorkflowNotificationToolRow.tsx",
@@ -33962,7 +33971,7 @@
         },
         {
           "file": "packages/ui/src/v4/SessionPane.tsx",
-          "sha256": "53e637aab63c2a40e47b8dd713e5244756d733b08b425cf4f7ff98c1828e78a3"
+          "sha256": "f10f648f609287b36a8eac4ff72491fc1eac9455c71d6046179a3a7720d54c6b"
         },
         {
           "file": "packages/ui/src/app-shell/SubagentSessionSidePane.tsx",
@@ -34680,11 +34689,101 @@
         },
         {
           "file": "packages/ui/src/v4/ConversationRowView.tsx",
-          "sha256": "0bb39aaae10a286654df198c4d6566047943b571055834fa77fadcf1e49d8e8f"
+          "sha256": "a384b9d9f0bd6cc8854b9b2d9bf9e9f32cb406164efe3a61a01f1618b9f0de5b"
         },
         {
           "file": "packages/ui/src/v4/workflowRunCardJoin.ts",
           "sha256": "1fdc3b26c262551c172f011789575a4a1510731dc2384c02407b1a7970c8fa34"
+        }
+      ]
+    },
+    {
+      "id": "ZCode bot group/topic conversation UI v3.16.2 (Z.ai)",
+      "referenceRevision": "3c5b227649371507ddc4eb46ac5133afe6db1cab",
+      "source": "https://raw.githubusercontent.com/zai-org/ZCode/3c5b227649371507ddc4eb46ac5133afe6db1cab/LICENSE",
+      "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
+      "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
+      "importRevision": "3c5b227649371507ddc4eb46ac5133afe6db1cab",
+      "provenance": "Copied from the official open-source checkout zai-org/ZCode at revision 3c5b2276 (v3.16.2). The upstream repository declares Apache-2.0; the LICENSE snapshot pinned here is that repository's text (sha256 verified byte-for-byte; identical to the 29628c9 snapshot). Seven UI files are adapted, not byte-identical: CE import aliases, the ChannelMentionContent branch omitted (CE has no mention renderer yet), ConversationUserInputBody rowId widened to string | number for preparation-state remount keys, and comment style normalized. Six CE-pre-existing files received upstream-derived fragments. The 24 bots.group.* / bots.topic.* / chat.topicPreparation.* / chat.history.topicInterrupted i18n keys use the upstream zh-CN/en-US text. Upstream records no per-file copyright header.",
+      "roots": [
+        "packages/ui/src/v4/BotGroupSourceLabel.tsx",
+        "packages/ui/src/v4/BotGroupDeliveryAction.tsx",
+        "packages/ui/src/v4/BotTopicPreparation.tsx",
+        "packages/ui/src/v4/botGroupDeliveryContext.ts",
+        "packages/ui/src/v4/BotGroupMemberNamesContext.ts",
+        "packages/ui/src/v4/topicPreparationRenderUnits.ts",
+        "packages/ui/src/v4/ConversationUserInputBubble.tsx",
+        "packages/ui/src/v4/ConversationRowView.tsx",
+        "packages/ui/src/v4/ConversationTurnGroup.tsx",
+        "packages/ui/src/v4/ConversationTimeline.tsx",
+        "packages/ui/src/v4/SessionPane.tsx",
+        "packages/ui/src/v4/ConversationQueuePanel.tsx",
+        "packages/ui/src/v4/ConversationUserInputBody.tsx",
+        "packages/ui/src/i18n/locales/zh-CN.ts",
+        "packages/ui/src/i18n/locales/en-US.ts"
+      ],
+      "scope": "F8 bot group/topic conversation surface: channel+sender source label, delivery receipts (confirm received / not received / resend), topic preparation projection and 'interrupted by a new group message' status. The group/topic service side and the Bot management UI were copied earlier (see the two ZCode Bot entries). Intentionally not copied: the topic-details dialog and its failed-preparation retry entry (no consumer UI yet; retryPreparation is exposed by the hook for later wiring), and ChannelMention content rendering.",
+      "license": "Apache-2.0",
+      "files": [
+        {
+          "file": "packages/ui/src/v4/BotGroupSourceLabel.tsx",
+          "sha256": "02dc3b63aed046ef2c113f8bb5847d16fd38886912813cd8c58d104477ebc930"
+        },
+        {
+          "file": "packages/ui/src/v4/BotGroupDeliveryAction.tsx",
+          "sha256": "0c46d91d496df57b5a26f2ede907deb32d5c601bd34abbe288cbf3f03218d24a"
+        },
+        {
+          "file": "packages/ui/src/v4/BotTopicPreparation.tsx",
+          "sha256": "5d3dd5b3e06bd210aab06459f3fe801655f27979f57f814097e42409efd60167"
+        },
+        {
+          "file": "packages/ui/src/v4/botGroupDeliveryContext.ts",
+          "sha256": "a9e9717f1239581e266f004094aa5bb81933f004bb27126d123a9d9be4f0763c"
+        },
+        {
+          "file": "packages/ui/src/v4/BotGroupMemberNamesContext.ts",
+          "sha256": "73df2500b0af2f26c688c81dba9037dbc5b3a557284f077324a100f595073caa"
+        },
+        {
+          "file": "packages/ui/src/v4/topicPreparationRenderUnits.ts",
+          "sha256": "098c586ab653a7a4edb5a785cc61cb3fb7d18c6da94df1cb6fa664865b08d716"
+        },
+        {
+          "file": "packages/ui/src/v4/ConversationUserInputBubble.tsx",
+          "sha256": "affa3cc0d4f79ffe4d7b0f5525117733e4948547d363d710d2c0a1e3d2f027b7"
+        },
+        {
+          "file": "packages/ui/src/v4/ConversationRowView.tsx",
+          "sha256": "a384b9d9f0bd6cc8854b9b2d9bf9e9f32cb406164efe3a61a01f1618b9f0de5b"
+        },
+        {
+          "file": "packages/ui/src/v4/ConversationTurnGroup.tsx",
+          "sha256": "d5f92543cb4e3eb3169b20a8b33c13e2d49dfa56996220c286b1dbfd996b63f7"
+        },
+        {
+          "file": "packages/ui/src/v4/ConversationTimeline.tsx",
+          "sha256": "ba0d8f1ebc742235098944160f75ae004544ae7b32adb7940ed8546d6f18bd82"
+        },
+        {
+          "file": "packages/ui/src/v4/SessionPane.tsx",
+          "sha256": "f10f648f609287b36a8eac4ff72491fc1eac9455c71d6046179a3a7720d54c6b"
+        },
+        {
+          "file": "packages/ui/src/v4/ConversationQueuePanel.tsx",
+          "sha256": "c3393a54146a7dd7d9ec9821ff43b6c371844a252f1b12fd9eee01c006778568"
+        },
+        {
+          "file": "packages/ui/src/v4/ConversationUserInputBody.tsx",
+          "sha256": "17eafa6f50fcf609a30857fa7e9a5cb6892987f57e6035d820f5d3d360f1a6d3"
+        },
+        {
+          "file": "packages/ui/src/i18n/locales/zh-CN.ts",
+          "sha256": "739b284ab235e32b3d14d7b3240af1870fa0abd5cc544b7c2957cb8fb57be900"
+        },
+        {
+          "file": "packages/ui/src/i18n/locales/en-US.ts",
+          "sha256": "c1c58e688343e8f98b9072e1c908af48b9bf891f172b46dd4e2d193ebf88b1a9"
         }
       ]
     }

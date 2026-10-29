@@ -28,7 +28,8 @@ export function ConversationUserInputBody({
 }: {
   children: ReactNode;
   contentText: string;
-  rowId: number;
+  /** 只用于展开态复位：正式行是 rowId，群话题准备态是群消息 id（字符串）。 */
+  rowId: string | number;
 }) {
   const { intl } = useZCodeIntl();
   const contentRef = useRef<HTMLDivElement | null>(null);

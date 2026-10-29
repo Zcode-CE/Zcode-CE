@@ -1,5 +1,5 @@
 /* eslint-disable max-lines -- turn group 需要在同一处维护普通 assistant 与后台结果的严格行序，拆分会重复 actions/preview/tail 协议。 */
-// Modified by ZCode: F2 第二切片 —— 自上游 3.15.1 精确提取 18 纯 highspeed hunk + 9 通用 hunk + 3 混合 hunk 行级分离(排除 topic 的 useBotTopicInterruption/BotGroupDeliveryAction 与 F6 的 fillGraphByRunId);保留 CE 自研 onFork 行;连带类型文件(renderUnits/types/context 等)单独标记。
+// Modified by ZCode: F2 第二切片 —— 自上游 3.15.1 精确提取 18 纯 highspeed hunk + 9 通用 hunk + 3 混合 hunk 行级分离(当时排除 topic 的 useBotTopicInterruption/BotGroupDeliveryAction 与 F6 的 fillGraphByRunId);F8 会话面接线(task-9)已补回 topic 两件;保留 CE 自研 onFork 行;连带类型文件(renderUnits/types/context 等)单独标记。
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import {
   Fragment,
@@ -107,6 +107,9 @@ import type {
 import { formatConversationWorkDuration } from "@/v4/conversationWorkDuration.js";
 import { ConversationTurnRow, resolveAssistantCopyText } from "@/v4/ConversationTurnRow.js";
 import { ConversationHookDetailsAction } from "@/v4/ConversationHookDetailsAction.js";
+import { BotTopicPreparation } from "@/v4/BotTopicPreparation.js";
+import { ConnectedBotGroupDeliveryAction } from "@/v4/BotGroupDeliveryAction.js";
+import { useBotTopicInterruption } from "@/v4/botGroupDeliveryContext.js";
 import { toolCallRowToLegacyNode } from "@/v4/toolCallRowAdapter.js";
 
 interface ConversationTurnGroupProps {
@@ -640,13 +643,17 @@ function AssistantHistoryStatus({
   open,
   highspeed,
   highspeedMeta,
+  sourceCommandIds,
 }: {
   segment: ConversationTurnWorkSegment;
   open: boolean;
   highspeed: boolean;
   highspeedMeta?: HighspeedMessageMeta;
+  /** 该段对应的 CLI command id；用于把「被群消息打断」与普通停止区分开。 */
+  sourceCommandIds: readonly string[];
 }) {
   const { intl, locale } = useZCodeIntl();
+  const topicInterrupted = useBotTopicInterruption(sourceCommandIds);
   const durationLabel = formatConversationWorkDuration(
     segment.workStatus?.durationMs,
     intl,
@@ -660,7 +667,9 @@ function AssistantHistoryStatus({
       : null;
   const label =
     segment.workStatus?.state === "interrupted"
-      ? intl.formatMessage({ id: "chat.history.stopped" })
+      ? intl.formatMessage({
+          id: topicInterrupted ? "chat.history.topicInterrupted" : "chat.history.stopped",
+        })
       : segment.workStatus?.state === "running"
         ? intl.formatMessage({ id: "chat.history.workingFor" }, { duration: durationLabel ?? "" })
         : durationLabel
@@ -722,6 +731,7 @@ function AssistantHistoryStatus({
 
 function ConversationWorkSegmentFlow({
   segment,
+  sourceCommandIds,
   context,
   onFork,
   onRetry,
@@ -740,6 +750,8 @@ function ConversationWorkSegmentFlow({
   shareSelectionRowId,
 }: {
   segment: ConversationTurnWorkSegment;
+  /** 本段的 CLI command id（用户输入行 + 首段 header）；群投递回执按它关联。 */
+  sourceCommandIds: readonly string[];
   context: ConversationRowRenderContext;
   onFork?: (target: ConversationRowTarget) => void;
   onRetry?: (target: ConversationRowTarget) => void;
@@ -872,6 +884,7 @@ function ConversationWorkSegmentFlow({
             {showHistoryStatus ? (
               <AssistantHistoryStatus
                 segment={segment}
+                sourceCommandIds={sourceCommandIds}
                 open={open}
                 highspeed={highspeed}
                 highspeedMeta={highspeedMeta}
@@ -884,6 +897,7 @@ function ConversationWorkSegmentFlow({
       {shouldShowHistoryStatus && firstAssistantFlowItemIndex < 0 ? (
         <AssistantHistoryStatus
           segment={segment}
+          sourceCommandIds={sourceCommandIds}
           open={open}
           highspeed={highspeed}
           highspeedMeta={highspeedMeta}
@@ -1007,6 +1021,16 @@ function ConversationTurnFlow({
         <ConversationWorkSegmentFlow
           key={segment.key}
           segment={segment}
+          sourceCommandIds={[
+            ...segment.flowItems.flatMap((item) =>
+              item.kind === "userInput" && item.row.sourceCommandId
+                ? [item.row.sourceCommandId]
+                : [],
+            ),
+            ...(segment === workSegments[0] && unit.header?.sourceCommandId
+              ? [unit.header.sourceCommandId]
+              : []),
+          ]}
           context={context}
           onFork={onFork}
           onRetry={onRetry}
@@ -1406,6 +1430,17 @@ function ConversationTurnGroupImpl({
     !unit.timelineOnly &&
     latestAssistantTextRow?.state === "complete" &&
     assistantCopyText !== undefined;
+  // runtime turnId 与产品轮次 ID 不同；用 CLI 行上的命令归因关联投递，包含被裁剪输入的 header。
+  // useMemo：动作栏是 memo 组件，每次流式帧新建数组会白白击穿它的记忆化。
+  const deliverySourceCommandIds = useMemo(
+    () => [
+      ...(unit.header?.sourceCommandId ? [unit.header.sourceCommandId] : []),
+      ...unit.visibleUserInputs.flatMap((row) =>
+        row.sourceCommandId ? [row.sourceCommandId] : [],
+      ),
+    ],
+    [unit.header?.sourceCommandId, unit.visibleUserInputs],
+  );
   const hasHookActions =
     // Hook action 与 copy/feedback/fork 共用 turn eligibility；
     // timelineOnly 维护 turn（compact/modelChange marker 轮）即使带历史遗留的
@@ -1650,13 +1685,18 @@ function ConversationTurnGroupImpl({
               onFeedbackChange={onFeedbackChange}
               hookInvocations={unit.hookInvocations}
               turnId={unit.turnId}
+              sourceCommandIds={deliverySourceCommandIds}
               copyScope="turn"
               // 触屏（hover:none）没有悬停，轮尾操作栏（含整轮复制）必须常显，否则手机上完全找不到。
               className="opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100"
             />
           ) : hasHookActions ? (
-            <MessageActions className="opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
+            <MessageActions className="opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 has-[[data-bot-group-delivery]]:opacity-100">
               <ConversationHookDetailsAction rows={unit.hookInvocations} turnId={unit.turnId} />
+              <ConnectedBotGroupDeliveryAction
+                turnId={unit.turnId}
+                sourceCommandIds={deliverySourceCommandIds}
+              />
             </MessageActions>
           ) : null}
           {unit.assistantTailRows.length > 0 ? (
@@ -1686,6 +1726,10 @@ function ConversationTurnGroupImpl({
           assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
         />
       )}
+      {/* 未接受的群话题材料：画在最后一条 CLI 消息之后，落成真实 userInput row 后自然消失。 */}
+      {unit.topicPreparations?.length ? (
+        <BotTopicPreparation items={unit.topicPreparations} />
+      ) : null}
     </section>
   );
 }
