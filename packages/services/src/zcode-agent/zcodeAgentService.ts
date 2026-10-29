@@ -954,6 +954,13 @@ interface CreateZCodeAgentServiceOptions extends Omit<
   resolveSessionRuntimePreferences?: (
     scope: ZCodeSessionRuntimePreferencesScope,
   ) => Promise<ZCodeSessionRuntimePreferencesResult>;
+  /**
+   * X16：冷恢复/订阅时按 workspaceKey 解析附加目录。Host 从设置读（task-51/52 的同一来源）。
+   * 只影响订阅参数（一次性），不重读已运行会话；缺省 = 无附加目录。
+   */
+  resolveWorkspaceAdditionalDirectories?: (
+    workspaceKey: string,
+  ) => Promise<readonly string[] | undefined>;
   /** manual run 落库后由当前 host 直接派发；返回时 prompt 必须已被 session 接受。 */
   onAutomationManualRunRequested?: (params: {
     automation: ZCodeAutomation;
@@ -5666,6 +5673,22 @@ export function createZCodeAgentService(
           return undefined;
         });
       const taskMetaReadMs = Math.max(0, Math.round(performance.now() - taskMetaStartedAt));
+      // X16：冷恢复的附加目录在 CLI 是订阅参数（一次性进入 runtime）。读设置失败不阻塞
+      // 恢复——没有目录仍能打开会话，只是模型看不到附加范围。
+      const additionalDirectories = options?.resolveWorkspaceAdditionalDirectories
+        ? await options
+            .resolveWorkspaceAdditionalDirectories(resolveWorkspaceKey(params))
+            .then((list) => (list && list.length > 0 ? [...list] : undefined))
+            .catch((error: unknown) => {
+              logger.warn(undefined, "读取冷恢复附加目录失败，按无附加目录订阅", {
+                error: error instanceof Error ? error.message : String(error),
+                event: "v4.conversation.subscribe.additional_directories_failed",
+                sessionId: params.sessionId,
+                workspaceKey: resolveWorkspaceKey(params),
+              });
+              return undefined;
+            })
+        : undefined;
       const cliRequestStartedAt = performance.now();
       const result = await client.request(
         V4_METHODS.conversationSubscribe,
@@ -5676,6 +5699,7 @@ export function createZCodeAgentService(
           // 冷订阅过去只传 sessionId，CLI 只能从历史 session.path 反推
           // workspace 身份；该路径已可能被 path.resolve 改写。当前 attachment 才是权威来源。
           workspace: buildWorkspaceRef(params),
+          ...(additionalDirectories ? { additionalDirectories } : {}),
           ...(resumeThoughtLevel ? { resumeThoughtLevel } : {}),
           ...(params.base ? { base: params.base } : {}),
           ...(params.visibility ? { visibility: params.visibility } : {}),

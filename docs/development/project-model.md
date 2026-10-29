@@ -93,17 +93,12 @@
    Environment 段落与技能/命令/子代理根（task-45）。
 3. 工作区身份、权限边界、文件执行根不变（`workspacePath/workspaceIdentity` 仍是唯一身份）。
 
-**未覆盖（如实声明）**：
-
-1. **冷恢复 / 重启后重新打开历史会话**：CLI 侧的恢复入口是
-   `v4ConversationSubscribeParams.additionalDirectories`（host→CLI hint），填装点在
-   `packages/services/src/zcode-agent/zcodeAgentService.ts` 的 `subscribeConversationV4`。
-   该路径本轮**没有下发方**（改动范围不含 `packages/services`）：重启后恢复的会话沿用 CLI
-   自己的恢复结果，不重新读设置。
-2. 中枢入口已接：`useSavedWorkflowLauncher` / `useSavedWorkflowPromote` 的 `createSession`
-   会带上该工作区的附加目录（2026-10-30 补齐）。Automation 派生的会话仍由对应消费方决定。
-3. 已打开的草稿预热会话：目录变化会让预热会话按 owner key 换代（未提升的 draft 会话被回收重建），
-   已预传到旧会话的附件需要重新添加；已运行的会话不受影响。
+**已覆盖**：冷恢复 / 重启后重新打开历史会话由 `subscribeConversationV4` 按 workspaceKey
+从设置解析 `additionalDirectories` 并随订阅参数下发（`packages/services` 注入窄能力，
+`services/node.ts` 用 `settingService` 实现）；desktop-attached-remote 不注入 —— 远端 Host
+自己持有设置，本地路径对远端无意义。2. 中枢入口已接：`useSavedWorkflowLauncher` / `useSavedWorkflowPromote` 的 `createSession`
+会带上该工作区的附加目录（2026-10-30 补齐）。Automation 派生的会话仍由对应消费方决定。3. 已打开的草稿预热会话：目录变化会让预热会话按 owner key 换代（未提升的 draft 会话被回收重建），
+已预传到旧会话的附件需要重新添加；已运行的会话不受影响。
 
 非目标（A 明确不做）：多根项目、项目改名、归档分组、任务归属迁移、远端项目校验、自动归档。
 
@@ -113,5 +108,4 @@
 ## 6. 待决定
 
 1. 是否为 B 预留 `projectId` 字段（现在加列可避免二次迁移，但会引入未使用的概念）。
-2. 冷恢复下发（上面「未覆盖 1」）是否值得单独立项：一旦接通，「重启后恢复的会话」也会带上
-   当前附加目录，但需要 `packages/services` 的改动与一条冷恢复验证。
+2. 冷恢复在 desktop-attached-remote（远端 Host）下的下发方式：需要远端侧注入而不是本地设置。

@@ -12,6 +12,7 @@ import { getAppConfigDir as resolveAppConfigDir } from "./paths.js";
 import {
   buildLocalMediaPreviewUrl,
   isProviderProvisioningAccountCredentialKey,
+  resolveWorkspaceAdditionalDirectories as resolveWorkspaceAdditionalDirectoriesSetting,
   type ProviderProvisioningTrigger,
 } from "@zcode/shared";
 
@@ -2377,6 +2378,16 @@ export function createLocalServices(options: {
                 ? { integratedTerminalShell: settings.integratedTerminalShell }
                 : {}),
             };
+          },
+          // X16：冷恢复订阅按工作区下发附加目录；与 composer/中枢同一份设置来源。
+          // desktop-attached-remote 不注入：远端 Host 自己持有设置，本地路径对远端无意义。
+          resolveWorkspaceAdditionalDirectories: async (workspaceKey: string) => {
+            const settings = await settingService.get();
+            const list = resolveWorkspaceAdditionalDirectoriesSetting(
+              settings.workspaceAdditionalDirectories,
+              workspaceKey,
+            );
+            return list.length > 0 ? list : undefined;
           },
         }),
   });
