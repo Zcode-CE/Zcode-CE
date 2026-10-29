@@ -50,7 +50,7 @@ export class V4PromptRejectedError extends Error {
   readonly turnStartUncertain = false;
 
   constructor(
-    readonly reasonCode: "restoreWarning" | "activePrompt",
+    readonly reasonCode: "restoreWarning" | "activePrompt" | "modelUnavailable",
     message: string,
   ) {
     super(message);
@@ -59,22 +59,25 @@ export class V4PromptRejectedError extends Error {
 }
 
 /**
- * 入口只做模型/持久化前置校验，然后调用 app -> Core admission。Core 返回 started 时，
- * 后台生命周期等待 completion 清理 turn 归因和广播状态；RPC 本身立即返回 admission receipt。
+ * 只执行 prompt 的模型准入检查，不接纳输入、不修改 turn 生命周期。
+ *
+ * X2：模型不可用时必须在 ACK 之前拒绝，否则后台创建 Model 失败会静默丢掉输入，会话停在
+ * 「没反应」状态。排队输入（requireQueue）与带同 provider fallback 的 execution Selection
+ * 把解析延迟到 Core 执行边界，避免在提升前把仍可 fallback 的编辑拒掉。
  */
-export async function startPromptTurn(
+export async function preflightPromptTurn(
   host: V4CommandCoreHost,
   record: V4SessionRecordView,
   params: StartPromptTurnParams,
-): Promise<PromptTurnStartResult> {
-  const usesExecutionSelection = params.modelExecution?.selectionScope === "execution";
+): Promise<void> {
+  const usesExecutionSelection =
+    params.modelExecution?.selectionScope === "execution" && !params.requireQueue;
   if (!usesExecutionSelection && record.restoreWarning) {
     // app 重启后冷恢复可能跑在 provider registry 推送
     // 之前，record 创建时判「模型不可解析」挂上告警；registry 随后到达时 runtime
     // 早已可服务，但这个一次性标志没人回来清——发送被永久拒（用户只能手动切模型
     // 解锁）。闸前经宿主能力重评：已有可用目标则清除过期告警，随后仍由
     // ensureModelReady 校验当前选择；不能在这里兜底换模型或清空持久选择。
-    // 仍无可用模型/宿主不支持 → 维持拒绝。
     if (host.hasUsableRuntimeModelTarget?.(record) === true) {
       host.logger?.info?.("v4 restoreWarning cleared by model catalog recovery", {
         sessionId: record.app.sessionId,
@@ -89,6 +92,49 @@ export async function startPromptTurn(
   if (!usesExecutionSelection) {
     await host.ensureModelReady?.(record);
   }
+
+  const requestedSelection = params.intent?.modelSelection;
+  const availableModels =
+    typeof record.app.listModels === "function" ? record.app.listModels() : undefined;
+  // 普通 Selection 必须在 ACK 前拒绝：后台创建 Model 失败会静默丢输入，会话停在「没反应」。
+  // execution Selection 的 Highspeed fallback 延迟到 Core 执行边界（CE 尚未搬 selectionFallback
+  // 子系统，这里只对非 execution 输入做严格预检，避免误拒仍可 fallback 的加速输入）。
+  if (!usesExecutionSelection && requestedSelection && availableModels) {
+    const available = availableModels.some(
+      (model) =>
+        model.ref.providerId === requestedSelection.providerId &&
+        model.ref.modelId === requestedSelection.modelId,
+    );
+    if (!available) {
+      throw new V4PromptRejectedError(
+        "modelUnavailable",
+        "Provider Registry 中不存在 Model: " +
+          requestedSelection.providerId +
+          "/" +
+          requestedSelection.modelId,
+      );
+    }
+  }
+}
+
+/**
+ * 入口先做模型准入，再调用 app -> Core admission；Core 返回 started 时后台生命周期等待
+ * completion 清理 turn 归因与广播状态，RPC 本身立即返回 admission receipt。
+ */
+export async function startPromptTurn(
+  host: V4CommandCoreHost,
+  record: V4SessionRecordView,
+  params: StartPromptTurnParams,
+): Promise<PromptTurnStartResult> {
+  await preflightPromptTurn(host, record, params);
+  return startPromptTurnAfterPreflight(host, record, params);
+}
+
+async function startPromptTurnAfterPreflight(
+  host: V4CommandCoreHost,
+  record: V4SessionRecordView,
+  params: StartPromptTurnParams,
+): Promise<PromptTurnStartResult> {
   if (record.persistence === "deferred") record.persistence = "immediate";
 
   const previousAutomationId = record.activeAutomationId;

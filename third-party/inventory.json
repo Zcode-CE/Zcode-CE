@@ -232,7 +232,7 @@
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/canonical-intent-replay.ts": "544f8528b4b89fc2a3fe7d7ad6edfcce53fe6c606ca797f51a4adf0d4293cd72",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/fork-edit-retry.ts": "21c312dcf3069aaca4f366e68800d55b0f4b8621b16d3b7b68cef4ac18a1bda6",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/input-intent.ts": "daa953b7726027fc4ed08107da3ebbdea6cb3f5578b4ad5f2d72a92a51ebd960",
-    "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/prompt-turn.ts": "98e88d39682abb858b4816d25f81b00dd0072a21b244450c003da5ad4b113ecd",
+    "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/prompt-turn.ts": "f801a85b0fb6ffc38e1223a563645a43ec19f5a3dcca60b77123a5cbe65d7afe",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/types.ts": "e83ef92cacf22fdb628e3b1daa823dfc8b003913e84237dcfe4cc427ad8eb175",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/mcp-elicitation.ts": "501cfef82e56eb3baf9601c716d3c57b2d089fd8153b18aa58c0a750a171c203",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts": "a4779e794dfb27b0b0d0f0e16882aaf66e3a9c35e9b536aa2e92e665c8c0ebad",
@@ -33126,7 +33126,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/prompt-turn.ts",
-          "sha256": "98e88d39682abb858b4816d25f81b00dd0072a21b244450c003da5ad4b113ecd"
+          "sha256": "f801a85b0fb6ffc38e1223a563645a43ec19f5a3dcca60b77123a5cbe65d7afe"
         },
         {
           "file": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/input-intent.ts",
