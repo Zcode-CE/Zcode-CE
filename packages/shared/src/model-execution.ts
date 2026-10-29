@@ -8,6 +8,7 @@ import { modelSelectionSchema } from "./model-selection.js";
 export const modelExecutionSelectionFallbackReasonSchema = z.enum([
   "highspeed_card_expired",
   "highspeed_request_failed",
+  "highspeed_selection_unavailable",
 ]);
 
 /** 文本与附件发送共用执行约束，凭据只属于单次执行，不进入 Session 配置。 */
@@ -15,6 +16,15 @@ export const modelExecutionSchema = z
   .object({
     memoryExtraction: z.literal("skip").optional(),
     selectionScope: z.literal("execution"),
+    /** 错峰执行票据（上游 3.16.2）：由服务端下发，CLI 只透传。 */
+    offPeak: z
+      .object({
+        executionId: z.string().min(1),
+        ticketId: z.string().min(1),
+        providerErrorCode: z.string().min(1),
+      })
+      .strict()
+      .optional(),
     requestAuth: z
       .object({
         apiKey: z.string().min(1).optional(),
@@ -30,7 +40,7 @@ export const modelExecutionSchema = z
     subagents: z
       .object({
         foregroundModel: z.literal("submission"),
-        background: z.literal("deny"),
+        background: z.enum(["deny", "allow"]),
       })
       .strict()
       .optional(),

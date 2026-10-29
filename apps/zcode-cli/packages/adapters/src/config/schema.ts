@@ -51,6 +51,8 @@ const mcpServerBaseSchema = {
   // 工具级启停：漏掉这一个键，用户配的 disabledTools 会被 strict 校验判为未知键而**丢弃整个 server**
   // （不是丢掉这一个字段）。工具名归一化在 normalizeMcpDisabledTools 里做，schema 只兜结构。
   disabledTools: z.array(z.string().min(1)).max(MCP_SERVER_MAX_DISABLED_TOOLS).optional(),
+  // 工具搜索的常驻加载：与 disabledTools 同理，strict 校验漏键会丢弃整个 server。
+  alwaysLoad: z.boolean().optional(),
   timeoutMs: positiveNumberSchema.optional(),
 };
 

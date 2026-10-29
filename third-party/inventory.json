@@ -1714,7 +1714,7 @@
     "packages/shared/src/mcp-apps/sampling.ts": "7e6f2c82155f21c7f121b411a53f0b68e574120d241854712e1b908cb0fc9f93",
     "packages/shared/src/mcp-apps/schemas.ts": "4966c53d26ff0cfdb7f0d43eaa5bf7e13a3fb2ecba772cc0b0032da2a00f37aa",
     "packages/shared/src/mcp-apps/toolMeta.ts": "a15abcd4093d5f189b3b0683519685cef683006d983f9f833b5701b26ab05327",
-    "packages/shared/src/model-execution.ts": "c9990f7599ab3825f73633826ddf6a0296a87e4de5380848a9cf27bf3f8b8d44",
+    "packages/shared/src/model-execution.ts": "aa551dafe176fe47e49d27da32c141e65ffdea057096fbaf5824576e797049d2",
     "packages/shared/src/node.ts": "1964469bfb5f6f8b1c46a44a8372914158c8693b17d8603a0aab0f9295503e39",
     "packages/shared/src/node/genUiPaths.ts": "9fe594b8a77cc74114d09146ee2a2f55e9ac2730fad7bfcacdaea82be63b7675",
     "packages/shared/src/platform.ts": "004a5f11c31e114706f879d7d241d4a63eec6acc89878192c6505f7560754caf",
@@ -32337,7 +32337,7 @@
         },
         {
           "file": "packages/shared/src/model-execution.ts",
-          "sha256": "c9990f7599ab3825f73633826ddf6a0296a87e4de5380848a9cf27bf3f8b8d44"
+          "sha256": "aa551dafe176fe47e49d27da32c141e65ffdea057096fbaf5824576e797049d2"
         },
         {
           "file": "packages/shared/src/zcode-protocol/trace.ts",

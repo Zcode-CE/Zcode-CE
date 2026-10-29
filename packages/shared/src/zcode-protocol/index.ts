@@ -710,6 +710,8 @@ export const zcodeProtocolMcpServerSchema = z.union([
       command: nonEmptyString,
       args: z.array(z.string()),
       env: z.array(zcodeProtocolMcpEntrySchema),
+      // 工具搜索的常驻加载开关：strict schema 漏声明会让 host 配置在 session/create 被判非法。
+      alwaysLoad: z.boolean().optional(),
       isolation: z.enum(["session", "workspace"]).optional(),
       protocolVersion: z.enum(["legacy", "auto", "2026-07-28"]).optional(),
       // 工具级启停（disabledTools）必须走 wire：它是 server 配置对象的一部分，UI 读到的
@@ -726,6 +728,7 @@ export const zcodeProtocolMcpServerSchema = z.union([
       url: nonEmptyString,
       headers: z.array(zcodeProtocolMcpEntrySchema),
       oauth: zcodeProtocolMcpOAuthSchema.optional(),
+      alwaysLoad: z.boolean().optional(),
       isolation: z.enum(["session", "workspace"]).optional(),
       protocolVersion: z.enum(["legacy", "auto", "2026-07-28"]).optional(),
       disabledTools: z.array(nonEmptyString).max(MCP_SERVER_MAX_DISABLED_TOOLS).optional(),
