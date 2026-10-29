@@ -24,6 +24,7 @@
 | [插件 UI 沙箱](development/plugin-ui-sandbox.md)                         | MCP App / UI 插件的宿主沙箱：main/renderer/preload 三面边界   |
 | [MCP Apps](development/mcp-apps.md)                                      | mcp-ui 契约、运行时消费与降级边界                             |
 | [工具与权限](development/tool-policy.md)                                 | 危险命令判定、MCP 单工具启停、持久授权策略                    |
+| [工具搜索](development/tool-search.md)                                   | 按需加载工具定义：四态模式、曝光规则、执行准入与持久化        |
 | [自主模式危险命令确认](development/guarded-mode.md)                      | 危险命令执行前的确认粒度与设置项                              |
 | [Linux 关闭窗口驻留托盘](development/linux-tray.md)                      | 关闭行为裁决、DBus 能力检测与托盘图标                         |
 | [start-plan 验证码链路](development/start-plan-captcha.md)               | 3007 / 验证码挑战的失败分类、重试入口与不悬挂约束             |
