@@ -2877,6 +2877,25 @@ export function SessionPane({
     [dispatchRetryTurn],
   );
 
+  /**
+   * 3007 验证码失败后的手动重试目标：取最近一条带 canRetry 能力且有 entityId 的行。
+   * retryTurn 是 CAS 命令，target 必须来自权威投影（rowId + entityId），不能由 UI 猜。
+   */
+  const captchaRetryTarget = useMemo<ConversationRowTarget | null>(() => {
+    const rows = snapshot?.rows.window ?? [];
+    for (let index = rows.length - 1; index >= 0; index -= 1) {
+      const row = rows[index];
+      if (row?.actions?.canRetry && row.entityId) {
+        return { rowId: row.rowId, entityId: row.entityId };
+      }
+    }
+    return null;
+  }, [snapshot]);
+
+  const handleRetryCaptcha = useCallback(() => {
+    if (captchaRetryTarget) handleRetry(captchaRetryTarget);
+  }, [captchaRetryTarget, handleRetry]);
+
   const handleAssistantFeedback = useCallback(
     async (
       target: ConversationRowTarget,
@@ -4171,6 +4190,7 @@ export function SessionPane({
       onSendCompressionCommand={handleSendCompressionCommand}
       error={composerError}
       onDismissError={handleDismissComposerError}
+      onRetryCaptcha={captchaRetryTarget ? handleRetryCaptcha : undefined}
       onOpenModelSettings={handleOpenModelSettings}
       onOpenModelUpgrade={handleOpenModelUpgrade}
       onOpenCodeViewer={onOpenCodeViewer}

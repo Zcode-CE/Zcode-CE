@@ -55,7 +55,6 @@ import {
   type PluginStoreActions,
 } from "@/settings/PluginStoreCard.js";
 import { SettingsBreadcrumbReporter } from "@/settings/SettingsHeaderBreadcrumb.js";
-import { SettingsScopeBadge } from "@/settings/SettingsScopeBadge.js";
 import {
   buildPluginConfigPatch,
   type PluginOptionDraftValue,
@@ -516,28 +515,6 @@ function PluginList({
                     }
                   </div>
                 ) : null}
-                <div className="mt-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <SettingsScopeBadge
-                      scope={plugin.enabledSource ?? "default"}
-                      label={
-                        configScope === "user" && plugin.enabledSource === "user"
-                          ? intl.formatMessage({
-                              id: "settings.plugins.scope.userDefault",
-                            })
-                          : plugin.enabledSource === "user"
-                            ? intl.formatMessage({
-                                id: "settings.plugins.scope.inheritedUser",
-                              })
-                            : plugin.enabledSource === "workspace"
-                              ? intl.formatMessage({
-                                  id: "settings.plugins.scope.workspaceOverride",
-                                })
-                              : undefined
-                      }
-                    />
-                  </div>
-                </div>
               </div>
             </button>
             <PluginStoreUpdateButton item={storeItemById.get(plugin.id)} actions={actions} />

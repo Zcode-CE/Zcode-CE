@@ -401,6 +401,8 @@ interface ConversationComposerProps {
   onTextChange?: (text: string) => void;
   /** queue 撤回 admission 读取的完整 composer 占用态；附件包含上传中状态。 */
   onDraftStateChange?: (state: { hasContent: boolean; busy: boolean }) => void;
+  /** 3007 验证码失败后的手动重试（重新发起该轮，触发新的验证码求解）。 */
+  onRetryCaptcha?: () => void;
   onStop: () => void;
   /** 目录选中模型（providerId/modelId）；thought/revision 由宿主从最新投影补齐。 */
   onSelectModel: (
@@ -504,6 +506,7 @@ function ConversationComposerImpl({
   onSendCompressionCommand,
   error,
   onDismissError,
+  onRetryCaptcha,
   onOpenModelSettings,
   onOpenModelUpgrade,
   onOpenCodeViewer,
@@ -2088,6 +2091,13 @@ function ConversationComposerImpl({
           <ChatErrorBanner
             error={visibleError}
             onDismiss={onDismissError}
+            // 3007 自动重试一次仍失败时给手动入口；文案与动作同源（request-security-edition）。
+            onRetry={visibleError.code === "3007" ? onRetryCaptcha : undefined}
+            retryLabel={
+              visibleError.code === "3007"
+                ? intl.formatMessage({ id: "chat.error.action.retryCaptcha" })
+                : undefined
+            }
             onOpenModelSettings={onOpenModelSettings}
             onOpenUpgrade={onOpenModelUpgrade}
           />

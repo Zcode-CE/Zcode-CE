@@ -2633,9 +2633,6 @@ const enUS: Record<string, string> = {
   "settings.scope.user": "User",
   "settings.scope.workspace": "Workspace",
   "settings.scope.default": "Default",
-  "settings.plugins.scope.inheritedUser": "Inherits User default",
-  "settings.plugins.scope.userDefault": "User default",
-  "settings.plugins.scope.workspaceOverride": "Workspace override",
   "settings.plugins.scope.restoreUserDefault": "Restore User default",
   "settings.plugins.scope.restored": "Restored {plugin} to User default",
   "settings.plugins.scope.workspaceHint":
@@ -5691,6 +5688,7 @@ const enUS: Record<string, string> = {
   "chat.error.action.refreshQuota": "Refresh quota",
   "chat.error.action.switchModel": "Switch model",
   "chat.error.action.retryLater": "Try again later",
+  "chat.error.action.retryCaptcha": "Retry captcha",
   "chat.error.copyTraceId": "Copy TraceID",
   "chat.error.copyFull": "Copy",
   "chat.error.copyFull.copied": "Full error details copied",
@@ -5907,8 +5905,7 @@ const enUS: Record<string, string> = {
     "You're sending requests too quickly. Please try again later.",
   "zcode.error.providerBusiness.3001":
     "The request parameters are invalid. Check the input and try again.",
-  "zcode.error.providerBusiness.3007":
-    "The request was rejected by the gateway security check. Please try again later or contact support.",
+  "zcode.error.providerBusiness.3007": "Captcha verification failed. Please try again.",
   "zcode.error.providerBusiness.3008":
     "The system is busy. Please switch models, upgrade your account, or try again later.",
   "zcode.error.providerBusiness.3009":
