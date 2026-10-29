@@ -119,7 +119,7 @@ const enUS: Record<string, string> = {
   "startup.database.committing": "Saving the upgrade",
   "startup.database.ready": "History is ready",
   "startup.database.failed": "Could not prepare history",
-  "startup.database.help": "The workspace will open when ready. Keep the app running.",
+  "startup.database.help": "The project will open when ready. Keep the app running.",
   "startup.database.failedHelp":
     "The original database has been preserved. Check diagnostic logs, resolve the issue, and retry.",
   "startup.database.elapsed": "Elapsed: {minutes} min {seconds} sec",
@@ -215,7 +215,7 @@ const enUS: Record<string, string> = {
   "conversationShare.error.authenticationRequired":
     "Sharing is available only when you are signed in. Your sign-in has expired; sign in again, then retry.",
   "conversationShare.error.featureDisabled":
-    "Sharing is not available for this workspace or connection type.",
+    "Sharing is not available for this project or connection type.",
   "conversationShare.error.artifactNotAllowed":
     "A previewed file type is not supported for sharing. Deselect that conversation and retry.",
   "conversationShare.error.limitExceeded":
@@ -252,7 +252,7 @@ const enUS: Record<string, string> = {
   "conversationShare.error.artifactExtensionMissing":
     "A previewed file has no valid extension. Check the file and retry.",
   "conversationShare.error.artifactOutsideWorkspace":
-    "A previewed file is outside the current workspace. Regenerate or move it, then retry.",
+    "A previewed file is outside the current project. Regenerate or move it, then retry.",
   "conversationShare.error.artifactChanged":
     "A previewed file changed before sharing. Regenerate the preview file and retry.",
   "conversationShare.error.artifactReadFailed":
@@ -278,7 +278,7 @@ const enUS: Record<string, string> = {
   "conversationShare.issue.artifactExtensionMissing":
     "Turn {turnOrdinal}: the preview file has no valid extension. Check the file name and try again.",
   "conversationShare.issue.artifactOutsideWorkspace":
-    "Turn {turnOrdinal}: the preview file is outside the current workspace. Move or regenerate it and try again.",
+    "Turn {turnOrdinal}: the preview file is outside the current project. Move or regenerate it and try again.",
   "conversationShare.issue.artifactChanged":
     "Turn {turnOrdinal}: {artifactDisplayName} changed while it was being read. Regenerate the file and try again.",
   "conversationShare.issue.artifactReadFailed":
@@ -416,9 +416,9 @@ const enUS: Record<string, string> = {
   "conversationShare.import.source": "Imported from share: {title}",
   "conversationShare.import.dividerLabel": "Imported from share",
   "conversationShare.import.fallbackRemoteWorkspace":
-    "Imported from share: {title}. The current workspace is remote, which import does not support yet, so the session was created in the local workspace {workspacePath}.",
+    "Imported from share: {title}. The current project is remote, which import does not support yet, so the session was created in the local project {projectPath}.",
   "conversationShare.import.fallbackDefaultWorkspace":
-    "Imported from share: {title}. No target workspace was available, so the session was created in the default workspace {workspacePath}.",
+    "Imported from share: {title}. No target project was available, so the session was created in the default project {projectPath}.",
   "conversationShare.import.downloading": "Downloading shared files: {completed}/{total}",
   "conversationShare.import.installing": "Installing shared files",
   "conversationShare.import.committing": "Creating the shared conversation",
@@ -448,7 +448,7 @@ const enUS: Record<string, string> = {
   "carousel.previousSlide": "Previous slide",
   "carousel.nextSlide": "Next slide",
   "quickPick.title": "Command palette",
-  "quickPick.description": "Search and run commands available in this workspace.",
+  "quickPick.description": "Search and run commands available in this project.",
   "quickPick.placeholder": "Type a command",
   "quickPick.empty": "No matching commands.",
   "quickPick.commandFailed": "Command failed: {error}",
@@ -476,7 +476,7 @@ const enUS: Record<string, string> = {
   "quickPick.section.config": "Configuration",
   "quickPick.section.app": "Application",
   "quickPick.command.newTask": "New task",
-  "quickPick.command.openWorkspace": "Open workspace",
+  "quickPick.command.openWorkspace": "Open project",
   "quickPick.command.openFile": "Search files",
   "quickPick.command.settings": "Settings",
   "quickPick.command.previousConversation": "Previous task",
@@ -526,7 +526,7 @@ const enUS: Record<string, string> = {
   "commandCenter.moreResults": "Show more results",
   "confirmDialog.taskDeleteTitle": "Delete this task?",
   "confirmDialog.taskDeleteDescription":
-    "Task “{taskTitle}” will be removed from this workspace, and the current record cannot be restored.",
+    "Task “{taskTitle}” will be removed from this project, and the current record cannot be restored.",
   "confirmDialog.archivedTaskDeleteTitle": "Delete this archived task?",
   "confirmDialog.archivedTaskDeleteDescription":
     "Tasks will be removed from the task list and Archive.",
@@ -613,7 +613,7 @@ const enUS: Record<string, string> = {
   "sidebar.profile.userIdCopied": "User ID copied",
   "sidebar.profile.userIdCopyFailed": "Copy failed. Please try again",
   "app.selectFile": "Select a file to get started",
-  "app.workspace": "Workspace",
+  "app.workspace": "Project",
   "browser.title": "Browser",
   "browser.addressPlaceholder": "Enter a URL and press Enter",
   "browser.back": "Back",
@@ -715,8 +715,8 @@ const enUS: Record<string, string> = {
     "Conversation selections can contain at most 16,000 characters in total.",
   "sidePane.openTabDescription": "Choose a tab to open in the side pane.",
   "sidePane.openFile": "Open file",
-  "sidePane.openFileDescription": "Open a file from the current workspace in the side panel.",
-  "sidePane.openFilePlaceholder": "Search files in the current workspace...",
+  "sidePane.openFileDescription": "Open a file from the current project in the side panel.",
+  "sidePane.openFilePlaceholder": "Search files in the current project...",
   "sidePane.openFileLoading": "Loading files...",
   "sidePane.openFileEmpty": "No files found.",
   "sidePane.openFile.category": "Files",
@@ -818,12 +818,12 @@ const enUS: Record<string, string> = {
   "git.readonly": "Read-only",
   "git.head.detached": "Detached HEAD",
   "git.summary.aheadBehind": "Ahead {ahead} / Behind {behind}",
-  "git.summary.scopeWorkspace": "Current workspace subtree",
+  "git.summary.scopeWorkspace": "Current project subtree",
   "git.source.unstaged": "Unstaged",
   "git.source.staged": "Staged",
   "git.source.branch": "All branch changes",
   "git.source.lastTurn": "Last turn",
-  "git.source.workspaceScope": "Only the current workspace scope is shown by default.",
+  "git.source.workspaceScope": "Only the current project scope is shown by default.",
   "git.source.lastTurnTurn": "Task file snapshot from turn {turn}",
   "git.section.staged": "Staged",
   "git.section.unstaged": "Unstaged",
@@ -846,7 +846,7 @@ const enUS: Record<string, string> = {
   "git.diff.unavailableDescription":
     "The placeholder data currently keeps summary information only. Full results will appear after the real service is connected.",
   "diff.loading.description":
-    "Loading the real diff data from the environment that owns this workspace.",
+    "Loading the real diff data from the environment that owns this project.",
   "diff.error.title": "Failed to load diff data",
   "diff.error.description": "Please try again later. Current error: {message}",
   "diff.preview.truncatedLines":
@@ -892,16 +892,16 @@ const enUS: Record<string, string> = {
   "git.selection.toggle": "Toggle selection for {file}",
   "git.empty.title": "No changes are available in this source",
   "git.empty.description":
-    "Switch to another source, or wait until this workspace has new Git changes to inspect.",
-  "git.loading.description": "Reading Git status and changed files for the current workspace.",
+    "Switch to another source, or wait until this project has new Git changes to inspect.",
+  "git.loading.description": "Reading Git status and changed files for the current project.",
   "git.error.title": "Could not load Git changes",
   "git.error.description": "Git returned an error: {message}",
   "git.empty.gitUnavailableTitle": "Git is not available in this environment",
   "git.empty.gitUnavailableDescription":
     "Install Git first, or make sure the current runtime environment can execute the git command.",
-  "git.empty.notRepositoryTitle": "This workspace is not inside a Git repository",
+  "git.empty.notRepositoryTitle": "This project is not inside a Git repository",
   "git.empty.notRepositoryDescription":
-    "Open a Git repository directory and this pane will show changes scoped to the current workspace.",
+    "Open a Git repository directory and this pane will show changes scoped to the current project.",
   "git.empty.lastTurnTitle": "The current task has no last-turn file changes yet",
   "git.empty.lastTurnDescription":
     "Once the agent writes files, this view will reuse the existing task snapshot as a read-only review surface.",
@@ -920,7 +920,7 @@ const enUS: Record<string, string> = {
   "git.actionMenu.push": "Push",
   "git.actionMenu.commitDialog.title": "Commit changes",
   "git.actionMenu.commitDialog.description":
-    "Save the current uncommitted workspace changes as a commit.",
+    "Save the current uncommitted project changes as a commit.",
   "git.actionMenu.commitDialog.currentBranchLabel": "Current branch",
   "git.actionMenu.commitDialog.changesLabel": "Changes",
   "git.actionMenu.commitDialog.changesValue": "{count} files",
@@ -1002,7 +1002,7 @@ const enUS: Record<string, string> = {
   "git.branchSwitcher.commitDialog.messagePlaceholder":
     "Leave empty to generate a commit message automatically",
   "git.branchSwitcher.commitDialog.messageHelper":
-    "This will commit all uncommitted changes inside the current workspace by default.",
+    "This will commit all uncommitted changes inside the current project by default.",
   "git.branchSwitcher.commitDialog.confirm": "Commit and switch branch",
   "git.branchSwitcher.commitDialog.identityMissing":
     "No Git commit identity is available yet. Configure user.name and user.email first.",
@@ -1184,7 +1184,7 @@ const enUS: Record<string, string> = {
   "chat.pptxElements.previewSourceChanged":
     "The presentation has changed. Slide {pageNumber} was opened, but its content may differ.",
   "chat.pptxElements.previewScopeUnavailable":
-    "This presentation reference is not available in the current workspace.",
+    "This presentation reference is not available in the current project.",
   "chat.webElements.many": "{count} web elements",
   "chat.webElements.remove": "Remove web element context",
   "appHeader.openInFinder": "Open in Finder",
@@ -1213,7 +1213,7 @@ const enUS: Record<string, string> = {
   "titleBar.menu.view": "View",
   "titleBar.menu.help": "Help",
   "titleBar.menu.file.newTask": "New task",
-  "titleBar.menu.file.openWorkspace": "Open workspace",
+  "titleBar.menu.file.openWorkspace": "Open project",
   "titleBar.menu.file.closeWindow": "Close window",
   "titleBar.windowMenu": "Window menu",
   "titleBar.window.minimize": "Minimize window",
@@ -1295,7 +1295,7 @@ const enUS: Record<string, string> = {
   "postUpdateReleaseNotes.acknowledge": "I know",
 
   "projectSelector.heroTitle": "Open fast. Stay focused.",
-  "projectSelector.heroDescription": "Pick a workspace, jump back in, and keep the surface clean.",
+  "projectSelector.heroDescription": "Pick a project, jump back in, and keep the surface clean.",
   "appError.title": "The app ran into a problem",
   "appError.description":
     "The page error was caught, so the app does not need to fall back to a blank screen. Try again first, and refresh the app if the issue keeps happening.",
@@ -1311,13 +1311,13 @@ const enUS: Record<string, string> = {
   "appError.sectionHint": "Diagnostic details have been recorded to help investigation.",
 
   // Workspace
-  "workspace.openWorkspace": "Open workspace",
-  "workspace.addNewWorkspace": "Add new workspace",
+  "workspace.openWorkspace": "Open project",
+  "workspace.addNewWorkspace": "Add new project",
   "workspace.startFromScratch": "Start from scratch",
   "workspace.openFolder": "Open folder",
   "workspace.openPluginsSettings": "Plugin Marketplace",
-  "workspace.backToWorkspace": "Back to workspace",
-  "workspace.noActiveForNewTask": "There is no available workspace yet. Open a workspace first.",
+  "workspace.backToWorkspace": "Back to project",
+  "workspace.noActiveForNewTask": "There is no available project yet. Open a project first.",
   "workspace.wslUncPrompt.title": "Open this through WSL remote connection?",
   "workspace.wslUncPrompt.description":
     "You selected a WSL path:\n{path}\n\nWe recommend opening it through WSL connection, though you can still continue with the path.",
@@ -1356,23 +1356,23 @@ const enUS: Record<string, string> = {
     "Project removed, but {count} Windows reserved-name file(s) were detected and may affect later folder deletion or renaming: {path}",
   "workspaceSidebar.reconnect": "Reconnect",
   "workspaceSidebar.connecting": "Connecting",
-  "workspaceRuntime.starting.title": "Starting workspace…",
-  "workspaceRuntime.failed.title": "Failed to start “{workspace}”",
+  "workspaceRuntime.starting.title": "Starting project…",
+  "workspaceRuntime.failed.title": "Failed to start “{project}”",
   "workspaceRuntime.failed.reasonUnavailable":
     "No specific reason was reported. Retry once; check logs if it keeps failing.",
   "workspaceRuntime.failed.retry": "Retry",
   "workspaceRuntime.notStarted.title":
-    "Not started (opening starts it; other workspaces are unaffected)",
+    "Not started (opening starts it; other projects are unaffected)",
   "workspaceRuntime.notStarted.persistedSessions":
     "{count} sessions on record, last active {activity} ago",
   "workspaceRuntime.notStarted.noSessions": "No sessions yet; open it to create a task",
   "workspaceRuntime.notStarted.open": "Open and start",
-  "workspaceSidebar.registry.showAll": "Show all workspaces ({count} more)",
-  "workspaceSidebar.registry.hideAll": "Hide workspaces not opened here",
-  "workspaceSidebar.registry.loadFailed": "Failed to read the workspace list: {reason}",
+  "workspaceSidebar.registry.showAll": "Show all projects ({count} more)",
+  "workspaceSidebar.registry.hideAll": "Hide projects not opened here",
+  "workspaceSidebar.registry.loadFailed": "Failed to read the project list: {reason}",
   "workspaceSidebar.registry.retry": "Reload",
   "workspaceSidebar.notConnected": "Not connected",
-  "workspaceSidebar.empty": "No workspaces yet. Open a workspace to get started.",
+  "workspaceSidebar.empty": "No projects yet. Open a project to get started.",
   "workspaceSidebar.unavailableLocalDirectory":
     "The workspace directory does not exist or cannot be accessed. You can only view history for now. Restore the directory and restart ZCode to continue.",
   "workspaceSidebar.showSidebar": "Toggle sidebar",
@@ -1403,7 +1403,7 @@ const enUS: Record<string, string> = {
   "remotePanel.tab.web": "Web control",
   "remotePanel.tab.imBot": "Chat bot",
   "remotePanel.imBot.description":
-    "Talk to a bot in WeChat, Feishu or Telegram and let it drive this workspace.",
+    "Talk to a bot in WeChat, Feishu or Telegram and let it drive this project.",
   "remotePanel.imBot.badge.disabled": "Not enabled",
   "remotePanel.imBot.badge.enabling": "Enabling",
   "remotePanel.imBot.badge.enabled": "Enabled",
@@ -1416,7 +1416,7 @@ const enUS: Record<string, string> = {
   "remotePanel.imBot.state.requested":
     "Enable requested, waiting for the server side; the bot sends and receives nothing until then.",
   "remotePanel.imBot.state.enabled":
-    "Enabled: message the bot in your chat app to drive this workspace.",
+    "Enabled: message the bot in your chat app to drive this project.",
   "remotePanel.imBot.reminder.title": "Before you enable",
   "remotePanel.imBot.reminder.account":
     "An external account is required: the bot identity and credentials for WeChat, Feishu and Telegram are issued by those platforms, not by ZCode.",
@@ -1549,7 +1549,7 @@ const enUS: Record<string, string> = {
   "workspaceSidebar.sshConnectionAlias": "Alias",
   "workspaceSidebar.sshConnectionHost": "Host",
   "workspaceSidebar.sshConnectionPath": "Path",
-  "workspaceFileTree.title": "Workspace",
+  "workspaceFileTree.title": "Project",
   "workspaceFileTree.backToTasks": "Back to tasks",
   "workspaceFileTree.refresh": "Refresh file tree",
   "workspaceFileTree.empty": "This directory is empty.",
@@ -1614,7 +1614,7 @@ const enUS: Record<string, string> = {
   "remote.step.directory": "Choose directory",
   "remote.kindStepTitle": "Choose method",
   "remote.kindStepDescription":
-    "Choose how you want to access this workspace, then continue with the matching connection settings.",
+    "Choose how you want to access this project, then continue with the matching connection settings.",
   "remote.settingsStepTitle": "Connection settings",
   "remote.settingsStepDescription":
     "Enter the details needed for your {method} connection so we can prepare the remote session.",
@@ -1967,7 +1967,7 @@ const enUS: Record<string, string> = {
   "settings.shortcuts.command.newTask": "New Task",
   "settings.shortcuts.command.composerSend": "Send Message",
   "settings.shortcuts.command.composerInsertNewline": "Insert Newline in Composer",
-  "settings.shortcuts.command.openWorkspace": "Open Workspace",
+  "settings.shortcuts.command.openWorkspace": "Open Project",
   "settings.shortcuts.command.closeActiveContext": "Close Current Context",
   "settings.shortcuts.command.toggleSidebar": "Toggle Sidebar",
   "settings.shortcuts.command.switchTheme": "Toggle Light/Dark Theme",
@@ -2055,23 +2055,23 @@ const enUS: Record<string, string> = {
   "settings.memory": "Memory",
   "settings.memory.workspaceMemory": "Workspace Memory",
   "settings.memoryDescription":
-    "Save and reuse long-term context in workspaces. Applies to new sessions and may increase model requests and token costs.",
+    "Save and reuse long-term context in projects. Applies to new sessions and may increase model requests and token costs.",
   "settings.memory.viewer.disabled": "Enable Workspace Memory to view saved memories.",
   "settings.memory.viewer.localOnly":
     "Memory details are available only in the local desktop app. Open Memory settings there to view them.",
-  "settings.memory.viewer.title": "Saved workspace memories",
-  "settings.memory.viewer.description": "Browse memories saved by workspace on this device.",
+  "settings.memory.viewer.title": "Saved project memories",
+  "settings.memory.viewer.description": "Browse memories saved by project on this device.",
   "settings.memory.viewer.projectsDescription":
     "Select a project to view all of its saved memories.",
   "settings.memory.viewer.refresh": "Refresh",
   "settings.memory.viewer.loading": "Loading memories…",
-  "settings.memory.viewer.empty": "No saved workspace memories",
-  "settings.memory.viewer.workspaces": "Workspaces",
+  "settings.memory.viewer.empty": "No saved project memories",
+  "settings.memory.viewer.workspaces": "Projects",
   "settings.memory.viewer.files": "Files",
   "settings.memory.viewer.searchPlaceholder": "Search memory files…",
   "settings.memory.viewer.searchEmpty": "No memory files found.",
-  "settings.memory.viewer.workspaceSearchPlaceholder": "Search workspaces…",
-  "settings.memory.viewer.workspaceSearchEmpty": "No workspaces found.",
+  "settings.memory.viewer.workspaceSearchPlaceholder": "Search projects…",
+  "settings.memory.viewer.workspaceSearchEmpty": "No projects found.",
   "settings.memory.viewer.itemCount.one": "{count} item",
   "settings.memory.viewer.itemCount.other": "{count} items",
   "settings.memory.viewer.memoryCount.one": "{count} memory",
@@ -2188,7 +2188,7 @@ const enUS: Record<string, string> = {
   "settings.performanceModeDescription": "Simplify rendered output to improve performance.",
   "settings.taskAutoArchive": "Auto-archive old tasks",
   "settings.taskAutoArchiveDescription":
-    "Periodically scan recently opened workspaces and automatically archive completed, unread-free, unpinned tasks after the retention window.",
+    "Periodically scan recently opened projects and automatically archive completed, unread-free, unpinned tasks after the retention window.",
   "settings.taskAutoArchiveDays": "Archive retention",
   "settings.taskAutoArchiveDaysDescription":
     "A task becomes eligible for auto-archive only after its last update is older than this window.",
@@ -2221,26 +2221,26 @@ const enUS: Record<string, string> = {
   "settings.migration.title": "Migration",
   "settings.migration.sectionTitle": "Claude History Migration",
   "settings.migration.sectionDescription":
-    "Scan native Claude Code history on this machine, optionally filter by workspace and activity window, then import the selected sessions into their matching ZCode task lists.",
+    "Scan native Claude Code history on this machine, optionally filter by project and activity window, then import the selected sessions into their matching ZCode task lists.",
   "settings.migration.badge.localOnly": "Local Claude records",
   "settings.migration.badge.manualOnly": "Manual only",
-  "settings.migration.currentWorkspace": "Current workspace",
+  "settings.migration.currentWorkspace": "Current project",
   "settings.migration.currentWorkspaceDescription":
-    "This is only an optional filter. If you do not choose the current workspace, the scan covers all Claude records.",
+    "This is only an optional filter. If you do not choose the current project, the scan covers all Claude records.",
   "settings.migration.workspaceEmpty":
-    "No active workspace on this page. You can still scan all records.",
+    "No active project on this page. You can still scan all records.",
   "settings.migration.sourceDirectory": "Source directory",
   "settings.migration.noticeTitle": "How migration works",
   "settings.migration.noticeDescription":
-    "Migration copies the native jsonl files and generates minimal task snapshots. Without a workspace filter, the scan covers all Claude records and imports each session back into its own source workspace.",
+    "Migration copies the native jsonl files and generates minimal task snapshots. Without a project filter, the scan covers all Claude records and imports each session back into its own source project.",
   "settings.migration.unsupported.title": "Migration is unavailable here",
   "settings.migration.unsupported.desktopOnly": "Migration is currently available on desktop only.",
   "settings.migration.filtersTitle": "Filters",
   "settings.migration.filtersDescription":
-    "Filter by workspace, recent activity, and result size, then manually fetch the candidate sessions.",
-  "settings.migration.workspaceFilterLabel": "Workspace filter",
-  "settings.migration.workspaceFilter.all": "All workspaces",
-  "settings.migration.workspaceFilter.current": "Current workspace only",
+    "Filter by project, recent activity, and result size, then manually fetch the candidate sessions.",
+  "settings.migration.workspaceFilterLabel": "Project filter",
+  "settings.migration.workspaceFilter.all": "All projects",
+  "settings.migration.workspaceFilter.current": "Current project only",
   "settings.migration.rangeLabel": "Recent activity",
   "settings.migration.range.7d": "Last 7 days",
   "settings.migration.range.30d": "Last 30 days",
@@ -2253,7 +2253,7 @@ const enUS: Record<string, string> = {
   "settings.migration.scanFailedDescription": "Failed to read Claude native history: {error}",
   "settings.migration.candidatesTitle": "Candidates",
   "settings.migration.candidatesDescription":
-    "Select one or more sessions to import. Each imported session is written back into the task list for its own workspace.",
+    "Select one or more sessions to import. Each imported session is written back into the task list for its own project.",
   "settings.migration.candidatesCount": "{count} candidates",
   "settings.migration.selectedCount": "{count} selected",
   "settings.migration.selectAll": "Select all",
@@ -2266,12 +2266,12 @@ const enUS: Record<string, string> = {
   "settings.migration.emptyTitle": "No candidate sessions yet",
   "settings.migration.emptyDescription":
     "Adjust the filters, then click 'Scan sessions' to load matching results.",
-  "settings.migration.workspacePathLabel": "Workspace",
+  "settings.migration.workspacePathLabel": "Project",
   "settings.migration.updatedAt": "Last active: {time}",
   "settings.migration.skippedTitle": "Skipped",
   "settings.migration.failedTitle": "Failures",
   "settings.migration.reason.session_not_found_or_workspace_mismatch":
-    "The source session was not found, or it no longer matches the current workspace filter.",
+    "The source session was not found, or it no longer matches the current project filter.",
   "settings.usageTitle": "Usage stats",
   "settings.usageDescription":
     "Review rough activity and model usage aggregated from local sessions.",
@@ -2311,7 +2311,7 @@ const enUS: Record<string, string> = {
   "resourceManager.storage.category.backups": "Backups",
   "resourceManager.storage.category.exports": "Exports & feedback bundles",
   "resourceManager.storage.category.runtimes": "Agent runtimes & plugins",
-  "resourceManager.storage.category.config": "Settings, credentials & workspace",
+  "resourceManager.storage.category.config": "Settings, credentials & project",
   "resourceManager.storage.category.other": "Other",
   "resourceManager.storage.categoryDescription.sessionStore":
     "Task index, session snapshots and checkpoints; cleaned by deleting or archiving tasks.",
@@ -2631,21 +2631,21 @@ const enUS: Record<string, string> = {
   "settings.mcpServers.import.finish": "Done",
   "settings.scope.label": "Scope",
   "settings.scope.user": "User",
-  "settings.scope.workspace": "Workspace",
+  "settings.scope.workspace": "Project",
   "settings.scope.default": "Default",
   "settings.plugins.scope.restoreUserDefault": "Restore User default",
   "settings.plugins.scope.restored": "Restored {plugin} to User default",
   "settings.plugins.scope.workspaceHint":
-    "Changes here affect only this workspace and override the User default.",
+    "Changes here affect only this project and override the User default.",
   "settings.plugins.toggle.enable": "Enable {plugin}",
   "settings.plugins.toggle.disable": "Disable {plugin}",
   "settings.plugins.toggle.pending": "Updating {plugin}...",
   "settings.plugins.toggle.enabled": "Enabled {plugin}",
   "settings.plugins.toggle.disabled": "Disabled {plugin}",
   "settings.plugins.toggle.workspaceEnabled":
-    "Enabled {plugin} in this workspace (overriding User default)",
+    "Enabled {plugin} in this project (overriding User default)",
   "settings.plugins.toggle.workspaceDisabled":
-    "Disabled {plugin} in this workspace (overriding User default)",
+    "Disabled {plugin} in this project (overriding User default)",
   "settings.plugins.toggle.failed": "Couldn't update {plugin}. Try again.",
   "settings.modelProviderDescription":
     "Manage custom model providers. Once configured, they can be selected during chat.",
@@ -3610,7 +3610,7 @@ const enUS: Record<string, string> = {
     "Connect a Z.ai or BigModel Coding Plan provider in Model Settings to view plan quota, model usage, and tool usage.",
   "settings.usage.codingPlanCurrentConnectionTitle": "Current connection is not using Coding Plan",
   "settings.usage.codingPlanCurrentConnectionDescription":
-    "Switch the workspace model connection to an Individual Plan or Team Plan to view its quota and usage here.",
+    "Switch the project model connection to an Individual Plan or Team Plan to view its quota and usage here.",
   "settings.usage.modelChartDescription":
     "{model} currently has the highest share at about {share}.",
   "settings.usage.modelChart.other": "Other models",
@@ -3651,7 +3651,7 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.testModel.failedWithIdentity":
     "Failed to connect {provider} / {model}: {reason}",
   "settings.modelProvider.testModel.localWorkspaceUnavailable":
-    "A local workspace is unavailable for connectivity testing.",
+    "A local project is unavailable for connectivity testing.",
   "settings.modelProvider.testModel.error.auth": "Authentication failed",
   "settings.modelProvider.testModel.error.model_not_found": "Model not found",
   "settings.modelProvider.testModel.error.rate_limit": "Rate limited",
@@ -3661,7 +3661,7 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.testModel.error.noEndpoint": "No endpoint configured",
   "settings.skills.title": "Skills",
   "settings.skills.description":
-    "Manage workspace and user skills. Enabled skills can be referenced in chat with $skill-name.",
+    "Manage project and user skills. Enabled skills can be referenced in chat with $skill-name.",
   "settings.skills.searchPlaceholder": "Search skills...",
   "settings.skills.refresh": "Refresh",
   "settings.skills.refreshing": "Refreshing...",
@@ -3669,7 +3669,7 @@ const enUS: Record<string, string> = {
   "settings.skills.empty": "No skills found",
   "settings.skills.footerSummary": "{total} skills · {enabled} enabled",
   "settings.skills.noDescription": "No description",
-  "settings.skills.group.local": "Workspace and personal skills",
+  "settings.skills.group.local": "Project and personal skills",
   "settings.skills.group.plugin": "Plugin skills",
   "settings.skills.filter.label": "Source filter",
   "settings.skills.filter.all": "All",
@@ -3807,7 +3807,7 @@ const enUS: Record<string, string> = {
   "settings.subagents.description":
     "Manage user-level subagent Markdown files consumed by ZCode Agent.",
   "settings.subagents.workspaceScopeUnsupported":
-    "Workspace-level creation or editing is unsupported",
+    "Project-level creation or editing is unsupported",
   "settings.subagents.searchPlaceholder": "Search subagents...",
   "settings.subagents.empty": "No subagents found",
   "settings.subagents.addNew": "New subagent",
@@ -3830,7 +3830,7 @@ const enUS: Record<string, string> = {
     "Built-in profiles are runtime defaults and cannot be edited here.",
   "settings.subagents.scope.builtIn": "Built-in",
   "settings.subagents.scope.plugin": "Plugin",
-  "settings.subagents.scope.workspace": "Workspace",
+  "settings.subagents.scope.workspace": "Project",
   "settings.subagents.scope.label": "Scope",
   "settings.subagents.filter.all": "All",
   "settings.subagents.filter.enabled": "Enabled",
@@ -3899,7 +3899,7 @@ const enUS: Record<string, string> = {
   "settings.pluginManaged.modifyInPlugin": "Registered by a plugin. Edit it in the plugin.",
   "settings.plugins.title": "Plugins",
   "settings.plugin.scope.user": "User",
-  "settings.plugin.scope.workspaces": "Workspaces",
+  "settings.plugin.scope.workspaces": "Projects",
   "settings.plugin.tab.plugins": "Plugins",
   "settings.plugin.tab.mcps": "MCP",
   "settings.plugin.tab.skills": "Skills",
@@ -3936,9 +3936,9 @@ const enUS: Record<string, string> = {
   "settings.plugin.hooks.emptyInstalledTitle": "No hooks installed",
   "settings.plugin.hooks.emptyInstalledDescription":
     "Create a hook to run commands during task lifecycle events.",
-  "settings.plugin.noWorkspace": "Open a workspace to manage capabilities.",
+  "settings.plugin.noWorkspace": "Open a project to manage capabilities.",
   "settings.plugin.scopeUnavailableFallback":
-    "That workspace is no longer available. Showing User plugin settings instead.",
+    "That project is no longer available. Showing User plugin settings instead.",
   "settings.plugin.edit": "Edit",
   "settings.plugin.done": "Done",
   "settings.plugin.add": "Add",
@@ -4005,7 +4005,7 @@ const enUS: Record<string, string> = {
   "settings.plugins.refresh": "Refresh",
   "settings.plugins.refreshing": "Refreshing...",
   "settings.plugins.empty": "No plugins found",
-  "settings.plugins.noWorkspace": "Open a workspace to manage plugins.",
+  "settings.plugins.noWorkspace": "Open a project to manage plugins.",
   "settings.plugins.source.builtin": "Built-in",
   "settings.plugins.source.fromMarketplace": "From {marketplace}",
   "settings.plugins.capability":
@@ -4035,7 +4035,7 @@ const enUS: Record<string, string> = {
   "settings.plugins.marketplace.sourceInfo.label": "Discover source information",
   "settings.plugins.marketplace.sourceInfo.title": "Discover uses GitHub marketplaces",
   "settings.plugins.marketplace.sourceInfo.description":
-    "Make sure this workspace can reach GitHub. Plugin catalogs, details, and installs may fail when GitHub is unavailable.",
+    "Make sure this project can reach GitHub. Plugin catalogs, details, and installs may fail when GitHub is unavailable.",
   "settings.plugins.marketplace.searchResults": "{count} matching plugins",
   "settings.plugins.marketplace.groupCount": "{count} plugins",
   "settings.plugins.marketplace.expandGroup": "Show {count} more",
@@ -4122,7 +4122,7 @@ const enUS: Record<string, string> = {
   "settings.plugins.config.clearSecret": "Clear saved secret",
   "settings.plugins.config.undoClearSecret": "Keep saved secret",
   "settings.plugins.config.restoreOption": "Restore inherited value",
-  "settings.plugins.config.undoRestoreOption": "Keep workspace override",
+  "settings.plugins.config.undoRestoreOption": "Keep project override",
   "settings.plugins.config.sensitiveUnavailable":
     "Secure storage is required before this value can be configured.",
   "settings.plugins.import.open": "Import plugins from external agents",
@@ -4256,12 +4256,12 @@ const enUS: Record<string, string> = {
   "settings.hooks.review.reason.host_unavailable": "This connection cannot review this Hook",
   "settings.hooks.review.reason.rejected": "Request rejected",
   "settings.hooks.title": "Hooks",
-  "settings.workspaceFileSearch.title": "Workspace Search Scope",
+  "settings.workspaceFileSearch.title": "Project Search Scope",
   "settings.workspaceFileSearch.description":
     "Edit .zcodeignore rules (gitignore syntax) that scope workspace file search. Takes effect on the next search after saving.",
   "settings.workspaceFileSearch.templateHint":
-    ".zcodeignore does not exist yet: the content below is the initial preview (.gitignore copy + default exclusions); it is written to the workspace only after saving.",
-  "settings.workspaceFileSearch.editorLabel": "Workspace search ignore rules editor",
+    ".zcodeignore does not exist yet: the content below is the initial preview (.gitignore copy + default exclusions); it is written to the project only after saving.",
+  "settings.workspaceFileSearch.editorLabel": "Project search ignore rules editor",
   "settings.workspaceFileSearch.save": "Save",
   "settings.workspaceFileSearch.saved": "Saved; effective on the next search",
   "settings.workspaceFileSearch.saveFailed": "Save failed; check the logs",
@@ -4271,10 +4271,10 @@ const enUS: Record<string, string> = {
   "settings.workspaceFileSearch.transformFailed":
     "Failed to apply the section operation; check the logs",
   "settings.workspaceFileSearch.reveal": "Reveal file location",
-  "settings.workspaceFileSearch.revealHint": "Save first; .zcodeignore lives at the workspace root",
+  "settings.workspaceFileSearch.revealHint": "Save first; .zcodeignore lives at the project root",
   "settings.workspaceFileSearch.unsaved": "Unsaved changes",
   "settings.workspaceFileSearch.noWorkspace":
-    "No workspace is open, so search ignore rules cannot be configured.",
+    "No project is open, so search ignore rules cannot be configured.",
   "settings.hooks.description":
     "Manage task lifecycle hooks to automatically execute commands on specific events.",
   "settings.hooks.enabled": "Enabled",
@@ -4314,7 +4314,7 @@ const enUS: Record<string, string> = {
   "settings.hooks.shellPlaceholder": "System default",
   "settings.hooks.async": "Run in background",
   "settings.hooks.statusMessage": "Status message",
-  "settings.hooks.statusMessagePlaceholder": "e.g. Checking workspace",
+  "settings.hooks.statusMessagePlaceholder": "e.g. Checking project",
   "settings.hooks.timeoutHint": "Timeout in seconds",
   "settings.hooks.customJson": "Custom fields JSON",
   "settings.hooks.customJsonObjectError": "Custom fields must be a JSON object.",
@@ -4399,7 +4399,7 @@ const enUS: Record<string, string> = {
   "onboarding.step.agentsFile": "AGENTS.md",
   "onboarding.step.migration": "Migration",
   "onboarding.stepDescription.session":
-    "Review what we found and choose sessions and workspaces to migrate.",
+    "Review what we found and choose sessions and projects to migrate.",
   "onboarding.stepDescription.skillsImport":
     "Import selected skills from external agents before the final migration.",
   "onboarding.stepDescription.mcpImport":
@@ -4411,10 +4411,10 @@ const enUS: Record<string, string> = {
   "onboarding.stepDescription.migration":
     "Start migration and wait while ZCode imports your selections.",
   "onboarding.sessions.empty":
-    "No workspaces yet. Scan local history, then pick workspaces to migrate.",
+    "No projects yet. Scan local history, then pick projects to migrate.",
   "onboarding.sessions.count": "{count} sessions",
   "onboarding.sessions.unlimited": "Unlimited",
-  "onboarding.sessions.chooseWorkspace": "Choose workspace",
+  "onboarding.sessions.chooseWorkspace": "Choose project",
   "onboarding.agentSettings.empty":
     "Nothing to import right now. Scan again or continue without migration.",
   "onboarding.agentSettings.categoryToggleAllAria": "Select or clear {category} for all agents",
@@ -4433,7 +4433,7 @@ const enUS: Record<string, string> = {
   "onboarding.finish.summary.label.skipped": "Skipped",
   "onboarding.finish.summary.label.failed": "Failed",
   "onboarding.footer.helper": "Skip anytime and resume migration from Settings later.",
-  "onboarding.footer.workspaceSelection": "{count} workspaces selected",
+  "onboarding.footer.workspaceSelection": "{count} projects selected",
   "onboarding.action.continue": "Continue",
   "onboarding.action.beginMigration": "Begin migration",
   "onboarding.migration.progress": "Migrating... {progress}%",
@@ -4444,7 +4444,7 @@ const enUS: Record<string, string> = {
   "onboarding.migration.confirmCloseConfirm": "Close anyway",
   "onboarding.finish.done": "Migration complete",
   "onboarding.finish.ready": "Review what was imported before you continue.",
-  "onboarding.finish.currentWorkspace": "Migrating sessions from {workspace}",
+  "onboarding.finish.currentWorkspace": "Migrating sessions from {project}",
   "onboarding.finish.currentAgentsFile": "Migrating AGENTS.md",
   "onboarding.finish.currentSettings": "Importing agent settings",
   "onboarding.finish.summary.sessions": "Session migration",
@@ -4457,7 +4457,7 @@ const enUS: Record<string, string> = {
 
   // Chat
   "chat.empty.title": "Start a Conversation",
-  "chat.empty.description": "Start a new task in {workspace}",
+  "chat.empty.description": "Start a new task in {project}",
   "chat.empty.description.beforeWorkspace": "Start a new task in",
   "chat.empty.description.afterWorkspace": "",
   "chat.empty.greeting.morningEarly": "Morning, ready when you are",
@@ -4468,10 +4468,10 @@ const enUS: Record<string, string> = {
   "chat.empty.greeting.lateNight": "It's late—remember to take care of yourself.",
   "chat.draft.suggestedPrompt.recentCommits": "Review commits from the last 7 days",
   "chat.draft.suggestedPrompt.recentCommits.prompt":
-    "Review Git commits from the last 7 days in this workspace, summarize the main changes, and identify potential risks.",
+    "Review Git commits from the last 7 days in this project, summarize the main changes, and identify potential risks.",
   "chat.draft.suggestedPrompt.createPdf": "Create a PDF",
   "chat.draft.suggestedPrompt.createPdf.prompt":
-    "Create a PDF document based on the contents of the current workspace.",
+    "Create a PDF document based on the contents of the current project.",
   "chat.draft.suggestedPrompt.plugin.documentSkills": "Document Skills",
   "chat.draft.suggestedPrompt.plugin.github": "Github",
   "chat.draft.suggestedPrompt.pluginUnavailable":
@@ -4490,20 +4490,20 @@ const enUS: Record<string, string> = {
   "chat.draft.suggestedPrompt.pluginFlow.installReturnedEmpty": "No installed plugin was returned",
   "chat.draft.suggestedPrompt.pluginFlow.enableSucceeded": "Plugin enabled successfully",
   "chat.draft.suggestedPrompt.pluginFlow.enableFailed": "Plugin enable failed",
-  "chat.empty.workspaceMenu": "Choose workspace",
+  "chat.empty.workspaceMenu": "Choose project",
   "chat.empty.selectProject": "Select project",
   "chat.empty.workOutsideProject": "Work outside a project",
   "chat.empty.detachProject": "Remove current project selection",
-  "chat.empty.workspaceSearchPlaceholder": "Search workspaces",
-  "chat.empty.workspaceSearchEmpty": "No matching workspaces",
+  "chat.empty.workspaceSearchPlaceholder": "Search projects",
+  "chat.empty.workspaceSearchEmpty": "No matching projects",
   "chat.empty.cliMenu": "Choose CLI",
   "chat.empty.home": "Home",
-  "chat.empty.createWorkspace.title": "Create workspace",
-  "chat.empty.createWorkspace.placeholder": "Workspace name",
+  "chat.empty.createWorkspace.title": "Create project",
+  "chat.empty.createWorkspace.placeholder": "Project name",
   "chat.empty.createWorkspace.locationHint": "Location: {path}",
-  "chat.empty.createWorkspace.error.required": "Workspace name is required.",
-  "chat.empty.createWorkspace.error.separator": "Workspace name cannot contain / or \\.",
-  "chat.empty.createWorkspace.error.createFailed": "Could not create workspace.",
+  "chat.empty.createWorkspace.error.required": "Project name is required.",
+  "chat.empty.createWorkspace.error.separator": "Project name cannot contain / or \\.",
+  "chat.empty.createWorkspace.error.createFailed": "Could not create project.",
   "chat.emptyResult.title": "No visible output",
   "chat.emptyResult.description":
     "This task finished without any chat content. It may have been stopped before the model produced a response.",
@@ -4539,7 +4539,7 @@ const enUS: Record<string, string> = {
   "chat.message.fork.targetMessageMissing": "Source message no longer exists in conversation",
   "chat.hooks.label": "Hooks",
   "chat.hooks.source.user": "User",
-  "chat.hooks.source.project": "Workspace",
+  "chat.hooks.source.project": "Project",
   "chat.hooks.source.plugin": "Plugin",
   "chat.hooks.state.running": "Running",
   "chat.hooks.state.completed": "Completed",
@@ -4761,7 +4761,7 @@ const enUS: Record<string, string> = {
   "chat.toolbar.modelSwitch.stage.applyingCustomProvider": "Applying custom model provider...",
   "chat.toolbar.modelSwitch.stage.restartingRuntime": "Restarting model runtime...",
   "chat.toolbar.modelSwitch.stage.syncingSession": "Syncing session model...",
-  "chat.toolbar.modelSwitch.stage.persistingWorkspace": "Saving workspace default model...",
+  "chat.toolbar.modelSwitch.stage.persistingWorkspace": "Saving project default model...",
   "chat.toolbar.modelSwitch.lockedByRunningTask":
     "A task is running. Finish it before switching model providers.",
   "chat.toolbar.modelSwitch.lockedByRunningTask.short": "busy",
@@ -5093,7 +5093,7 @@ const enUS: Record<string, string> = {
   "workflows.hub.empty.title": "No saved workflows in your open projects yet",
   "workflows.hub.empty.hint":
     "Design a workflow with ZCode in chat, then have it save the workflow to a project once it works. Projects that aren't open don't appear here.",
-  "workflows.hub.noWorkspace": "Open a workspace to see its workflows.",
+  "workflows.hub.noWorkspace": "Open a project to see its workflows.",
   "workflows.hub.loadError": "Could not read workflows: {error}",
   "workflows.hub.invalid": "{count} files could not be read",
   "workflows.hub.invalidOne": "{count} file could not be read",
@@ -5427,19 +5427,18 @@ const enUS: Record<string, string> = {
   "chat.toolCall.workflow.run.artifacts.previousVersion": "Previous version",
   "chat.toolCall.workflow.run.artifacts.nextVersion": "Next version",
   "chat.toolCall.workflow.run.artifacts.open": "Open artifact",
-  "chat.toolCall.workflow.run.artifacts.reveal": "Reveal in workspace",
+  "chat.toolCall.workflow.run.artifacts.reveal": "Reveal in project",
   "chat.toolCall.workflow.run.artifacts.copy": "Copy",
   "chat.toolCall.workflow.run.artifacts.copied": "Copied",
   "chat.toolCall.workflow.run.artifacts.openInBrowser": "Open in browser",
   "chat.toolCall.workflow.run.artifacts.openInBrowserNote":
-    "Opens the copy in your workspace, not the bytes pinned to this version.",
-  "chat.toolCall.workflow.run.artifacts.localOnly":
-    "Preview is only available in a local workspace.",
+    "Opens the copy in your project, not the bytes pinned to this version.",
+  "chat.toolCall.workflow.run.artifacts.localOnly": "Preview is only available in a local project.",
   "chat.toolCall.workflow.run.artifacts.loading": "Loading artifact…",
   "chat.toolCall.workflow.run.artifacts.missing": "This artifact is no longer available.",
   "chat.toolCall.workflow.run.artifacts.loadError": "Failed to load this artifact.",
   "chat.toolCall.workflow.run.artifacts.unsupported":
-    "No preview for this file type. It stays available in the workspace.",
+    "No preview for this file type. It stays available in the project.",
   "chat.toolCall.workflow.run.artifacts.presetInvalid":
     "This dashboard definition cannot be rendered.",
   "chat.toolCall.workflow.run.artifacts.unavailable":
@@ -5503,7 +5502,7 @@ const enUS: Record<string, string> = {
   "chat.toolCall.workflow.run.event.usageUpdated": "Usage updated",
   "chat.toolCall.workflow.run.event.log": "Log",
   // amend-resume: the first workspace write closed the predecessor cache; later steps run live.
-  "chat.toolCall.workflow.run.event.importCacheClosed": "Cache closed by a workspace write",
+  "chat.toolCall.workflow.run.event.importCacheClosed": "Cache closed by a project write",
   "chat.toolCall.workflow.run.event.report": "Reported",
   "chat.toolCall.workflow.run.event.phaseEntered": "Entered phase",
   "chat.toolCall.workflow.run.event.escalationRaised": "Asked main agent",
@@ -6190,7 +6189,7 @@ const enUS: Record<string, string> = {
   "feedback.submit.template.section.taskInfo": "Task Info",
   "feedback.submit.template.section.taskTitle": "Task title: {title}",
   "feedback.submit.template.section.taskId": "Task ID: {id}",
-  "feedback.submit.template.section.taskWorkspace": "Workspace: {path}",
+  "feedback.submit.template.section.taskWorkspace": "Project: {path}",
   "feedback.submit.template.section.taskSessionPath": "Task session: {path}",
   "feedback.submit.template.section.taskLogPath": "Task log: {path}",
   "feedback.submit.template.section.problem": "Issue",
@@ -6247,7 +6246,7 @@ const enUS: Record<string, string> = {
   "feedback.featureRequest.submit": "Submit request",
   "feedback.featureRequest.missingRequired":
     "Please fill in the request description and expected solution",
-  "feedback.featureRequest.source": "Workspace Header help menu / Request a feature",
+  "feedback.featureRequest.source": "Project Header help menu / Request a feature",
   "feedback.featureRequest.submittedToast": "Request submitted. We will review it carefully.",
   "feedback.submission.connectingLabel": "Connecting to feedback service",
   "feedback.submission.connectingDetail":
@@ -6306,7 +6305,7 @@ const enUS: Record<string, string> = {
   "settings.automations.title": "Automations",
   "automations.breadcrumbLabel": "Automation path",
   "settings.automations.betaBadge": "Beta",
-  "automations.noWorkspace": "Open a workspace to manage its scheduled tasks.",
+  "automations.noWorkspace": "Open a project to manage its scheduled tasks.",
   "automations.workspace.label": "Project",
   "automations.description":
     "Schedule recurring tasks or queue background work that runs during idle time.",
@@ -6779,7 +6778,7 @@ const enUS: Record<string, string> = {
   // can only fail with Plugin not found.
   "settings.computerUse.pluginState.loadingTitle": "Loading the Computer Use plugin",
   "settings.computerUse.pluginState.loadingDescription":
-    "Reading the plugin list for the current workspace. The switch stays unavailable until it is ready.",
+    "Reading the plugin list for the current project. The switch stays unavailable until it is ready.",
   "settings.computerUse.pluginState.loadFailedTitle": "Computer Use plugin state is unavailable",
   "settings.computerUse.pluginState.loadFailedDescription":
     "The plugin list failed to load, so Computer Use availability is unknown. Retry; if it keeps failing, restart ZCode and reopen this page.",
@@ -6799,7 +6798,7 @@ const enUS: Record<string, string> = {
   "settings.computerUse.pluginState.retrying": "Reading…",
   "settings.computerUse.unsupported.title": "Computer Use is unavailable here",
   "settings.computerUse.unsupported.remoteDescription":
-    "Computer Use is not yet supported for SSH, WSL, Docker, or other remote environments. Switch to a local workspace.",
+    "Computer Use is not yet supported for SSH, WSL, Docker, or other remote environments. Switch to a local project.",
   "settings.computerUse.experimental.title": "Experimental on Linux",
   "settings.computerUse.experimental.linuxDescription":
     "On Linux desktops Computer Use runs on the open-source trycua/cua implementation. The driver ships with the app, but its X11 / Wayland coverage has not been fully verified, so mouse/keyboard control and screenshots may not work. Please report issues through the feedback entry.",
@@ -6918,19 +6917,19 @@ const enUS: Record<string, string> = {
   "bots.setup.refreshBindCode": "Refresh code",
   "bots.setup.bound": "{count} user(s) bound. Continue to configure this bot.",
   "bots.setup.bindAdvanceIn": "Continuing in {seconds}s.",
-  "bots.setup.allowedWorkspaces": "Allowed workspaces",
-  "bots.setup.allowedAll": "Allow all workspaces (*)",
-  "bots.setup.allowedSelected": "Allow selected workspaces only",
+  "bots.setup.allowedWorkspaces": "Allowed projects",
+  "bots.setup.allowedAll": "Allow all projects (*)",
+  "bots.setup.allowedSelected": "Allow selected projects only",
   "bots.setup.allowedAllShort": "All",
   "bots.setup.allowedSelectedShort": "Selected",
-  "bots.setup.allowedAllDescription": "This bot can use every configured workspace.",
+  "bots.setup.allowedAllDescription": "This bot can use every configured project.",
   "bots.setupDescription.chooseBot": "Choose the third-party chat bot to connect.",
   "bots.setupDescription.createBot":
     "Enter bot or webhook credentials. The next step tests connectivity first.",
   "bots.setupDescription.bindBot":
     "Create a bind code and bind the account in the bot private chat.",
   "bots.setupDescription.setBot":
-    "Set the default context, allowed workspaces, and third-party reply detail.",
+    "Set the default context, allowed projects, and third-party reply detail.",
   "bots.setup.guide.createTitle": "Preparation guide",
   "bots.setup.guide.bindTitle": "Binding guide",
   "bots.setup.guide.createNote":
@@ -6959,7 +6958,7 @@ const enUS: Record<string, string> = {
   "bots.setup.guide.weixin.bind.1": "Open the Weixin direct chat you want to bind.",
   "bots.setup.guide.weixin.bind.2": "Send {command}.",
   "bots.setup.guide.weixin.bind.3":
-    "Come back here after the bind succeeds to finish the workspace and CLI defaults.",
+    "Come back here after the bind succeeds to finish the project and CLI defaults.",
   "bots.setup.guide.feishu.create.1":
     "Create a self-built app in the Feishu/Lark developer console and enable bot capability.",
   "bots.setup.guide.feishu.create.2":
@@ -6970,7 +6969,7 @@ const enUS: Record<string, string> = {
     "Install the app into your tenant and open a direct chat with the bot.",
   "bots.setup.guide.feishu.bind.2": "Send {command} in that direct chat.",
   "bots.setup.guide.feishu.bind.3":
-    "Return here after the bind succeeds to finish the workspace and CLI defaults.",
+    "Return here after the bind succeeds to finish the project and CLI defaults.",
   "bots.setup.guide.webhook.create.1":
     "Webhook mode does not require a native bot in the third-party product; your integration only needs to POST messages to ZCode.",
   "bots.setup.guide.webhook.create.2":
@@ -6988,7 +6987,7 @@ const enUS: Record<string, string> = {
   "bots.setup.testSuccess": "Connectivity test passed",
   "bots.setup.testFailed": "Connectivity test failed",
   "bots.setup.footer.bind":
-    "The bind code initially allows all workspaces; the final scope is saved next.",
+    "The bind code initially allows all projects; the final scope is saved next.",
   "bots.setup.footer.set": "Finish enables the bot and returns it to the added list.",
   "bots.setup.discardTitle": "Discard this bot?",
   "bots.setup.discardDescription":
@@ -7044,7 +7043,7 @@ const enUS: Record<string, string> = {
   "bots.newBot.title": "New bot",
   "bots.newBot.chooseChannel": "Choose channel",
   "bots.newBot.description":
-    "Choose where this bot will receive messages. After selecting a channel, configure credentials, binding, allowed workspaces, and defaults.",
+    "Choose where this bot will receive messages. After selecting a channel, configure credentials, binding, allowed projects, and defaults.",
   "bots.newBot.selectProviderHint": "Choose a channel on the right to create a bot.",
   "bots.newBot.fallbackName": "New bot",
   "bots.newBot.comingSoon": "Coming soon",
@@ -7157,21 +7156,21 @@ const enUS: Record<string, string> = {
   "bots.unbound": "Not bound",
   "bots.generateBindCode": "Generate bind code",
   "bots.resetState": "Reset state",
-  "bots.allowedWorkspaces": "Workspace access",
+  "bots.allowedWorkspaces": "Project access",
   "bots.allowedWorkspaces.all": "All",
-  "bots.allowedWorkspaces.mode.all": "All workspaces",
-  "bots.allowedWorkspaces.mode.selected": "Selected workspaces",
-  "bots.allowedWorkspaces.allDescription": "This bot can use any configured workspace.",
-  "bots.allowedWorkspaces.selectedDescription": "This bot can use {count} selected workspaces.",
-  "bots.botMeta": "{users} bound users · workspace {workspace}",
-  "bots.botSummary": "{users} users · {workspaces} workspaces · {workspace}",
+  "bots.allowedWorkspaces.mode.all": "All projects",
+  "bots.allowedWorkspaces.mode.selected": "Selected projects",
+  "bots.allowedWorkspaces.allDescription": "This bot can use any configured project.",
+  "bots.allowedWorkspaces.selectedDescription": "This bot can use {count} selected projects.",
+  "bots.botMeta": "{users} bound users · project {project}",
+  "bots.botSummary": "{users} users · {projects} projects · {project}",
   "bots.userCount": "{count} users",
   "bots.editDescription": "Review runtime state, default context, reply detail, and bound users.",
   "bots.edit.basicSettings": "Basic settings",
   "bots.edit.binding": "Bound users",
   "bots.edit.emptyUsers":
     "No users bound yet. Create a bind code, then send the bind command in the bot private chat.",
-  "bots.edit.userWorkspaces": "{count} workspace(s) allowed",
+  "bots.edit.userWorkspaces": "{count} project(s) allowed",
   "bots.test": "Test",
   "bots.bind": "Bind",
   "bots.unbind": "Unbind",
@@ -7190,7 +7189,7 @@ const enUS: Record<string, string> = {
     "Copy the bind command below, then send it to the bot in a private chat.",
   "bots.bindCommandStep.copy": "Copy the bind command",
   "bots.bindCommandStep.openChat": "Open the private chat with the bot",
-  "bots.bindCommandStep.send": "Paste and send it to bind the current workspace",
+  "bots.bindCommandStep.send": "Paste and send it to bind the current project",
   "bots.bindCommandCopied":
     "Bind command copied. Open the private bot chat, then paste and send it.",
   "bots.bindCommandCopyFailed": "Failed to copy bind command: {error}",

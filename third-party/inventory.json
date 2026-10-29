@@ -2042,8 +2042,8 @@
     "packages/ui/src/hooks/useBrowserSitePermissions.ts": "75d84af4d726b95d0d7cd166b1977514dc56d1644122b5857724cfc349ff0faa",
     "packages/ui/src/hooks/useCodingPlanQuotaResetUi.ts": "eed75a370ca2a08fa78ecd9129ac36355017b4ab9ed5d05c7c603d252587b6b4",
     "packages/ui/src/hooks/useWorkflowRunSave.ts": "e29d0d84541ecc772c8295255fefab7c537f9c75948210147838a82ec3dbc40d",
-    "packages/ui/src/i18n/locales/en-US.ts": "0d029027f3fec2cfb2879501509dfc908812e45452c286d8519312b1d781ba6e",
-    "packages/ui/src/i18n/locales/zh-CN.ts": "ccb6f1465ed004d48b89841d4ec58871480b6a669d847a5aec0831f21e4da57b",
+    "packages/ui/src/i18n/locales/en-US.ts": "8a2c30facc8ef2c8217d0d8b02ed3c385ab6e042d03c49348901a0e0a7a4d0c8",
+    "packages/ui/src/i18n/locales/zh-CN.ts": "4777e1ca94c9b78ae97e218f5d1a1e35e1ae906bdc36aaea236f2328b3016f0d",
     "packages/ui/src/lib/assistantDirectiveParser.ts": "c64b119e46f917e2d869658559cb1113cc40caae1a89d68328b256ee4d76e09f",
     "packages/ui/src/lib/builtinSkillI18n.ts": "fbb44f7044214b70148f64dbafc1cea5ea550531e8084965ea978c5defc06deb",
     "packages/ui/src/lib/codingPlanQuotaResetUi.ts": "9ff69e18487e842d56136283b15fe9bfdfd383b79d911b25f967ec69f65af11f",
@@ -33938,11 +33938,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "ccb6f1465ed004d48b89841d4ec58871480b6a669d847a5aec0831f21e4da57b"
+          "sha256": "4777e1ca94c9b78ae97e218f5d1a1e35e1ae906bdc36aaea236f2328b3016f0d"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "0d029027f3fec2cfb2879501509dfc908812e45452c286d8519312b1d781ba6e"
+          "sha256": "8a2c30facc8ef2c8217d0d8b02ed3c385ab6e042d03c49348901a0e0a7a4d0c8"
         },
         {
           "file": "packages/ui/src/v4/WorkflowNotificationToolRow.tsx",
