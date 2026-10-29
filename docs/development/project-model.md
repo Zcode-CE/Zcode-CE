@@ -1,8 +1,9 @@
 # 项目模型：CE 现状与三条落地路线
 
-> 状态：**设计提案（2026-10-30）**，未实现。上游 3.16.2 引入 project-storage 后，X16 附加目录、
-> 多根项目（F1）、归档分组（F4）都以「项目」为状态所有者；CE 目前没有这个实体，直接照搬会把
-> 一张新表连迁移、协议、UI 三层一起塞进来。本文把现状、可选路线与推荐写清楚，供决定后再动手。
+> 状态：**路线 A 已落地（2026-10-30，AppSettings 版）**；B 未启动、C 明确不做。上游 3.16.2 引入
+> project-storage 后，X16 附加目录、多根项目（F1）、归档分组（F4）都以「项目」为状态所有者；
+> CE 没有这个实体，直接照搬会把一张新表连迁移、协议、UI 三层一起塞进来。本文记录当前现状、
+> 三条路线的取舍与 A 的验收/未覆盖清单。
 
 ## 1. CE 现状（按源码）
 
@@ -14,7 +15,8 @@
 | 会话与任务按 `workspacePath`/`workspaceIdentity` 落库；窗口内一个 Local Host 服务多个 workspace    | `packages/services/src/session/*`、`packages/desktop/src/host/*`                                                      |
 | 迁移机制：tasks DB 的 0001–0005 分支登记在 `tasksDatabase/migrations.ts`，新增迁移必须登记并有测试 | `packages/services/src/session/tasksDatabase/`                                                                        |
 | CLI 已支持会话级 `additionalDirectories`（协议 5 处 schema + 环境 prompt + 技能/命令根 + 冷恢复）  | task-45（`f3a7962c`）                                                                                                 |
-| 桌面/调度/机器人**没有**附加目录来源                                                               | 全仓 0 命中（协议字段只被 CLI 消费）                                                                                  |
+| 附加目录的存放与下发：`AppSettings.workspaceAdditionalDirectories` + 新建会话注入                  | `packages/shared/src/workspaceAdditionalDirectories.ts`、`packages/ui/src/v4/SessionPane.tsx`（见 §3A）               |
+| 调度/机器人仍**没有**附加目录来源                                                                  | 全仓 0 命中（消费方未跟进，见 `upstream-sync.md` X16 行）                                                             |
 
 结论：CE 已有「工作区注册表」这个近似的项目索引，但它**只是索引**（只读、无根集合、无归属编辑），
 不能承担上游 `VirtualProject` 的职责；而 `additionalDirectories` 的下发需要一个可编辑、可持久化的
@@ -35,18 +37,25 @@
 
 ## 3. 三条路线
 
-### A. 注册表加一列（最小，推荐先做）
+### A. AppSettings 存附加目录（已落地，2026-10-30）
 
-在 `workspace_registry` 上加 `additional_directories TEXT NOT NULL DEFAULT '[]'`（迁移 0006），
-只作为**该工作区的附加目录集合**：
+`AppSettings.workspaceAdditionalDirectories`：键 = `workspaceKey`
+（`workspaceIdentity?.trim() || workspacePath`），值 = 已归一的绝对路径列表（每工作区 ≤256，
+去空白/去空串/去重）。**这就是附加目录的唯一存放点**：
 
-- 写入口：设置页「工作区 → 附加目录」或工作区右键菜单（新增/移除目录，存工作区级）。
-- 读出口：desktop host 在 session create/resume 时读取该工作区的列，作为 `additionalDirectories`
-  下发给 CLI（CLI 半边已完成，直接生效）。
-- 不引入：项目实体、多根、改名、归档分组、任务归属迁移。
-- 迁移成本：一次加列迁移 + 三处读写（repo/service/host）+ 一个设置 UI；无协议 breaking。
-- 风险：注册表是「索引」而非「配置」，把可变配置塞进索引表是职责扩张；需在表注释与
-  `workspace-registry.md` 里写清「列是 host 级配置，不参与枚举语义」。
+- 写入口：设置页「工作区附加目录」分区（`packages/ui/src/settings/WorkspaceAdditionalDirectoriesSection.tsx`）。
+  目录选择复用 `IPlatformService.selectDirectory`，不新增多选 IPC。增删即保存。
+- 读出口：`packages/ui/src/v4/SessionPane.tsx` 的草稿首发路径与草稿预热
+  （`v4/composer/useDraftSessionPrewarm.ts`）把该工作区的目录放进 v4 `createSession` 的
+  `additionalDirectories`；CLI 半边（task-45）已完成，直接生效。
+- 不引入：项目实体、多根、改名、归档分组、任务归属迁移；**不改 `workspace_registry`**。
+- 生效时机：**新建会话**。CLI 只在创建/恢复期消费该字段，已运行的会话不重新读取 —— 设置页文案
+  与 §5 的未覆盖清单据此如实标注。
+- 为什么不是「注册表加一列」：注册表的行由**枚举 upsert** 维护（`sources` 只记来源），
+  它是「可见工作区集合」的索引。把可变配置放进去，要么被枚举写入覆盖，要么迫使枚举逻辑
+  携带配置 —— 二者都会让索引变成半个配置表，也让「配置变了工作区集合要不要变」这种问题
+  没有干净答案。AppSettings 归属**宿主**（`setting.json`），同一 Host 的所有客户端读到同一份，
+  跨 Host 不同步；而目录路径本来就是每台机器的事实，这个差异是合理的。
 
 ### B. 最小项目表（中）
 
@@ -66,27 +75,43 @@
 
 ## 4. 推荐
 
-**先 A 后按需 B，不做 C。**
+**A 已落地（AppSettings 版）；B 按需，不做 C。**
 
-- A 用最小代价让 X16 从「协议已支持但没人下发」变成真实可用，并验证「附加目录」这个产品点是否
-  有人用（用量数据决定要不要继续投 B）。
+- A 用最小代价让 X16 从「协议已支持但没人下发」变成真实可用（不新增表、不新增迁移、无协议
+  breaking），并验证「附加目录」这个产品点是否有人用（用量数据决定要不要继续投 B）。
 - 只有在出现「一个项目多个文件夹」「项目改名/归档分组」的真实诉求时，再启动 B；B 的 schema 设计
   应直接参考上游字段名与语义（`roots/isPrimary/pinned/archived`），避免二次改名。
 - C 的重开条件：决定跟进 Source Server / 远端项目体系（当前已裁定不跟进，见 backlog 有意不做）。
 
 ## 5. A 的验收与非目标
 
-验收：
+**已落地并验证的部分**：
 
-1. 设置页可为工作区增删附加目录；重启后仍在（迁移 + 持久化）。
-2. 新建/恢复会话时 host 把该工作区的附加目录传给 CLI；CLI Environment 段落与技能/命令根能读到。
+1. 设置页可为工作区增删附加目录；值落在 `setting.json` 的 `workspaceAdditionalDirectories`，
+   重启后仍在。旧配置没有该字段时解析结果也不出现该键（不伪造空表、不产生写放大）。
+2. 新建会话时把该工作区的目录放进 v4 `createSession` 的 `additionalDirectories`，CLI 用它填
+   Environment 段落与技能/命令/子代理根（task-45）。
 3. 工作区身份、权限边界、文件执行根不变（`workspacePath/workspaceIdentity` 仍是唯一身份）。
-4. 迁移幂等：老库升级后默认 `[]`，无数据丢失；重复启动不重复写。
+
+**未覆盖（如实声明）**：
+
+1. **冷恢复 / 重启后重新打开历史会话**：CLI 侧的恢复入口是
+   `v4ConversationSubscribeParams.additionalDirectories`（host→CLI hint），填装点在
+   `packages/services/src/zcode-agent/zcodeAgentService.ts` 的 `subscribeConversationV4`。
+   该路径本轮**没有下发方**（改动范围不含 `packages/services`）：重启后恢复的会话沿用 CLI
+   自己的恢复结果，不重新读设置。
+2. 其它 `createSession` 入口未接：`useSavedWorkflowLauncher`、`useSavedWorkflowPromote`
+   （保存的工作流 / Automation 新建会话）。
+3. 已打开的草稿预热会话：目录变化会让预热会话按 owner key 换代（未提升的 draft 会话被回收重建），
+   已预传到旧会话的附件需要重新添加；已运行的会话不受影响。
 
 非目标（A 明确不做）：多根项目、项目改名、归档分组、任务归属迁移、远端项目校验、自动归档。
 
+远端工作区：设置页只允许**移除**已有条目、不允许添加 —— 目录选择器只返回本机路径，给远端工作区
+选出来的本机路径在远端没有意义。
+
 ## 6. 待决定
 
-1. 是否接受「附加目录存在注册表」的职责扩张，还是把它放 `AppSettings`（客户端设置，多端不同步）？
-2. A 的 UI 入口放设置页还是工作区右键菜单（后者需要侧栏改动，超出 A 的范围）。
-3. 是否为 B 预留 `projectId` 字段（现在加列可避免二次迁移，但会引入未使用的概念）。
+1. 是否为 B 预留 `projectId` 字段（现在加列可避免二次迁移，但会引入未使用的概念）。
+2. 冷恢复下发（上面「未覆盖 1」）是否值得单独立项：一旦接通，「重启后恢复的会话」也会带上
+   当前附加目录，但需要 `packages/services` 的改动与一条冷恢复验证。

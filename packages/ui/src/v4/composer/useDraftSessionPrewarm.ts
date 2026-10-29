@@ -38,6 +38,8 @@ interface DraftPrewarmController {
 /** 预热生命周期纯控制器：创建 → onReady 上抛 → dispose 决策清理。 */
 function startDraftSessionPrewarm(params: {
   workspaceKey: string;
+  /** X16：附加目录只在创建/恢复期进入 runtime，必须随这次 create 一起带上（事后补不了）。 */
+  additionalDirectories?: readonly string[];
   dispatchCommand: DispatchCommand;
   onReady: (sessionId: string) => void;
   /** single-flight owner 用于等待不可取消的 createSession 收口；无论成功失败都只调用一次。 */
@@ -45,7 +47,14 @@ function startDraftSessionPrewarm(params: {
   /** 预热会话初始 config（全局「上次选择」，同步解析）；让投影首帧即全局、不闪。 */
   resolveInitialConfig?: () => Partial<SessionConfigState> | undefined;
 }): DraftPrewarmController {
-  const { workspaceKey, dispatchCommand, onReady, onSettled, resolveInitialConfig } = params;
+  const {
+    workspaceKey,
+    additionalDirectories,
+    dispatchCommand,
+    onReady,
+    onSettled,
+    resolveInitialConfig,
+  } = params;
   let disposed = false;
   let promotionState: "draft" | "pending" | "promoted" | "discarded" = "draft";
   let createdSessionId: string | null = null;
@@ -68,6 +77,9 @@ function startDraftSessionPrewarm(params: {
 
   const createPayload = () => {
     const createPayload: Record<string, unknown> = { workspaceId: workspaceKey };
+    if (additionalDirectories && additionalDirectories.length > 0) {
+      createPayload.additionalDirectories = [...additionalDirectories];
+    }
     const initialConfig = resolveInitialConfig?.();
     if (initialConfig && Object.keys(initialConfig).length > 0) {
       // 预热会话首帧即用全局模型（CLI 归并 createSession.config），不闪 workspace 缺省。
@@ -204,6 +216,8 @@ class DraftSessionPrewarmCoordinator {
 
   constructor(
     private readonly workspaceKey: string,
+    /** 本代预热会话要带上的附加目录；变化由 owner key 换代会话（见 logicalDraftOwnerKey）。 */
+    private readonly additionalDirectories: readonly string[] | undefined,
     dispatchCommand: DispatchCommand,
     resolveInitialConfig: (() => Partial<SessionConfigState> | undefined) | undefined,
     private readonly onEmpty: () => void,
@@ -320,6 +334,7 @@ class DraftSessionPrewarmCoordinator {
     let current!: DraftPrewarmCurrent;
     const controller = startDraftSessionPrewarm({
       workspaceKey: this.workspaceKey,
+      additionalDirectories: this.additionalDirectories,
       dispatchCommand: (type, payload, targetSessionId) =>
         this.dispatchCommand(type, payload, targetSessionId),
       resolveInitialConfig: () => this.resolveInitialConfig?.(),
@@ -421,14 +436,28 @@ const draftPrewarmCoordinatorsByTransport = new Map<
   Map<string, DraftSessionPrewarmCoordinator>
 >();
 
-function logicalDraftOwnerKey(workspaceKey: string, paneId: string): string {
-  return JSON.stringify([workspaceKey, paneId]);
+/**
+ * 逻辑 draft owner 的身份：workspace + pane + 本代 createSession 的创建期参数。
+ *
+ * 附加目录属于创建期参数（CLI 只在创建/恢复时读取），所以它进 owner key：目录一变就换一代，
+ * 旧代按既有回收路径 dispose（未提升的 draft 会话被 deleteSession），下一次创建带上新目录。
+ * 不这么做的话，用户"在设置里加了目录、在当前草稿页首发"会静默沿用旧目录 —— 而界面上
+ * 那条设置看起来已经在生效。
+ */
+function logicalDraftOwnerKey(
+  workspaceKey: string,
+  paneId: string,
+  additionalDirectoriesSignature: string,
+): string {
+  return JSON.stringify([workspaceKey, paneId, additionalDirectoriesSignature]);
 }
 
 function getDraftSessionPrewarmCoordinator(params: {
   workspaceKey: string;
   paneId: string;
   transportIdentity: unknown;
+  additionalDirectories: readonly string[] | undefined;
+  additionalDirectoriesSignature: string;
   dispatchCommand: DispatchCommand;
   resolveInitialConfig: (() => Partial<SessionConfigState> | undefined) | undefined;
 }): DraftSessionPrewarmCoordinator {
@@ -437,11 +466,16 @@ function getDraftSessionPrewarmCoordinator(params: {
     transportCoordinators = new Map();
     draftPrewarmCoordinatorsByTransport.set(params.transportIdentity, transportCoordinators);
   }
-  const ownerKey = logicalDraftOwnerKey(params.workspaceKey, params.paneId);
+  const ownerKey = logicalDraftOwnerKey(
+    params.workspaceKey,
+    params.paneId,
+    params.additionalDirectoriesSignature,
+  );
   let coordinator = transportCoordinators.get(ownerKey);
   if (!coordinator) {
     coordinator = new DraftSessionPrewarmCoordinator(
       params.workspaceKey,
+      params.additionalDirectories,
       params.dispatchCommand,
       params.resolveInitialConfig,
       () => {
@@ -469,6 +503,11 @@ export function useDraftSessionPrewarm(params: {
   invalidationVersion?: number;
   /** conversation provider 的 transport identity；同 workspace lease 变化时保持不变。 */
   transportIdentity: unknown;
+  /**
+   * X16 附加目录：随本代 createSession 一次性进入 runtime。内容一变就换一代预热会话
+   * （归属 owner key），避免"设置里加了目录、当前草稿页首发却沿用旧目录"的静默失效。
+   */
+  additionalDirectories?: readonly string[];
   dispatchCommand: DispatchCommand;
   /** 预热会话初始 config（全局「上次选择」，同步解析）；让投影首帧即全局、不闪。 */
   resolveInitialConfig?: () => Partial<SessionConfigState> | undefined;
@@ -478,15 +517,18 @@ export function useDraftSessionPrewarm(params: {
     workspaceKey,
     paneId,
     transportIdentity,
+    additionalDirectories,
     invalidationVersion = 0,
     dispatchCommand,
     resolveInitialConfig,
   } = params;
-  // workspace/pane/transport 共同定义逻辑 owner：同 owner 重挂复用 single-flight，transport
-  // 换代仍生成新 coordinator，确保旧 session 的清理不会误走新 transport。
+  // 按值签名比较：调用方每帧都可能换一个新的数组身份，内容相同就不能换代。
+  const additionalDirectoriesSignature = (additionalDirectories ?? []).join("\u0000");
+  // workspace/pane/transport/创建期参数共同定义逻辑 owner：同 owner 重挂复用 single-flight，
+  // transport 换代仍生成新 coordinator，确保旧 session 的清理不会误走新 transport。
   const owner = useMemo(
-    () => ({ workspaceKey, paneId, transportIdentity }),
-    [paneId, transportIdentity, workspaceKey],
+    () => ({ workspaceKey, paneId, transportIdentity, additionalDirectoriesSignature }),
+    [additionalDirectoriesSignature, paneId, transportIdentity, workspaceKey],
   );
   const coordinator = useMemo(
     () =>
@@ -494,6 +536,8 @@ export function useDraftSessionPrewarm(params: {
         workspaceKey,
         paneId,
         transportIdentity,
+        additionalDirectories,
+        additionalDirectoriesSignature,
         dispatchCommand,
         resolveInitialConfig,
       }),

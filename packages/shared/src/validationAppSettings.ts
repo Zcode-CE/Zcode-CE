@@ -13,6 +13,10 @@ import { providerFamilyConnectionSelectionSettingsSchema } from "./provider-fami
 import { resolveGithubMirrorPrefix } from "./githubMirror.js";
 import { normalizeRemoteAssetCdnBaseUrl } from "./remoteAssetCdn.js";
 import {
+  MAX_WORKSPACE_ADDITIONAL_DIRECTORIES,
+  normalizeWorkspaceAdditionalDirectories,
+} from "./workspaceAdditionalDirectories.js";
+import {
   MAX_CUSTOM_DANGEROUS_ENTRIES,
   MAX_DANGEROUS_PATTERN_LENGTH,
   normalizeDangerousPattern,
@@ -62,6 +66,17 @@ export const integratedTerminalShellSelectionSchema = z.discriminatedUnion("mode
   }),
 ]);
 const providerFamilyDomainSchema = z.enum(["zai", "bigmodel"]);
+
+/**
+ * 工作区附加目录表（X16）：键 = workspaceKey，值 = 目录列表。
+ *
+ * 归一化（去空白、去空串、去重、≤256）走 shared 的同一份纯函数：设置页保存与读盘共用，
+ * 手工编辑 setting.json 写进去的重复项/空白项不会绕过。整表无有效项时 `.transform` 返回
+ * undefined —— 「字段缺席」与「空表」等价，不设 default，免得给每份老配置伪造空表。
+ */
+const workspaceAdditionalDirectoriesSchema = z
+  .record(z.string(), z.array(z.string()).max(MAX_WORKSPACE_ADDITIONAL_DIRECTORIES))
+  .transform((value) => normalizeWorkspaceAdditionalDirectories(value));
 
 /**
  * 危险命令清单的用户偏差。三项都是可选的：**缺席即默认**（严格 + 默认项全开），
@@ -555,6 +570,7 @@ const appSettingsObjectSchema = z.object({
   lastWorkspaceSession: z.array(appWorkspaceSessionEntrySchema).default([]),
   lastActiveTabIndex: z.number().int().nonnegative().default(0),
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
+  workspaceAdditionalDirectories: workspaceAdditionalDirectoriesSchema.optional(),
   dataBaseDir: z.string().trim().min(1).optional(),
   pendingPostUpdateReleaseNotes: postUpdateReleaseNotesPayloadSchema.optional(),
   receivePreviewUpdates: z.boolean().default(false),
@@ -646,6 +662,8 @@ export const appSettingsPatchSchema = z.object({
   lastWorkspaceSession: z.array(appWorkspaceSessionEntrySchema).optional(),
   lastActiveTabIndex: z.number().int().nonnegative().optional(),
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
+  // 设置页按整表替换写入（含空表 = 清除）；归一化与读盘共用同一份实现。
+  workspaceAdditionalDirectories: workspaceAdditionalDirectoriesSchema.optional(),
   dataBaseDir: z.string().trim().min(1).optional(),
   pendingPostUpdateReleaseNotes: postUpdateReleaseNotesPayloadSchema.optional(),
   receivePreviewUpdates: z.boolean().optional(),

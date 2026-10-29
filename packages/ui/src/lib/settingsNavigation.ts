@@ -17,6 +17,8 @@ export type SettingsSectionId =
   | "commands"
   | "hooks"
   | "workspaceFileSearch"
+  // 工作区附加目录（X16）：按工作区编辑，新建会话时随 createSession 下发给 CLI。
+  | "workspaceAdditionalDirectories"
   | "computerUse"
   | "automations"
   | "shortcuts"
@@ -86,6 +88,7 @@ function isSettingsSectionId(value: string): value is SettingsSectionId {
     value === "commands" ||
     value === "hooks" ||
     value === "workspaceFileSearch" ||
+    value === "workspaceAdditionalDirectories" ||
     value === "computerUse" ||
     value === "automations" ||
     value === "shortcuts" ||

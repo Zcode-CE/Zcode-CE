@@ -6,6 +6,7 @@ import type { ZCodeProvider } from "./zcode-task-types-core.js";
 import type { WorkspacePurpose } from "./workspacePurpose.js";
 import type { EmbeddedBrowserViewportPreference } from "./browser-use/command-metadata.js";
 import type { DangerousCommandPolicy } from "./dangerousCommands.js";
+import type { WorkspaceAdditionalDirectories } from "./workspaceAdditionalDirectories.js";
 
 // ── Domain types ──
 
@@ -356,6 +357,15 @@ export interface AppSettings {
   lastActiveTabIndex?: number;
   /** 每个 workspace 的最后活跃 taskId，下次打开自动恢复 */
   lastActiveTaskByWorkspace?: Record<string, string>;
+  /**
+   * 每个工作区的「附加目录」（X16）：键 = workspaceKey（`workspaceIdentity?.trim() || workspacePath`）。
+   *
+   * 语义：新建会话时随 v4 `createSession` 一次性进入 runtime（环境 prompt、技能/命令/子代理根），
+   * 只对之后新建的会话生效；已运行的会话不重新读取，改动也不重建已有会话。
+   * 缺席 / 空表 / 空列表都等价于「该工作区没有附加目录」（见 workspaceAdditionalDirectories.ts
+   * 的归一化：去空白、去空串、去重、每个工作区 ≤256）。
+   */
+  workspaceAdditionalDirectories?: WorkspaceAdditionalDirectories;
   /** 数据目录的根路径（替代 homedir），默认为 os.homedir()；.zcode/v2 后缀不变 */
   dataBaseDir?: string;
   /** 自动更新安装完成后，等待首次启动展示的版本说明 */

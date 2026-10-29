@@ -70,6 +70,7 @@ import { SegmentPill } from "@/settings/PluginStoreListView.js";
 import { PluginsSection } from "@/settings/PluginsSection.js";
 import { HooksSection } from "@/settings/HooksSection.js";
 import { WorkspaceFileSearchSection } from "@/settings/WorkspaceFileSearchSection.js";
+import { WorkspaceAdditionalDirectoriesSection } from "@/settings/WorkspaceAdditionalDirectoriesSection.js";
 import { MemorySettingsSection } from "@/settings/MemorySettingsSection.js";
 import { BrowserSettingsSection } from "@/settings/BrowserSettingsSection.js";
 import { ComputerUseSection } from "@/settings/ComputerUseSection.js";
@@ -1954,6 +1955,11 @@ export function SettingsPage({
                           />
                         ) : activeSection === "workspaceFileSearch" ? (
                           <WorkspaceFileSearchSection
+                            workspacePath={activeWorkspacePath}
+                            workspaceIdentity={activeWorkspaceIdentity}
+                          />
+                        ) : activeSection === "workspaceAdditionalDirectories" ? (
+                          <WorkspaceAdditionalDirectoriesSection
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                           />

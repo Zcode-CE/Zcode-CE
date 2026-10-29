@@ -3982,6 +3982,24 @@ const zhCN: Record<string, string> = {
   "settings.workspaceFileSearch.revealHint": "保存后即可在项目根目录找到 .zcodeignore",
   "settings.workspaceFileSearch.unsaved": "有未保存的修改",
   "settings.workspaceFileSearch.noWorkspace": "当前没有打开的项目，无法配置搜索忽略规则。",
+  "settings.workspaceAdditionalDirectories.title": "工作区附加目录",
+  "settings.workspaceAdditionalDirectories.description":
+    "把这个工作区之外、但同属这个项目的目录一并交给 Agent：它们会出现在环境信息里，并作为技能、命令与子智能体的搜索根。",
+  "settings.workspaceAdditionalDirectories.workspaceLabel": "工作区",
+  "settings.workspaceAdditionalDirectories.effectHint":
+    "只对之后新建的会话生效；已在运行的会话保持原有目录。",
+  "settings.workspaceAdditionalDirectories.empty": "还没有附加目录，新建会话时只使用工作区根目录。",
+  "settings.workspaceAdditionalDirectories.add": "添加目录",
+  "settings.workspaceAdditionalDirectories.remove": "移除",
+  "settings.workspaceAdditionalDirectories.removeLabel": "移除 {path}",
+  "settings.workspaceAdditionalDirectories.saved": "已保存，新建会话生效",
+  "settings.workspaceAdditionalDirectories.saveFailed": "保存失败，请查看日志",
+  "settings.workspaceAdditionalDirectories.noWorkspace":
+    "当前没有打开的项目，先打开一个工作区再配置附加目录。",
+  "settings.workspaceAdditionalDirectories.limitReached": "已达 {count} 个目录上限。",
+  "settings.workspaceAdditionalDirectories.remoteOption": "{path}（远程）",
+  "settings.workspaceAdditionalDirectories.remoteUnsupported":
+    "远程工作区不支持添加目录：目录选择器只返回本机路径，远端路径无从确定。",
   "settings.hooks.description": "管理任务生命周期钩子，在特定事件发生时自动执行命令。",
   "settings.hooks.enabled": "已启用",
   "settings.hooks.disabled": "未启用",

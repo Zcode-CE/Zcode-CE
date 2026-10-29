@@ -4256,6 +4256,25 @@ const enUS: Record<string, string> = {
   "settings.hooks.review.reason.host_unavailable": "This connection cannot review this Hook",
   "settings.hooks.review.reason.rejected": "Request rejected",
   "settings.hooks.title": "Hooks",
+  "settings.workspaceAdditionalDirectories.title": "Workspace Additional Directories",
+  "settings.workspaceAdditionalDirectories.description":
+    "Folders outside the workspace that belong to the same project: they are added to the environment info and used as discovery roots for skills, commands and subagents.",
+  "settings.workspaceAdditionalDirectories.workspaceLabel": "Workspace",
+  "settings.workspaceAdditionalDirectories.effectHint":
+    "Applies to sessions created from now on; sessions already running keep their current directories.",
+  "settings.workspaceAdditionalDirectories.empty":
+    "No additional directories yet; new sessions use the workspace root only.",
+  "settings.workspaceAdditionalDirectories.add": "Add directory",
+  "settings.workspaceAdditionalDirectories.remove": "Remove",
+  "settings.workspaceAdditionalDirectories.removeLabel": "Remove {path}",
+  "settings.workspaceAdditionalDirectories.saved": "Saved; new sessions will use it",
+  "settings.workspaceAdditionalDirectories.saveFailed": "Save failed; check the logs",
+  "settings.workspaceAdditionalDirectories.noWorkspace":
+    "No workspace is open. Open one to configure additional directories.",
+  "settings.workspaceAdditionalDirectories.limitReached": "Limit of {count} directories reached.",
+  "settings.workspaceAdditionalDirectories.remoteOption": "{path} (remote)",
+  "settings.workspaceAdditionalDirectories.remoteUnsupported":
+    "Remote workspaces cannot add directories here: the picker only returns local paths.",
   "settings.workspaceFileSearch.title": "Project Search Scope",
   "settings.workspaceFileSearch.description":
     "Edit .zcodeignore rules (gitignore syntax) that scope workspace file search. Takes effect on the next search after saving.",

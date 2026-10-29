@@ -18,6 +18,7 @@ import {
   WandSparkles,
   Keyboard,
   FileSearch,
+  FolderPlus,
   LifeBuoy,
   ShieldAlert,
   CloudDownload,
@@ -160,6 +161,14 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     id: "workspaceFileSearch",
     icon: FileSearch,
     titleId: "settings.workspaceFileSearch.title",
+    groupId: "basics",
+  },
+  // 工作区附加目录（X16）紧跟「项目搜索范围」：两者都是"这个项目在磁盘上包含哪些目录"的
+  // 工作区级配置。它只在新会话创建时下发（环境 prompt / 技能与命令根），页面文案如实说明。
+  {
+    id: "workspaceAdditionalDirectories",
+    icon: FolderPlus,
+    titleId: "settings.workspaceAdditionalDirectories.title",
     groupId: "basics",
   },
   // 远程资产发布根（自定义 CDN 基址）：远程工作区取资产的位置，属基础设置里的"连通性"配置。

@@ -17,7 +17,9 @@ import {
 import { Hand } from "lucide-react";
 import {
   BUILTIN_MODEL_PROVIDER_IDS,
+  buildAdditionalDirectoriesPayload,
   buildCustomSupplierKey,
+  resolveWorkspaceAdditionalDirectories,
   TID_CHAT_EMPTY,
   TID_V4_SESSION_PANE,
   testId,
@@ -1243,6 +1245,16 @@ export function SessionPane({
     ],
   );
   const { settings: sharedSettings } = useSettings();
+  // X16 附加目录：随 createSession 一次性进入 runtime（CLI 只在创建/恢复期消费），
+  // 所以这里只把它带进创建命令，不参与任何其它投影。空目录时 payload 不带该字段。
+  const workspaceAdditionalDirectories = useMemo(
+    () =>
+      resolveWorkspaceAdditionalDirectories(
+        sharedSettings?.workspaceAdditionalDirectories,
+        workspaceKey,
+      ),
+    [sharedSettings?.workspaceAdditionalDirectories, workspaceKey],
+  );
   const appFollowupMode = resolveAppFollowupMode(sharedSettings);
   const messageStreamShowReasoning = sharedSettings?.messageStreamShowReasoning ?? true;
   const messageStreamShowTodos = sharedSettings?.messageStreamShowTodos ?? false;
@@ -2087,6 +2099,8 @@ export function SessionPane({
     enabled: sessionId === null && draftAgentStartupAllowed,
     workspaceKey,
     paneId,
+    // 预热会话就是首发复用的那份会话：附加目录必须在这里就带上（创建期参数，事后补不了）。
+    additionalDirectories: workspaceAdditionalDirectories,
     invalidationVersion: draftRuntimeInvalidationVersion,
     // SessionDataLayer 来自 workspace connection registry：同 transport generation 的 pane/remount
     // 共享 identity；provider wrapper 重建产生的新 sendCommand 函数不能误判为 transport 换代。
@@ -2505,7 +2519,11 @@ export function SessionPane({
         );
         const createAck = await dispatchSubmissionCommand(
           "createSession",
-          { workspaceId: workspaceKey, ...draftConfigPayload },
+          {
+            workspaceId: workspaceKey,
+            ...buildAdditionalDirectoriesPayload(workspaceAdditionalDirectories),
+            ...draftConfigPayload,
+          },
           null,
         );
         if (createAck.status !== "accepted") {
@@ -2580,6 +2598,7 @@ export function SessionPane({
             "createSession",
             {
               workspaceId: workspaceKey,
+              ...buildAdditionalDirectoriesPayload(workspaceAdditionalDirectories),
               firstInput: { text: effectiveText, ...submission },
               ...draftConfigPayload,
             },
@@ -2600,7 +2619,11 @@ export function SessionPane({
         // 不做任何附件上传，也不会让非 ready 附件绕过 composer 门禁。
         const createAck = await dispatchSubmissionCommand(
           "createSession",
-          { workspaceId: workspaceKey, ...draftConfigPayload },
+          {
+            workspaceId: workspaceKey,
+            ...buildAdditionalDirectoriesPayload(workspaceAdditionalDirectories),
+            ...draftConfigPayload,
+          },
           null,
         );
         if (createAck.status !== "accepted") {
@@ -2676,6 +2699,7 @@ export function SessionPane({
       createSubmissionFromComposer,
       sessionId,
       settleCurrentQueueInputs,
+      workspaceAdditionalDirectories,
       workspaceIdentity,
       workspaceKey,
       workspacePath,
