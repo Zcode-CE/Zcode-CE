@@ -5,6 +5,7 @@ import { cn } from "@/components/lib/utils.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useGlobalTaskList } from "@/hooks/useGlobalTaskList.js";
+import { useSettings } from "@/hooks/useSettingService.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { formatTaskRelativeTime } from "@/lib/taskListItemPresentation.js";
@@ -60,21 +61,20 @@ export function WorkspaceArchivedTasksFlatSection({
     }),
     [sessionIdByWorkspaceIdentity, sessionIdByWorkspacePath, sessionsById],
   );
+  const { settings: sharedSettings } = useSettings();
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [deletingTaskKeys, setDeletingTaskKeys] = useState<Set<string>>(() => new Set());
   const collapsedLimit = 20;
   const workspaceLabelByKey = useMemo(
     () =>
       new Map(
-        workspaceTabs.map(
-          (tab) =>
-            [
-              buildTaskWorkspaceKey(tab.workspacePath, tab.workspaceIdentity),
-              tab.label || getPathLeaf(tab.workspacePath),
-            ] as const,
-        ),
+        workspaceTabs.map((tab) => {
+          const key = buildTaskWorkspaceKey(tab.workspacePath, tab.workspaceIdentity);
+          const override = sharedSettings?.workspaceDisplayNames?.[key]?.trim();
+          return [key, override || tab.label || getPathLeaf(tab.workspacePath)] as const;
+        }),
       ),
-    [workspaceTabs],
+    [sharedSettings?.workspaceDisplayNames, workspaceTabs],
   );
 
   const workspaceServiceLookup = useMemo(
@@ -101,7 +101,12 @@ export function WorkspaceArchivedTasksFlatSection({
         workspaces={workspaceTabs.map((tab) => ({
           workspacePath: tab.workspacePath,
           workspaceIdentity: tab.workspaceIdentity,
-          label: tab.label || getPathLeaf(tab.workspacePath),
+          label:
+            sharedSettings?.workspaceDisplayNames?.[
+              buildTaskWorkspaceKey(tab.workspacePath, tab.workspaceIdentity)
+            ]?.trim() ||
+            tab.label ||
+            getPathLeaf(tab.workspacePath),
           service: workspaceServiceLookup.get(
             buildTaskWorkspaceKey(tab.workspacePath, tab.workspaceIdentity),
           )?.services.zcodeTaskService,

@@ -476,7 +476,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
 
       onOpenFileTree({
         workspacePath: tab.workspacePath,
-        workspaceName: tab.label,
+        workspaceName: displayNameOverride?.trim() || tab.label,
         workspaceIdentity: tab.workspaceIdentity,
         workspaceRemoteSessionId: tab.remoteSessionId,
       });

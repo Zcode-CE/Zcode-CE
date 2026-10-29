@@ -30,3 +30,16 @@ test("侧栏从设置读取 workspaceDisplayNames 并传给两种行渲染", () 
 test("可拖拽包装层把展示名透传到行组件", () => {
   assert.match(sortableSource, /displayNameOverride=\{displayNameOverride\}/u);
 });
+
+test("文件树请求的 workspaceName 也使用展示名", () => {
+  assert.match(itemSource, /workspaceName: displayNameOverride\?\.trim\(\) \|\| tab\.label/u);
+});
+
+test("归档平铺列表的工作区标签使用展示名并回落", () => {
+  const archivedSource = readFileSync(
+    resolve(here, "../src/WorkspaceArchivedTasksFlatSection.tsx"),
+    "utf8",
+  );
+  assert.match(archivedSource, /sharedSettings\?\.workspaceDisplayNames\?\./u);
+  assert.match(archivedSource, /override \|\| tab\.label \|\| getPathLeaf/u);
+});
