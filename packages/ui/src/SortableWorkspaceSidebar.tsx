@@ -36,6 +36,7 @@ export const SortableWorkspaceSidebarItem = memo(function SortableWorkspaceSideb
   runtimeState,
   persistedSessionCount,
   lastActivityAt,
+  displayNameOverride,
 }: {
   tab: WorkspaceTabState;
   isActiveWorkspace: boolean;
@@ -70,6 +71,8 @@ export const SortableWorkspaceSidebarItem = memo(function SortableWorkspaceSideb
   runtimeState?: WorkspaceRuntimeState;
   persistedSessionCount?: number | null;
   lastActivityAt?: number | null;
+  /** B′ 展示名：透传给行组件，仅影响显示。 */
+  displayNameOverride?: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tab.id,
@@ -140,6 +143,7 @@ export const SortableWorkspaceSidebarItem = memo(function SortableWorkspaceSideb
       runtimeState={runtimeState}
       persistedSessionCount={persistedSessionCount}
       lastActivityAt={lastActivityAt}
+      displayNameOverride={displayNameOverride}
     />
   );
 });

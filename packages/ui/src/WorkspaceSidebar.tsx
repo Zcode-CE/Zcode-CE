@@ -124,6 +124,7 @@ import { StickyGroupHeaderSlot } from "@/workspace-grouped-tasks/sticky-group-he
 import type { CreateTaskRequest } from "@/app-shell/types.js";
 import { WorkspaceSidebarItem } from "@/WorkspaceSidebarItem.js";
 import { useWorkspaceRegistry } from "@/hooks/useWorkspaceRegistry.js";
+import { useSettings } from "@/hooks/useSettingService.js";
 import {
   buildRegistryRowRenderTab,
   buildWorkspaceSidebarRows,
@@ -392,6 +393,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   // 现在行由注册表决定，因此三端一致、点击不改变行的身份。
   const registry = useWorkspaceRegistry();
   const [showAllRegistryRows, setShowAllRegistryRows] = useState(false);
+  const { settings: sharedSettings } = useSettings();
   const registryEntriesForRows = showAllRegistryRows ? registry.entries : registry.defaultView;
   // viewOnly tab（点击注册表行时创建、只承载激活态）不得作为「本客户端已打开的工作区」参与枚举：
   // 它不进设置，若混进 tabs 输入，注册表行会被它认领成可拖拽/可移除的真 tab。
@@ -1671,6 +1673,11 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                                             }
                                             persistedSessionCount={row.persistedSessionCount}
                                             lastActivityAt={row.lastActivityAt}
+                                            displayNameOverride={
+                                              sharedSettings?.workspaceDisplayNames?.[
+                                                row.workspaceKey
+                                              ]
+                                            }
                                           />
                                         ) : (
                                           <WorkspaceSidebarItem
@@ -1701,6 +1708,11 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                                             }
                                             persistedSessionCount={row.persistedSessionCount}
                                             lastActivityAt={row.lastActivityAt}
+                                            displayNameOverride={
+                                              sharedSettings?.workspaceDisplayNames?.[
+                                                row.workspaceKey
+                                              ]
+                                            }
                                             reconnectingRemoteWorkspaceKeys={
                                               reconnectingRemoteWorkspaceKeys
                                             }

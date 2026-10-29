@@ -78,7 +78,8 @@
   **置顶/排序** = 客户端设置（与 `pinnedKeys` 同型）；**任务归组** = 既有 `task_groups`（F4 归档分组直接
   复用这套表与侧栏 UI，不引第二套）。
 - 缺的只是「一份投影函数 + UI 读它」：`resolveWorkspaceProjectView(workspaceKey)` 聚合上述四处，供侧栏/
-  F1 目录编辑器读取。
+  F1 目录编辑器读取。已接：设置页展示名输入 → 侧栏行标签（`WorkspaceSidebarItem` 的
+  `displayNameOverride`，可拖拽行与注册表行都传）；尚未接标题栏与窗口标题。
 - F1 多文件夹：`selectDirectories`（多选）写回附加根列表 —— 不需要新表，也不需要项目实体。
 - 与上游差异：没有 `projectId`、没有 `hostId`、没有跨 Host 项目库；这些只在需要「任务跨 Host 迁移」或
   「远端项目校验」时才需要（对应 C 的重开条件）。

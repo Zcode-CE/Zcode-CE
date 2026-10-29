@@ -155,6 +155,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
   runtimeState,
   persistedSessionCount,
   lastActivityAt,
+  displayNameOverride,
   isRegistryDerived = false,
 }: {
   tab: WorkspaceTabState;
@@ -195,6 +196,8 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
   /** 持久层会话数（注册表事实）。 */
   persistedSessionCount?: number | null;
   lastActivityAt?: number | null;
+  /** B′ 展示名：用户覆盖优先于 tab.label（仅展示，不影响身份/路径）。 */
+  displayNameOverride?: string;
   /**
    * 本行由服务端注册表派生（本客户端设置里没有它）。不是真 tab：
    * 关闭按钮等「对 tab 操作」的入口必须隐藏，点开走 onOpenRegistryWorkspace。
@@ -247,7 +250,10 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     isDisconnectedRemoteWorkspace && reconnectingRemoteWorkspaceKeys.includes(remoteWorkspaceKey),
   );
   const remoteWorkspaceError = remoteWorkspaceErrorByWorkspaceKey[remoteWorkspaceKey];
-  const workspaceSidebarLabel = formatRemoteWorkspaceDisplayLabel(tab.label, tab.remoteTarget);
+  const workspaceSidebarLabel = formatRemoteWorkspaceDisplayLabel(
+    displayNameOverride?.trim() || tab.label,
+    tab.remoteTarget,
+  );
   const sshWorkspaceTooltipDetails = getSshWorkspaceTooltipDetails(tab);
   const reconnectRuntimeLogs =
     reconnectingRemoteWorkspaceLogsByWorkspaceKey[remoteWorkspaceKey] ?? [];
