@@ -182,6 +182,7 @@ The dynamic-workflow timeline draws with a feature-scoped token family:
 - Keep brand color usage sparse and intentional.
 - Never mix `bg-background`, `bg-card`, and `bg-surface` without a clear layering reason.
 - Never replace semantic tokens with ad hoc values like `text-white/60`, `border-white/10`, or arbitrary neutral alpha fills.
+- Enforcement: `packages/ui/test/designTokenRatchet.test.ts` scans `packages/ui/src` for raw font sizes and raw color alphas against a tracked baseline (`.design-token-baseline.json`). New violations fail; after cleaning up, tighten the baseline with `node scripts/design-token-baseline.mjs` and commit the result.
 
 - `DesktopWindowFrame` uses `bg-background-alt` on macOS desktop. Windows, Linux, and Web keep `bg-background-win-alt`; child surface colors remain independent.
 - Linux desktop uses a `16px` outer window-shell radius around the `12px` workspace panels and their `4px` outer inset. Keep the shell radius and compositor clip path equal; maximized windows use `0px`.

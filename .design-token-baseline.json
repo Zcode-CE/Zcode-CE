@@ -1,0 +1,173 @@
+{
+  "total": 109,
+  "files": {
+    "packages/ui/src/BotsDialog.tsx": {
+      "size": 1,
+      "color": 0
+    },
+    "packages/ui/src/ChatErrorBanner.tsx": {
+      "size": 0,
+      "color": 2
+    },
+    "packages/ui/src/ConfirmDialog.tsx": {
+      "size": 0,
+      "color": 1
+    },
+    "packages/ui/src/ErrorBoundary.tsx": {
+      "size": 1,
+      "color": 0
+    },
+    "packages/ui/src/GitActionMenu.tsx": {
+      "size": 1,
+      "color": 0
+    },
+    "packages/ui/src/RemoteConnectionWizardChrome.tsx": {
+      "size": 1,
+      "color": 0
+    },
+    "packages/ui/src/SettingsPage.tsx": {
+      "size": 2,
+      "color": 0
+    },
+    "packages/ui/src/ToolCallBlocks/renderers/CuaScreenshotSection.tsx": {
+      "size": 3,
+      "color": 0
+    },
+    "packages/ui/src/ToolCallBlocks/renderers/cuaDetails.tsx": {
+      "size": 12,
+      "color": 0
+    },
+    "packages/ui/src/ToolCallBlocks/renderers/cuaListDetails.tsx": {
+      "size": 6,
+      "color": 0
+    },
+    "packages/ui/src/WelcomeScreen.tsx": {
+      "size": 1,
+      "color": 1
+    },
+    "packages/ui/src/app-shell/AnimatedSidePanePanel.tsx": {
+      "size": 1,
+      "color": 0
+    },
+    "packages/ui/src/components/ai-elements/attachments.tsx": {
+      "size": 0,
+      "color": 1
+    },
+    "packages/ui/src/components/ui/alert-dialog.tsx": {
+      "size": 0,
+      "color": 1
+    },
+    "packages/ui/src/components/ui/dialog.tsx": {
+      "size": 0,
+      "color": 1
+    },
+    "packages/ui/src/components/ui/toast.tsx": {
+      "size": 1,
+      "color": 0
+    },
+    "packages/ui/src/gen-ui/adapters/theme.ts": {
+      "size": 1,
+      "color": 0
+    },
+    "packages/ui/src/gen-ui/components/GenUiCard.tsx": {
+      "size": 0,
+      "color": 1
+    },
+    "packages/ui/src/git-branch-switcher/GitBranchDialogs.tsx": {
+      "size": 3,
+      "color": 0
+    },
+    "packages/ui/src/highspeed/HighspeedShareNoticeCard.tsx": {
+      "size": 0,
+      "color": 1
+    },
+    "packages/ui/src/onboarding/OnboardingDialogParts.tsx": {
+      "size": 1,
+      "color": 0
+    },
+    "packages/ui/src/onboarding/OnboardingFlowParts.tsx": {
+      "size": 1,
+      "color": 0
+    },
+    "packages/ui/src/onboarding/OnboardingWelcomeAsciiVisual.tsx": {
+      "size": 1,
+      "color": 0
+    },
+    "packages/ui/src/onboarding/OnboardingWelcomeView.tsx": {
+      "size": 1,
+      "color": 1
+    },
+    "packages/ui/src/openWorkspacePageThemeHero.tsx": {
+      "size": 0,
+      "color": 8
+    },
+    "packages/ui/src/plugin-ui/domain/pluginUiStyleVariables.ts": {
+      "size": 6,
+      "color": 0
+    },
+    "packages/ui/src/previewPaneOfficeXlsxContent.tsx": {
+      "size": 2,
+      "color": 0
+    },
+    "packages/ui/src/root/RootStartupLoading.tsx": {
+      "size": 0,
+      "color": 1
+    },
+    "packages/ui/src/settings/AutomationEditView.tsx": {
+      "size": 0,
+      "color": 10
+    },
+    "packages/ui/src/settings/ComputerUseSection.tsx": {
+      "size": 3,
+      "color": 0
+    },
+    "packages/ui/src/settings/OffPeakEditActionsMenu.tsx": {
+      "size": 0,
+      "color": 2
+    },
+    "packages/ui/src/settings/OffPeakEditView.tsx": {
+      "size": 0,
+      "color": 1
+    },
+    "packages/ui/src/settings/OffPeakHistoryTab.tsx": {
+      "size": 0,
+      "color": 2
+    },
+    "packages/ui/src/settings/OffPeakTaskList.tsx": {
+      "size": 0,
+      "color": 3
+    },
+    "packages/ui/src/settings/PluginStoreDetailView.tsx": {
+      "size": 1,
+      "color": 6
+    },
+    "packages/ui/src/settings/PluginStorePage.tsx": {
+      "size": 2,
+      "color": 0
+    },
+    "packages/ui/src/settings/model-provider-section/Detail.tsx": {
+      "size": 4,
+      "color": 1
+    },
+    "packages/ui/src/settings/model-provider-section/StartPlanCard.tsx": {
+      "size": 1,
+      "color": 0
+    },
+    "packages/ui/src/v4/ConversationComposer.tsx": {
+      "size": 2,
+      "color": 0
+    },
+    "packages/ui/src/v4/ConversationDraftEmptyState.tsx": {
+      "size": 1,
+      "color": 0
+    },
+    "packages/ui/src/v4/ConversationTurnGroup.tsx": {
+      "size": 0,
+      "color": 4
+    },
+    "packages/ui/src/v4/V4UserInputDialog.tsx": {
+      "size": 0,
+      "color": 1
+    }
+  }
+}
