@@ -15,7 +15,7 @@
 
 | 步骤     | 命令                                       |
 | -------- | ------------------------------------------ |
-| 类型检查 | `pnpm typecheck`                           |
+| 类型检查 | `pnpm typecheck` + `pnpm typecheck:cli`    |
 | Lint     | `pnpm lint`                                |
 | 格式检查 | `pnpm fmt:check`                           |
 | 测试     | `pnpm test`                                |

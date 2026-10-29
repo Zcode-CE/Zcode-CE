@@ -127,6 +127,11 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # CLI 各包是独立 tsc 工程，不在根 typecheck 的工程列表里；漏跑会让 shared 与 CLI 镜像
+      # 类型漂移一路绿到 Build check（2026-10-30 曾因此让 build-desktop-agent-cli 长期红）。
+      - name: Typecheck (CLI subtree)
+        run: pnpm typecheck:cli
+
       - name: Lint
         run: pnpm lint
 

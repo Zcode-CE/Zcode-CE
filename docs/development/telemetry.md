@@ -65,7 +65,7 @@ grep -rn 'ZCODE_TELEMETRY_ENABLED\|ZCODE_TELEMETRY_REPORT_ENDPOINT\|ZCODE_ARMS_R
 **预期结果**：只在注释里命中 3 行，无任何可执行引用。
 
 ```
-packages/desktop/src/main/index.ts:1983:  // 「ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT」下的 stability / resource / network
+packages/desktop/src/main/index.ts:2145:  // 「ZCODE_TELEMETRY_ENABLED && ZCODE_ARMS_RUM_ENDPOINT」下的 stability / resource / network
 packages/shared/src/env.ts:45:// 遥测已全部移除（P1）：ZCODE_TELEMETRY_ENABLED / ZCODE_TELEMETRY_REPORT_ENDPOINT /
 packages/shared/src/env.ts:46:// ZCODE_ARMS_RUM_ENDPOINT / mapZCodeEnvToArmsRumEnv / ArmsRumEnv 均已删除。
 ```

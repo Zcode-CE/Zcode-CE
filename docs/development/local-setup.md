@@ -18,7 +18,7 @@ pnpm install
 
 | 用途             | 命令                                    |
 | ---------------- | --------------------------------------- |
-| 类型检查         | `pnpm typecheck`                        |
+| 类型检查         | `pnpm typecheck` + `pnpm typecheck:cli` |
 | Lint             | `pnpm lint` / `pnpm lint:fix`           |
 | 格式检查         | `pnpm fmt:check`                        |
 | 测试             | `pnpm test`                             |
@@ -41,8 +41,8 @@ cd packages/ui && node --import tsx --test test/*.test.ts   # 单包
 
 ### `apps/zcode-cli` 的测试不依赖构建产物
 
-`apps/zcode-cli` 下各包的 `exports` 指向 `./dist/*.js`，而 `pnpm typecheck` 的工程列表
-**不含 `apps/zcode-cli`** ⇒ 该目录下的 `dist` 在 CI 上**从不存在**。因此这些包的测试若 import
+`apps/zcode-cli` 下各包的 `exports` 指向 `./dist/*.js`，根 `pnpm typecheck` 的工程列表
+**不含 `apps/zcode-cli`**（CLI 用独立的 `pnpm typecheck:cli`，`--noEmit`）⇒ 该目录下的 `dist` 在 CI 上**从不存在**。因此这些包的测试若 import
 `@zcode/contracts` 之类的 workspace 包，在 fresh clone 上必然 `ERR_MODULE_NOT_FOUND`。
 
 `scripts/run-tests.mjs` 对 `apps/zcode-cli/**` 的测试包追加
