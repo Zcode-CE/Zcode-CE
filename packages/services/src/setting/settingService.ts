@@ -11,6 +11,7 @@ import {
   appSettingsSchema,
   formatLogPrefix,
   formatZodError,
+  mergeWorkspaceAdditionalDirectories,
 } from "@zcode/shared";
 import type { ISettingService } from "./setting.js";
 import { normalizeSettingsPatch } from "#src/setting/normalizeSettingsPatch.js";
@@ -311,10 +312,16 @@ export function createSettingServiceWithMigrations(): {
             throw new Error("Account connection settings changed");
           }
         }
-        const merged = appSettingsSchema.parse({
-          ...current,
-          ...validatedPatch,
-        });
+        // X16：附加目录按单键补丁合并 —— 两个客户端同时编辑不同工作区时不会互相覆盖。
+        // 补丁里的空列表表示删除该键；合并结果为空时落成「字段缺席」。
+        const mergedSource: Record<string, unknown> = { ...current, ...validatedPatch };
+        if (validatedPatch.workspaceAdditionalDirectories) {
+          mergedSource.workspaceAdditionalDirectories = mergeWorkspaceAdditionalDirectories(
+            current.workspaceAdditionalDirectories,
+            validatedPatch.workspaceAdditionalDirectories,
+          );
+        }
+        const merged = appSettingsSchema.parse(mergedSource);
 
         // 打开工作区后会几乎同时写 recentProjects 和 lastWorkspaceSession。
         // 之前两个 update 都是基于各自读到的旧 settings 直接覆盖写回，

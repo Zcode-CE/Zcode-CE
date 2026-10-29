@@ -7,7 +7,8 @@ import {
   normalizeAdditionalDirectoryList,
   normalizeWorkspaceAdditionalDirectories,
   resolveWorkspaceAdditionalDirectories,
-  setWorkspaceAdditionalDirectories,
+  buildWorkspaceAdditionalDirectoriesPatch,
+  mergeWorkspaceAdditionalDirectories,
 } from "../src/workspaceAdditionalDirectories.js";
 
 /**
@@ -35,15 +36,16 @@ test("老配置没有该字段 ⇒ 解析后也不出现该键（不伪造空表
   assert.equal(JSON.stringify(parsed).includes("workspaceAdditionalDirectories"), false);
 });
 
-test("保存往返：patch 与读盘两条路径都归一（空白/重复/空串不落盘）", () => {
+test("保存往返：patch 保留原样、合并时归一（空白/重复/空串不落盘）", () => {
   const patched = appSettingsPatchSchema.parse({
     workspaceAdditionalDirectories: {
       [WORKSPACE_KEY]: [`  ${BACKEND}  `, BACKEND, "", "   "],
     },
   });
-  assert.deepEqual(patched.workspaceAdditionalDirectories, {
-    [WORKSPACE_KEY]: [BACKEND],
-  });
+  assert.deepEqual(
+    mergeWorkspaceAdditionalDirectories(undefined, patched.workspaceAdditionalDirectories),
+    { [WORKSPACE_KEY]: [BACKEND] },
+  );
 
   const readBack = appSettingsSchema.parse({
     workspaceAdditionalDirectories: { [WORKSPACE_KEY]: [BACKEND] },
@@ -67,12 +69,20 @@ test("整表无有效项 ≡ 字段缺席（空对象、空列表、空键都归
   }
 });
 
-test("设置页清除最后一条：patch 传空表 ⇒ 合并后该字段变成 undefined（旧目录不会残留）", () => {
+test("设置页清除最后一条：补丁里的空列表 = 删除该键，合并后字段缺席", () => {
   const current = appSettingsSchema.parse({
     workspaceAdditionalDirectories: { [WORKSPACE_KEY]: [BACKEND] },
   });
-  const patch = appSettingsPatchSchema.parse({ workspaceAdditionalDirectories: {} });
-  const merged = appSettingsSchema.parse({ ...current, ...patch });
+  const patch = appSettingsPatchSchema.parse({
+    workspaceAdditionalDirectories: { [WORKSPACE_KEY]: [] },
+  });
+  const merged = appSettingsSchema.parse({
+    ...current,
+    workspaceAdditionalDirectories: mergeWorkspaceAdditionalDirectories(
+      current.workspaceAdditionalDirectories,
+      patch.workspaceAdditionalDirectories,
+    ),
+  });
   assert.equal(merged.workspaceAdditionalDirectories, undefined);
 });
 
@@ -129,20 +139,27 @@ test("★注入片段：有目录才写 additionalDirectories，空目录不写�
   assert.equal(Object.hasOwn(empty, "additionalDirectories"), false);
 });
 
-test("设置页整表替换：新增/覆盖/移除最后一个工作区都返回可直接下发的整表", () => {
-  const added = setWorkspaceAdditionalDirectories(undefined, WORKSPACE_KEY, [BACKEND]);
-  assert.deepEqual(added, { [WORKSPACE_KEY]: [BACKEND] });
+test("★单键补丁 + 服务端合并：不同工作区的并发编辑互不覆盖", () => {
+  const other = "/work/other";
+  const current = { [WORKSPACE_KEY]: [BACKEND], [other]: ["/work/other-dir"] };
+  // 客户端 A 只提交自己的 key；B 用读到的旧表提交另一个 key。合并后两者都在。
+  const patchA = buildWorkspaceAdditionalDirectoriesPatch(WORKSPACE_KEY, ["/work/web"]);
+  const afterA = mergeWorkspaceAdditionalDirectories(current, patchA);
+  assert.deepEqual(afterA, { [WORKSPACE_KEY]: ["/work/web"], [other]: ["/work/other-dir"] });
+  const patchB = buildWorkspaceAdditionalDirectoriesPatch(other, ["/work/other-v2"]);
+  assert.deepEqual(mergeWorkspaceAdditionalDirectories(afterA, patchB), {
+    [WORKSPACE_KEY]: ["/work/web"],
+    [other]: ["/work/other-v2"],
+  });
 
-  const replaced = setWorkspaceAdditionalDirectories(added, WORKSPACE_KEY, ["/work/web", BACKEND]);
-  assert.deepEqual(replaced, { [WORKSPACE_KEY]: ["/work/web", BACKEND] });
-
-  const removedOne = setWorkspaceAdditionalDirectories(
-    { ...replaced, "/work/other": ["/work/other-dir"] },
-    WORKSPACE_KEY,
-    [],
+  // 删除也走单键：空列表保留在补丁里，合并时才真正移除。
+  const removePatch = buildWorkspaceAdditionalDirectoriesPatch(WORKSPACE_KEY, []);
+  assert.deepEqual(removePatch, { [WORKSPACE_KEY]: [] });
+  assert.deepEqual(mergeWorkspaceAdditionalDirectories(afterA, removePatch), {
+    [other]: ["/work/other-dir"],
+  });
+  assert.equal(
+    mergeWorkspaceAdditionalDirectories({ [WORKSPACE_KEY]: [BACKEND] }, removePatch),
+    undefined,
   );
-  assert.deepEqual(removedOne, { "/work/other": ["/work/other-dir"] });
-
-  // 最后一个工作区被清空 ⇒ 空表（RPC 会丢弃 undefined，不能靠它表达「清除」）。
-  assert.deepEqual(setWorkspaceAdditionalDirectories(removedOne, "/work/other", []), {});
 });

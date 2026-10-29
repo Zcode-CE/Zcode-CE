@@ -79,6 +79,16 @@ const workspaceAdditionalDirectoriesSchema = z
   .transform((value) => normalizeWorkspaceAdditionalDirectories(value));
 
 /**
+ * 写入补丁按单键合并：保留空数组（删除信号），由 settingService 用
+ * mergeWorkspaceAdditionalDirectories 应用到当前表。这里不做 transform，否则空列表会
+ * 在服务端看到之前就消失，删除动作退化成「没有改动」。
+ */
+const workspaceAdditionalDirectoriesPatchSchema = z.record(
+  z.string(),
+  z.array(z.string()).max(MAX_WORKSPACE_ADDITIONAL_DIRECTORIES),
+);
+
+/**
  * 危险命令清单的用户偏差。三项都是可选的：**缺席即默认**（严格 + 默认项全开），
  * 所以老配置不需要任何迁移（AGENTS.md：取"关闭态"而非"开启态"字段可省迁移）。
  *
@@ -662,8 +672,8 @@ export const appSettingsPatchSchema = z.object({
   lastWorkspaceSession: z.array(appWorkspaceSessionEntrySchema).optional(),
   lastActiveTabIndex: z.number().int().nonnegative().optional(),
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
-  // 设置页按整表替换写入（含空表 = 清除）；归一化与读盘共用同一份实现。
-  workspaceAdditionalDirectories: workspaceAdditionalDirectoriesSchema.optional(),
+  // 设置页按单键补丁写入（空列表 = 删除该键）；服务端按键合并，避免跨客户端 last-write-wins。
+  workspaceAdditionalDirectories: workspaceAdditionalDirectoriesPatchSchema.optional(),
   dataBaseDir: z.string().trim().min(1).optional(),
   pendingPostUpdateReleaseNotes: postUpdateReleaseNotesPayloadSchema.optional(),
   receivePreviewUpdates: z.boolean().optional(),

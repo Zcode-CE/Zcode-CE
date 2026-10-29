@@ -4,7 +4,7 @@ import {
   MAX_WORKSPACE_ADDITIONAL_DIRECTORIES,
   resolveWorkspaceAdditionalDirectories,
   resolveWorkspaceRegistryKey,
-  setWorkspaceAdditionalDirectories,
+  buildWorkspaceAdditionalDirectoriesPatch,
   type WorkspaceRegistryEntry,
 } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
@@ -38,8 +38,9 @@ import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js"
  * 三个刻意的决定：
  * 1. 增删即保存（没有单独「保存」按钮）：设置项本身就是列表操作，多一个保存态就多一个
  *    「列表显示 A、磁盘是 B」的分叉。
- * 2. 保存写整表：设置更新走 RPC，JSON 会丢弃 undefined，按工作区增量写无法表达「清除」。
- *    整表由 `setWorkspaceAdditionalDirectories` 归一，空表最终落成「字段缺席」。
+ * 2. 保存写单键补丁：服务端按 key 合并（`mergeWorkspaceAdditionalDirectories`），
+ *    两个客户端同时编辑不同工作区不会互相覆盖；空列表是显式的「删除这个键」信号，
+ *    归一后整表为空时落成「字段缺席」。
  * 3. 远程工作区不允许添加：目录选择器（`platform.selectDirectory`）只认本机路径，给远端工作区
  *    选出来的本机路径在远端毫无意义。远端条目只允许移除，并如实说明原因。
  */
@@ -119,9 +120,9 @@ export function WorkspaceAdditionalDirectoriesSection({
       if (!targetKey) return;
       setSaving(true);
       try {
+        // 只提交被改的键：服务端按键合并，两个客户端同时编辑不同工作区不会互相覆盖。
         await update({
-          workspaceAdditionalDirectories: setWorkspaceAdditionalDirectories(
-            settings?.workspaceAdditionalDirectories,
+          workspaceAdditionalDirectories: buildWorkspaceAdditionalDirectoriesPatch(
             targetKey,
             nextDirectories,
           ),

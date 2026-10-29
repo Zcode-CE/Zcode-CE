@@ -62,28 +62,44 @@ export function resolveWorkspaceAdditionalDirectories(
 }
 
 /**
- * 设置页保存用的下一份整表：替换该工作区的目录，空列表表示移除该键。
+ * 设置页保存用的单键补丁（不是整表）。
  *
- * 返回整表（可能是 `{}`）而不是 `undefined`：设置更新走 RPC，JSON 序列化会丢弃 `undefined`，
- * 传 undefined 等于「不改这个字段」，旧目录会残留在 setting.json 里继续生效。空表在 schema
- * 归一化时变回「字段缺席」，所以磁盘上不会留下空对象。
+ * 为什么只提交被改的键：设置更新走 RPC 的浅合并，但记录型字段会被整块替换。若把整表发回去，
+ * 两个客户端同时编辑不同工作区时，后写方会拿自己读到的旧表覆盖对方刚改的键。
+ * 单键补丁 + 服务端按键合并（mergeWorkspaceAdditionalDirectories）让两个编辑互不覆盖。
+ *
+ * 空列表是显式的「删除这个键」信号：服务端看得到它，合并时才会真正移除；
+ * 若在这里就丢掉空列表，删除动作会退化成「没有改动」。
  */
-export function setWorkspaceAdditionalDirectories(
-  map: Readonly<Record<string, readonly string[]>> | undefined,
+export function buildWorkspaceAdditionalDirectoriesPatch(
   workspaceKey: string,
   directories: readonly string[],
 ): WorkspaceAdditionalDirectories {
   const key = workspaceKey.trim();
-  // 展开 undefined 是合法的空操作（对象字面量语义），不需要空对象兜底。
-  const next: Record<string, readonly string[]> = { ...map };
-  const list = normalizeAdditionalDirectoryList(directories);
-  if (key.length === 0) return { ...next } as WorkspaceAdditionalDirectories;
-  if (list.length === 0) {
-    delete next[key];
-  } else {
-    next[key] = list;
+  if (key.length === 0) return {};
+  return { [key]: normalizeAdditionalDirectoryList(directories) };
+}
+
+/**
+ * 服务端合并：在当前表上按 key 应用补丁；补丁里的空列表表示删除该键。
+ * 结果整表为空时返回 undefined（与「字段缺席」等价，不制造空对象）。
+ */
+export function mergeWorkspaceAdditionalDirectories(
+  current: Readonly<Record<string, readonly string[]>> | undefined,
+  patch: Readonly<Record<string, readonly string[]>>,
+): WorkspaceAdditionalDirectories | undefined {
+  const next: Record<string, readonly string[]> = { ...current };
+  for (const [rawKey, directories] of Object.entries(patch)) {
+    const key = rawKey.trim();
+    if (key.length === 0) continue;
+    const list = normalizeAdditionalDirectoryList(directories);
+    if (list.length === 0) {
+      delete next[key];
+    } else {
+      next[key] = list;
+    }
   }
-  return next as WorkspaceAdditionalDirectories;
+  return normalizeWorkspaceAdditionalDirectories(next);
 }
 
 /**

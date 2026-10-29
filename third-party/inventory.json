@@ -1727,7 +1727,7 @@
     "packages/shared/src/task-realtime-core.ts": "0915d0969491e237a384d5bcfd689733409ce69ac35dace9d336beaaa40952bf",
     "packages/shared/src/test-ids.ts": "71b3f87b939bd6258d533f57c45584a7a486803ae22acc2ba8cf656f93fbff4e",
     "packages/shared/src/validation.ts": "f056037eabdd28cd730e90961577e93cc72145672d1ac1744d2497d832e66709",
-    "packages/shared/src/validationAppSettings.ts": "5f97e78d413ce9be9aad46ff2edcd51e01ef2667c0e3a644596bb1677a959e17",
+    "packages/shared/src/validationAppSettings.ts": "8fe87bbc536c926650422bed6f4f0cffe8d24fa09b8430f89fb02affc33819dc",
     "packages/shared/src/zcode-agent-model-state.ts": "87e868e6737ee8ef577df9327d9e9c88f167c659022d59a544f87dec78ef9906",
     "packages/shared/src/zcode-agent-policy.ts": "8d7145c732b8f50585b85becb52f6c13d40d424aacbf4bfa48c9faee2c985de1",
     "packages/shared/src/zcode-protocol-legacy-types.ts": "65ccbf8b925bd4cc3c4dbb9429c7c4d47c1e33a377602e690beec77c77dd4a17",
@@ -32856,7 +32856,7 @@
         },
         {
           "file": "packages/shared/src/validationAppSettings.ts",
-          "sha256": "5f97e78d413ce9be9aad46ff2edcd51e01ef2667c0e3a644596bb1677a959e17"
+          "sha256": "8fe87bbc536c926650422bed6f4f0cffe8d24fa09b8430f89fb02affc33819dc"
         },
         {
           "file": "packages/shared/src/index.ts",
