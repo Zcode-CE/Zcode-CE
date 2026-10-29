@@ -3,6 +3,7 @@
 - 状态：**已实现（3.14.3-ce.4 至 ce.5 逐步落地，2026-10-03 修复 issue #3 的 webview 时序 bug）**
 - 背景与证据：[126 根因报告](../../.local/reports/account/start-plan-3007-root-cause.md)、[127 粘滞机制](../../.local/reports/account/session-scoped-sticky-provider-failure.md)、[128 参考项目对照](../../.local/reports/account/reference-proxy-parity.md)、[129 缺陷扫描](../../.local/reports/audit/ce-defect-scan.md)
 - 影响范围：协议契约（shared）、host 服务（services）、agent 运行时（zcode-cli）、UI（ui）
+- 与闭源 3.16.3 的边界：官方闭源构建另有**服务端 `captcha` 配置门**（`enabled` / `skip_model_request`）与新业务码 `coding_plan_security_verification_required`；CE 未接入，仍按 **3007 失败码**判定（无 emission 证据，见 `.local/reports/upstream/version-3.16.3/REPORT.md` §2）。
 
 ## 落地状态（2026-10-03 核对，按本 spec 章节逐条）
 
