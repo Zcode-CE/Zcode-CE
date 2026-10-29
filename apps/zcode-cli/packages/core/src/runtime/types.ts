@@ -250,6 +250,11 @@ export interface AgentRuntimeConfig {
   agentName?: string; // Default: "zcode-agent"
   workingDirectory?: string; // Required for context builder
   /**
+   * 本次运行的附加目录（X16）：仅投影到环境 prompt，供模型知道本次工作范围。
+   * 不参与文件/命令权限边界，也不改写 workingDirectory 与 workspace 身份。
+   */
+  additionalDirectories?: readonly string[];
+  /**
    * 调用方传入的实际工作区路径表示，用于 session 持久化与本地身份恢复。
    * 文件和命令执行仍只使用规范化后的 workingDirectory。
    */

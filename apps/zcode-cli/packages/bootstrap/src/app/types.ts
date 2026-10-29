@@ -97,10 +97,7 @@ import type {
   McpListResourcesResult,
   McpListResourceTemplatesResult,
 } from "@zcode/contracts";
-import type {
-  McpAppProvidedToolDefinition,
-  McpAppProvidedToolExecutor,
-} from "@zcode/core";
+import type { McpAppProvidedToolDefinition, McpAppProvidedToolExecutor } from "@zcode/core";
 import type { McpAppsToolVisibility } from "@zcode/shared/mcp-apps";
 import type { NodeReplBrowserBroker } from "./node-repl-browser-broker.js";
 import type { SessionTranscriptMessage } from "../session-transcript.js";
@@ -132,6 +129,11 @@ export type RevokeWorkspaceHookTrustInput =
 export type ZCodeAppRuntimeConfigInput = AgentRuntimeConfig;
 
 export interface ZCodeAppOptions {
+  /**
+   * 会话附加目录（X16）。由 Host 在 runtime 创建时传入一次，运行中不刷新。
+   * 只扩展环境 prompt 与技能/命令/代理发现；workdir、权限边界与 workspace 身份不受影响。
+   */
+  additionalDirectories?: readonly string[];
   sessionId?: SessionId;
   resume?: boolean;
   version?: string;

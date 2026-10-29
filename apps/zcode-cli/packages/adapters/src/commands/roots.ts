@@ -11,6 +11,8 @@ const ZCODE_DIR = ".zcode";
 const AGENTS_DIR = ".agents";
 
 export interface CustomCommandRootResolutionOptions {
+  /** 会话附加目录（X16）：其下的 `.zcode/commands`、`.agents/commands` 与主 workspace 同等发现。 */
+  additionalDirectories?: readonly string[];
   extraRoots?: string[];
   extraResolvedRoots?: CustomCommandRoot[];
   homeDirectory?: string;
@@ -51,6 +53,15 @@ export async function resolveDefaultCustomCommandRoots(
     if (includeZcode) {
       roots.push(...commandRootsForBase(directory, "project", nextPriority));
     }
+  }
+
+  // 附加目录（X16）追加在项目根之后：发现顺序决定同名命令"先到先赢"，
+  // 因此主 workspace 的命令永远优先，附加目录只补充不覆盖。与主 workspace 相同的目录跳过。
+  for (const directory of new Set(
+    (options.additionalDirectories ?? []).map((path) => resolve(path)),
+  )) {
+    if (directory === resolvedWorkingDirectory) continue;
+    roots.push(...commandRootsForBase(directory, "project", nextPriority));
   }
 
   roots.push(...(options.extraResolvedRoots ?? []));

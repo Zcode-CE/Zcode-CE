@@ -1105,6 +1105,7 @@ export function createConversationV4Gateway(
     // createSession op 内（半初始化 record 的回收顺序修过 bug，不重复实现）。
     // 语义决策（draft persistence / firstInput 走原生 prompt turn）在原生 handler。
     createSessionRecord: async ({
+      additionalDirectories,
       workspaceId,
       mcpServers,
       offPeakToolEnabled,
@@ -1120,6 +1121,9 @@ export function createConversationV4Gateway(
       // shared parser 统一兼容 WSL legacy 与显式 user identity；非远程格式继续按
       // 本地 workspacePath 处理。
       const created = await createSessionRecordForV4(context, {
+        // X16：与 legacy session/create 等价透传——附加目录决定环境 prompt 与技能/命令发现，
+        // 缺了它 V4 创建的会话比 legacy 少一段上下文。
+        ...(additionalDirectories !== undefined ? { additionalDirectories } : {}),
         workspace: resolveWorkspaceRefFromId(workspaceId),
         // 一律 deferred（draft 不进 sqlite）；提升时机归原生 prompt-turn。
         persistence: "deferred",
@@ -1467,6 +1471,7 @@ export function createConversationV4Gateway(
       sessionId,
       resumeThoughtLevel,
       workspace?: ZCodeWorkspaceRef,
+      additionalDirectories?: string[],
     ) => {
       const persisted = await context.deps.sessionStore?.getSession(sessionId as SessionId);
       if (!persisted) {
@@ -1485,6 +1490,9 @@ export function createConversationV4Gateway(
           // session.path 可能是规范化后的执行 cwd，不能覆盖当前 attachment
           // 已知的 workspace 身份。旧 session 没有 attachment 上下文时仍走原有持久化回退。
           ...(workspace ? { workspace } : {}),
+          // X16/Y19：冷恢复要把附加目录一起带回 runtime，否则重启后模型可见范围缩小。
+          // 只透传宿主显式给出的值：缺席 = 旧宿主，保持原有恢复结果。
+          ...(additionalDirectories !== undefined ? { additionalDirectories } : {}),
           ...(resumeThoughtLevel ? { thoughtLevel: resumeThoughtLevel } : {}),
         },
         { reusePersistedMessages: true },

@@ -219,6 +219,7 @@ export interface V4GatewayHost {
     sessionId: string,
     resumeThoughtLevel?: string,
     workspace?: ZCodeWorkspaceRef,
+    additionalDirectories?: string[],
   ): Promise<ColdSessionResumeOutcome>;
   /**
    * 下行物理帧出口（宿主负责投递：stdio notification / MessagePort / ws）。
@@ -1415,6 +1416,7 @@ export class ConversationV4Gateway {
             sessionId,
             params.resumeThoughtLevel,
             params.workspace,
+            params.additionalDirectories,
           )
         : await this.hydratePublisher(sessionId);
     const cliSessionRestoreMs = !isLiveConversation
@@ -2973,6 +2975,7 @@ export class ConversationV4Gateway {
     sessionId: string,
     resumeThoughtLevel?: string,
     workspace?: ZCodeWorkspaceRef,
+    additionalDirectories?: string[],
   ): Promise<ConversationTopicPublisher> {
     const existingFlight = this.readyFlights.get(sessionId);
     if (existingFlight) return existingFlight;
@@ -2982,6 +2985,7 @@ export class ConversationV4Gateway {
         sessionId,
         resumeThoughtLevel,
         workspace,
+        additionalDirectories,
       );
       return this.hydratePublisher(sessionId, persistedMessages);
     });

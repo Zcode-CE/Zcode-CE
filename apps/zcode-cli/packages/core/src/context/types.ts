@@ -101,6 +101,11 @@ export interface OutputStylePromptConfig {
 
 export interface ContextBuilderConfig {
   workingDirectory: string;
+  /**
+   * 本次会话的附加目录（X16）：只用于环境 prompt 展示本次运行的工作范围，
+   * 不参与配置发现，也不改变 workingDirectory / workspace 身份。
+   */
+  additionalDirectories?: readonly string[];
   envInfo: EnvInfo;
   /** 当前步骤的执行对象，不进入 Context Source 或持久化环境快照。 */
   model?: Model;

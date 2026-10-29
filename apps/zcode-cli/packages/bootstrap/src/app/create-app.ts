@@ -68,6 +68,7 @@ import { createPluginFacadeForApp } from "./plugin-facade.js";
 import { resolvePluginRuntimeFeatures } from "./plugin-runtime-features.js";
 import { createSessionFacade } from "./session-facade.js";
 import { resolveAppRuntimeConfig, runtimeConfigLogContext } from "./runtime-config.js";
+import { normalizeAdditionalDirectories } from "./additional-directories.js";
 import {
   collectDynamicWorkflowDisabledSkillPaths,
   DYNAMIC_WORKFLOW_GATED_COMMAND_NAMES,
@@ -152,6 +153,12 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
   const sessionId = options.sessionId ?? createSessionId();
   const traceContext = options.traceContext ?? createRootTraceContext({ sessionId });
   const workingDirectory = resolve(options.runtimeConfig?.workingDirectory ?? process.cwd());
+  // X16：附加目录只喂「环境 prompt + 能力发现」四个消费者，因此在这里归一一次，
+  // 不让每个消费者各自解释相对路径/重复项；workingDirectory 仍是唯一执行根。
+  const additionalDirectories = normalizeAdditionalDirectories(
+    options.additionalDirectories,
+    workingDirectory,
+  );
   const configResult = resolveEffectiveConfigResult(
     createConfig({
       env: options.env,
@@ -210,6 +217,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       logger,
       storageRoot,
       workingDirectory,
+      additionalDirectories,
     });
     const zcodeSubagentProfiles = zcodeSubagentProfileOutcome.profiles;
     const pluginOutcome = resolveStartupPlugins({
@@ -259,6 +267,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
         storageRoot,
         workingDirectory,
         workspaceIdentity: options.runtimeConfig?.memory?.workspaceIdentity,
+        additionalDirectories,
       });
     const browserControlPort = options.browserControlPort;
     if (
@@ -745,6 +754,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
         configResult.config.features.skill && configResult.config.skills.enabled
           ? (options.skillPort ??
             createNodeSkillAdapter({
+              additionalDirectories,
               extraRoots: configResult.config.skills.roots,
               extraResolvedRoots: [...pluginOutcome.skillRoots, ...bundledSkillRoots],
               disabledPaths: [
@@ -812,6 +822,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
           ...(runtimeConfig.dynamicWorkflowEnabled === false
             ? { disabledCommandNames: DYNAMIC_WORKFLOW_GATED_COMMAND_NAMES }
             : {}),
+          additionalDirectories,
           env: options.env,
           executionPort,
           logger,

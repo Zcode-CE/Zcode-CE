@@ -22,6 +22,7 @@ interface ColdSessionResumeHost {
     sessionId: string,
     resumeThoughtLevel?: string,
     workspace?: ZCodeWorkspaceRef,
+    additionalDirectories?: string[],
   ): Promise<ColdSessionResumeOutcome>;
   onDebug?(message: string): void;
   onError?(scope: string, error: unknown, context?: Record<string, unknown>): void;
@@ -50,6 +51,7 @@ export class ColdSessionResumeCoordinator {
     sessionId: string,
     resumeThoughtLevel?: string,
     workspace?: ZCodeWorkspaceRef,
+    additionalDirectories?: string[],
   ): Promise<MessageWithParts[] | undefined> {
     const inFlight = this.flights.get(sessionId);
     if (inFlight) {
@@ -57,7 +59,12 @@ export class ColdSessionResumeCoordinator {
       return inFlight;
     }
     this.host.onDebug?.(`cold resume flight created session=${sessionId}`);
-    const flight = this.resume(sessionId, resumeThoughtLevel, workspace).finally(() => {
+    const flight = this.resume(
+      sessionId,
+      resumeThoughtLevel,
+      workspace,
+      additionalDirectories,
+    ).finally(() => {
       this.flights.delete(sessionId);
       this.host.onDebug?.(`cold resume flight cleared session=${sessionId}`);
     });
@@ -73,6 +80,7 @@ export class ColdSessionResumeCoordinator {
     sessionId: string,
     resumeThoughtLevel?: string,
     workspace?: ZCodeWorkspaceRef,
+    additionalDirectories?: string[],
   ): Promise<MessageWithParts[] | undefined> {
     const resume = this.host.resumePersistedSession;
     if (!resume) {
@@ -84,9 +92,18 @@ export class ColdSessionResumeCoordinator {
     }
     let outcome: ColdSessionResumeOutcome;
     try {
-      outcome = workspace
-        ? await resume.call(this.host, sessionId, resumeThoughtLevel, workspace)
-        : await resume.call(this.host, sessionId, resumeThoughtLevel);
+      // X16：workspace 与附加目录必须作为位置参数按序透传——只带 workspace 的 3 参调用
+      // 属于旧宿主形态，附加目录只能在「至少传到 workspace」时出现。
+      outcome =
+        workspace || additionalDirectories?.length
+          ? await resume.call(
+              this.host,
+              sessionId,
+              resumeThoughtLevel,
+              workspace,
+              additionalDirectories,
+            )
+          : await resume.call(this.host, sessionId, resumeThoughtLevel);
     } catch (error) {
       this.host.onError?.("v4.subscribe.resume", error, {
         phase: "resumePersistedSession",

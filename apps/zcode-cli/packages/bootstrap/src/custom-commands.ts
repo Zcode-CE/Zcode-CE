@@ -18,6 +18,8 @@ export interface ListZCodeCustomCommandsOptions {
   skipUserConfig?: boolean;
   userConfigPath?: string;
   workingDirectory?: string;
+  /** 会话附加目录（X16）：其下的命令目录与主 workspace 同等发现。 */
+  additionalDirectories?: readonly string[];
 }
 
 export interface InspectZCodeCustomCommandOptions extends ListZCodeCustomCommandsOptions {
@@ -92,6 +94,7 @@ function createCustomCommandDiscovery(options: ListZCodeCustomCommandsOptions) {
       extraResolvedRoots: pluginOutcome.commandRoots,
       disabledPaths: collectDisabledPaths(configResult.config.commandOverrides),
       homeDirectory: options.homeDirectory,
+      additionalDirectories: options.additionalDirectories,
     }),
     workingDirectory,
   };

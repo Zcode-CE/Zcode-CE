@@ -429,6 +429,9 @@ export const v4ConversationSubscribeParamsSchema = subscribeParamsSchema.extend(
   legacyTaskIds: z.array(z.string().min(1)).max(MAX_LEGACY_TASK_IDS_PER_SUBSCRIBE).optional(),
   // 仅供 host→CLI cold resume 使用；live conversation 不消费该 hint。
   resumeThoughtLevel: z.string().trim().min(1).optional(),
+  // X16：冷恢复触发 runtime materialization 时由可信 host 下发（X16/Y19——恢复后附加目录
+  // 不能丢）。live 会话不消费：附加目录只在创建/恢复时进入 runtime。
+  additionalDirectories: z.array(z.string().trim().min(1)).max(256).optional(),
   /**
    * 这条订阅收不收 `workflowRun.*` 键级增量。与 `clientMode` 同族：由可信 host 从该连接的
    * clientHello 注入，面向 UI 的 subscribe 选不了它——一个客户端能不能认得增量是连接的事实，

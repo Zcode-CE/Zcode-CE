@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { migrateUserSubagentMarkdown, migrateSubagentStateFile } from "@zcode/shared/node";
 import {
   parseAgentProfileFromMarkdown,
@@ -21,6 +21,8 @@ interface LoadZCodeAgentProfilesInput {
   logger?: Logger;
   storageRoot: string;
   workingDirectory: string;
+  /** 会话附加目录（X16）：其下的 `.zcode/agents` 与主 workspace 同等发现。 */
+  additionalDirectories?: readonly string[];
 }
 
 interface LoadZCodeAgentProfilesResult {
@@ -55,6 +57,17 @@ export async function loadZCodeAgentProfiles(
     { path: join(input.storageRoot, "agents"), source: "user" as const },
     { path: join(input.workingDirectory, ".zcode", "agents"), source: "project" as const },
   ];
+  // 附加目录（X16）追加在项目根之后：下游按名字 first-wins 解析，主 workspace 的同名 agent
+  // 天然优先，附加目录只"补充"不"覆盖"。同名来源不在这里去重——解析器只认名字。
+  for (const directory of new Set(
+    (input.additionalDirectories ?? []).map((path) => resolve(path)),
+  )) {
+    if (directory === resolve(input.workingDirectory)) continue;
+    roots.push({
+      path: join(directory, ".zcode", "agents"),
+      source: "project" as const,
+    });
+  }
   const diagnostics: AgentProfileParseDiagnostic[] = [];
   for (const failure of migration.failures) {
     diagnostics.push({

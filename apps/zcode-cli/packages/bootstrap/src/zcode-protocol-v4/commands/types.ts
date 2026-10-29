@@ -256,6 +256,8 @@ export interface V4CommandCoreHost {
    * 语义决策（draft persistence / firstInput 提交）留在原生 handler，不进钩子。
    */
   createSessionRecord?(params: {
+    /** X16：会话附加目录，随 record/runtime 创建一次性生效。 */
+    additionalDirectories?: CommandPayloadMap["createSession"]["additionalDirectories"];
     workspaceId: string;
     mcpServers?: CommandPayloadMap["createSession"]["mcpServers"];
     /** host 判定的 Off-Peak 工具面门禁；缺省不注册工具。 */

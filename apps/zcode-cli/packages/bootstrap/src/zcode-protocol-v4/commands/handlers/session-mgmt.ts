@@ -48,6 +48,9 @@ async function createSession(
     throw new V4InputAdmissionRejectedError("proto.invalidPayload", "input must not be empty");
   }
   const { sessionId } = await host.createSessionRecord({
+    // X16：附加目录是 runtime 创建期配置，必须随 create 一次性进入 record——
+    // 首发之后再补就只影响后续会话，当前会话的环境 prompt 永远缺这些目录。
+    additionalDirectories: payload.additionalDirectories,
     workspaceId: payload.workspaceId,
     mcpServers: payload.mcpServers,
     offPeakToolEnabled: payload.offPeakToolEnabled,

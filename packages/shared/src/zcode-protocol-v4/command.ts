@@ -52,6 +52,9 @@ function requireModelSelectionForExecution(
 export const commandPayloadSchemas = {
   // firstInput 缺省 → phase=draft 空会话；携带 → 直接 turnHeader+userInput rows。
   createSession: z.object({
+    // X16：附加目录随创建一次性进入 runtime（环境 prompt + 技能/命令/代理发现）。
+    // additive + optional：旧 CLI 的 schema 会丢弃未知键，缺席即「无附加目录」。
+    additionalDirectories: z.array(z.string().min(1)).max(256).optional(),
     workspaceId: z.string(),
     permissionScope: z.literal("session").optional(),
     firstInput: z

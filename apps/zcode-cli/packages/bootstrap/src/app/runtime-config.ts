@@ -45,6 +45,8 @@ export function resolveAppRuntimeConfig(input: {
   storageRoot?: string;
   workingDirectory: string;
   workspaceIdentity?: string;
+  /** 已归一（绝对化/去重/上限）的会话附加目录（X16）；只是环境 prompt 的输入。 */
+  additionalDirectories?: readonly string[];
 }): ResolvedAppRuntimeConfig {
   const {
     cliStorageRoot,
@@ -137,6 +139,7 @@ export function resolveAppRuntimeConfig(input: {
     language: options.runtimeConfig?.language,
     titleGeneration,
     workingDirectory,
+    additionalDirectories: input.additionalDirectories,
     userInstructions: {
       ...userInstructions,
       workingDirectory: userInstructions.workingDirectory ?? workingDirectory,

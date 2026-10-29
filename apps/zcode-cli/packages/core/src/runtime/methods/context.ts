@@ -121,6 +121,7 @@ export function createContextBuilderFromSnapshot(
 
   const contextConfig: ContextBuilderConfig = {
     workingDirectory: snapshot.workingDirectory,
+    additionalDirectories: this.config.additionalDirectories,
     envInfo,
     model: options.model,
     presentationSurface: this.config.presentationSurface,

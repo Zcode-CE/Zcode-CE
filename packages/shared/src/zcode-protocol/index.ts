@@ -1870,6 +1870,10 @@ export const zcodeDynamicWorkflowModeSchema = z.enum(DYNAMIC_WORKFLOW_MODES);
 
 export const zcodeSessionCreateParamsSchema = z
   .object({
+    // X16（上游 3.16.2）：会话附加目录。additive + optional——旧客户端/旧快照不携带
+    // 即「无附加目录」，行为与引入前一致；它只扩展模型可见范围与技能/命令发现，
+    // 不参与工作区身份（身份仍是 workspace / workspaceIdentity）。
+    additionalDirectories: z.array(nonEmptyString).max(256).optional(),
     sessionId: nonEmptyString.optional(),
     workspace: zcodeWorkspaceRefSchema,
     parentSessionId: nonEmptyString.optional(),
@@ -1896,6 +1900,8 @@ export type ZCodeSessionCreateParams = z.infer<typeof zcodeSessionCreateParamsSc
 
 export const zcodeSessionResumeParamsSchema = z
   .object({
+    // X16：与 create 同语义。冷恢复重建 runtime 时若不透传，模型可见范围会在恢复后缩小。
+    additionalDirectories: z.array(nonEmptyString).max(256).optional(),
     sessionId: nonEmptyString,
     workspace: zcodeWorkspaceRefSchema.optional(),
     // 旧 session 尚无 runtime/model_selection entry 时，由同 task 的索引元数据提供迁移 hint。
@@ -2025,6 +2031,9 @@ export type ZCodeModelContextBudgetStrategy = z.infer<typeof zcodeModelContextBu
 
 export const zcodeSessionRuntimePreferencesResultSchema = z
   .object({
+    // X16：Host 在 runtime-materialization 时机解析出的附加目录。optional，且刻意不给默认值：
+    // 旧 Host 不回该键 ⇒ 无附加目录（回落成 [] 会伪造「已解析且为空」的事实）。
+    additionalDirectories: z.array(nonEmptyString).max(256).optional(),
     nativeSearchEnhancementsEnabled: z.boolean(),
     memoryEnabled: z.boolean().default(false),
     askUserQuestionAutoResolutionEnabled: z.boolean().default(true),

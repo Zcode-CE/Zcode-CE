@@ -11,6 +11,8 @@ const ZCODE_DIR = ".zcode";
 const AGENTS_DIR = ".agents";
 
 export interface SkillRootResolutionOptions {
+  /** 会话附加目录（X16）：其下的 `.zcode/skills`、`.agents/skills` 与主 workspace 同等发现。 */
+  additionalDirectories?: readonly string[];
   homeDirectory?: string;
   extraRoots?: string[];
   extraResolvedRoots?: SkillRoot[];
@@ -51,6 +53,15 @@ export async function resolveDefaultSkillRoots(
     if (includeZcode) {
       roots.push(...skillRootsForBase(directory, "project", nextPriority));
     }
+  }
+
+  // 附加目录（X16）追加在项目根之后：发现顺序决定同名技能"先到先赢"，
+  // 因此主 workspace 的技能永远优先，附加目录只补充不覆盖。与主 workspace 相同的目录跳过。
+  for (const directory of new Set(
+    (options.additionalDirectories ?? []).map((path) => resolve(path)),
+  )) {
+    if (directory === resolvedWorkingDirectory) continue;
+    roots.push(...skillRootsForBase(directory, "project", nextPriority));
   }
 
   roots.push(...(options.extraResolvedRoots ?? []));

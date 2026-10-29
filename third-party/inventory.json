@@ -227,12 +227,12 @@
     "apps/zcode-cli/package.json": "6c48017b05d8a7215c5bf7dea12f50edd1487bf5b8b22e11c21703d32e8f7742",
     "apps/zcode-cli/packages/adapters/package.json": "8e893b813b128ae7a4bfdbc8fad52d6ad50d7844dee2c77d216f45df22e88e68",
     "apps/zcode-cli/packages/bootstrap/package.json": "0e175ac8b64cd5b478c15e6bf71fb3940c17ddb7f95fb7cbcdd426bb61ce5bef",
-    "apps/zcode-cli/packages/bootstrap/src/app/types.ts": "348855c40fb7f4169e591330bf6dc32105f0eb7b844c35653d0ac215c8bc3f28",
+    "apps/zcode-cli/packages/bootstrap/src/app/types.ts": "cc3f45f61f31c7a362cbb211e5455d6fe4fbd2695278c5af21ca1b86a3a5484f",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/canonical-intent-replay.ts": "544f8528b4b89fc2a3fe7d7ad6edfcce53fe6c606ca797f51a4adf0d4293cd72",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/fork-edit-retry.ts": "21c312dcf3069aaca4f366e68800d55b0f4b8621b16d3b7b68cef4ac18a1bda6",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/input-intent.ts": "daa953b7726027fc4ed08107da3ebbdea6cb3f5578b4ad5f2d72a92a51ebd960",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/prompt-turn.ts": "98e88d39682abb858b4816d25f81b00dd0072a21b244450c003da5ad4b113ecd",
-    "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/types.ts": "4dd238b6931e665e89eba6ec5097ef00a8b2c1cde611f2e97cbf34b05752fed5",
+    "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/types.ts": "e83ef92cacf22fdb628e3b1daa823dfc8b003913e84237dcfe4cc427ad8eb175",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/mcp-elicitation.ts": "501cfef82e56eb3baf9601c716d3c57b2d089fd8153b18aa58c0a750a171c203",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts": "a4779e794dfb27b0b0d0f0e16882aaf66e3a9c35e9b536aa2e92e665c8c0ebad",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/fork-model-selection.ts": "d34713cbff00d3fa3c9166c53a345b9f37d737d3baac3974294e41a45c7f8298",
@@ -254,7 +254,7 @@
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/mcp-ui/sessionAccess.ts": "f87a3194651891c195b5c01f3e533e2ff3d68ad7e6c2b1928ed63b5754e2bc60",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/plugin-ui-surfaces.ts": "c6785f6e48396e045b60a6ff0f8c9f27cc94be70d8735c2feef15a254cb82fe9",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/saved-workflows-run.ts": "a2b22171f72e69ecc304105dcb6916daaede682c5d40befcd76523a23c6060a4",
-    "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts": "ecafbbac4b772a652cf23eddbd201d86c6858e9b97522663ee870e12937e89ec",
+    "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts": "2cc904b88402fcfa5f771071c113a4361979225eca01f749f6fae7802734c513",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/topic-resource-port.ts": "e42a70ce21f4f83f77091e03ab23fec8522b5dc044540e382e5dd224173df0e4",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workflow-settings-answer.ts": "45f85148a19dfc16d77b1ab3fbb772f33319bbf172fbaa43b8b9fb5e480c23b8",
     "apps/zcode-cli/packages/browser-use-plugin/package.json": "d337449807ae7d897a2387c11b62270830e965e9f1c152a9533d37cec6005f3b",
@@ -271,7 +271,7 @@
     "apps/zcode-cli/packages/core/src/permission/broker.ts": "8b277e3be0821abfe49d1a64225b6c31dc10f9a500db698bc26e774bded61e68",
     "apps/zcode-cli/packages/core/src/permission/service.ts": "fa1ca7abed2dd10c5090d3183e7bc5c8664a01487a9467af36977a62a7c93dd8",
     "apps/zcode-cli/packages/core/src/runtime/methods/prompt-admission.ts": "193e9142b32de493f3746c30311fc4a84dde37620bc2910a65f228e1e0948ab8",
-    "apps/zcode-cli/packages/core/src/runtime/types.ts": "c59c70686c515400215d472987d04ae709d090a99fe923f6b9c9d30f81a9350a",
+    "apps/zcode-cli/packages/core/src/runtime/types.ts": "a1f13284029fa75bbd7f62cc2d7f8d9d6e5c1f8c1048d2fa4b3e2c3f0bdb6fa1",
     "apps/zcode-cli/packages/core/src/tool/executor/permission-flow.ts": "cf014f6d16bd39056a8d7681130afeda8ee69d962a56f5b5bc0264befef945d6",
     "apps/zcode-cli/packages/core/src/tool/executor/permission-input-adjustments.ts": "3c2c5fd9a839969cc76baa8725e54a30a3ecea82c47c9479ccd421d31399bf2f",
     "apps/zcode-cli/packages/core/src/tool/handlers/bash-command-parser.ts": "3b902ba16313b10b0091023f6a93d96b1b307ee38b1abeee5e1b491031ed8184",
@@ -1735,7 +1735,7 @@
     "packages/shared/src/zcode-protocol-v4/attachment-faults.ts": "ae2b8c42801069eac4f62230b9da41f91458e766fa441a3ee91bd15dee49340b",
     "packages/shared/src/zcode-protocol-v4/attachment-ref.ts": "aac64e061641380dbfa3df523a9c84eac5c485e6bec770723480e005a7107c52",
     "packages/shared/src/zcode-protocol-v4/coalesce.ts": "ae13c9f0a1605131745094b9652a160fdb2341ef2d043138d59d6927536061ab",
-    "packages/shared/src/zcode-protocol-v4/command.ts": "97fbace6c3654a8531c9107ce26c164d7e13570acaa159f592eb0be0900264b3",
+    "packages/shared/src/zcode-protocol-v4/command.ts": "2a4824187e91ca9463abbe56343204bea0e236eca14751b8f51e35a0fa05cb86",
     "packages/shared/src/zcode-protocol-v4/controller.ts": "878180e5ef153fb92c13adecbfd46bdf0d4cbd16327b5a0a598f6702d8712c16",
     "packages/shared/src/zcode-protocol-v4/core.ts": "97750a7bab0a7580c1d27c8e0155981786fdbfa07373d46c77829f25eb407a39",
     "packages/shared/src/zcode-protocol-v4/create-session-config.ts": "2aa8067bdd00cf9cf9b467621d3aca5c7e9d156703a68c8859cd168221b7f3a6",
@@ -1756,7 +1756,7 @@
     "packages/shared/src/zcode-protocol-v4/submission.ts": "aba9b3d2140065615398429fe1404806b453ae5d854dce05e7c3b4271b0b3c57",
     "packages/shared/src/zcode-protocol-v4/telemetry.ts": "056f2359c1a1ba87fe0b364d19e400bda17a03ad95aa06b1814793251d0bf00d",
     "packages/shared/src/zcode-protocol-v4/toolDisplay.ts": "caf2de66ef01420889911292f2873a05b5ae372331da0362360bbe23cdfd4d4b",
-    "packages/shared/src/zcode-protocol-v4/transport.ts": "f47f1555e2a66ff2ebaf32df5a5e35a6b14fe959eb19a2046cfb4967be8326a0",
+    "packages/shared/src/zcode-protocol-v4/transport.ts": "b054790cac2f2368985d44e27132f4e364978aeb14674ca91866b4a989a30382",
     "packages/shared/src/zcode-protocol-v4/wire-assembler.ts": "ad15fb1af701f8155912e251fe9f38b04d2cfa2d2c1548868a52fc96953c3a4c",
     "packages/shared/src/zcode-protocol-v4/wire-binary.ts": "28f287c5764d3d7afa56b6291e3cc67f4234ccb5749f365a66cc7260ddcfbfee",
     "packages/shared/src/zcode-protocol-v4/wire-codec.ts": "ac2494a3acc795c809c94ee9393f50271a9c2a0fd33813459e5ab93842ceef75",
@@ -32061,7 +32061,7 @@
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/command.ts",
-          "sha256": "97fbace6c3654a8531c9107ce26c164d7e13570acaa159f592eb0be0900264b3"
+          "sha256": "2a4824187e91ca9463abbe56343204bea0e236eca14751b8f51e35a0fa05cb86"
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/controller.ts",
@@ -32145,7 +32145,7 @@
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/transport.ts",
-          "sha256": "f47f1555e2a66ff2ebaf32df5a5e35a6b14fe959eb19a2046cfb4967be8326a0"
+          "sha256": "b054790cac2f2368985d44e27132f4e364978aeb14674ca91866b4a989a30382"
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/wire-assembler.ts",
@@ -33092,15 +33092,15 @@
       "files": [
         {
           "file": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts",
-          "sha256": "ecafbbac4b772a652cf23eddbd201d86c6858e9b97522663ee870e12937e89ec"
+          "sha256": "2cc904b88402fcfa5f771071c113a4361979225eca01f749f6fae7802734c513"
         },
         {
           "file": "apps/zcode-cli/packages/core/src/runtime/types.ts",
-          "sha256": "c59c70686c515400215d472987d04ae709d090a99fe923f6b9c9d30f81a9350a"
+          "sha256": "a1f13284029fa75bbd7f62cc2d7f8d9d6e5c1f8c1048d2fa4b3e2c3f0bdb6fa1"
         },
         {
           "file": "apps/zcode-cli/packages/bootstrap/src/app/types.ts",
-          "sha256": "348855c40fb7f4169e591330bf6dc32105f0eb7b844c35653d0ac215c8bc3f28"
+          "sha256": "cc3f45f61f31c7a362cbb211e5455d6fe4fbd2695278c5af21ca1b86a3a5484f"
         },
         {
           "file": "apps/zcode-cli/packages/contracts/src/interfaces/session.port.ts",
@@ -33108,7 +33108,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/types.ts",
-          "sha256": "4dd238b6931e665e89eba6ec5097ef00a8b2c1cde611f2e97cbf34b05752fed5"
+          "sha256": "e83ef92cacf22fdb628e3b1daa823dfc8b003913e84237dcfe4cc427ad8eb175"
         },
         {
           "file": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/prompt-turn.ts",

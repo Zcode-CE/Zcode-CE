@@ -143,6 +143,8 @@ type ZCodeSessionRecordParams = (
 ) & { taskType?: SessionTaskType };
 
 interface SessionStartupPreferences {
+  /** X16：Host 在 runtime-materialization 时机解析的附加目录；缺席 = 无附加目录。 */
+  additionalDirectories?: readonly string[];
   memoryEnabled: boolean;
   modelContextBudgetStrategy: ZCodeModelContextBudgetStrategy;
   nativeSearchEnhancementsEnabled: boolean;
@@ -3322,6 +3324,9 @@ async function resolveSessionStartupPreferences(
     runtimePreferences.askUserQuestionAutoResolutionEnabled,
   );
   return {
+    // X16：与 nativeSearchEnhancementsEnabled / dangerousCommandPolicy 同一条链路、同一时机冻结
+    // ——只在创建/恢复时读一次，已运行会话不重新读。create/resume 参数显式携带时优先于它。
+    additionalDirectories: runtimePreferences.additionalDirectories,
     memoryEnabled: runtimePreferences.memoryEnabled,
     modelContextBudgetStrategy: DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
     nativeSearchEnhancementsEnabled: runtimePreferences.nativeSearchEnhancementsEnabled,
@@ -3397,6 +3402,9 @@ async function createRecord(
     env: context.deps.env,
     eventStore,
     resume,
+    // X16：本次 create/resume 参数优先；缺席时用 Host 经 runtime preferences 下发的结论。
+    // 两者都没有 = 无附加目录（不回落 workspace，也不伪造空数组以外的语义）。
+    additionalDirectories: params.additionalDirectories ?? startupPreferences.additionalDirectories,
     runtimeConfig: {
       mode: "mode" in params ? params.mode : undefined,
       modelSelection: "model" in params ? toRuntimeModelSelection(initialModel) : undefined,
