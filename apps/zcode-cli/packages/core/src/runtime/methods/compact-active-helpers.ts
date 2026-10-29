@@ -19,9 +19,21 @@ import {
 import type { RuntimeModelTextResult, RunModelTextRequestOptions } from "../types.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 import type { RuntimeMessageEntry } from "../../agent/message-history.js";
+import type { Model } from "../deps.js";
+import type { ToolRegistry } from "../../tool/registry.js";
+import {
+  DEFERRED_TOOL_CALL_NAME,
+  TOOL_SEARCH_NAME,
+  type ModelToolContract,
+  type ToolSearchMode,
+} from "@zcode/contracts";
+import { buildToolExposure } from "../../tool/search/exposure.js";
 
 const COMPACT_TOOL_USE_DENIAL_MESSAGE = "Tool use is not allowed during compaction";
 const COMPACT_TOOL_USE_DENIAL_REASON = "compaction agent should only produce text summary";
+// Compact summary 只需要 Read + 搜索控制入口 + MCP 目录；其他工具不参与摘要。
+const COMPACT_RESIDENT_TOOL_NAMES: ReadonlySet<string> = new Set(["Read"]);
+const COMPACT_TOOL_KEEP_MAX_COUNT = 100;
 
 export function createCompactPromptTooLongError(options: {
   attempt: number;
@@ -80,14 +92,57 @@ export async function persistCompactTimelineEvent(
 export function buildCompactSummaryRequestMessages(
   entriesForSummary: readonly RuntimeMessageEntry[],
   compactPrompt: string,
-  options: { useMidConversationSystem?: boolean } = {},
+  options: {
+    useMidConversationSystem?: boolean;
+    loadedToolCallIds?: ReadonlySet<string>;
+  } = {},
 ): RunModelTextRequestOptions["messages"] {
   return buildProviderRequestMessages({
     entries: [...entriesForSummary, { message: { role: "user" as const, content: compactPrompt } }],
     applyCacheControl: true,
     skipCacheWrite: true,
     useMidConversationSystem: options.useMidConversationSystem,
+    loadedToolCallIds: options.loadedToolCallIds,
   }).messages;
+}
+
+/**
+ * Compact summary 发给模型的工具候选。
+ *
+ * Bug 根因：只看 provider 能力会在 ToolSearch 被禁用或全部常驻时绕过数量保护，
+ * 让大量 MCP schema 再次撑大压缩请求；搜索真正不可启用时恢复原普通工具策略。
+ * 工具数与搜索能力都只在这里判定一次，实际曝光裁剪由 prepareRuntimeProviderRequest 负责。
+ */
+export function selectCompactSummaryTools(input: {
+  model: Model;
+  mode?: ToolSearchMode;
+  registry: Pick<ToolRegistry, "get">;
+  tools: readonly ModelToolContract[];
+}): ModelToolContract[] {
+  const searchCandidates = input.tools.filter(
+    (tool) =>
+      COMPACT_RESIDENT_TOOL_NAMES.has(tool.name) ||
+      tool.name === TOOL_SEARCH_NAME ||
+      tool.name === DEFERRED_TOOL_CALL_NAME ||
+      input.registry.get(tool.name)?.metadata.mcpPresentation,
+  );
+  if (
+    buildToolExposure({
+      model: input.model,
+      mode: input.mode,
+      tools: searchCandidates,
+      registry: input.registry,
+      entries: [],
+    }).enabled
+  ) {
+    return searchCandidates;
+  }
+
+  const plainTools = input.tools.filter(
+    (tool) => tool.name !== TOOL_SEARCH_NAME && tool.name !== DEFERRED_TOOL_CALL_NAME,
+  );
+  // 止血原因：massive MCP 工具会把 compact summary request 的 provider context 撑爆。
+  return plainTools.length > COMPACT_TOOL_KEEP_MAX_COUNT ? [] : plainTools;
 }
 
 export function formatCompactSummaryOrThrow(

@@ -31,6 +31,8 @@ type CompactSummaryModelRequest = {
   preserveProviderStreamBoundaries?: boolean;
   statusSink?: ModelInvocationContext["statusSink"];
   tools?: Parameters<Model["generateText"]>[0]["tools"];
+  /** native 模式的 provider 侧延迟加载标记；local/off 不设置（不发 beta/defer_loading）。 */
+  toolSearchEnabled?: boolean;
   traceContext: TraceContext;
   refreshRuntimeHeadersBeforeAttempt?: ModelInvocationContext["refreshRuntimeHeadersBeforeAttempt"];
 };
@@ -312,6 +314,7 @@ function cleanRequest(request: CompactSummaryModelRequest) {
   return {
     messages: request.messages,
     tools: request.tools,
+    toolSearchEnabled: request.toolSearchEnabled,
     abortSignal: request.abortSignal,
     ...(request.maxOutputTokens !== undefined
       ? { options: { maxOutputTokens: request.maxOutputTokens } }

@@ -65,6 +65,8 @@ turn-model-step（进入 assistant 历史之前）、turn-tools（part/事件/�
   union）；`completedToolPartMetadata` 把引用块原样写入 part metadata。
 - 冷恢复：`agent/tool-search-hydration.ts` 校验后还原引用块；`session-history-hydrator` 按
   part metadata 的 `modelCallWrapper` 恢复包装标记，按 `runtimeMessage` 恢复公告增量。
+- 辅助请求：memory / goal verifier / compact summary 也走同一曝光决策（memory 摘掉 ToolSearch
+  并恒为 off，verifier 无工具，compact 只保留 Read + 控制入口 + MCP 候选）。
 - compact：`preCompactDiscoveredTools` 进 compact 检查点（`compact/manual.ts` 写、
   `compact-active` 产出），请求投影据此把 compact 前的发现继续算作已发现；压缩后按保留历史
   重建名称公告。
@@ -84,5 +86,9 @@ turn-model-step（进入 assistant 历史之前）、turn-tools（part/事件/�
 - `native` 未声明能力时发送前失败；`local` 不发送 `toolSearchEnabled`。
 - 设置面：`AppSettings.toolSearchMode` 四态经 runtime preferences 下发；老配置缺字段 = off，
   与接入前行为一致（`packages/shared/test/toolSearchMode.test.ts`）。
-- 仍缺：TUI/桌面工具卡片与 help 文案；辅助请求（memory / goal verifier / compact summary）
-  目前仍发送完整目录，未走曝光决策；真实 provider E2E 与 executor 级完整桩测试。
+- 辅助请求与主请求共用同一曝光决策：memory（摘掉 ToolSearch、恒为 off）、goal verifier
+  （`tools: []`）与 compact summary 都走 `prepareRuntimeProviderRequest`；off 下三者与改动前
+  逐字节一致（`core/test/toolSearchWiring.test.ts` 的 deepEqual 断言）。
+- CLI help（zh/en）包含 `--toolsearch-mode` 四态。
+- 仍缺：真实 provider E2E（native 的 beta 头与 `tool_reference` 网关行为）、executor 级完整
+  `ToolExecutorDeps` 桩测试；TUI/桌面是否需要专门的 ToolSearch 卡片待评估（通用工具渲染未见异常）。

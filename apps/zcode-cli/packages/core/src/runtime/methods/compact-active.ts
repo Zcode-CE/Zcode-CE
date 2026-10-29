@@ -18,7 +18,6 @@ import {
 } from "../deps.js";
 import type { SessionEvent, TraceContext } from "../deps.js";
 import { resolveModelRequestSessionTypeFromTaskType } from "./model-request-session-type.js";
-import { TOOL_SEARCH_NAME } from "@zcode/contracts";
 import { buildToolSearchAnnouncement } from "../../tool/search/exposure.js";
 import { collectDiscoveredTools, compactDiscoveryMetadata } from "../../tool/search/history.js";
 import {
@@ -44,6 +43,7 @@ import {
   projectCompactMediaForRetry,
   projectMessagesForModelMediaPolicy,
   logCompactMediaRetryProjection,
+  prepareRuntimeProviderRequest,
   readApprovedPlanFileReferenceEntry,
 } from "../helpers/index.js";
 import type { CompactTimelineContext, RuntimeModelTextResult } from "../types.js";
@@ -61,6 +61,7 @@ import {
   createCompactPromptTooLongError,
   formatCompactSummaryOrThrow,
   persistCompactTimelineEvent,
+  selectCompactSummaryTools,
 } from "./compact-active-helpers.js";
 import { runCompactSummaryModelRequest } from "./compact-summary-model-request.js";
 import { resolveNormalRequestMaxOutputTokens } from "./model-token-limits.js";
@@ -73,7 +74,6 @@ import {
 } from "./turn-output-token-continuation.js";
 
 const AUTO_COMPACT_MAX_ATTEMPTS = 3;
-const COMPACT_TOOL_KEEP_MAX_COUNT = 100;
 
 export async function compactActiveConversation(
   this: AgentRuntimeInternal,
@@ -251,13 +251,15 @@ async function compactActiveConversationImpl(
     turnTraceContext,
     events,
   );
-  // 止血原因：massive MCP 工具会把 compact summary request 的 provider context 撑爆。
-  // ToolSearch/deferred tools 完成前，仅在工具数超过阈值时让 compact summary 保持无工具。
   await this.initializeMcp(turnTraceContext);
   throwIfTurnAborted(options.abortSignal);
-  const runtimeCompactTools = this.getTools(compactModel);
-  const compactTools =
-    runtimeCompactTools.length > COMPACT_TOOL_KEEP_MAX_COUNT ? [] : runtimeCompactTools;
+  const registry = this.getToolRegistry();
+  const compactTools = selectCompactSummaryTools({
+    model: compactModel,
+    mode: this.config.toolSearch?.mode,
+    registry,
+    tools: this.getTools(compactModel),
+  });
 
   while (true) {
     try {
@@ -309,17 +311,25 @@ async function compactActiveConversationImpl(
       };
 
       while (true) {
-        const requestMessages = buildCompactSummaryRequestMessages(
-          entriesForSummary,
-          compactPrompt,
-          { useMidConversationSystem },
-        );
-        const recordableEntries = filterOutputTokenContinuationEntries(entriesForSummary);
+        // Compact 与主请求共用同一套 ToolSearch 曝光决策：tools 与历史引用投影
+        // 必须成对产出，否则会出现「按模型能力保留引用却发送 tools: []」的旧 bug。
+        const prepared = prepareRuntimeProviderRequest(this, {
+          model: compactModel,
+          tools: compactTools,
+          registry,
+          entries: entriesForSummary,
+          prompt: compactPrompt,
+          applyCacheControl: true,
+          skipCacheWrite: true,
+        });
+        const requestMessages = prepared.request.messages;
+        const recordableEntries = filterOutputTokenContinuationEntries(prepared.entries);
         const recordableRequestMessages =
-          recordableEntries === entriesForSummary
+          recordableEntries === prepared.entries
             ? requestMessages
             : buildCompactSummaryRequestMessages(recordableEntries, compactPrompt, {
                 useMidConversationSystem,
+                loadedToolCallIds: prepared.loadedToolCallIds,
               });
         // Compact 曾只执行 capability projection，漏掉普通 turn 共用的聚合
         // 媒体预算；统一走模型媒体策略，避免 summary 请求绕过全局请求上限。
@@ -374,7 +384,7 @@ async function compactActiveConversationImpl(
             providerId: String(compactModel.providerId),
             modelId: String(compactModel.modelId),
             querySource: "compact",
-            toolCount: compactTools.length,
+            toolCount: prepared.request.tools.length,
             compactPromptTooLongRetry: compactPromptTooLongAttempts,
           },
           modelTraceContext,
@@ -403,7 +413,8 @@ async function compactActiveConversationImpl(
           // content block 提交前仍可丢弃并 HTTP fallback，block end 后则禁止任何重放。
           preserveProviderStreamBoundaries: true,
           traceContext: modelTraceContext,
-          tools: compactTools,
+          tools: prepared.request.tools,
+          toolSearchEnabled: prepared.request.toolSearchEnabled,
           refreshRuntimeHeadersBeforeAttempt: createRefreshRuntimeHeadersBeforeModelAttempt(this, {
             abortSignal: options.abortSignal,
             model: compactModel,

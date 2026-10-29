@@ -16,7 +16,7 @@ import type {
   SessionGoal,
   TraceContext,
 } from "../deps.js";
-import { buildRuntimeProviderRequestMessages, throwIfTurnAborted } from "../helpers/index.js";
+import { prepareRuntimeProviderRequest, throwIfTurnAborted } from "../helpers/index.js";
 import { projectMessagesForModelMediaPolicy } from "../helpers/media-budget.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 import { isRuntimeAttachmentEntry, type RuntimeMessageEntry } from "../../agent/message-history.js";
@@ -130,25 +130,21 @@ async function verifyTargetCompletion(
     ),
     modelTraceContext,
   );
-  const providerMessages = buildRuntimeProviderRequestMessages(this, {
-    entries: [
-      ...withoutTrailingPendingAssistantToolCallEntries(
-        this.messageHistory.borrowReadOnlyRuntimeEntries(),
-      ),
-      {
-        message: {
-          role: "user" as const,
-          content: formatGoalCompletionVerificationPrompt(input.target),
-        },
-      },
-    ],
+  // Verifier 没有工具可调用（tools: []），但仍必须走同一套曝光决策：
+  // 历史里的 tool_reference 只有经过投影才能变成 provider 可接受的形状。
+  const prepared = prepareRuntimeProviderRequest(this, {
+    entries: withoutTrailingPendingAssistantToolCallEntries(
+      this.messageHistory.borrowReadOnlyRuntimeEntries(),
+    ),
+    prompt: formatGoalCompletionVerificationPrompt(input.target),
+    tools: [],
     applyCacheControl: true,
     model,
-  }).messages;
+  });
   // verifier 直接消费完整历史但曾绕过正常请求的媒体策略；只补 capability
   // 仍会让聚合超限失败进入 fail-open。请求前统一执行能力和预算投影。
   const messages = projectMessagesForModelMediaPolicy(
-    providerMessages,
+    prepared.request.messages,
     model.properties.inputFormat,
   ).messages;
   const modelRequestEvent = this.createEvent(
@@ -171,7 +167,7 @@ async function verifyTargetCompletion(
     const result = await generateTargetCompletionVerificationText.call(this, {
       abortSignal: input.abortSignal,
       events: input.events,
-      messages,
+      request: { ...prepared.request, messages },
       model,
       traceContext: modelTraceContext,
     });
@@ -313,7 +309,7 @@ async function generateTargetCompletionVerificationText(
   input: {
     abortSignal?: AbortSignal;
     events: SessionEvent[];
-    messages: ReturnType<typeof buildRuntimeProviderRequestMessages>["messages"];
+    request: ReturnType<typeof prepareRuntimeProviderRequest>["request"];
     model: Model;
     traceContext: TraceContext;
   },
@@ -338,10 +334,9 @@ async function generateTargetCompletionVerificationText(
       return await runWithModelInvocationContext(invocationContext, () =>
         input.model.generateText({
           abortSignal: input.abortSignal,
-          messages: input.messages,
+          ...input.request,
           // Verifier 继承已绑定的思考配置，不能套用低成本辅助调用的降档和封顶策略。
           options: { maxOutputTokens: input.model.optionSpecs.maxOutputTokens.max },
-          tools: [],
         }),
       );
     } catch (error) {

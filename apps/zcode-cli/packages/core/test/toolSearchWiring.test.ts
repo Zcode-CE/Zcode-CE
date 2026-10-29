@@ -13,6 +13,14 @@ import {
 import { hydrateCompactDiscovery, hydrateToolSearchContent } from "../src/agent/tool-search-hydration.js";
 import { prepareRuntimeProviderRequest } from "../src/runtime/helpers/runtime-provider-request-messages.js";
 import { buildRuntimeProviderRequestMessages } from "../src/runtime/helpers/runtime-provider-request-messages.js";
+import {
+  buildCompactSummaryRequestMessages,
+  selectCompactSummaryTools,
+} from "../src/runtime/methods/compact-active-helpers.js";
+import {
+  captureProjectMemoryAgentContext,
+  prepareProjectMemoryAgentRequest,
+} from "../src/runtime/helpers/project-memory-agent.js";
 import { completedToolPartMetadata } from "../src/runtime/methods/tool-part-metadata.js";
 import { buildManualCompactBoundary } from "../src/compact/manual.js";
 import { resolveDeferredToolCall } from "../src/tool/deferred-call.js";
@@ -366,3 +374,232 @@ test("持久化：包装调用的目标身份与标记在 history 中成对保�
   assert.equal(renderedTool?.toolName, DEFERRED_TOOL_CALL_NAME);
   assert.equal(renderedTool?.modelCallWrapper, undefined);
 });
+
+// 辅助请求（memory / goal verifier / compact summary）必须与主请求共用同一套曝光决策：
+// tools 与历史 tool_reference 投影成对产出，不能各自直接 build。旧装配 = 历史末尾追加 prompt 后渲染。
+const AUX_PROMPT = "辅助请求提示";
+const MCP_TOOL_NAME = "mcp__demo__query";
+const MCP_TOOL = {
+  name: MCP_TOOL_NAME,
+  description: "demo query",
+  inputSchema: { type: "object" },
+} as unknown as ModelToolContract;
+
+type RequestRuntimeInput = Parameters<typeof buildRuntimeProviderRequestMessages>[0];
+
+function legacyAuxMessages(
+  runtime: RequestRuntimeInput,
+  model: Model,
+  entries: readonly RuntimeMessageEntry[],
+  prompt: string,
+) {
+  return buildRuntimeProviderRequestMessages(runtime, {
+    applyCacheControl: true,
+    entries: [...entries, { message: { content: prompt, role: "user" } }],
+    model,
+  }).messages;
+}
+
+function registryWithMcpTool() {
+  const registry = registryOf();
+  const get = (name: string) =>
+    name === MCP_TOOL_NAME
+      ? ({
+          metadata: { mcpPresentation: { serverName: "demo", toolName: "query" } },
+        } as unknown as ReturnType<ToolRegistryImpl["get"]>)
+      : registry.get(name);
+  return { registry, withMcp: { get } };
+}
+
+function captureRuntimeStub(registry: ToolRegistryImpl) {
+  return {
+    agentTelemetry: { captureCausation: () => undefined },
+    config: {},
+    getSessionModelSelection: () => undefined,
+    getTools: () => toolsOf(registry),
+    messageHistory: { borrowReadOnlyRuntimeEntries: () => [] as RuntimeMessageEntry[] },
+    readFileState: new Map(),
+    workingDirectory: "/workspace",
+    workspaceRoot: "/workspace",
+  } as unknown as Parameters<typeof captureProjectMemoryAgentContext>[0];
+}
+
+test("off：辅助请求的 tools/messages 与改动前逐字节一致", () => {
+  const registry = registryOf();
+  const model = modelOf();
+  const history = new MessageHistoryImpl();
+  history.init("system");
+  history.addUser("请读取文件");
+  const entries = history.borrowReadOnlyRuntimeEntries();
+  const withoutControlTools = toolsOf(registry).filter(
+    (tool) => tool.name !== TOOL_SEARCH_NAME && tool.name !== DEFERRED_TOOL_CALL_NAME,
+  );
+
+  // goal verifier：tools: [] + 显式 prompt。
+  const verifier = prepareRuntimeProviderRequest(runtimeOf("off"), {
+    model,
+    tools: [],
+    entries,
+    prompt: AUX_PROMPT,
+    applyCacheControl: true,
+  }).request;
+  assert.deepEqual(verifier.messages, legacyAuxMessages(runtimeOf("off"), model, entries, AUX_PROMPT));
+  assert.deepEqual(verifier.tools, []);
+  assert.equal(verifier.toolSearchEnabled, false);
+
+  // compact summary：工具选择 = 「去掉两个控制入口的完整目录」，请求与旧
+  // buildCompactSummaryRequestMessages 同输入同输出（含 cache 标记）。
+  const compactTools = selectCompactSummaryTools({
+    model,
+    mode: "off",
+    registry,
+    tools: toolsOf(registry),
+  });
+  assert.deepEqual(
+    compactTools.map((tool) => tool.name),
+    ["Read", "WebFetch"],
+  );
+  const compact = prepareRuntimeProviderRequest(runtimeOf("off"), {
+    model,
+    tools: compactTools,
+    registry,
+    entries,
+    prompt: AUX_PROMPT,
+    applyCacheControl: true,
+    skipCacheWrite: true,
+  }).request;
+  assert.deepEqual(
+    compact.messages,
+    buildCompactSummaryRequestMessages(entries, AUX_PROMPT, { useMidConversationSystem: false }),
+  );
+  assert.deepEqual(compact.tools, withoutControlTools);
+  assert.equal(compact.toolSearchEnabled, false);
+
+  // memory：capture 先摘掉 ToolSearch，prepare 再产出请求；与旧装配等价。
+  const captured = captureProjectMemoryAgentContext(captureRuntimeStub(registry), {
+    memoryRoot: "/memory",
+    model,
+    operation: "project_memory_extract",
+    traceContext: { sessionId: "s", traceId: "t" } as never,
+  });
+  assert.equal(captured.tools.some((tool) => tool.name === TOOL_SEARCH_NAME), false);
+  assert.ok(captured.tools.some((tool) => tool.name === "Read"));
+  const memory = prepareProjectMemoryAgentRequest(captured, AUX_PROMPT);
+  // protection 之外的 DeferredToolCall 也由曝光决策摘掉：解析恒为 off，控制入口不得出现在请求里。
+  assert.deepEqual(
+    memory.tools.map((tool) => tool.name),
+    ["Read", "WebFetch"],
+  );
+  assert.equal(memory.toolSearchEnabled, false);
+  assert.deepEqual(
+    memory.messages,
+    legacyAuxMessages(
+      { config: { midConversationSystem: undefined } },
+      model,
+      captured.providerEntries,
+      AUX_PROMPT,
+    ),
+  );
+});
+
+test("local：辅助请求的 tools 与历史引用跟随曝光决策", () => {
+  const { registry, withMcp } = registryWithMcpTool();
+  const model = modelOf();
+  const catalog = [...toolsOf(registry), MCP_TOOL];
+
+  // compact 只保留 Read + 两个控制入口 + MCP 目录；非 MCP 的 deferred 工具不参与摘要。
+  assert.deepEqual(
+    selectCompactSummaryTools({ model, mode: "local", registry: withMcp, tools: catalog }).map(
+      (tool) => tool.name,
+    ),
+    ["Read", TOOL_SEARCH_NAME, DEFERRED_TOOL_CALL_NAME, MCP_TOOL_NAME],
+  );
+
+  const mcpReference: RuntimeMessageEntry = {
+    kind: "message",
+    message: {
+      role: "tool",
+      toolCallId: "call_search_mcp",
+      toolName: TOOL_SEARCH_NAME,
+      content: [{ type: "tool_reference", toolName: MCP_TOOL_NAME }],
+    },
+    metadata: { source: "real_user" },
+  };
+  const compact = prepareRuntimeProviderRequest(runtimeOf("local"), {
+    model,
+    tools: selectCompactSummaryTools({ model, mode: "local", registry: withMcp, tools: catalog }),
+    registry: withMcp,
+    entries: [mcpReference],
+    prompt: AUX_PROMPT,
+    applyCacheControl: true,
+    skipCacheWrite: true,
+  }).request;
+  const names = compact.tools.map((tool) => tool.name);
+  assert.ok(names.includes(TOOL_SEARCH_NAME));
+  assert.ok(names.includes(DEFERRED_TOOL_CALL_NAME));
+  // deferred 目标仍不出现在 tools 里：local 只在结果位置展开定义。
+  assert.equal(names.includes(MCP_TOOL_NAME), false);
+  assert.equal(compact.toolSearchEnabled, false);
+  const searched = compact.messages.find((message) => message.role === "tool");
+  const blocks = Array.isArray(searched?.content) ? searched.content : [];
+  const expanded = blocks.find((block) => block.type === "text");
+  assert.ok(expanded && expanded.type === "text");
+  assert.match(expanded.text, /<functions>/);
+  assert.match(expanded.text, new RegExp(MCP_TOOL_NAME));
+
+  // verifier 没有工具可调用：历史引用必须被投影成 provider 可接受的内容，
+  // 不能把 tool_reference 原样发出去（adapter 会直接失败）。
+  const verifier = prepareRuntimeProviderRequest(runtimeOf("local"), {
+    model,
+    tools: [],
+    entries: [REFERENCE_RESULT],
+    prompt: AUX_PROMPT,
+    applyCacheControl: true,
+  }).request;
+  const serialized = JSON.stringify(verifier.messages);
+  assert.equal(serialized.includes("'tool_reference'"), false);
+  assert.match(serialized, /Tool references removed/);
+
+  // memory 仍然不允许 ToolSearch：捕获的工具目录摘掉了控制入口，请求因此停在 off。
+  const memory = prepareProjectMemoryAgentRequest(
+    {
+      midConversationSystem: undefined,
+      model,
+      providerEntries: [REFERENCE_RESULT],
+      tools: catalog.filter((tool) => tool.name !== TOOL_SEARCH_NAME),
+    } as unknown as Parameters<typeof prepareProjectMemoryAgentRequest>[0],
+    AUX_PROMPT,
+  );
+  assert.equal(memory.tools.some((tool) => tool.name === TOOL_SEARCH_NAME), false);
+  assert.equal(memory.toolSearchEnabled, false);
+  assert.equal(JSON.stringify(memory.messages).includes("'tool_reference'"), false);
+});
+
+test("local：工具数超过 compact 阈值时 summary 请求保持无工具", () => {
+  const { registry, withMcp } = registryWithMcpTool();
+  const model = modelOf();
+  const manyTools = Array.from(
+    { length: 101 },
+    (_, index) =>
+      ({
+        name: "Tool" + index,
+        description: "",
+        inputSchema: { type: "object" },
+      }) as unknown as ModelToolContract,
+  );
+  // 没有控制入口与 deferred 工具时搜索不可启用 ⇒ 回落到普通工具策略 ⇒ 超过 100 个则清空。
+  assert.deepEqual(
+    selectCompactSummaryTools({ model, mode: "local", registry: withMcp, tools: manyTools }),
+    [],
+  );
+  assert.equal(
+    selectCompactSummaryTools({ model, mode: "local", registry: withMcp, tools: manyTools.slice(0, 100) })
+      .length,
+    100,
+  );
+  assert.deepEqual(
+    selectCompactSummaryTools({ model, mode: "off", registry, tools: manyTools }),
+    [],
+  );
+});
+
