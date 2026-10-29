@@ -2,6 +2,7 @@ import type { CSSProperties, SyntheticEvent } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "@/components/ui/toast.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
+import { dispatchWorkspaceFileAddToChat } from "@/lib/workspaceFileDrag.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
 interface ImagePreviewContentProps {
@@ -9,6 +10,9 @@ interface ImagePreviewContentProps {
   imageSource: string;
   fitToContainer?: boolean;
   sourcePath?: string;
+  /** 来源工作区作用域：只有带真实来源路径时才允许「添加到聊天」，远端按 identity 匹配。 */
+  workspacePath?: string;
+  workspaceIdentity?: string;
 }
 
 interface ImageNaturalSize {
@@ -84,6 +88,8 @@ export function ImagePreviewContent({
   fitToContainer = false,
   imageSource,
   sourcePath,
+  workspacePath,
+  workspaceIdentity,
 }: ImagePreviewContentProps) {
   const { intl } = useZCodeIntl();
   const platform = usePlatform();
@@ -131,6 +137,29 @@ export function ImagePreviewContent({
       setCopying(false);
     }
   }, [copying, imageLoaded, intl]);
+
+  const handleAddToChat = useCallback(() => {
+    if (!sourcePath) return;
+    const normalizedWorkspace = workspacePath?.replace(/\\/gu, "/").replace(/\/+$/u, "");
+    const normalizedPath = sourcePath.replace(/\\/gu, "/");
+    // 工作区内生成相对引用；工作区外保留绝对路径（同名文件不能被误指向工作区内）。
+    const relativePath =
+      normalizedWorkspace && normalizedPath.startsWith(`${normalizedWorkspace}/`)
+        ? normalizedPath.slice(normalizedWorkspace.length + 1)
+        : sourcePath;
+    const name = normalizedPath.split("/").at(-1) ?? title;
+    const accepted = dispatchWorkspaceFileAddToChat({
+      type: "file",
+      workspacePath: workspacePath ?? "",
+      ...(workspaceIdentity ? { workspaceIdentity } : {}),
+      path: sourcePath,
+      relativePath,
+      name,
+    });
+    if (!accepted) {
+      toast(intl.formatMessage({ id: "preview.image.addToChatFailed" }));
+    }
+  }, [intl, sourcePath, title, workspaceIdentity, workspacePath]);
 
   const handleDownloadImage = useCallback(async () => {
     if (downloading) return;
@@ -193,7 +222,15 @@ export function ImagePreviewContent({
     <div
       className={`relative flex h-full min-h-0 items-center justify-center overflow-hidden p-10 ${IMAGE_PREVIEW_CHECKERBOARD_CLASS}`}
     >
-      <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+      <div className="absolute right-3 top-3 z-10 flex flex-wrap items-center justify-end gap-2">
+        <button
+          type="button"
+          className="inline-flex h-8 items-center rounded-lg border-0 bg-surface/90 px-3 text-ui-base font-medium text-foreground shadow-sm transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!imageLoaded || !sourcePath}
+          onClick={handleAddToChat}
+        >
+          {intl.formatMessage({ id: "workspaceFileTree.addToChat" })}
+        </button>
         <button
           type="button"
           className="inline-flex h-8 items-center rounded-lg border-0 bg-surface/90 px-3 text-ui-base font-medium text-foreground shadow-sm transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"

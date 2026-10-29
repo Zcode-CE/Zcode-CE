@@ -265,6 +265,8 @@ export function PreviewPaneContent({
         title={source.title}
         imageSource={`data:${imagePreview.mediaType};base64,${imagePreview.dataBase64}`}
         sourcePath={source.path}
+        workspacePath={source.workspacePath}
+        workspaceIdentity={source.workspaceIdentity}
       />
     );
   }
