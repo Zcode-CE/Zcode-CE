@@ -56,6 +56,10 @@
     "tailwind-scrollbar-hide": "^4.0.0"
   },
   "devDependencies": {
+    "node-pty": "^1.1.0",
+    "ws": "^8.20.0",
+    "yaml": "^2.9.0",
+    "yazl": "^3.3.1",
     "@release-it/conventional-changelog": "^10.0.6",
     "@tanstack/react-virtual": "^3.13.23",
     "@types/node": "^25.5.0",

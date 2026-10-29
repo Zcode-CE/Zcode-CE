@@ -43,6 +43,7 @@
     "@zcode/shared": "workspace:*",
     "@zcode/ui": "workspace:*",
     "@zcode/zcode-cua": "workspace:*",
+    "builder-util-runtime": "^9.5.1",
     "electron-updater": "^6.8.3",
     "module-details-from-path": "^1.0.4",
     "node-forge": "^1.4.0",
@@ -56,7 +57,8 @@
     "ws": "^8.20.0",
     "yaml": "^2.9.0",
     "yauzl": "^3.3.0",
-    "yazl": "^3.3.1"
+    "yazl": "^3.3.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@electron/asar": "^3.4.1",
