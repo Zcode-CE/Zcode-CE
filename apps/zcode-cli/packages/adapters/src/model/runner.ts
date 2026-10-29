@@ -42,6 +42,7 @@ import {
   type ResolvedAiSdkModel,
 } from "./runner-runtime.js";
 import { createModel, type ModelExecutionRequest } from "./model.js";
+import { resolveToolSearchCapability } from "./tool-search.js";
 
 export type { AiSdkModelRetryOptions } from "./retry-policy.js";
 export type {
@@ -188,6 +189,7 @@ export class AiSdkModelAdapter {
             }))
           : undefined;
       return {
+        toolSearchEnabled: request.toolSearchEnabled,
         messages: request.messages,
         tools: request.tools,
         responseJsonSchema: request.responseJsonSchema,
@@ -256,6 +258,13 @@ export class AiSdkModelAdapter {
           });
     };
     return createModel({
+      // core 只读这份声明（resolveToolSearchMode）：缺席即「不支持」，native 请求因此明确失败。
+      requestCapabilities: {
+        toolSearch: resolveToolSearchCapability(
+          options.providerConfig.api.type,
+          options.providerConfig.access,
+        ),
+      },
       providerId: resolved.providerId,
       modelId: resolved.modelId,
       displayName: options.displayName,

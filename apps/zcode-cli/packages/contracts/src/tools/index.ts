@@ -56,6 +56,11 @@ export * from "./escalate.js";
 export * from "./resolve-workflow-question.js";
 export * from "./workflow-observation-display.js";
 export * from "./tool-result-metadata.js";
+// F14 工具搜索（3.16.2）的两个控制面契约：ToolSearch 的四态 mode / 输入输出 schema /
+// tool_reference 内容块，DeferredToolCall 的包装输入。名字常量被 core 的工具目录过滤、
+// 历史投影与 adapters 的请求头注入读走；漏掉这两行会让那些消费点静默失效。
+export * from "./tool-search.js";
+export * from "./deferred-tool-call.js";
 export * from "./performance.js";
 
 // Shared types (only once to avoid duplicates)

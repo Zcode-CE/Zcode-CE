@@ -75,6 +75,11 @@ export const parseGlobalArgs = (argv: string[]) =>
       "force-mcs": {
         type: "boolean",
       },
+      // 上游 3.16.2 的工具搜索开关（auto/native/local/off）。取值校验在 run.ts，
+      // 这里只声明参数形态，避免非字符串值被 parseArgs 静默接受。
+      "toolsearch-mode": {
+        type: "string",
+      },
       mode: {
         type: "string",
       },

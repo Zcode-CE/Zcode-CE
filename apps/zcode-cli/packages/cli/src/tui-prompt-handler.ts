@@ -1,5 +1,5 @@
 import { getDefaultConfigPath, updateUiLocaleInFileConfig } from "@zcode/adapters/config";
-import type { SessionEvent } from "@zcode/contracts";
+import type { SessionEvent, ToolSearchMode } from "@zcode/contracts";
 import type { ZCodeAppOptions } from "@zcode/bootstrap";
 import { DEFAULT_LOCALE, type SupportedLocale } from "@zcode/i18n";
 import type { TuiRequestPermission } from "@zcode/tui";
@@ -18,6 +18,7 @@ import {
   prepareTuiAppRuntime,
 } from "./tui-prompt-handler-runtime.js";
 import { DEFAULT_CLI_CLEANUP_TIMEOUT_MS, runCliCleanupWithTimeout } from "./shutdown.js";
+import { toolSearchRuntimeConfig } from "./tool-search-flag.js";
 import {
   configureApiKeyForTui,
   loginBigmodelForTui,
@@ -59,6 +60,7 @@ export function createTuiSubmitPrompt(
   forceMcs = false,
   browserUse?: GlobalOptions["browserUse"],
   browserExecutable?: GlobalOptions["browserExecutable"],
+  toolSearchMode: ToolSearchMode = "off",
 ): TuiPromptHandler {
   let app: Awaited<ReturnType<NonNullable<RunDependencies["createZCodeApp"]>>> | undefined;
   let activeUiLocale = uiLocale;
@@ -160,6 +162,7 @@ export function createTuiSubmitPrompt(
           ...(modeState.override ? { mode: modeState.override } : {}),
           ...(toolDisallowlist ? { toolDisallowlist } : {}),
           ...(forceMcs ? { midConversationSystem: { mode: "force" as const } } : {}),
+          ...toolSearchRuntimeConfig(toolSearchMode),
           modelStreaming: "on",
           titleGeneration: TUI_TITLE_GENERATION_CONFIG,
           workingDirectory,

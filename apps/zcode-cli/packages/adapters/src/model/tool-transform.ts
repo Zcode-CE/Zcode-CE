@@ -9,6 +9,8 @@ import { AiSdkModelAdapterError } from "./errors.js";
 import { isAnthropicFirstPartyModelId, toStrictToolSchema } from "./strict-tool-schema.js";
 
 export interface AiSdkToolTransformOptions {
+  /** native 模式的请求级开关：只有它开启时才把 deferLoading 落进 provider descriptor。 */
+  toolSearchEnabled?: boolean;
   requiresMfjsToolSchema?: boolean;
   supportsNativeWebSearch?: boolean;
   providerKind?: "openai" | "anthropic" | "openai-compatible" | "gateway" | "custom";
@@ -43,7 +45,7 @@ export function toAiSdkTools(
       ),
       ...(strictSchema === undefined ? {} : { strict: true }),
       needsApproval: contract.needsApproval,
-      ...providerOptionsForClientTool(options),
+      ...providerOptionsForClientTool(options, contract),
     };
 
     if (!contract.execute) {
@@ -222,7 +224,10 @@ function asPlainRecord(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
-function providerOptionsForClientTool(options: AiSdkToolTransformOptions): {
+function providerOptionsForClientTool(
+  options: AiSdkToolTransformOptions,
+  contract: ModelToolContract,
+): {
   providerOptions?: Record<string, Record<string, boolean>>;
 } {
   if (options.providerKind !== "anthropic") {
@@ -237,6 +242,8 @@ function providerOptionsForClientTool(options: AiSdkToolTransformOptions): {
     providerOptions: {
       anthropic: {
         eagerInputStreaming: false,
+        // 延迟加载必须随请求显式声明；关闭态不写这个键，保持与没有本功能时一致。
+        ...(options.toolSearchEnabled && contract.deferLoading ? { deferLoading: true } : {}),
       },
     },
   };

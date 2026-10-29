@@ -10,6 +10,7 @@ import type {
   ResolvedAiSdkModel,
 } from "./runner-runtime.js";
 import { createModelRequestAttributionHeaders, type ModelStatusContext } from "./runner-status.js";
+import { toolSearchHeaders } from "./tool-search.js";
 
 type ExperimentalIncludeWithResponseBody = {
   requestBody?: boolean;
@@ -62,12 +63,14 @@ export function createGenerateTextOptions(input: {
       providerOptions,
       providerKind: input.resolved.providerKind,
       inputFormat: input.resolved.properties?.inputFormat,
+      toolSearchEnabled: input.request.toolSearchEnabled,
     }),
     tools: toAiSdkTools(input.request.tools, {
       providerKind: input.resolved.providerKind,
       modelId: input.resolved.modelId,
       requiresMfjsToolSchema: input.resolved.properties.requiresMfjsToolSchema,
       supportsNativeWebSearch: input.resolved.properties.supportsNativeWebSearch,
+      toolSearchEnabled: input.request.toolSearchEnabled,
     }),
     toolChoice: toAiSdkToolChoice(input.request.toolChoice),
     temperature: input.request.temperature,
@@ -83,7 +86,7 @@ export function createGenerateTextOptions(input: {
     providerOptions: requestProviderOptions,
     abortSignal: input.request.abortSignal,
     headers: mergeRequestHeaders(
-      input.resolved.headers,
+      toolSearchHeaders(input.resolved.headers, input.request.toolSearchEnabled),
       createModelRequestAttributionHeaders(input.statusContext),
     ),
     // ZCode owns system-message construction in core/context. Keep AI SDK from
@@ -123,12 +126,14 @@ export function createStreamTextOptions(input: {
       providerOptions,
       providerKind: input.resolved.providerKind,
       inputFormat: input.resolved.properties?.inputFormat,
+      toolSearchEnabled: input.request.toolSearchEnabled,
     }),
     tools: toAiSdkTools(input.request.tools, {
       providerKind: input.resolved.providerKind,
       modelId: input.resolved.modelId,
       requiresMfjsToolSchema: input.resolved.properties.requiresMfjsToolSchema,
       supportsNativeWebSearch: input.resolved.properties.supportsNativeWebSearch,
+      toolSearchEnabled: input.request.toolSearchEnabled,
     }),
     toolChoice: toAiSdkToolChoice(input.request.toolChoice),
     temperature: input.request.temperature,
@@ -141,7 +146,7 @@ export function createStreamTextOptions(input: {
     providerOptions: requestProviderOptions,
     abortSignal: input.request.abortSignal,
     headers: mergeRequestHeaders(
-      input.resolved.headers,
+      toolSearchHeaders(input.resolved.headers, input.request.toolSearchEnabled),
       createModelRequestAttributionHeaders(input.statusContext),
     ),
     // ZCode owns system-message construction in core/context. Keep AI SDK from

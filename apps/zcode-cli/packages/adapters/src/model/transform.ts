@@ -25,6 +25,8 @@ import { dataUrlToDataContent, unsupportedInputMediaText } from "./media-transfo
 import { normalizeOpenAiCompatibleSystemMessages } from "./system-message-compat.js";
 
 export interface AiSdkMessageTransformOptions {
+  /** native 模式的请求级开关：只有它开启时 tool_reference 才能编码成 provider 引用块。 */
+  toolSearchEnabled?: boolean;
   apiFormat?: string;
   providerOptions?: Record<string, unknown>;
   providerKind?: "openai" | "anthropic" | "openai-compatible" | "gateway" | "custom";
@@ -168,15 +170,27 @@ function toAiSdkToolResultOutput(
 
   if (typeof content === "string") return { type: "text", value: content };
 
-  if (textifyStructuredContent) {
+  // 含工具引用的结果不能整段文本化：引用必须留在 content part 里交给 provider 展开，
+  // 否则服务端拿不到定义、模型看到的是工具名字符串。
+  const hasToolReferences = content.some((block) => block.type === "tool_reference");
+  if (textifyStructuredContent && !hasToolReferences) {
     return { type: "text", value: toStructuredToolResultText(content, options) };
   }
 
-  if (options.stripMedia) {
+  if (options.stripMedia && !hasToolReferences) {
     return { type: "text", value: modelMessageContentToText(content) };
   }
 
-  const value = content.flatMap((block) => contentBlockToAiSdkToolResultParts(block, options));
+  // 工具引用不是媒体：媒体降级不能把引用变成名字文本，否则服务端无法展开定义。
+  const value = content.flatMap((block) => {
+    if (block.type !== "tool_reference" && (textifyStructuredContent || options.stripMedia)) {
+      const text = textifyStructuredContent
+        ? toStructuredToolResultText([block], options)
+        : modelMessageContentToText([block]);
+      return text ? [{ type: "text" as const, text }] : [];
+    }
+    return contentBlockToAiSdkToolResultParts(block, options);
+  });
   return value.length > 0
     ? { type: "content", value }
     : { type: "text", value: modelMessageContentToText(content) };
@@ -192,6 +206,22 @@ function contentBlockToAiSdkToolResultParts(
 
     case "reasoning":
       return [];
+
+    case "tool_reference":
+      // 引用块只对 Anthropic Messages 的延迟加载有意义；其他协议或关闭态下把它编码成
+      // 普通文本会静默改变模型看到的内容，所以这里明确失败而不是降级。
+      if (options.providerKind !== "anthropic" || !options.toolSearchEnabled) {
+        throw new AiSdkModelAdapterError(
+          ModelErrorCode.InvalidModelRequest,
+          "Tool references require active Anthropic ToolSearch",
+        );
+      }
+      return [
+        {
+          type: "custom",
+          providerOptions: { anthropic: { type: "tool-reference", toolName: block.toolName } },
+        },
+      ];
 
     case "image": {
       const unsupportedText = unsupportedInputMediaText(block, options.inputFormat);
@@ -294,6 +324,13 @@ function contentBlockToAiSdkAssistantParts(
   options: AiSdkAssistantTransformOptions,
 ): AiSdkAssistantContentPart[] {
   switch (block.type) {
+    // 引用只属于工具结果；出现在 assistant/user 内容里说明历史被改写，必须显式失败。
+    case "tool_reference":
+      throw new AiSdkModelAdapterError(
+        ModelErrorCode.InvalidModelRequest,
+        "Tool references must appear inside tool results",
+      );
+
     case "text":
       return block.text.length > 0 ? [{ type: "text", text: block.text }] : [];
 
@@ -403,6 +440,12 @@ function contentBlockToAiSdkUserParts(
   options: AiSdkMessageTransformOptions,
 ): Extract<AiSdkUserContent, unknown[]> {
   switch (block.type) {
+    case "tool_reference":
+      throw new AiSdkModelAdapterError(
+        ModelErrorCode.InvalidModelRequest,
+        "Tool references must appear inside tool results",
+      );
+
     case "text":
       return block.text.length > 0 ? [{ type: "text", text: block.text }] : [];
 

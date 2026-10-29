@@ -4,6 +4,7 @@ import { getRuntimeInfo, type PresentationSurface } from "@zcode/core";
 import { color, formatJson, supportsColor } from "@zcode/core";
 import { getZCodeCopy, isUiLocale, type UiLocale } from "@zcode/i18n";
 import type { RunContext, GlobalOptions, GlobalOutputFormat } from "@zcode/shared-types";
+import type { ToolSearchMode } from "@zcode/contracts";
 import {
   applyCliRuntimeEnvSanitization,
   loadCliDotenv,
@@ -25,6 +26,7 @@ import { runPrompt } from "./prompt-command.js";
 import { runPluginsCommand, type PluginsCommandFlags } from "./plugins-command.js";
 import { runSkillsCommand } from "./skills-command.js";
 import { runTuiCommand } from "./tui-command.js";
+import { parseToolSearchModeFlag, TOOL_SEARCH_SCOPE_ERROR } from "./tool-search-flag.js";
 import {
   ENABLE_WORKFLOW_SCOPE_ERROR,
   isHeadlessWorkflowFlagSupportedInvocation,
@@ -397,6 +399,14 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
     return 1;
   }
   const forceMcs = parsed.values["force-mcs"] === true;
+  let toolSearchMode: ToolSearchMode;
+  try {
+    toolSearchMode = parseToolSearchModeFlag(parsed.values["toolsearch-mode"]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    ctx.stderr.write(`${message}\n`);
+    return 1;
+  }
   const enableWorkflow = resolveHeadlessWorkflowFlag(parsed.values);
   const options = globalOptions(
     parsed.values,
@@ -487,6 +497,20 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
     return 1;
   }
 
+  // 作用域与 --force-mcs 同一判据（prompt/target/tui）：超出范围报错而不是静默忽略，
+  // 否则「我在 app-server 里传了 --toolsearch-mode native」会变成一个看不见的空操作。
+  if (
+    parsed.values["toolsearch-mode"] !== undefined &&
+    !isForceMcsSupportedInvocation({
+      positionals: parsed.positionals,
+      prompt: parsed.values.prompt as string | undefined,
+      targetRequest,
+    })
+  ) {
+    ctx.stderr.write(`${TOOL_SEARCH_SCOPE_ERROR}\n`);
+    return 1;
+  }
+
   let workingDirectory: string;
   try {
     workingDirectory = resolveCliCwd({
@@ -526,6 +550,7 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
       toolDisallowlist,
       forceMcs,
       presentationSurface,
+      toolSearchMode,
     );
   }
 
@@ -542,6 +567,7 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
       toolDisallowlist,
       forceMcs,
       presentationSurface,
+      toolSearchMode,
     );
   }
 
@@ -596,6 +622,7 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
         resumeRequest,
         toolDisallowlist,
         forceMcs,
+        toolSearchMode,
       );
     default:
       ctx.stderr.write(`Unknown command: ${commandName(parsed.positionals)}\n\n`);

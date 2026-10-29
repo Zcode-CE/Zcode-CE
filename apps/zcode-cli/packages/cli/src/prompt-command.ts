@@ -1,6 +1,7 @@
 import { extname } from "node:path";
 import { formatJson, type PresentationSurface } from "@zcode/core";
 import type { RunContext, GlobalOptions } from "@zcode/shared-types";
+import type { ToolSearchMode } from "@zcode/contracts";
 import { loadBootstrapModule } from "./bootstrap-loader.js";
 import {
   buildManualSkillPrompt,
@@ -25,6 +26,7 @@ import {
   runCliCleanupWithTimeout,
 } from "./shutdown.js";
 import { runSkillsCommand } from "./skills-command.js";
+import { toolSearchRuntimeConfig } from "./tool-search-flag.js";
 import { headlessWorkflowRuntimeConfig } from "./workflow-flag.js";
 import type { CommandCenterApp, SlashCommand } from "./command-center.js";
 import type {
@@ -71,6 +73,7 @@ export const runPrompt = async (
   toolDisallowlist?: readonly string[],
   forceMcs = false,
   presentationSurface: PresentationSurface = "terminal",
+  toolSearchMode: ToolSearchMode = "off",
 ): Promise<number> => {
   if (prompt.trim().length === 0) {
     ctx.stderr.write(`${EMPTY_PROMPT_ERROR}\n`);
@@ -225,6 +228,7 @@ export const runPrompt = async (
         // 只在用户显式关闭时落一个 false，开启态保持缺席 —— 与 TUI/stdio 同一条策略，
         // 也避免把那几处「缺席即开启」的注释写成与实现不符。见 workflow-flag.ts。
         ...headlessWorkflowRuntimeConfig(options),
+        ...toolSearchRuntimeConfig(toolSearchMode),
         memory: { extractionEnabled: options.memoryBench === true },
         modelStreaming: "on",
         presentationSurface,

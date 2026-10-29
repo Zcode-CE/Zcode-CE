@@ -71,6 +71,15 @@ import type { RuntimeTaskRegistry } from "../runtime-task/registry.js";
 // -----------------------------------------------
 
 export interface ToolMetadata {
+  /**
+   * 声明该工具默认从模型可见工具列表里摘掉，改由 ToolSearch 按需交付。
+   * 只对非 providerNative 工具与 alwaysLoad=false 的工具生效（见 tool/search/exposure.ts）。
+   */
+  shouldDefer?: boolean;
+  /** 反悔阀：即便 shouldDefer，也让它常驻可见；随 deferred 目录转 alwaysLoad 后工具仍需可用。 */
+  alwaysLoad?: boolean;
+  /** 关键词检索的补充词面；工具名与 description 之外的召回线索，不改模型可见说明。 */
+  searchHint?: string;
   name: string;
   description?: string;
   modelInstructions?: readonly string[];

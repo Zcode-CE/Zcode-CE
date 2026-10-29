@@ -42,6 +42,14 @@ export type RuntimeMessageSource =
   | "legacy_synthetic";
 
 export interface RuntimeMessageMetadata {
+  /** compact 保留的已发现工具名：丢了它会把交付过的 deferred 工具重新公告一遍。 */
+  compactBoundary?: { boundaryId: string; preCompactDiscoveredTools?: readonly string[] };
+  /** ToolSearch 公告增量（模型可见文案由它重建；readded ⊂ added）。 */
+  toolSearchAnnouncement?: {
+    addedNames: readonly string[];
+    removedNames: readonly string[];
+    readdedNames: readonly string[];
+  };
   source: RuntimeMessageSource;
   inputPresentation?: RuntimeInputPresentation;
 }

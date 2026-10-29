@@ -1,3 +1,4 @@
+import type { ToolSearchCapability } from "../tools/tool-search.js";
 import type {
   JsonSchema,
   ModelInputMessage,
@@ -29,6 +30,8 @@ export interface ModelOptions {
 }
 
 export interface ModelRequest {
+  /** 本次请求是否启用 provider 侧延迟加载（native 模式）。off/local 不设置。 */
+  toolSearchEnabled?: boolean;
   messages: ModelInputMessage[];
   tools?: ModelToolContract[];
   responseJsonSchema?: JsonSchema;
@@ -42,6 +45,11 @@ export type ModelResult = ModelTextResult;
 export type ModelEvent = ModelStreamEvent;
 
 export interface Model {
+  /**
+   * provider 对工具搜索的声明能力。由 adapters 在创建 Model 时按 api 类型与访问方式推导，
+   * core 只读（resolveToolSearchMode）：缺席等同于「不支持」，native 请求因此明确失败而不是降级。
+   */
+  readonly requestCapabilities?: { readonly toolSearch?: ToolSearchCapability };
   readonly providerId: ModelProviderId;
   readonly modelId: ModelId;
   readonly displayName?: string;

@@ -2610,6 +2610,8 @@ The original import revisions of copied components are not recorded in the curre
 
 - ZCode bot group/topic conversation UI v3.16.2 (Z.ai) (Apache-2.0): packages/ui/src/v4/BotGroupSourceLabel.tsx, packages/ui/src/v4/BotGroupDeliveryAction.tsx, packages/ui/src/v4/BotTopicPreparation.tsx, packages/ui/src/v4/botGroupDeliveryContext.ts, packages/ui/src/v4/BotGroupMemberNamesContext.ts, packages/ui/src/v4/topicPreparationRenderUnits.ts, packages/ui/src/v4/ConversationUserInputBubble.tsx, packages/ui/src/v4/ConversationRowView.tsx, packages/ui/src/v4/ConversationTurnGroup.tsx, packages/ui/src/v4/ConversationTimeline.tsx, packages/ui/src/v4/SessionPane.tsx, packages/ui/src/v4/ConversationQueuePanel.tsx, packages/ui/src/v4/ConversationUserInputBody.tsx, packages/ui/src/i18n/locales/zh-CN.ts, packages/ui/src/i18n/locales/en-US.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/3c5b227649371507ddc4eb46ac5133afe6db1cab/LICENSE. Original import revision: 3c5b227649371507ddc4eb46ac5133afe6db1cab.
 
+- ZCode tool search contract & core v3.16.2 (Z.ai) (Apache-2.0): apps/zcode-cli/packages/contracts/src/tools/tool-search.ts, apps/zcode-cli/packages/contracts/src/tools/deferred-tool-call.ts, apps/zcode-cli/packages/core/src/tool/search/search.ts, apps/zcode-cli/packages/core/src/tool/search/description.ts, apps/zcode-cli/packages/core/src/tool/search/history.ts, apps/zcode-cli/packages/core/src/tool/search/local-projection.ts, apps/zcode-cli/packages/core/src/tool/search/exposure.ts, apps/zcode-cli/packages/adapters/src/model/tool-search.ts, apps/zcode-cli/packages/cli/src/tool-search-flag.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/3c5b227649371507ddc4eb46ac5133afe6db1cab/LICENSE. Original import revision: 3c5b227649371507ddc4eb46ac5133afe6db1cab.
+
 Fig autocomplete source carries the repository's MIT license; the generated registry records npm @withfig/autocomplete@2.692.3 metadata as ISC. The original source MIT notice is retained below.
 
 ## Embedded native and WASM components
@@ -40945,6 +40947,8 @@ SOFTWARE.
 - ZCode workflow timeline A-prime render layer v3.15.1 (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/aac4755666d09fdcd70272fcf063c077a639015f/LICENSE
 
 - ZCode bot group/topic conversation UI v3.16.2 (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/3c5b227649371507ddc4eb46ac5133afe6db1cab/LICENSE
+
+- ZCode tool search contract & core v3.16.2 (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/3c5b227649371507ddc4eb46ac5133afe6db1cab/LICENSE
 
 
 

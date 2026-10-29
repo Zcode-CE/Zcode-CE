@@ -20,6 +20,9 @@ type SystemReminderProviderVisibility = "provider_visible" | "provider_hidden";
 export const SYSTEM_REMINDER_PREFIX_SOURCES = ["context_prefix", "skills_listing"] as const;
 
 export const SYSTEM_REMINDER_PERSISTED_SOURCES = [
+  // ToolSearch 的目录变化公告：metadata 里保存 added/removed/readded 增量，
+  // 冷恢复时按增量重建文案（见 tool/search/exposure.ts）。
+  "tool_search_announcement",
   "todo_reminder",
   "task_status",
   "tool_result_warning",
@@ -86,6 +89,12 @@ const NON_MID_CONVERSATION_SYSTEM_SOURCES = new Set<SystemReminderSource>([
 ]);
 
 const SYSTEM_REMINDER_DESCRIPTORS: Record<SystemReminderSource, DescriptorShape> = {
+  tool_search_announcement: descriptor(
+    "current_turn",
+    "resume_history",
+    true,
+    "sr.tool_search_announcement",
+  ),
   incoming_message: descriptor("mid_turn_event", "mid_turn_event", true, "sr.incoming_message"),
   context_prefix: descriptor("request_prefix", "request_prefix", true, "sr.context_prefix"),
   skills_listing: descriptor("request_prefix", "request_prefix", true, "sr.skills_listing"),

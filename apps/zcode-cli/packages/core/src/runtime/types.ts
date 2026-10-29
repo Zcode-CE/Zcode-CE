@@ -19,6 +19,7 @@ import type {
   StableForkGoalBoundaryMetadata,
   StableForkTargetMetadata,
   WorkspaceHookBundleSnapshot,
+  ToolSearchMode,
   WorkspaceId,
 } from "@zcode/contracts";
 import type { DangerousCommandPolicy, ZCodeProviderAccountAccess } from "@zcode/shared";
@@ -117,6 +118,11 @@ import type { WorkspaceHookRuntimeAdmissionPort } from "../hooks/workspace-hook-
 // -----------------------------------------------
 
 export interface AgentRuntimeConfig {
+  /**
+   * 工具搜索（F14）的请求级模式。由 CLI `--toolsearch-mode` / `--prompt` 链路口径下发；
+   * 缺席即 off（行为与没有本功能时一致）。解析与目录过滤在 tool/search/exposure.ts。
+   */
+  toolSearch?: { mode?: ToolSearchMode };
   /** shared-host CUA request routing metadata; desktop is the safe default. */
   clientMode?: "desktop-continuous" | "web-remote-replayable";
   deliveryKind?: "desktop-continuous" | "web-remote-replayable";

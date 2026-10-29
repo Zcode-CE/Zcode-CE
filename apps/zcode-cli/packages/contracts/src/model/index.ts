@@ -2,6 +2,7 @@
 // Model Protocol - provider-neutral model contracts
 // ============================================================
 
+import type { ModelToolReferenceContentBlock } from "../tools/tool-search.js";
 import type { QueryId, SessionId, TraceId, TurnId } from "../interfaces/shared.js";
 import type {
   ProviderNativeToolSpec,
@@ -384,6 +385,9 @@ export interface ModelResourceLinkContentBlock {
 }
 
 export type ModelMessageContentBlock =
+  // tool_reference 只出现在 ToolSearch 的工具结果里：native 交给 provider 展开 schema，
+  // local 由 core 投影成 <functions> 文本；它不能退化成普通字符串，否则重试会丢引用。
+  | ModelToolReferenceContentBlock
   | ModelTextContentBlock
   | ModelReasoningContentBlock
   | ModelImageContentBlock
@@ -423,6 +427,8 @@ export function modelMessageContentBlockToText(block: ModelMessageContentBlock):
       return block.text;
     case "reasoning":
       return "";
+    case "tool_reference":
+      return block.toolName;
     case "image":
       return attachmentPlaceholder("Attached", block.mediaType, block.source?.placeholder);
     case "video":
@@ -460,6 +466,8 @@ export type ModelToolSideEffectScope =
   | "userInteraction";
 
 export interface ModelToolContract {
+  /** provider 侧延迟加载声明：native 模式下由 adapter 转成 anthropic deferLoading。 */
+  deferLoading?: boolean;
   name: string;
   description?: string;
   capability?: string;
@@ -634,6 +642,8 @@ export interface ModelRequestSettings {
 }
 
 export interface ModelTextRequest extends ModelRequestSettings {
+  /** native 模式：adapter 据此注入 anthropic-beta 头并允许 deferLoading / tool_reference。 */
+  toolSearchEnabled?: boolean;
   messages: ModelInputMessage[];
   tools?: ModelToolContract[];
   toolChoice?: ModelToolChoice;
@@ -844,6 +854,17 @@ const attachmentRefJsonSchema = {
 
 const modelMessageContentBlockJsonSchema = {
   oneOf: [
+    // 工具搜索（F14）结果里的引用块：持久化与回放按同一 schema 校验，缺这一支会让
+    // 含 tool_reference 的历史在恢复时判为非法。
+    {
+      type: "object",
+      required: ["type", "toolName"],
+      additionalProperties: false,
+      properties: {
+        type: { enum: ["tool_reference"] },
+        toolName: { type: "string", minLength: 1 },
+      },
+    },
     {
       type: "object",
       required: ["type", "text"],
