@@ -42,8 +42,10 @@ cd packages/ui && node --import tsx --test test/*.test.ts   # 单包
 ### `apps/zcode-cli` 的测试不依赖构建产物
 
 `apps/zcode-cli` 下各包的 `exports` 指向 `./dist/*.js`，根 `pnpm typecheck` 的工程列表
-**不含 `apps/zcode-cli`**（CLI 用独立的 `pnpm typecheck:cli`，`--noEmit`）⇒ 该目录下的 `dist` 在 CI 上**从不存在**。因此这些包的测试若 import
-`@zcode/contracts` 之类的 workspace 包，在 fresh clone 上必然 `ERR_MODULE_NOT_FOUND`。
+**不含 `apps/zcode-cli`**。CLI 走独立的 `pnpm typecheck:cli`：先构建 `contracts/core/adapters/bootstrap`
+的 `dist`（NodeNext 解析需要这些产物），再对 `cli` 执行 `--noEmit`（`cli` 的 tsconfig 没有 `outDir`，
+不能直接构建）。因此 CI 的 Test 阶段前这些 `dist` 已存在；但 CLI 测试仍**不依赖**它们 ——
+`scripts/run-tests.mjs` 会把 `@zcode/*` 解析到源码（见下）。
 
 `scripts/run-tests.mjs` 对 `apps/zcode-cli/**` 的测试包追加
 `--import packages/services/test/support/zcodeSourceResolver.mjs`，把 `@zcode/*` 解析到**源码**，
