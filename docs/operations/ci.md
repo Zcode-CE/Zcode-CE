@@ -26,14 +26,15 @@
 用 `fetch-depth: 0` 做完整克隆，因为 `architecture:check --changed` 需要与基线比较变更集，
 浅克隆会让它算错改动范围。
 
-**`pnpm test` 的产物前提**：CLI 子树（`apps/zcode-cli/packages/*/dist`）在 CI 上**从不存在** ——
-根 `typecheck` 的工程列表不含它；而 `packages/server` / `packages/web` / `packages/zcode-server-cli`
-的 `dist` 会在 Test 之前显式构建（`exposureGateHttp` 与 `distEntrypoints` 这类断言读的是构建产物，
-缺产物会显式 skip）。因此 `scripts/run-tests.mjs` 对 `apps/zcode-cli/**` 的测试包追加
-`--import packages/services/test/support/zcodeSourceResolver.mjs`，把 `@zcode/*` 解析到源码；
-根 `packages/*` 的 `dist` 由 typecheck 真产出，保持按 `exports` 解析。
-**本地复刻 CI 时必须先移走这些 dist**，否则「本机构建过」会掩盖这条链路的失败
-（`ERR_MODULE_NOT_FOUND`）—— 见 `docs/development/local-setup.md`。
+**`pnpm test` 的产物前提**：CLI 子树（`apps/zcode-cli/packages/*/dist`）由
+`pnpm typecheck:cli` 在 Test 之前构建（canonical 清单逐包 `build`，见
+`scripts/cli-workspace-builds.mjs`）；`packages/server` / `packages/web` / `packages/zcode-server-cli`
+的 `dist` 也会显式构建（`exposureGateHttp` 与 `distEntrypoints` 这类断言读的是构建产物，
+缺产物会显式 skip）。`scripts/run-tests.mjs` 仍对 `apps/zcode-cli/**` 追加
+`--import packages/services/test/support/zcodeSourceResolver.mjs`，把 `@zcode/*` 解析到源码，
+所以 CLI 测试不依赖这些 dist；根 `packages/*` 的 `dist` 由 typecheck 真产出，保持按 `exports` 解析。
+**本地验证时仍建议先删除 CLI 的 dist 再跑 `typecheck:cli`**，确认没有依赖历史产物 ——
+见 `docs/development/local-setup.md`。
 
 **同一个「无产物」前提还有第二种失败形态：包内相对导入指向被 gitignore 的生成文件。**
 `@zcode/dynamic-workflow` 的 `src/compiler/compile.ts` 导入 `./libs.generated.js`，
@@ -212,7 +213,7 @@ permissions:
 
 | 项   | 值                                                                                                                                                                                       |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 触发 | `workflow_dispatch`（手动）+ `schedule`（每日 03:00 UTC 漂移检测）                                                                                                                       |
+| 触发 | `workflow_dispatch`（手动，含发版前补测）+ `schedule`（每日 03:23 UTC 漂移检测）                                                                                                         |
 | 矩阵 | `ubuntu-latest` / `macos-latest` / `windows-latest`，`fail-fast: false`                                                                                                                  |
 | 步骤 | checkout → pnpm → node 24.14.0 → `pnpm install --frozen-lockfile` → `node scripts/build-zcode.mjs --allow-placeholder-base-url` → `node scripts/zcode-distribution-smoke.mjs <精确路径>` |
 | 超时 | `timeout-minutes: 60`                                                                                                                                                                    |
@@ -222,6 +223,8 @@ permissions:
 - 并进 `ci.yml` ⇒ **每个 PR** 都要在 mac/Windows runner 上跑一遍完整构建 + 解包 + smoke，成本过高。
   `.local/archive/45-release/CE3-CHECKLIST.md` §1 的 F2-M 已定口径：**nightly 或发布前，不进每个 PR**。
 - 并进 `release.yml` ⇒ 只有打 tag 才知道结果，而那时已经在发版路径上（红会卡住发版）。
+- 不用 `push` / `pull_request`：F2-M 的口径是不进每个 PR；`schedule` 只负责漂移检测（它永远跑默认分支
+  最新提交，没有「有新提交才跑」的原生过滤），新提交的跨平台验证由发版前手动 `workflow_dispatch` 补。
 
 **为什么用 `--allow-placeholder-base-url` 而不是 `pnpm build:zcode`**：后者要求仓库变量
 `ZCODE_DIST_BASE_URL`，缺失时直接抛错；本工作流不发布，也不该依赖该变量是否存在。
@@ -235,7 +238,9 @@ permissions:
 **本地无法验证的部分**：GitHub Actions 只能在 GitHub 的 runner 上执行，**本地无法运行工作流本身**。
 本工作流已做的本地核对只有：YAML 可解析（`yaml.parse`）、步骤/矩阵形状断言、以及
 `scripts/test/releaseWorkflowReleasePaths.test.mjs`（它会扫描**所有** workflow，确认
-`dist/zcode/releases/` 引用都带版本目录）。**三个 OS 上的真实结果尚未观测**，需 push 后在 Actions 页面确认。
+`dist/zcode/releases/` 引用都带版本目录）。真实结果已由 2026-10-29 的运行观测到：
+Ubuntu smoke 因 `TUI did not exit after SIGTERM` 失败，Windows / macOS 通过；这类真实失败
+必须保留在工作流里，而不是用 `continue-on-error` 隐藏。
 
 ## 本地无法验证的部分
 

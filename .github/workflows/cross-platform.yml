@@ -8,23 +8,27 @@
 #     成本过高。CE3-CHECKLIST §1 的 F2-M 已定口径：**nightly 或发布前，不进每个 PR**。
 #   · 并进 release.yml ⇒ 只有打 tag 才知道结果，而那时已经在发版路径上（红会卡住发版）。
 #   · 因此用 workflow_dispatch（随时手动实测）+ schedule（每日漂移检测）。
+#   · schedule 永远跑默认分支最新提交，不保证每个提交都跨平台验证；每日一次用于捕获
+#     runner 镜像 / 系统库漂移。发版前用手动 dispatch 补測新提交。
+#   · cron 避开整点：官方文档说明整点高负载会延迟甚至丢弃任务。
 #
 # ⚠️ 本 workflow **不设 continue-on-error**（根 AGENTS.md 硬规则）：交付终点失败必须让流水线变红。
 #    某个 OS 必然失败时，让它红，把根因写进 docs/operations/headless-server.md §10
 #    与 .local/reports/remote/ssh-and-headless/ROADMAP.md，而不是掩盖。
 #
-# ⚠️ 与 ci.yml / release.yml 不同：本 workflow 的**首次真实结果尚未观测**（Actions 只能在 GitHub
-#    runner 上跑，本地无法执行工作流本身）。在第一次跑出结果之前，macOS / Windows 的三列
-#    仍必须写作「未实测」—— 本文件的存在只是把「能不能测」变成「测了没有」。
+# ⚠️ 本地只能校验 YAML 与命令级形状，真实结果只能在 GitHub runner 上观测；
+#    2026-10-29 Ubuntu smoke 已抓到真实的 TUI SIGTERM 挂死，见 docs/operations/ci.md。
 
 name: Cross-platform
 
 on:
   # 手动触发：落地后立刻实测一次，不必等 nightly、也不必打 tag。
+  # 发版前也用它补测当前 HEAD（schedule 不保证已覆盖最新提交）。
   workflow_dispatch:
-  # 每日漂移检测：构建链或打包脚本回归时，第二天就能看见，而不是等下次发版。
+  # 每日漂移检测：runner 镜像/系统库或构建链回归时，第二天就能看见。
+  # 23 分而不是 0 分：官方文档说明整点高负载会延迟甚至丢弃排队任务。
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "23 3 * * *"
 
 permissions:
   contents: read

@@ -42,11 +42,13 @@ cd packages/ui && node --import tsx --test test/*.test.ts   # 单包
 ### `apps/zcode-cli` 的测试不依赖构建产物
 
 `apps/zcode-cli` 下各包的 `exports` 指向 `./dist/*.js`，根 `pnpm typecheck` 的工程列表
-**不含 `apps/zcode-cli`**。CLI 走独立的 `pnpm typecheck:cli`：先运行 `dynamic-workflow/scripts/generate-libs.mjs`（生成被
-`.gitignore` 忽略的 `libs.generated.ts`），再按 `package.json` 里的 `tsc -b` 列表构建 CLI 依赖包
-（dynamic-workflow / shared-types / contracts / core / i18n / tui / adapters / bootstrap 等，
-NodeNext 解析需要这些 `dist`），最后对 `cli` 执行 `--noEmit`（`cli` 的 tsconfig 没有 `outDir`，不能直接构建）。因此 CI 的 Test 阶段前这些 `dist` 已存在；但 CLI 测试仍**不依赖**它们 ——
-`scripts/run-tests.mjs` 会把 `@zcode/*` 解析到源码（见下）。
+**不含 `apps/zcode-cli`**。CLI 走独立的 `pnpm typecheck:cli`：它从
+`scripts/cli-workspace-builds.mjs` 的 canonical 清单逐包执行各包自己的 `build`（含
+dynamic-workflow 生成 `libs.generated.ts` 的脚本），最后对 `cli` 执行 `--noEmit`
+（`cli` 的 tsconfig 没有 `outDir`，不能直接构建）。前置是根 `pnpm typecheck` 已产出根
+`packages/*` 的 `dist`；CI 与 `verify:pre-push` 都按这个顺序执行。因此 CI 的 Test 阶段前
+CLI 各包 `dist` 已存在；但 CLI 测试仍**不依赖**它们 —— `scripts/run-tests.mjs` 会把
+`@zcode/*` 解析到源码（见下）。
 
 `scripts/run-tests.mjs` 对 `apps/zcode-cli/**` 的测试包追加
 `--import packages/services/test/support/zcodeSourceResolver.mjs`，把 `@zcode/*` 解析到**源码**，

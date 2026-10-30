@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stageDevAgentPayloads } from "../packages/desktop/scripts/dev-agent-payloads.mjs";
 import { stageAgentBundle } from "../packages/desktop/scripts/stage-agent-bundle.mjs";
+import { cliWorkspaceBuilds } from "./cli-workspace-builds.mjs";
 import { runCommand } from "./spawn-command.mjs";
 
 // adapters tsc 在内存受限机器上会 OOM（exit 134），给整条构建链路提高堆上限。
@@ -25,30 +26,7 @@ const pnpmRunEnv = {
   PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: "false",
 };
 // 桌面 Agent 构建有普通 pnpm 和 bootstrap:with-remote 直跑 tsc 两条路径。
-// 过去两条路径分别维护依赖顺序，新增 workspace 依赖时只更新了 bootstrap 依赖，
-// 干净 CI 中该依赖的 dist 尚不存在，bootstrap 会因无法解析类型入口而失败。
-// 两条路径统一从这一份有序清单派生，避免后续新增 workspace 依赖时再次漂移。
-const cliWorkspaceBuilds = [
-  { packageName: "@zcode/shared-types", packageDir: "shared-types" },
-  { packageName: "@zcode/contracts", packageDir: "contracts" },
-  // dynamic-workflow 的 tsc 构建依赖 gitignored 的 libs.generated.ts，
-  // 而 bare-tsc 路径（runBootstrapWithRemoteBuild）不会执行 package build script，
-  // 所以需要先跑生成脚本；必须排在 @zcode/core 之前，core 依赖 dynamic-workflow。
-  {
-    packageName: "@zcode/dynamic-workflow",
-    packageDir: "dynamic-workflow",
-    prepareScript: "scripts/generate-libs.mjs",
-  },
-  // dynamic-workflow-runtime 的类型入口是 dist/index.d.ts，必须先于 bootstrap 构建。
-  { packageName: "@zcode/dynamic-workflow-runtime", packageDir: "dynamic-workflow-runtime" },
-  { packageName: "@zcode/core", packageDir: "core" },
-  { packageName: "@zcode/adapters", packageDir: "adapters" },
-  { packageName: "@zcode/i18n", packageDir: "i18n" },
-  // @zcode/telemetry 已随遥测移除（P1）整包删除，构建清单同步去掉 ——
-  // 留着会让 `pnpm --filter @zcode/telemetry build` no-match 失败，
-  // 影响 pre-dev:local-cli 与 prepare-agent-node-bundle。
-  { packageName: "@zcode/bootstrap", packageDir: "bootstrap" },
-];
+// CLI workspace 包的 canonical 构建顺序见 cli-workspace-builds.mjs。
 // 官方插件 manifest 可以在 server.js 缺失时被 filesystem seed，直到 session
 // 连接 MCP 才报错，造成“Helper ready 但 CUA 工具不存在”的半启动状态。所有普通 Dev 必需的
 // 独立 MCP runtime 必须集中登记，并在构建后验证真实入口文件，再允许 Agent bundle 启动。
