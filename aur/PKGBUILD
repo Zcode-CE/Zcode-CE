@@ -44,9 +44,7 @@ _upstream_tag=v3.16.3-ce.1
 source=(
     "${pkgname}-${pkgver}.pkg.tar.zst::https://github.com/Zcode-CE/Zcode-CE/releases/download/${_upstream_tag}/${_pkgname}-${_upstream_ver}-linux-x64.pkg.tar.zst"
 )
-# 发版后必须用 GitHub Release 的 linux-x64.pkg.tar.zst 实测 sha256 替换下面这行；
-# 当前值对应上一版，未替换会让 makepkg 校验失败。
-sha256sums=('df31797caa9baa3319a5db293b75c243c332f37005db2a0ec76ed957739ea5ae')
+sha256sums=('562a623116bfba7500796bd61d88f5c75c5997bb739023d04b33dd6c78110b09')
 
 package() {
     # 源就是我们自己的 pacman 包：直接解到 ${pkgdir} 即可，不需要再打包一次。

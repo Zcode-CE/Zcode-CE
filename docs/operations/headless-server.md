@@ -521,8 +521,7 @@ macOS 此前整列是「未实测」；Windows 经五轮修复后转绿（见下
   另外 `build-zcode.mjs:281` 的 `tar` 在 Windows 上把 `D:\…` 当**远程归档**（GNU tar 报
   `Cannot connect to D:`；bsdtar 不支持远程归档、按字面量处理）—— 是否出问题取决于 runner 上哪个 `tar` 先命中 PATH，**未验证**。
 
-**(B) smoke 步骤** —— 两处**只在 POSIX 成立**的断言，Windows 上必然失败，失败在**第一处**
-（`scripts/zcode-distribution-smoke.mjs:40`）：
+**(B) smoke 步骤** —— 两处**只在 POSIX 成立**的断言现已按平台分叉（2026-10-30 三 OS 全绿）：
 
 1. **解包后的执行位**：`assertMode(bin/zcode.mjs, 0o755)` 与旁路模块 `0o644`。Windows 文件系统没有
    执行位概念，Node 的 `stat().mode` 对普通文件恒为 `0o666`（只读为 `0o444`）⇒ `0o755` 永不成立。
@@ -532,9 +531,9 @@ macOS 此前整列是「未实测」；Windows 经五轮修复后转绿（见下
    报的是退出码而非信号 ⇒ 拿不到 143。同一原因也会让 `web.kill("SIGTERM")` 后的
    `assert.deepEqual([0, null])`（`smoke:248-249`）失败。
 
-⇒ 本工作流在 Windows 上**预期红**。**不要用 `continue-on-error` 把它变绿**：那会把
-「Windows 上这套 smoke 还没打通」伪装成「Windows 可用」。要让它绿，得先让 smoke 的判据按平台分叉
-（属 `.local/reports/remote/ssh-and-headless/ROADMAP.md` 阶梯 ② 之后的工作），而不是放宽断言。
+⇒ smoke 在 Windows 上跳过执行位与 `143` / `[0, null]` 断言，其余终止性检查仍执行；
+三 OS 的实测结果由 `cross-platform.yml` 给出。**不要用 `continue-on-error` 掩盖回归**：
+平台分叉只跳过不成立的判据，不是放宽产品断言。
 
 ### 10.2 ⚠️ 包内同时带着一份「本机编出来的」`node-pty/build/Release/pty.node`
 

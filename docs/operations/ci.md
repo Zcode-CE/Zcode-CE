@@ -232,8 +232,9 @@ permissions:
 `scripts/test/installScriptBaseUrl.test.mjs` 钉住，见 [headless-server.md](./headless-server.md) §2 的例外）。
 
 **不设 `continue-on-error`**：某个 OS 跑不通就让它红 —— 那是本工作流要产出的信息本身。
-已知 Windows 上会红（smoke 的 POSIX 专属断言：执行位 755、`SIGTERM` ⇒ 143），
-根因与处置口径见 [headless-server.md](./headless-server.md) §10.1。
+2026-10-30 的手动运行三 OS 全绿（含 Windows）；smoke 对执行位与 `SIGTERM` ⇒ 143
+已按平台分叉（Windows 跳过 POSIX 断言，见 [headless-server.md](./headless-server.md) §10.1），
+不再存在「Windows 必然红」。若某平台回归，仍保持红。
 
 **本地无法验证的部分**：GitHub Actions 只能在 GitHub 的 runner 上执行，**本地无法运行工作流本身**。
 本工作流已做的本地核对只有：YAML 可解析（`yaml.parse`）、步骤/矩阵形状断言、以及
