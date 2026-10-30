@@ -77,7 +77,8 @@ export function installPluginSandboxHost(input: {
     if (guest.isDestroyed()) return Promise.resolve();
     const existing = stopping.get(guest);
     if (existing) return existing;
-    // Electron 41 的 attached guest.close 只销毁包装对象，iframe 仍可写存储。
+    // guest.close 只销毁包装对象、不保证 iframe 文档已卸载（Electron 41 实测；当前 42 栈沿用
+    // 同一防御顺序，未在 42 上单独复测）。先导航 about:blank 再 close，避免旧文档继续写存储。
     // 先完成原生空白页导航，真正移除旧文档；不用 destroyed 或延时猜测页面已经停止。
     const stopped = Promise.resolve().then(async () => {
       if (guest.isDestroyed()) return;

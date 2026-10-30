@@ -1,4 +1,4 @@
-# 150 内置浏览器权限治理(F9 + X4)
+# 内置浏览器权限治理
 
 > 移植自上游 `zai-org/ZCode` v3.15.1(`aac47556`,Apache-2.0):spec 原文 `docs/browser-use/2026-10-08-embedded-browser-permission-governance-spec.md` 与五个 `embeddedBrowser*` main 模块 + `desktopBrowserDataIpc.ts` 增量。
 > 搬运文件(需加 `Modified by ZCode:` 标记):embeddedBrowserPermissionPolicy.ts(398)、embeddedBrowserSitePermissions.ts(92)、embeddedBrowserSitePermissionStore.ts(52)、embeddedBrowserPermissionUiBridge.ts(282)、embeddedBrowserDeviceOptions.ts(30)、embeddedBrowserBluetoothGuard.ts(107),及 desktopBrowserDataIpc.ts / desktopWindowChrome.ts / index.ts 的接线增量。

@@ -1,4 +1,4 @@
-# 151 Linux 关闭窗口驻留托盘(F10)
+# Linux 关闭窗口驻留托盘
 
 > 移植自上游 `zai-org/ZCode` v3.15.1(`aac47556`,Apache-2.0):新增 `desktopTraySupport.ts`(241 行)、上游 spec `docs/desktop/linux-close-to-tray.md`,及 `desktopTray.ts` / `desktopWindowLifecycle.ts` / `index.ts` 的接线增量。
 > 搬运文件(加 `Modified by ZCode:` 标记):desktopTraySupport.ts(整文件);修改:desktopTray.ts(createWindowsDesktopTray → createDesktopTray + 平台参数 + Linux PNG 图标 + 菜单项 ClearAllData→ExportLogs)、desktopWindowLifecycle.ts(closeToTrayOnWindows → closeToTray + closeToTraySupported 合并裁决)、index.ts(tray 创建/能力查询/设置迁移接线)。

@@ -1,4 +1,4 @@
-# 170 · F3 自主模式危险命令确认：guarded 模式 core 侧移植
+# 自主模式危险命令确认（guarded）
 
 > 状态：**已实现（core 侧，2026-10-13）**。覆盖公告「更新『自主模式』，危险命令执行前会先征求确认」在 `apps/zcode-cli/packages/core` 内的全部落点。contracts 侧依赖（guarded 枚举）由 task-6 落地；本文档 §4 列出的范围外接线（bootstrap/adapters/cli 的模式开关）归各范围所有者。
 > 上游来源：`zai-org/ZCode` tag `v3.15.1`（`aac47556`，Apache-2.0，相对 CE fork 点 `872ad96`）。

@@ -1,91 +1,85 @@
-# ZCode-CE
+# ZCode-CE 3.16.3-ce.1
 
-## 与官方 3.15.1 的关系（本版基线）
+## 与官方版本的关系
 
-本版从上游 `zai-org/ZCode` `v3.15.1`（`aac47556`，Apache-2.0，官方公告 2026-10-12：11 项新功能 + 12 项修复）移植。公告条目与本仓库的逐条对照（已跟进 / 部分跟进 / 未跟进（有意） / 不适用四档）见 `docs/development/upstream-sync.md` 的 v3.15.1 节。
-
-- **已落地**：F2（HighSpeed 客户端面）、F3（危险命令确认）、F4（可视化交互界面）、F5（UI 插件 / MCP App，契约 + 桌面宿主 + 界面 + 服务桥）、F6/F7（工作流运行中改并发、保存复跑链、子代理单独指定模型）、F8（飞书群 + 独立话题：服务波次与 UI 接线）、F9（内置浏览器权限治理）、F10（Linux 托盘驻留）、F11（账户菜单套餐与复制用户 ID）、X1/X2/X3/X4/X5/X6/X8/X9/X11/X12，以及上游 3.15.3 闭源修复中的 OAuth 损坏会话清理容错（A2）。
-- **有意不搬**：F1「邀请好友·免费蹬蹬」是官方服务端运营活动（开源仓库零载荷）；F2 的服务端部分（抽卡权重与发卡逻辑）；上游 3.15.3 闭源的更新退出状态机与签名器守卫（经评估 CE 无对应链路与组件，依据见 upstream-sync v3.15.1 节）。
+本版版本号对齐官方闭源 **3.16.3**（3.16.3 未开源）；代码以开源 **3.16.2**（`3c5b2276`）为基线逐特性移植（未搬项见台账）。闭源 3.16.3 的签名器与验证码机制只做核对，未引入不可分发的能力。逐条同步状态见仓库的 `docs/development/upstream-sync.md`。
 
 ## 新增功能
 
-- **自主模式执行危险命令前会先征求确认**：危险命令（如删除、覆盖关键文件、提权操作）在执行前弹出确认，说明将要执行什么、为什么被判为危险；可在设置里调整确认粒度。此能力与既有的危险命令清单策略并存，不改变已有交互。
-- **消息流里可以直接展示可视化界面**：助手输出的 `::visualize` 引用现在会投影成有边界的桌面沙箱页面（gen-ui），而不是只剩一个文件链接；重复的 HTML 预览卡会自动去重。这些页面与 MCP 应用页面共用同一套准入与回收机制。
-- **支持 UI 插件（MCP App）**：MCP 应用可以带界面——插件在独立沙箱里运行页面、与宿主按声明申请权限（摄像头/麦克风/地理位置需确认、剪贴板写入按声明放行、macOS 走系统授权），工具调用与资源订阅按 lease 引用；插件市场声明与实际分发的口径在本版一并核对。不声明权限的调用一律拒绝。
-- **内置浏览器现在有网站权限管理**：内置浏览器（用于网页类任务）对摄像头、麦克风、剪贴板读取、地理位置、通知、MIDI、设备与屏幕共享等敏感能力**默认不自动放行**——每项都要你点头（访问此网站时允许 / 仅本次允许 / 不允许，20 秒超时按拒绝结算），设备类弹出选择器选具体设备。同意记录按站点持久化，可在设置页「网站权限」查看与清除，清除浏览器数据时一并联动。未知的新权限枚举一律拒绝，不会随 Electron 升级悄悄放权。
-- **Linux 下关闭窗口可驻留系统托盘**：Linux 对齐 Windows 的托盘驻留（设置开 + 托盘可用时关窗隐藏驻留）。托盘是否可用先检测系统的 StatusNotifier 支持，不可用时设置项置灰并回到既有的确认退出路径，不会失联；GNOME 类未装 AppIndicator 的环境会提示安装扩展。托盘右键菜单的「清空全部数据」改为「导出日志」（不再从右键菜单暴露清空操作）。
-- **账户菜单可查看套餐并复制用户 ID**：左下角账户菜单头部显示当前套餐与用户 ID，排查或报障时一键复制用户 ID（失败有明确提示）。
-- **工作流支持创建前调参、运行中改并发、保存复跑，子代理可单独指定模型**：创建工作流时即可配置参数（asks 设置面板与模型选择），运行中的工作流可以在确认窗里调整并发上限与单个子代理使用的模型（向下取整、回到默认与会话模型三态语义），保存后的工作流可直接复跑；工作流记录里也会如实呈现每个子代理实际使用的模型。工作流时间线的渲染（站点、孔洞、填充、脊线）整体对齐了上游 3.15.1 的 A-prime 形态。
-- **GLM HighSpeed 加速卡界面（客户端面）**：命中加速时本轮消息出现紫色流光卡片与激活动效，带到期时钟与剩余时长（节省时长标签）；卡片可分享。加速上下文在切走再切回时从「恢复」态继续，不重播扩散动画；卡过期后不再把普通输出染成加速样式。发卡与抽奖逻辑属官方服务端，本版只包含客户端展示与交互。
-
-- **飞书群里可以开独立话题协作**：群里的机器人交互自动归入话题上下文——话题的准备态、历史、续接、附件与资源都在话题内隔离，互不串线；群成员名册可查，投递有节流与队列卡防刷屏；@提及与反向回复走严格解析。与 CE 既有形态一致：IM 机器人（Bot Channel）默认关闭、用户同意后开启，Web 自托管控制默认开。
+- **工具搜索（按需加载工具定义）**：设置 →「工具与权限」新增「工具搜索」，可选自动 / 原生 / 本地 / 关闭四种模式（默认关闭，保持旧行为）。开启后模型只先看到工具名，需要时再加载完整定义，减少长会话的上下文占用；关闭时与之前完全一致。
+- **工作区附加目录**：设置 →「工作区附加目录」可为当前项目添加多个额外文件夹（支持一次多选、批量添加）。新建会话时这些目录会一起进入模型的可见范围与技能/命令发现；由调度、机器人或闲时任务创建的会话也会带上。改动只对之后新建的会话生效，已运行的会话不受影响。
+- **工作区显示名称与主根**：设置里可以给项目起一个本机显示名称，侧栏、文件树、归档列表与命令中心都会使用它；同时只读展示「主根（执行根）」，明确会话、命令与 Git 从哪里执行。显示名只影响本机展示，不改变路径或身份。
+- **图片预览操作**：右侧预览的图片现在支持「添加到聊天」「下载图片」「复制图片」。添加到聊天只把文件引用加入当前输入框，不自动发送；下载保存原始字节（SVG 仍是 SVG，不会变成截图）；复制把图片以 PNG 写入系统剪贴板。桌面可用右键菜单，窄屏使用「图片操作」菜单。
+- **归档列表按项目分组**：归档任务按工作区分组展示，组头显示条数与折叠开关；折叠状态会在本机记住。只有一个工作区时保持原来的平铺形态。
+- **侧边面板全视图**：面板右上角新增「全视图」按钮，也可按 `Ctrl+Shift+F`（macOS `⌘⇧F`）把右侧面板铺满内容区；再次触发、关闭面板或切换任务都会退出并恢复原布局。本版的全视图**不包含浮动输入窗**。
+- **Windows 任务栏未读角标**：Windows 上任务栏图标会显示未读红点，未读数通过辅助技术可读的描述提供；macOS / Linux 继续使用系统角标计数。
+- **安全验证（3007）可重试**：遇到「需要完成安全验证」的失败时，界面会给出明确的「重试验证」入口，不再只显示一条无法继续的错误。
 
 ## 体验优化
 
-- **更新下载失败后自动复查**：下载失败或下载完成（发现已下载版本被更高版本取代）时自动发起新一轮检查，而不是停在原地等手动点；检查进行中的复查会收口后补一次，不会丢。轮询节奏改为无目标 15 分钟、有可见更新目标 2 分钟；已发现的更新目标不会被中间态闪掉或清掉。
-- **内置浏览器打开本地文件不再失败**：`file:` 链接改用系统默认应用打开（复用既有的路径打开实现），而不是对 file 协议无效果的 `shell.openExternal`。
-- **多个工作区同时启动时更省内存**：启动预热从「最近使用的 3 个工作区」收敛为「当前工作区 1 个」——会话进程没有闲置回收，常驻 3 份进程内存不划算；切到最近项目的冷启动收益通过按需加载获得。
-- **登录身份验证失败时的恢复更稳**：清理损坏的 OAuth 会话后刷新派生登录方式失败时，不再让整个清理流程报错（此前会出现设置页「连接套餐失败、需要重新登录」）；失败信息收敛到独立日志域，便于定位。
+- 设置页的附加目录支持一次选择多个文件夹，不再需要重复点「添加」。
+- 命令中心的工作区结果使用你设置的显示名称，和侧栏、文件树保持一致。
+- 归档分组折叠后，重连或重新打开侧栏仍保持折叠。
+- 对话框标题、错误页、入门页与价格卡等界面文字统一到设计系统的字号刻度，视觉层级更一致。
+- 模型不可用时，发送会在输入被接收之前给出明确失败，不再出现「点了发送但没有任何反应」。
 
 ## 问题修复
 
-- **加速回合中编辑的消息不再丢失**：此前在加速回合进行中编辑并重发消息，完成通知会被「分支过期」逻辑丢弃，界面永远转圈、取消也报「任务不在运行」。现在编辑重发只认本次重新准备的加速凭据，且在新旧消息的递送竞态里按原子排队处理，旧消息被截断时新消息不会随之丢失。
-- **工作流恢复或修改后任务状态显示正确**：任务卡片里执行者与会话身份的对应关系在恢复、改并发、换模型后保持一致（跟随上游的会话身份语义一并修正）。
-- **群聊里的 @提及识别更准**：提及与反向回复改用严格的公共解析（三端共用同一份模式），Host 来源可核对，不再按松散文本匹配。
-- **额度已满时看得到重置机会入口**：重置机会（含完成的任务带回的余量）不再因「额度已满」被隐藏；完成提示带上剩余机会数。
-- **窗口大小变化时对话不再跳动**：视口尺寸变化时测高与吸底在同一批次内同步提交，不再「先按旧高度吸底、下一帧测高后再跳一次」。
-- **Windows 链接启动应用更安全**：注册为默认协议处理者时，在 URL 位置前插入参数终止符，链接里的特殊字符不会再被拆成 Electron 启动开关（此前可注入调试、GPU 等开关）。
+- **长会话压缩后仍可能无响应**：上下文压缩判断哪些旧工具结果可以清理时，现在会读取工具结果的权威名称；投影后只剩调用 ID 的结果也能被正确识别与清理。
+- **模型不可用时的输入丢失**：模型选择在服务端目录中不存在时，会在确认接收输入之前拒绝，并提示具体缺失的 provider/model，而不是先接收再在后台失败。
+- **插件设置里的英文界面显示中文**：插件管理产生的「请先打开一个工作区」等提示改走本地化文案，中英文界面一致。
+- **大量界面文字直接显示键名**：补齐了组件在用但字典缺失的 90 个文案键，并加了全仓字面量键护栏，避免再次出现界面上显示 `bots.xxx` 这类键名。
+- **术语不统一**：面向用户的实体统一称为「项目」，「工作区」只保留在文件系统、目录、路径与远程工作区等技术语境。
 
 ## 本版尚未验证
 
-- **JetBrains/Windows deep-link 加固未在真机验证**：注册表命令行的核对在 Linux 开发环境下无法执行。
-- **内置浏览器的权限弹窗与插件沙箱未在真实 Electron 窗口里逐屏看过**：会话级真实行为（session 清除断言）已在真实 Electron 上验证；门控行为有单测覆盖，渲染态与真实 webview attach 未做逐屏端到端验证（需要 dev:desktop 联调一轮）。
-- **工作流并发上限的两条界（ceiling 与 limit）语义重构后，与既有钳制行为并存**：两路并存的行为差异由本版回归测试覆盖，长期使用反馈待观察。
-- **GLM HighSpeed 卡片依赖官方服务端下发**：客户端展示与交互已实现，但命中加速的实际下发、到期与节省时长标签的数值未做线上验证。
+- 本版的界面目视与点击交互没有在真实桌面会话中逐项执行；发布前建议在一台有显示环境的机器上过一遍新增入口。
+- Windows / macOS 安装包由 CI 产出，本轮没有在对应平台做启动冒烟。
+- 工具搜索的「原生」模式依赖真实 provider 网关行为，本轮没有凭据做端到端验证。
+- 图片复制/下载的系统剪贴板、原生另存为与手机触屏菜单未在真实平台执行。
+- Windows 任务栏未读角标未在 Windows 真机验证。
+- 加速卡（Highspeed）的抽卡与到期退回不在本版范围：本仓库只有相关契约与视觉件，没有抽卡服务与运行时。
 
 ---
 
 # English
 
-## Relationship to official 3.15.1 (this release's baseline)
+## Relationship to the official release
 
-This release ports from upstream `zai-org/ZCode` `v3.15.1` (`aac47556`, Apache-2.0; official announcement 2026-10-12: 11 features + 12 fixes). The entry-by-entry ledger (synced / partially synced / intentionally not synced / not applicable) is in the v3.15.1 section of `docs/development/upstream-sync.md`.
-
-- **Landed**: F2 (HighSpeed client side), F3 (dangerous-command confirmation), F4 (visualization surface), F5 (UI plugins / MCP App — contract, desktop host, UI surface and service bridge), F6/F7 (in-run concurrency adjustment, save-and-rerun chain, per-subagent model), F8 (Feishu groups + standalone topics: service wave and UI wiring), F9 (embedded-browser permission governance), F10 (Linux close-to-tray), F11 (account menu plan + copy user ID), X1/X2/X3/X4/X5/X6/X8/X9/X11/X12, plus the corrupt-OAuth-session cleanup tolerance from upstream's closed-source 3.15.3 (A2).
-- **Intentionally not ported**: F1 "invite friends" is an official server-side campaign (zero payload in the open-source repository); the server-side parts of F2 (lottery weights and issuance); upstream 3.15.3's closed-source update-exit state machine and signer guards (CE has no corresponding link or component — rationale in the upstream-sync v3.15.1 section).
+This release uses the version number of official closed-source **3.16.3** (3.16.3 is not open-source). The code is a per-feature port on top of open-source **3.16.2** (`3c5b2276`); unported items are tracked in the ledger. The closed-source 3.16.3 signer and captcha mechanisms were reviewed but no non-distributable capability was added. Per-item status is in `docs/development/upstream-sync.md`.
 
 ## New features
 
-- **Dangerous commands now ask before executing in autonomous mode**: dangerous operations (deletions, overwriting key files, privileged actions) prompt a confirmation explaining what will run and why it was classified as dangerous; confirmation granularity is configurable. This coexists with the existing dangerous-command policy without changing current interactions.
-- **The message stream can render visualization surfaces directly**: `::visualize` references in assistant output now project into a bounded desktop sandbox page (gen-ui) instead of leaving only a file link; duplicate HTML preview cards are deduplicated. These pages share the same admission and eviction mechanism as MCP application pages.
-- **UI plugins (MCP App) are supported**: MCP applications can ship a UI — plugin pages run in an isolated sandbox, request permissions by declaration (camera/microphone/geolocation require confirmation, clipboard-write allowed by declaration, macOS goes through system authorization), and tool calls / resource subscriptions are lease-referenced; the plugin manifest-vs-actually-distributed surface was reconciled in this release. Undeclared permission requests are denied.
-- **The embedded browser now has site permission management**: sensitive capabilities — camera, microphone, clipboard read, geolocation, notifications, MIDI, devices, screen sharing — are **no longer auto-approved**: each requires your decision (allow on this site / allow once / deny; 20 s timeout counts as deny), with device pickers for device-type permissions. Consent is persisted per site, viewable and clearable in Settings → "Site permissions", and cleared together with browser data. Unknown permission enums are denied outright, so new Electron permissions cannot silently grant access.
-- **Closing the window on Linux can now keep the app in the system tray**: Linux reaches parity with Windows' close-to-tray (when enabled and a tray is available, closing hides to tray). Tray availability is detected via StatusNotifier support; when unavailable the setting is disabled and the existing confirm-quit path is used (you never lose control). GNOME-style desktops without AppIndicator get an install hint. The tray context menu's "clear all data" became "export logs" (no longer exposing destructive cleanup from the tray).
-- **The account menu shows your plan and copies your user ID**: the account menu footer shows the current plan badge and user ID; a one-click copy for support tickets (failures are reported clearly).
-- **Workflows support pre-create settings, in-run concurrency adjustment, save-and-rerun, and per-subagent models**: creation-time parameter configuration (asks settings panel and model choice); the confirmation pane adjusts a running workflow's concurrency cap and the model used by individual subagents (floor / back to default / session model, three-state semantics); saved workflows can be rerun directly; the per-run record honestly shows which model each subagent actually used. The workflow timeline rendering (stations, holes, fills, spine) is aligned with upstream 3.15.1's A-prime shape.
-- **GLM HighSpeed card UI (client side)**: an accelerated turn shows a purple animated card with activation effect, expiry clock and remaining time saved; the card is shareable. Acceleration context resumes (not replays) when switching away and back; once a card expires, ordinary output is no longer styled as accelerated. Issuance and the lottery are official server-side; this release contains only the client presentation and interaction.
+- **Tool search (load tool definitions on demand)**: Settings → Tool policy now offers a Tool search mode — auto / native / local / off (off by default, preserving the previous behavior). When enabled, the model initially sees tool names only and loads full definitions when needed, reducing context usage in long sessions; off is byte-for-byte the old behavior.
+- **Additional workspace directories**: Settings → Workspace additional directories lets you add extra folders to the current project (multi-select and batch add are supported). New sessions include them in the model's visible scope and in skill/command discovery; sessions created by schedules, bots, or off-peak tasks also carry them. Changes apply to sessions created afterwards.
+- **Workspace display name and primary root**: you can give a project a local display name; the sidebar, file tree, archive list and command center use it. A read-only "Primary root" row shows where sessions, commands and Git run. The display name is presentation-only and does not change paths or identity.
+- **Image preview actions**: images in the right-hand preview now support "Add to chat", "Download image" and "Copy image". Add to chat only inserts a file reference into the current composer (it does not send); download saves the original bytes (SVG stays SVG, not a screenshot); copy writes the image as PNG to the system clipboard. Right-click works on desktop, and narrow screens get an "Image actions" menu.
+- **Archived tasks grouped by project**: archived tasks are grouped by workspace, with per-group counts and a collapse toggle; the collapsed state is remembered locally. With a single workspace the original flat list is kept.
+- **Side pane full view**: a "Full view" button in the side pane header (also `Ctrl+Shift+F`, macOS `⌘⇧F`) expands the pane over the content area; triggering it again, closing the pane or switching tasks exits and restores the previous layout. This version's full view **does not include the floating composer**.
+- **Windows taskbar unread badge**: on Windows the taskbar icon shows an unread dot, with the count exposed to assistive technologies; macOS / Linux keep using the system badge count.
+- **Security verification (3007) can be retried**: when a turn fails because a security verification is required, the UI now offers an explicit retry entry instead of a dead-end error.
 
-- **Standalone topic collaboration in Feishu groups**: bot interactions in a group are scoped to their own topic context — preparation state, history, continuation, attachments and resources are all isolated per topic and never cross wires; the group member directory is queryable, delivery is throttled with queue cards to prevent flooding, and @mentions and reverse replies use the strict parser. Consistent with CE's existing posture: the IM bot channel (Bot Channel) is off by default and enabled only with your consent, while the self-hosted Web console stays on by default.
+## UX improvements
 
-## Improvements
-
-- **Update checks resume automatically after a download failure**: a failed download — or a completed download superseded by a newer version — triggers a fresh check instead of waiting for a manual click; rechecks queued during an in-flight check run once it settles. Polling cadence is now 15 min with no target and 2 min with a visible update target; a discovered update target is no longer flickered away or cleared by intermediate states.
-- **Opening local files from the embedded browser works again**: `file:` links are handed to the system default app (reusing the existing path-opener) instead of `shell.openExternal`, which is a no-op for the file scheme on many platforms.
-- **Startup uses less memory with multiple workspaces**: warm-up narrowed from the 3 most-recent workspaces to just the active one — CLI sessions have no idle reaping, so 3 resident processes per window did not pay off; recent-project cold starts are covered by on-demand loading.
-- **Login recovery is more robust**: when refreshing derived providers after a corrupt OAuth session cleanup fails, the cleanup itself no longer errors out (previously the settings page showed "connection plan failed, please log in again"); failures are captured in a dedicated log domain for diagnosis.
+- Additional directories support selecting several folders at once.
+- The command center uses your workspace display name, matching the sidebar and file tree.
+- Archive group collapse state survives reconnects and reopening the sidebar.
+- Dialog titles, error pages, onboarding and price cards now use the design system's type scale consistently.
+- When the selected model is unavailable, sending fails clearly before the input is accepted instead of appearing to do nothing.
 
 ## Fixes
 
-- **Edited messages no longer get lost during accelerated turns**: previously, editing and resending a message while an accelerated turn was running had its completion notification dropped by the branch-expiry logic, leaving the UI spinning and cancel reporting "task not running". The edit-resend now only accepts the freshly prepared acceleration credential, and the delivery race between old and new messages is queued atomically, so a truncated old message no longer takes the new one with it.
-- **Task status is correct after workflow restore or modification**: the executor-to-session mapping stays consistent across restore, concurrency changes and model switches (fixed together with the upstream session-identity semantics).
-- **@mentions in group chats are recognized correctly**: mentions and reply notifications use a strict shared parser (one schema across all three ends) with verifiable host provenance, instead of loose text matching.
-- **Quota-reset opportunities are visible when quota is exhausted**: remaining opportunities (including those brought back by completed runs) are no longer hidden behind the "quota full" state; completion notices carry the remaining count.
-- **The conversation no longer jumps when the window is resized**: height measurement and stick-to-bottom now commit in the same synchronous batch, instead of "sticking with stale heights first and jumping again after the next frame's measurement".
-- **Launching the app from a link on Windows is safer**: when registering as the default protocol handler, an argument terminator is inserted before the URL position, so special characters in links can no longer be split into Electron launch switches (which previously allowed injecting debug/GPU flags).
+- **Long sessions could still hang after compaction**: deciding which old tool results can be cleared now reads the authoritative tool name, so results whose projection only kept the call ID are recognized and cleared.
+- **Input loss when a model is unavailable**: a model missing from the provider catalog is rejected before the input is accepted, with the missing provider/model named, instead of failing silently in the background.
+- **Chinese copy in the English plugin settings**: plugin-management errors such as "open a workspace first" now go through localization.
+- **Raw message keys shown in the UI**: 90 keys used by components but missing from the dictionaries were added, with a repository-wide guard against literal keys.
+- **Inconsistent terminology**: the user-facing entity is now consistently called a "project"; "workspace" is kept only for filesystem, directory, path and remote-workspace contexts.
 
-## Not yet verified in this version
+## Not verified in this release
 
-- **The Windows deep-link hardening was not verified on a real Windows machine**: registry command-line inspection cannot run from a Linux dev environment.
-- **The embedded-browser permission prompts and the plugin sandbox have not been seen in a real Electron window**: session-level behavior (session-clear assertions) was verified on a real Electron run; gating behavior is unit-tested, while rendered state and real webview attach were not verified screen by screen end to end (needs a dev:desktop pass).
-- **After the workflow concurrency two-bounds (ceiling vs limit) rework, the new semantics coexist with the existing clamp behavior**: the differences are covered by this release's regression tests; long-term behavior under real use remains to be seen.
-- **The GLM HighSpeed cards depend on official server-side issuance**: the client presentation and interaction are implemented, but actual accelerated delivery, expiry and the remaining-time labels were not verified against the live service.
+- Visual and click-through checks were not performed in a real desktop session; review the new entries on a machine with a display before publishing.
+- Windows / macOS installers are produced by CI and were not smoke-tested on those platforms this round.
+- Tool search's "native" mode depends on real provider gateway behavior and was not end-to-end tested (no credentials).
+- System clipboard, native save dialogs and the mobile touch menu were not exercised on real platforms.
+- The Windows taskbar unread badge was not checked on real Windows.
+- Highspeed card draw and expiry fallback are out of scope: this repository has the contract and visual pieces only, not the draw service or runtime.

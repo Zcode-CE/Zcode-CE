@@ -1,4 +1,4 @@
-# 140 — MCP Apps / mcp-ui 契约移植（F5 上半）
+# MCP Apps / mcp-ui 契约
 
 ## 目的
 

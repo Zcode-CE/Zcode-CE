@@ -4,11 +4,11 @@
 > **边界（先读这条，避免按官方远控的预期使用）**：它**不是**接管桌面端 ——
 > ① **不接管桌面端正在开的会话**；② 桌面端已连的**远端 SSH / Docker 目标不会共享给浏览器**
 > （那是桌面端**窗口内**的连接注册表，`packages/desktop/src/host/windowRemoteConnectionRegistry.ts`，
-> 与本文这条链路没有关系）。本仓库只有 `packages/web` ↔ `packages/server` 这一条自托管链路，
-> 见根 `AGENTS.md` 的「上游形态提示（本仓库未实现）」。
+> 与本文这条链路没有关系）。本仓库只有 `packages/web` ↔ `packages/server` 这一条自托管链路
+> （全仓无 `web-remote-relay` 客户端与 `packages/android` 壳）。
 > **不是**官方产品的「登录 + 云 relay + Android 壳」那套：上游自 v3.15.1 起随开源树分发 relay **客户端**
 > （3.16.2 = Relay V2 `/api/v1/remote/ws2` + 账号登录 + 设备管理）与 `packages/android` 壳，中继/配对**服务端**
-> 是闭源服务 —— 准确口径见根 `AGENTS.md` 的「上游形态提示」与 [上游同步台账](upstream-sync.md) 的
+> 是闭源服务。准确口径见 [上游同步台账](upstream-sync.md) 的
 > 「上游开源版提供什么 / 缺什么」。本仓库**没有引入** relay 客户端与移动壳（全仓 0 命中），保持自托管。
 > 本仓库**不托管任何中继**：服务跑在你自己的机器上，网络可达性由你的局域网/私网/隧道负责。
 > **本文是这条链路的权威说明**（状态所有者、四道闸的判定口径、`/bot/**` 入站面）；

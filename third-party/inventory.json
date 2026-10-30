@@ -398,7 +398,7 @@
     "apps/zcode-cli/packages/zcode-guide-plugin/skills/zcode-configuration-guide/SKILL.md": "c173c54d3d125e5a3228f01a154c6a55e760dce07835226f0fa8dea644b0570d",
     "apps/zcode-cli/tools/prompt-trajectory/package.json": "7f161fc87f36691f01eb8c2034bd89cf28107da36db02bc20e76f059edd36af6",
     "apps/zcode-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
-    "package.json": "81d3c7f366661461b33f0881e271d3a5001f1565bc87216c419ec8c9cce6a5db",
+    "package.json": "9b72fa8130e9186b24be66e6ee2aaa4fa994c2344deab68da2e87443441aaed0",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
     "packages/desktop/package.json": "60c83f3d5a348d99111ed42d226ab85d40ef718f8a04efcef00267d80003aec6",
     "packages/desktop/src/host/index.ts": "78dd4aba92e9bcf42b6673316902bcbcc586ff605461b6a8f375b1170ee78ca1",
@@ -423,7 +423,7 @@
     "packages/desktop/src/main/pluginSandbox/csp.ts": "940e2a6e3ec4742506d0df978065156c8749846599f2295a46d76271204dcf70",
     "packages/desktop/src/main/pluginSandbox/genUiVendor.ts": "3e3d8ef9189df2e7161659f1853a29f1683c5f3e474e20c0ac183d37958bd193",
     "packages/desktop/src/main/pluginSandbox/guestPolicy.ts": "9b53bbe2c967c3413c11b9c7369ab7427cb0fe6a8547a0f81bb13b77e1f8e1dd",
-    "packages/desktop/src/main/pluginSandbox/host.ts": "e2b2b91578596f867402df5eb52251afbc4f769fb03a62d71db9e7eb465f4e49",
+    "packages/desktop/src/main/pluginSandbox/host.ts": "31594778cb7fe47b8ff780bade32ad74842c9b6bfa008abe9f0ebfc71d9b7061",
     "packages/desktop/src/main/pluginSandbox/index.ts": "30253093eef258ea8d18555b1beb3c8db4dfc990d66135aa17246eec849d3736",
     "packages/desktop/src/main/pluginSandbox/module.ts": "66b61604d2b00379d20f5f6140114d4e57132802b816322ed9965cfb4e3681d4",
     "packages/desktop/src/main/pluginSandbox/permissionGate.ts": "0732ef78d8f02df54d5e3eb410fb26213958f2c63e205271c4d777d4ddda6bac",
@@ -32705,7 +32705,7 @@
         },
         {
           "file": "packages/desktop/src/main/pluginSandbox/host.ts",
-          "sha256": "e2b2b91578596f867402df5eb52251afbc4f769fb03a62d71db9e7eb465f4e49"
+          "sha256": "31594778cb7fe47b8ff780bade32ad74842c9b6bfa008abe9f0ebfc71d9b7061"
         },
         {
           "file": "packages/desktop/src/main/pluginSandbox/index.ts",

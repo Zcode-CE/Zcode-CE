@@ -13,11 +13,11 @@
 | [架构与模块边界](development/architecture.md)                            | 仓库结构、包职责、依赖方向、跨包导入规则                      |
 | [本地开发](development/local-setup.md)                                   | 环境准备、构建、调试、测试入口                                |
 | [与上游的差异](development/upstream-diff.md)                             | 相对官方 ZCode 改了什么、为什么改、如何同步                   |
-| [与官方发行版的差异](development/official-diff.md)                       | 官方有哪些能力、我们补了什么、哪些做不了及原因                |
+| [与官方发行版的差异](development/official-diff.md)                       | 官方 3.14.1 快照的能力对照与取证方法（当前基线看台账）        |
 | [上游同步台账](development/upstream-sync.md)                             | 每个上游版本同步了什么、有意未同步什么、确认过不存在的结论    |
 | [网页远控（无头服务器 + 浏览器面板）](development/web-remote-control.md) | 自托管网页远控：启动方式、安全默认值、手机使用、未测边界      |
 | [远程工作区（SSH / Docker / WSL）](development/remote-workspace.md)      | 远程工作区的默认行为、自建发布点、验收与排障                  |
-| [项目模型：现状与路线](development/project-model.md)                     | 项目/工作区实体、附加目录持久化、三条落地路线与推荐           |
+| [项目模型：现状与路线](development/project-model.md)                     | 项目/工作区实体、附加目录、A/B′ 已落地与 B0/C 的边界          |
 | [工作区可见性](development/workspace-registry.md)                        | 可见工作区的真相源、能全看不默认全看、未启动态                |
 | [IM 机器人管理面](development/bot-management-ui.md)                      | 建机器人 / 绑定渠道 / 授权工作区 / 群与话题的管理界面与消费链 |
 | [内置浏览器权限](development/embedded-browser-permissions.md)            | 站点权限 fail-closed、持久同意、弹窗桥与蓝牙守卫              |
@@ -25,7 +25,7 @@
 | [侧边面板全视图](development/side-pane-full-view.md)                     | 面板铺满内容区的最小全视图；不含浮动输入窗                    |
 | [插件 UI 沙箱](development/plugin-ui-sandbox.md)                         | MCP App / UI 插件的宿主沙箱：main/renderer/preload 三面边界   |
 | [MCP Apps](development/mcp-apps.md)                                      | mcp-ui 契约、运行时消费与降级边界                             |
-| [工具与权限](development/tool-policy.md)                                 | 危险命令判定、MCP 单工具启停、持久授权策略                    |
+| [工具与权限](development/tool-policy.md)                                 | MCP 单工具启停；危险命令判定见 guarded-mode                   |
 | [上下文压缩](development/compaction.md)                                  | microcompact 候选分类、工具名解析与长会话边界                 |
 | [Prompt 模型准入](development/prompt-model-preflight.md)                 | 模型不可用时 ACK 前拒绝；execution Selection 的边界           |
 | [工具搜索](development/tool-search.md)                                   | 按需加载工具定义：四态模式、曝光规则、执行准入与持久化        |
