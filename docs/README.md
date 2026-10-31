@@ -41,6 +41,7 @@
 | [PDF 插件](development/pdf-plugins.md)                                   | PDF 能力的载荷构成、注册闸门、校验器契约与降级边界            |
 | [模型列表](development/model-list.md)                                    | 内置模型隐藏与从供应商拉取模型列表                            |
 | [欠账台账（精简）](development/backlog.md)                               | 长期方向与「有意不做」；全量未完成项在维护者私有工作区        |
+| [端到端试跑](development/agent-trial.md)                                 | dsh-superagent 端到端试跑记录                                 |
 
 ### `community/` — 社区
 
