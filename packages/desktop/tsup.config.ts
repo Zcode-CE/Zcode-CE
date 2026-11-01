@@ -202,7 +202,13 @@ export default defineConfig([
     platform: "node",
     target: "node22",
     external: ["electron"],
-    noExternal: ["@zcode/shared"],
+    // 沙箱 preload 不能 require 第三方模块：Electron 在 sandbox=true 的 preload 里只提供
+    // `electron` 与 Node 内建模块的 require，其它包名一律 module not found ⇒ preload 加载失败
+    // ⇒ contextBridge 未建立 ⇒ renderer 解引用 window.zcode 时抛 TypeError ⇒ 整窗空白
+    // （Windows 上宿主底色是 #00000000 且未开 transparent，表现为纯黑）。
+    // tsup 默认把 package.json 的 dependencies 当 external，因此 preload 实际用到的 JS 依赖
+    // 必须在这里显式内联：zod 是经 @zcode/shared 的协议 schema 进入 preload 的。
+    noExternal: ["@zcode/shared", "zod"],
     outExtension: () => ({ js: ".cjs" }),
     define: createSharedDefines(),
     esbuildOptions(options) {

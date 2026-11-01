@@ -17,6 +17,7 @@ import {
   findDesktopNativePackageViolations,
   parseAsarListWithPackState,
 } from "./desktop-native-package-policy.mjs";
+import { findDisallowedPreloadRequires } from "./preload-require-policy.mjs";
 import {
   resolveSpawnRuntimeOptions,
   runCommand,
@@ -694,6 +695,53 @@ function verifyPackagedRuntimeDependencies(os, arch) {
       throw new Error(`打包产物缺少运行时依赖 ${moduleName}: ${appAsarPath}`);
     }
   }
+
+  // 沙箱 preload 的外置 require 是启动级故障，且只有产物形态能暴露它（typecheck/lint/单测全绿也会漏）：
+  // preload 运行在 sandbox=true 的 renderer 里，require 只认 electron 与 Node 内建模块，任何第三方包
+  // （issue #6 的 zod：7 个 preload 产物里 6 个带裸 require("zod")）都会让 preload 加载失败 ⇒
+  // contextBridge 未建立 ⇒ renderer 解引用 window.zcode 抛错 ⇒ 整窗空白。这里对最终 app.asar 做机械校验。
+  assertPreloadRequiresSandboxSafe(appAsarPath, asarEntries);
+}
+
+/**
+ * 校验 app.asar 内全部 `out/preload/*.cjs` 只 require 沙箱可用的模块。
+ *
+ * 放在 verifyPackagedRuntimeDependencies 末尾是刻意的：既有校验（越界 native / 运行时依赖闭包）
+ * 先跑，保持它们原有的失败顺序与错误信息不变。
+ *
+ * @param {string} appAsarPath
+ * @param {ReadonlyArray<string>} asarEntries 形如 `/out/preload/index.cjs` 的 POSIX 路径
+ */
+function assertPreloadRequiresSandboxSafe(appAsarPath, asarEntries) {
+  const preloadEntries = asarEntries.filter((entry) => /^\/out\/preload\/.+\.cjs$/.test(entry));
+  if (preloadEntries.length === 0) {
+    // fail-closed：preload 产物全都不见了，比"没违规"更值得让人看一眼（入口改名/漏构建都会走到这里）。
+    throw new Error(
+      `打包产物的 app.asar 里没有 out/preload/*.cjs，无法校验 preload 依赖: ${appAsarPath}`,
+    );
+  }
+
+  // @electron/asar 的 API 与 CLI 同源（上面已用 createRequire 解析过它的包路径），直接读内容，
+  // 不落盘、不污染 cwd。
+  const asar = requireFromBundle("@electron/asar");
+  const preloadFiles = preloadEntries.map((entry) => ({
+    path: entry,
+    content: asar.extractFile(appAsarPath, entry.replace(/^\//, "")).toString("utf8"),
+  }));
+
+  const violations = findDisallowedPreloadRequires(preloadFiles);
+  if (violations.length === 0) {
+    return;
+  }
+
+  const detail = violations
+    .map((violation) => `- ${violation.file} -> ${violation.module}`)
+    .join("\n");
+  throw new Error(
+    `打包 preload 含沙箱不可用的外置 require（sandbox preload 只允许 electron 与 Node 内建模块）:\n${detail}\n` +
+      "修复：把上面这些包加进 packages/desktop/tsup.config.ts 的 preload 构建块 noExternal（让它们被内联），" +
+      "不要靠把依赖装进 app.asar 解决——沙箱 preload 根本不允许 require 第三方模块。",
+  );
 }
 
 async function main() {

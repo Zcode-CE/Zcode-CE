@@ -225,8 +225,21 @@ pnpm licenses:check   # ⚠️ CI 不跑这一项，必须本地手动跑
 pnpm bundle:desktop --os linux --arch x64
 ```
 
-它同时执行运行时资产准备、构建、electron-builder 打包、产物校验与体积审计；**GUI 交互仍需人工** ——
-本机无显示会话时只能验证「解包版 main 启动 + 窗口创建 + host/agent ready」的日志，不能替代目视与点击。
+它同时执行运行时资产准备、构建、electron-builder 打包、产物校验与体积审计。
+
+打包产物做一次启动冒烟（CI 的 Linux 构建后也会跑同一条，见
+[ci.md](ci.md) 的「打包版启动冒烟」）：
+
+```bash
+DISPLAY=:0 node scripts/desktop-startup-smoke.mjs --app-dir packages/desktop/dist/linux-unpacked
+# 无显示会话时：
+xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" \
+  node scripts/desktop-startup-smoke.mjs --app-dir packages/desktop/dist/linux-unpacked
+```
+
+它断言打包版 `window.zcode`（preload 桥）、`#root`（renderer 挂载）与主进程 `dom-ready`
+三条；失败退出码 1 并打印 stdout/stderr 与应用日志尾部。**这条冒烟代替不了人工** ——
+GUI 交互（登录、弹窗、拖拽）仍需目视与点击，DWM/GPU 合成类问题也只能在真机上看。
 
 > **为什么 `licenses:check` 不进 CI**：它比对的平台包集合与 runner 平台相关，在 CI 环境会因平台差异
 > 产生与改动无关的失败（`.github/workflows/ci.yml` 里那行注释写的就是这个理由；`release.yml` 同样没有它）。

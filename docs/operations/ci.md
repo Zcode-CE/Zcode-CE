@@ -140,13 +140,14 @@ Release，后者以 422 失败并中断构建。代价是总时长约为两平�
 ### Linux 额外依赖
 
 ```bash
-sudo apt-get install -y rpm libarchive-tools
+sudo apt-get install -y rpm libarchive-tools xvfb
 ```
 
 - `rpm`：提供 `rpmbuild`。缺失时 electron-builder 在 rpm 阶段报
   `Need executable 'rpmbuild' to convert dir to rpm`。
 - `libarchive-tools`：提供 `bsdtar`。pacman 目标（`.pkg.tar.zst`）由 fpm 调用
   `bsdtar` 生成，CI 镜像不保证预装。
+- `xvfb`：供「打包版启动冒烟」使用。runner 没有显示会话，Electron 窗口必须在虚拟 X 里创建。
 
 Windows runner 无额外系统依赖。
 
@@ -169,6 +170,41 @@ pnpm bundle:desktop --os <linux|win> --arch x64
 
 `bundle.mjs` 内部已依次执行 `prepare:runtime-assets` → `build` → electron-builder →
 产物校验 → 体积审计，**不要在它之前重复跑一遍 prepare/build**（资产准备约 10 分钟）。
+
+### 打包版启动冒烟（Linux）
+
+`Build installers` 之后、`Upload installers` 之前跑一次
+`node scripts/desktop-startup-smoke.mjs --app-dir packages/desktop/dist/linux-unpacked`
+（`xvfb-run` 包一层，脚本自身再加 `--no-sandbox --disable-gpu`）。它启动**解包后的发布产物**，
+用 CDP 断言三条硬门：
+
+1. `window.zcode` 存在且非空 —— 由 `packages/desktop/src/preload/index.ts` 的 contextBridge 暴露，
+   打包版 preload 加载失败（例如某个运行时依赖没进包）时它不存在；
+2. `#root` 有子节点 —— renderer 真的挂载了 React，不是白屏；
+3. 主进程日志出现 `dom-ready fired` —— 启动链走到了窗口创建。
+
+失败语义：**job 红，且坏包不会被 `Upload installers` 传成 artifact**。冒烟放在上传之前就是为此 ——
+构建期断言全绿 ≠ 打包版能起来，而坏包一旦上传就会随 Release 发出去。
+
+边界（如实说明，不要把绿读成「对等真机验证」）：
+
+- 只覆盖 **Linux 解包版**；Windows 的 NSIS 包与 macOS 的 dmg/zip 仍无启动验证
+  （Windows 侧需要真机或 Windows runner 的 GUI 会话，见 `.local/reports/engineering/win-black-window/`）。
+- 防的是「启动链 / preload 加载 / renderer 挂载」类回归，**不防** DWM/GPU 合成类问题
+  （Windows 的 acrylic 透明窗、显卡驱动、远程桌面），那些必须在真机上看。
+- 冒烟通过不代表 GUI 可交互：登录、弹窗、拖拽等交互仍需人工。
+
+本地复现同一条检查（无显示会话时用 `xvfb-run`）：
+
+```bash
+DISPLAY=:0 node scripts/desktop-startup-smoke.mjs --app-dir packages/desktop/dist/linux-unpacked
+# 或
+xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" \
+  node scripts/desktop-startup-smoke.mjs --app-dir packages/desktop/dist/linux-unpacked
+```
+
+脚本参数（`--timeout` / `--port` / `--data-dir` / `--executable`）见文件头部注释；
+失败时会打印 stdout/stderr 尾部、应用日志尾部与 CDP 捕获的页面异常，退出码 1。
 
 ### 产物与更新清单
 
