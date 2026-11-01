@@ -18,7 +18,7 @@ ZCode-CE is the **open-source community edition** of the ZCode AI coding workben
 
 ZCode-CE is built on [zai-org/ZCode](https://github.com/zai-org/ZCode) (Apache-2.0), for users who want **full control over their own development environment**. **Community contributions are welcome** — whether it's feature development, issue reports, or documentation improvements.
 
-**Current release `3.16.3-ce.1`**: the code baseline is a per-feature port of upstream open-source `3.16.2` (`3c5b2276`); the version number follows official closed-source `3.16.3` (3.16.3 is not open-source). Per-item status is in [Upstream sync](docs/development/upstream-sync.md); release changes are in [Releases](https://github.com/Zcode-CE/Zcode-CE/releases).
+**Current release `3.16.3-ce.1.fix.1`** (startup hotfix for `3.16.3-ce.1`): the code baseline is a per-feature port of upstream open-source `3.16.2` (`3c5b2276`); the version number follows official closed-source `3.16.3` (3.16.3 is not open-source). Per-item status is in [Upstream sync](docs/development/upstream-sync.md); release changes are in [Releases](https://github.com/Zcode-CE/Zcode-CE/releases).
 
 Seven differences from the official distribution:
 
