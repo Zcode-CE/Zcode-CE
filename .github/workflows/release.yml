@@ -203,12 +203,16 @@ jobs:
 
       # 打包版启动冒烟（仅 Linux）：整条流水线里第一次「真的把产物跑起来」。
       #
-      # 为什么必须放在 Upload installers 之前：构建期断言全绿 ≠ 打包版能起来 —— issue #6 的坏包
-      # 就是 CI 全绿、安装后窗口空白。放在上传之前，冒烟红时坏包不会进 artifact / Release。
+      # 构建期断言全绿 ≠ 打包版能起来 —— issue #6 的坏包就是 CI 全绿、安装后窗口空白。
       # 能防：主进程启动崩溃、preload 加载失败（打包时漏了运行时依赖）、renderer 未挂载（白屏）。
       # 不防：DWM/GPU 合成类问题（Windows 的 acrylic 透明窗、显卡驱动），那只能在真机上看 ——
       # 不要因为这一步是绿的就认为「装完一定能正常显示」。
       # 失败必须让 job 变红：它是交付终点的一部分，禁止 continue-on-error。
+      #
+      # ⚠️ 它拦不住已经发出去的产物：桌面安装包在上一步 Build installers 里已由 electron-builder 的
+      # GitHub publisher 直接上传到 Release（releaseType: "release"），而下面的 Upload installers 是
+      # `if: always()`。冒烟失败只会让 job 变红并跳过 `needs: build` 的后续 job，Release 上的资产与
+      # workflow artifact 仍然存在，需要人工撤下。详见 docs/operations/ci.md「打包版启动冒烟」。
       - name: Smoke test desktop package (startup)
         if: matrix.platform == 'linux'
         timeout-minutes: 5

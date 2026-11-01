@@ -183,8 +183,15 @@ pnpm bundle:desktop --os <linux|win> --arch x64
 2. `#root` 有子节点 —— renderer 真的挂载了 React，不是白屏；
 3. 主进程日志出现 `dom-ready fired` —— 启动链走到了窗口创建。
 
-失败语义：**job 红，且坏包不会被 `Upload installers` 传成 artifact**。冒烟放在上传之前就是为此 ——
-构建期断言全绿 ≠ 打包版能起来，而坏包一旦上传就会随 Release 发出去。
+失败语义：**job 红，且 `needs: build` 的后续 job（`release-notes`、`headless server package`）不再运行**。
+
+但它**拦不住已经发出去的产物**：桌面安装包在上一 `Build installers` 步骤里就已由 electron-builder 的
+GitHub publisher 直接上传到 Release（`releaseType: "release"`，tag 构建下 publish 默认开启），
+而 `Upload installers` 是 `if: always()`。所以冒烟红时 Release 上已经有该版本的资产、
+workflow artifact 也照常上传 —— 需要人工撤下（或先把这一版的 Release 改成 draft）。
+
+真要让「坏包不进 Release」，得把发布拆成两段（构建时 `EP_DRAFT=true` 或 publish=never，
+冒烟通过后再发布）；这一项未做，登记在 `.local/BACKLOG.md` 的工程欠账。
 
 边界（如实说明，不要把绿读成「对等真机验证」）：
 
