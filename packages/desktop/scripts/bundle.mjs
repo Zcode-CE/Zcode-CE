@@ -17,7 +17,7 @@ import {
   findDesktopNativePackageViolations,
   parseAsarListWithPackState,
 } from "./desktop-native-package-policy.mjs";
-import { findDisallowedPreloadRequires } from "./preload-require-policy.mjs";
+import { findDisallowedPreloadRequires, toAsarEntryLookupPath } from "./preload-require-policy.mjs";
 import {
   resolveSpawnRuntimeOptions,
   runCommand,
@@ -726,7 +726,9 @@ function assertPreloadRequiresSandboxSafe(appAsarPath, asarEntries) {
   const asar = requireFromBundle("@electron/asar");
   const preloadFiles = preloadEntries.map((entry) => ({
     path: entry,
-    content: asar.extractFile(appAsarPath, entry.replace(/^\//, "")).toString("utf8"),
+    // 必须按当前平台的分隔符查询：@electron/asar 用 path.sep 切分目录，Windows 上传 POSIX
+    // 路径会报 "was not found in this archive"（3.16.3-ce.1.fix.1 的 Windows 构建实测）。
+    content: asar.extractFile(appAsarPath, toAsarEntryLookupPath(entry)).toString("utf8"),
   }));
 
   const violations = findDisallowedPreloadRequires(preloadFiles);

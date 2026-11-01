@@ -16,6 +16,7 @@
  */
 
 import { builtinModules } from "node:module";
+import { sep } from "node:path";
 
 // preload 产物是 CJS（tsup format: "cjs"），外置依赖在产物里就是裸 `require("x")`；esbuild 不会把它
 // 改名成 `__require`。lookbehind 排除三类明显不是「模块解析入口」的形态：
@@ -31,6 +32,23 @@ const NODE_BUILTIN_MODULES = new Set(builtinModules);
 
 /** Electron 沙箱 preload 唯一允许的第三方入口。 */
 const ALLOWED_SANDBOX_MODULES = new Set(["electron"]);
+
+/**
+ * 把 POSIX 形态的 asar 条目路径转成 `@electron/asar` 的查询路径。
+ *
+ * 为什么需要：`Filesystem.searchNodeFromDirectory` 用 `path.sep` 切分目录（filesystem.js），
+ * 而 asar CLI 的 list 输出已被 `normalizeAsarPath` 归一化成 POSIX。于是 Windows 打包机上
+ * `extractFile(asar, "out/preload/x.cjs")` 会把整段当成一个目录名，报
+ * `"out/preload/x.cjs" was not found in this archive` —— 3.16.3-ce.1.fix.1 的 Windows 构建
+ * 就因此变红：产物本身没问题，是校验代码跨平台不兼容。
+ *
+ * @param {string} entry 形如 `/out/preload/index.cjs` 的 POSIX 条目路径
+ * @param {string} [separator] 目录分隔符，默认当前平台的 `path.sep`（测试可注入）
+ * @returns {string} 去掉前导分隔符、按目标分隔符拼接的查询路径
+ */
+export function toAsarEntryLookupPath(entry, separator = sep) {
+  return entry.split("/").filter(Boolean).join(separator);
+}
 
 function isRelativeOrAbsoluteSpecifier(specifier) {
   if (specifier === "." || specifier === "..") {

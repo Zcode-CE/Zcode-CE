@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { sep } from "node:path";
 import test from "node:test";
 import {
   findDisallowedPreloadRequires,
   isAllowedPreloadRequire,
+  toAsarEntryLookupPath,
 } from "../scripts/preload-require-policy.mjs";
 
 /**
@@ -38,6 +40,21 @@ test("外部模块一律违规：zod / @zcode/shared 裸名 / 其它第三方", 
   for (const specifier of ["zod", "@zcode/shared", "@zcode/shared/mcp-apps", "electron-updater"]) {
     assert.equal(isAllowedPreloadRequire(specifier), false, `${specifier} 应判违规`);
   }
+});
+
+test("toAsarEntryLookupPath：按平台分隔符重建 asar 查询路径", () => {
+  // @electron/asar 的 searchNodeFromDirectory 用 path.sep 切分目录，而 asar CLI 的 list 输出是
+  // POSIX：Windows 上传 "out/preload/x.cjs" 会被当成单段目录，报 was not found in this archive
+  // （3.16.3-ce.1.fix.1 的 Windows 构建实测）。转换函数必须跟随平台分隔符。
+  assert.equal(toAsarEntryLookupPath("/out/preload/index.cjs", "/"), "out/preload/index.cjs");
+  assert.equal(
+    toAsarEntryLookupPath("/out/preload/browserVideoRecorder.cjs", "\\"),
+    "out\\preload\\browserVideoRecorder.cjs",
+  );
+  // 无前导斜杠、带嵌套目录时同样成立。
+  assert.equal(toAsarEntryLookupPath("out/a/b.cjs", "\\"), "out\\a\\b.cjs");
+  // 默认参数取当前平台分隔符（本测试所在的平台）。
+  assert.equal(toAsarEntryLookupPath("/out/preload/x.cjs"), ["out", "preload", "x.cjs"].join(sep));
 });
 
 test("findDisallowedPreloadRequires：白名单内容零违规", () => {
