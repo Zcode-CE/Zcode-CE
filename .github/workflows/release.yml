@@ -156,11 +156,13 @@ jobs:
       # rpm target 需要 rpmbuild，缺失时 electron-builder 在 rpm 阶段报
       # "Need executable 'rpmbuild' to convert dir to rpm"。
       # libarchive-tools 提供 bsdtar，pacman target 依赖它（本机已自带，CI 镜像不保证有）。
+      # xvfb 供下面的「打包版启动冒烟」用：runner 没有显示会话，Electron 窗口必须在虚拟 X 里创建。
+      # 和上面两项同批装：单独再跑一次 apt-get update 要多花十几秒，且这里本来就是 Linux-only 步骤。
       - name: Install packaging tools (Linux)
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm libarchive-tools
+          sudo apt-get install -y rpm libarchive-tools xvfb
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -198,6 +200,22 @@ jobs:
           # 已按契约修正代码并加契约测试（packages/desktop/test/remoteCdnBaseUrl.test.ts）。
           ZCODE_CDN_BASE_URL: ${{ vars.ZCODE_CDN_BASE_URL }}
         run: pnpm bundle:desktop --os ${{ matrix.platform }} --arch ${{ matrix.arch }}
+
+      # 打包版启动冒烟（仅 Linux）：整条流水线里第一次「真的把产物跑起来」。
+      #
+      # 为什么必须放在 Upload installers 之前：构建期断言全绿 ≠ 打包版能起来 —— issue #6 的坏包
+      # 就是 CI 全绿、安装后窗口空白。放在上传之前，冒烟红时坏包不会进 artifact / Release。
+      # 能防：主进程启动崩溃、preload 加载失败（打包时漏了运行时依赖）、renderer 未挂载（白屏）。
+      # 不防：DWM/GPU 合成类问题（Windows 的 acrylic 透明窗、显卡驱动），那只能在真机上看 ——
+      # 不要因为这一步是绿的就认为「装完一定能正常显示」。
+      # 失败必须让 job 变红：它是交付终点的一部分，禁止 continue-on-error。
+      - name: Smoke test desktop package (startup)
+        if: matrix.platform == 'linux'
+        timeout-minutes: 5
+        run: |
+          xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" \
+            node scripts/desktop-startup-smoke.mjs --app-dir packages/desktop/dist/linux-unpacked
+
       # .blockmap 必须一起留存，否则 electron-updater 的差分下载会退化为全量包。
       - name: Upload installers
         if: always()
