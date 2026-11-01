@@ -114,6 +114,7 @@ const requiredRuntimeModules = [
   // 与上游 v3.14.3 的 desktop/scripts/bundle.mjs:113 同一处置。
   "@larksuiteoapi/node-sdk",
 ];
+const publishPolicies = new Set(["always", "onTag", "onTagOrDraft", "never"]);
 const electronBuilderRetryCount = 3;
 const electronBuilderRetryDelayMs = 5_000;
 const electronBuilderHeartbeatIntervalMs = 30_000;
@@ -252,12 +253,15 @@ function printHelp() {
   --arch, -a <x64|arm64>       目标 CPU 架构，默认 arm64
   --skip-prepare               跳过 prepare:runtime-assets
   --skip-build                 跳过 pnpm build
+  --publish <策略>             透传给 electron-builder：always / onTag / onTagOrDraft / never
+                               （不传时保持 electron-builder 的隐式推断）
   --dry-run                    只打印最终命令，不执行打包
   -h, --help                   查看帮助
 
 环境变量:
   ZCODE_TARGET_OS              与 --os 等价
   ZCODE_TARGET_ARCH            与 --arch 等价
+  ZCODE_PUBLISH                与 --publish 等价
 `);
 }
 
@@ -283,6 +287,7 @@ function parseArgs(argv) {
     arch: process.env.ZCODE_TARGET_ARCH ?? null,
     skipPrepare: process.env.ZCODE_SKIP_PREPARE === "1",
     skipBuild: process.env.ZCODE_SKIP_BUILD === "1",
+    publish: process.env.ZCODE_PUBLISH ?? null,
     dryRun: false,
     positionals: [],
   };
@@ -336,6 +341,17 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === "--publish") {
+      options.publish = argv[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--publish=")) {
+      options.publish = arg.slice("--publish=".length);
+      continue;
+    }
+
     if (arg.startsWith("-")) {
       throw new Error(`不支持的参数: ${arg}`);
     }
@@ -353,11 +369,17 @@ function parseArgs(argv) {
   const resolvedOs = normalizeOs(options.os ?? positionalOs ?? DEFAULT_TARGET_OS);
   const resolvedArch = normalizeArch(options.arch ?? positionalArch ?? DEFAULT_TARGET_ARCH);
 
+  const publish = options.publish?.trim() || null;
+  if (publish != null && !publishPolicies.has(publish)) {
+    throw new Error(`不支持的发布策略: ${publish}（可选 ${[...publishPolicies].join(" / ")}）`);
+  }
+
   return {
     os: resolvedOs,
     arch: resolvedArch,
     skipPrepare: options.skipPrepare,
     skipBuild: options.skipBuild,
+    publish,
     dryRun: options.dryRun,
   };
 }
@@ -747,7 +769,7 @@ function assertPreloadRequiresSandboxSafe(appAsarPath, asarEntries) {
 }
 
 async function main() {
-  const { os, arch, skipPrepare, skipBuild, dryRun } = parseArgs(process.argv.slice(2));
+  const { os, arch, skipPrepare, skipBuild, publish, dryRun } = parseArgs(process.argv.slice(2));
   const buildArgs = [
     "exec",
     "electron-builder",
@@ -757,8 +779,18 @@ async function main() {
     archBuilderFlagMap[arch],
   ];
 
+  if (publish != null) {
+    // 显式发布策略：CI 的 tag 构建传 onTag，其余运行（workflow_dispatch / 本机）传 never。
+    // 不传时 electron-builder 在 CI 下把策略推断成 onTagOrDraft，而 GitHub provider 在
+    // onTagOrDraft 下的判据只有「不是 PR」，所以不是 tag 也会发布。3.16.3-ce.1.fix.1 就是这样：
+    // 为验证 Windows 打包而手动触发的演练构建重传了同版本 Linux / Windows 资产，AUR 的 sha256 失效。
+    buildArgs.push("--publish", publish);
+  }
+
   console.log(`[bundle] target=${os}/${arch}`);
-  console.log(`[bundle] skipPrepare=${skipPrepare} skipBuild=${skipBuild}`);
+  console.log(
+    `[bundle] skipPrepare=${skipPrepare} skipBuild=${skipBuild} publish=${publish ?? "(隐式)"}`,
+  );
 
   const buildEnv = {
     ZCODE_TARGET_OS: os,

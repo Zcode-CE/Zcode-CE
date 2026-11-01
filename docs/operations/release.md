@@ -273,8 +273,14 @@ git push origin v3.14.1-ce.1
 
 ### 4. 演练（不发布）
 
-不想真正建 Release 时，用 `workflow_dispatch` 手动触发：它只构建并上传 artifact，
-不新建 Release。适合验证工作流本身或产出包供人工验收。
+不想真正建 Release 时，用 `workflow_dispatch` 手动触发：它只构建并上传 artifact，不新建 Release，
+适合验证工作流本身或产出包供人工验收。
+
+**「不发布」由显式参数保证，不是默认行为**：`Build installers` 给非 tag 运行传 `--publish never`。
+不传时 electron-builder 在 CI 下把策略推断成 `onTagOrDraft`，而 GitHub provider 在 `onTagOrDraft` 下的
+判据只有「不是 PR」——**不是 tag 也会发布**：3.16.3-ce.1.fix.1 的演练构建就重传了同版本的
+Linux / Windows 资产，把 Curl 下载到的字节换掉、让 AUR 的 `sha256sums` 失效。所以演练前先确认
+该版本的 Release 是否已存在；已发布的版本不要用它演练。
 
 ### 5. 核对 Release 内容
 

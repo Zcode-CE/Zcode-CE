@@ -199,7 +199,12 @@ jobs:
           # 2026-09-23 修正：此前构建期旋钮会被当父目录并追加 /zcode/electron/releases/<版本>，与"发布根"契约矛盾；
           # 已按契约修正代码并加契约测试（packages/desktop/test/remoteCdnBaseUrl.test.ts）。
           ZCODE_CDN_BASE_URL: ${{ vars.ZCODE_CDN_BASE_URL }}
-        run: pnpm bundle:desktop --os ${{ matrix.platform }} --arch ${{ matrix.arch }}
+        # 发布策略必须显式：electron-builder 在 CI 下把未指定的策略推断成 onTagOrDraft，
+        # 而 GitHub provider 在 onTagOrDraft 下的判据只有「不是 PR」——**不是 tag 也会发布**。
+        # 3.16.3-ce.1.fix.1 为复核 Windows 打包手动触发的 workflow_dispatch 构建因此重传了
+        # 同版本的 Linux / Windows 资产（AUR 的 sha256 随之失效）。这里 tag 构建传 onTag
+        # （与原有行为一致），其余运行传 never（只产出 workflow artifact）。
+        run: pnpm bundle:desktop --os ${{ matrix.platform }} --arch ${{ matrix.arch }} --publish ${{ startsWith(github.ref, 'refs/tags/') && 'onTag' || 'never' }}
 
       # 打包版启动冒烟（仅 Linux）：整条流水线里第一次「真的把产物跑起来」。
       #

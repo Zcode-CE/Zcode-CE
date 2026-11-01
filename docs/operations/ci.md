@@ -201,6 +201,24 @@ workflow artifact 也照常上传 —— 需要人工撤下（或先把这一版
   （Windows 的 acrylic 透明窗、显卡驱动、远程桌面），那些必须在真机上看。
 - 冒烟通过不代表 GUI 可交互：登录、弹窗、拖拽等交互仍需人工。
 
+**Windows / macOS 的打包只能在 release.yml 里跑**（含 `bundle.mjs` 里的产物校验脚本本身）：
+PR 流水线不执行 `bundle:desktop`，所以打包脚本的跨平台回归只会在打 tag 时暴露。
+改了打包/校验脚本、又要在非发布场景复核时，用 `workflow_dispatch` 手动触发 release.yml：
+
+```bash
+gh workflow run release.yml --ref <分支>
+```
+
+演练**不会改写已发布版本**靠的是显式发布策略：`Build installers` 给非 tag 运行传
+`--publish never`，只产出 workflow artifact；tag 构建传 `--publish onTag`。
+这条不能省 —— 不传时 electron-builder 在 CI 下把策略推断成 `onTagOrDraft`，而 GitHub
+provider 在 `onTagOrDraft` 下的判据只有「不是 PR」，**不是 tag 也会发布**（3.16.3-ce.1.fix.1
+的演练构建因此重传了同版本 Linux / Windows 资产，AUR 的 sha256 随之失效）。
+
+3.16.3-ce.1.fix.1 的教训（两次）：新增的 preload 校验在 Windows 上用 POSIX 路径查询 asar，
+tag 构建才第一次跑到，`build windows` 直接变红（产物本身没问题）；随后的演练构建又在
+非 tag 下发布了资产。跨平台打包脚本的改动必须走一次演练构建。
+
 本地复现同一条检查（无显示会话时用 `xvfb-run`）：
 
 ```bash
