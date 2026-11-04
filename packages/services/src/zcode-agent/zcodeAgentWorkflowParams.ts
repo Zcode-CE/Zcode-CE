@@ -47,7 +47,7 @@ export type ZCodeAgentMoveSavedWorkflowParams = ZCodeAgentWorkspaceTarget & {
   name: string;
 };
 // Modified by ZCode: 增量自上游 aac47556——完成卡的「直接保存」与「已保存」判定
-// （docs/dynamic-workflow/transcript-and-notifications.md「Saving the run, and running it again」）。
+// （对应上游规格「Saving the run, and running it again」一节；本仓未移植该文档）。
 // 两者都必带 workspace，全局档也不例外：要存的脚本在那个 agent 的 journal 里，
 // 载体不能由 services 另选一个本机运行时。
 export type ZCodeAgentSaveSavedWorkflowFromRunParams = ZCodeAgentWorkspaceTarget & {

@@ -35,8 +35,8 @@ export function createDesktopTray(options: {
   logger: { warn: (...args: unknown[]) => void };
 }) {
   const platform = options.platform ?? process.platform;
-  // Linux 驻留能力由 createCloseToTrayCapabilityMonitor 探测决定(spec:
-  // docs/desktop/linux-close-to-tray.md);这里只挡平台,能力不过关时调用方不应传入 linux。
+  // Linux 驻留能力由 createCloseToTrayCapabilityMonitor 探测决定
+  // (规格:docs/development/linux-tray.md);这里只挡平台,能力不过关时调用方不应传入 linux。
   if (platform !== "win32" && platform !== "linux") {
     return null;
   }

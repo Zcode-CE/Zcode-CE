@@ -2,7 +2,7 @@
 import { execFile } from "node:child_process";
 
 /**
- * Linux 关闭驻留托盘能力检测（spec：docs/desktop/linux-close-to-tray.md）。
+ * Linux 关闭驻留托盘能力检测（规格：docs/development/linux-tray.md）。
  *
  * 能力信号是 session DBus 上 org.kde.StatusNotifierWatcher 是否有 owner：
  * KDE/XFCE 原生提供；GNOME 默认移除了托盘，需用户安装 AppIndicator 类扩展。

@@ -9,8 +9,8 @@ import {
 } from "./embeddedBrowserSitePermissions.js";
 
 /**
- * 内置浏览器 partition 的权限闸门（CNVD「内置浏览器未授权访问」修复，spec 见
- * docs/browser-use/2026-10-08-embedded-browser-permission-governance-spec.md）。
+ * 内置浏览器 partition 的权限闸门（CNVD「内置浏览器未授权访问」修复，
+ * 规格见 docs/development/embedded-browser-permissions.md）。
  *
  * Electron 未设置 permission handler 的 session 会自动批准所有权限请求，恶意页面可静默
  * 拿到摄像头/麦克风/剪贴板/地理位置；设备类 API 未监听 select-* 事件时还会静默授权
