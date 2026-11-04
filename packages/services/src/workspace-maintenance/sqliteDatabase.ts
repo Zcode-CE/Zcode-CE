@@ -124,19 +124,26 @@ export function createSqliteWorkspaceMaintenancePort(params?: {
       );
     },
     /**
-     * 运行中判定：任务行处于 running/pending，或闲时任务已被 claim（正在跑）。
-     * 自动化本身是调度器：它真的在跑时会在 `tasks` 里产生一条运行中的任务行，因此不单独判定。
+     * 运行中判定，只看 CE 真实库里的列：任务行 `task_status = 'running'`、闲时任务
+     * `status = 'running'` 或已被认领（`claim_running = 1`，派发在途）、自动化 `running = 1`。
+     *
+     * 这里不能照搬上游 schema：`off_peak_tasks` 在 CE 没有 `dispatch_status` 列（那是上游的列），
+     * 按上游写法查会直接 `no such column` 让整个 measure 失败。
      */
     async hasRunningWork(workspaceKey) {
       const tasks = count(
-        "SELECT COUNT(*) AS count FROM tasks WHERE workspace_key = ? AND task_status IN ('running','pending')",
+        "SELECT COUNT(*) AS count FROM tasks WHERE workspace_key = ? AND task_status = 'running'",
         workspaceKey,
       );
       const offPeak = count(
-        "SELECT COUNT(*) AS count FROM off_peak_tasks WHERE workspace_key = ? AND dispatch_status = 'claimed'",
+        "SELECT COUNT(*) AS count FROM off_peak_tasks WHERE workspace_key = ? AND (status = 'running' OR claim_running = 1)",
         workspaceKey,
       );
-      return tasks + offPeak > 0;
+      const automations = count(
+        "SELECT COUNT(*) AS count FROM automations WHERE workspace_key = ? AND running = 1",
+        workspaceKey,
+      );
+      return tasks + offPeak + automations > 0;
     },
     close() {
       db.close();

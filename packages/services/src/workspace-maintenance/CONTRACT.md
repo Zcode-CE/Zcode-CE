@@ -33,6 +33,10 @@
 ## 不变量
 
 - 运行中的工作区拒绝删除（运行态由 `activity` 端口给出），不提供强制删除。
+  判定只看 CE 真实列：`tasks.task_status = 'running'`、`off_peak_tasks.status = 'running' OR claim_running = 1`、
+  `automations.running = 1`。**不得引用上游专属列**（如 `off_peak_tasks.dispatch_status`，CE 没有该列）。
+- 所有 SQL 的列名以真实迁移建出的库为准；`packages/services/test/workspaceMaintenance.test.ts` 用
+  `runTasksDatabaseMigrations` 建库验证，禁止手写 `CREATE TABLE` 充当 schema 事实。
 - 进程内全局互斥：同一时刻只允许一个 purge。
 - 每次 purge / removeFromList 写一条本地审计记录（不上报）。
 - 失败语义：返回 `deleted`（本次）+ `remaining`（删后复测）；重试幂等。

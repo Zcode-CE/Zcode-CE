@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
+import { runTasksDatabaseMigrations } from "../src/session/tasksDatabase/migrations.js";
 import {
   createSqliteWorkspaceMaintenancePort,
   createWorkspaceMaintenance,
@@ -233,33 +234,66 @@ test("removeFromList 只删注册表行，不动数据", async () => {
   assert.deepEqual(harness.calls, [`db:registry:${KEY}`, "audit:removeFromList"]);
 });
 
-test("真实 sqlite 适配器：按 workspace_key 精确命中，另一个工作区不受影响", async () => {
+/**
+ * 真实 schema 上的适配器验证：建库走真实迁移路径（runTasksDatabaseMigrations），
+ * 不手写 CREATE TABLE。
+ *
+ * 这条约束是被真实事故换来的：早先的夹具手写了上游列 `off_peak_tasks.dispatch_status`，
+ * 于是单测绿、真机 `no such column`。手写 CREATE TABLE 等于把「我以为的 schema」当成事实，
+ * 它永远比真实迁移乐观。因此这里的每个用例都在迁移出来的库上跑。
+ */
+function createMigratedDatabase(): { databasePath: string; cleanup: () => void } {
   const dir = mkdtempSync(join(tmpdir(), "zcode-workspace-maintenance-"));
   const databasePath = join(dir, "tasks-index.sqlite");
   const db = new DatabaseSync(databasePath);
+  runTasksDatabaseMigrations(db);
+  db.close();
+  return {
+    databasePath,
+    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+  };
+}
+
+function openDatabase(databasePath: string): DatabaseSync {
+  return new DatabaseSync(databasePath);
+}
+
+test("迁移后的真实 schema：每一项 measure 的 SQL 都能执行（列名护栏）", async () => {
+  const { databasePath, cleanup } = createMigratedDatabase();
+  const port = createSqliteWorkspaceMaintenancePort({ databasePath });
+  try {
+    // 五处按 workspace_key 的统计 + 分组统计 + 注册表行 + 运行态判定：任何一处引用了
+    // 真实库里不存在的列，这里都会以 no such column 失败——这正是真机上炸掉的那一类错误。
+    for (const category of ["tasks", "automations", "automationRuns", "offPeakTasks"] as const) {
+      assert.equal(await port.measure(category, KEY), 0);
+    }
+    assert.equal(await port.measureEmptyTaskGroups(KEY), 0);
+    assert.equal(await port.measureRegistryRow(KEY), 0);
+    assert.equal(await port.hasRunningWork(KEY), false);
+  } finally {
+    port.close();
+    cleanup();
+  }
+});
+
+test("真实 schema：按 workspace_key 精确命中，另一个工作区不受影响", async () => {
+  const { databasePath, cleanup } = createMigratedDatabase();
+  const now = Date.now();
+  const db = openDatabase(databasePath);
   db.exec(`
-    CREATE TABLE tasks (workspace_key TEXT NOT NULL, workspace_path TEXT NOT NULL, task_id TEXT NOT NULL,
-      task_status TEXT, archived INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, PRIMARY KEY (workspace_key, task_id));
-    CREATE TABLE task_groups (group_id TEXT PRIMARY KEY, title TEXT NOT NULL);
-    CREATE TABLE task_group_members (group_id TEXT NOT NULL, workspace_key TEXT NOT NULL, task_id TEXT NOT NULL,
-      PRIMARY KEY (workspace_key, task_id));
-    CREATE TABLE task_group_view_node_orders (node_type TEXT NOT NULL, node_key TEXT NOT NULL,
-      sort_order INTEGER NOT NULL, PRIMARY KEY (node_type, node_key));
-    CREATE TABLE task_group_workspace_bootstraps (workspace_key TEXT PRIMARY KEY, group_id TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
-    CREATE TABLE automations (automation_id TEXT PRIMARY KEY, workspace_key TEXT NOT NULL);
-    CREATE TABLE automation_runs (run_id TEXT PRIMARY KEY, workspace_key TEXT NOT NULL);
-    CREATE TABLE off_peak_tasks (task_id TEXT PRIMARY KEY, workspace_key TEXT NOT NULL, status TEXT NOT NULL, dispatch_status TEXT NOT NULL DEFAULT 'idle');
-    CREATE TABLE workspace_registry (workspace_key TEXT PRIMARY KEY, workspace_path TEXT NOT NULL, last_activity_at INTEGER NOT NULL);
-  `);
-  db.exec(`
-    INSERT INTO tasks VALUES ('${KEY}','${KEY}','t1','complete',0,1), ('${KEY}','${KEY}','t2','complete',0,2), ('${OTHER}','${OTHER}','t3','complete',0,3);
-    INSERT INTO task_groups VALUES ('own','Own'), ('shared','Shared');
-    INSERT INTO task_group_members VALUES ('own','${KEY}','t1'), ('shared','${KEY}','t2'), ('shared','${OTHER}','t3');
-    INSERT INTO task_group_workspace_bootstraps VALUES ('${KEY}',NULL,1,1);
-    INSERT INTO automations VALUES ('a1','${KEY}');
-    INSERT INTO automation_runs VALUES ('r1','${KEY}');
-    INSERT INTO off_peak_tasks VALUES ('o1','${KEY}','queued','idle');
-    INSERT INTO workspace_registry VALUES ('${KEY}','${KEY}',1), ('${OTHER}','${OTHER}',2);
+    INSERT INTO tasks (workspace_key, workspace_path, task_id, task_status, created_at, updated_at)
+      VALUES ('${KEY}','${KEY}','t1','completed',${now},${now}), ('${KEY}','${KEY}','t2','completed',${now},${now}), ('${OTHER}','${OTHER}','t3','completed',${now},${now});
+    INSERT INTO task_groups (group_id, title, created_at, updated_at) VALUES ('own','Own',${now},${now}), ('shared','Shared',${now},${now});
+    INSERT INTO task_group_members (group_id, workspace_key, workspace_path, task_id, added_at, created_at, updated_at)
+      VALUES ('own','${KEY}','${KEY}','t1',${now},${now},${now}), ('shared','${KEY}','${KEY}','t2',${now},${now},${now}), ('shared','${OTHER}','${OTHER}','t3',${now},${now},${now});
+    INSERT INTO task_group_workspace_bootstraps (workspace_key, created_at, updated_at) VALUES ('${KEY}',${now},${now});
+    INSERT INTO automations (automation_id, title, cron_expr, prompt, workspace_key, workspace_path, created_at, updated_at)
+      VALUES ('a1','A','0 * * * *','p','${KEY}','${KEY}',${now},${now});
+    INSERT INTO automation_runs (run_id, automation_id, workspace_key, created_at, updated_at) VALUES ('r1','a1','${KEY}',${now},${now});
+    INSERT INTO off_peak_tasks (off_peak_task_id, prompt, permission_mode, workspace_key, workspace_path, status, queued_at, created_at, updated_at)
+      VALUES ('o1','p','build','${KEY}','${KEY}','queued',${now},${now},${now});
+    INSERT INTO workspace_registry (workspace_key, workspace_path, first_seen_at, last_activity_at, session_count, sources)
+      VALUES ('${KEY}','${KEY}',${now},${now},2,'[]'), ('${OTHER}','${OTHER}',${now},${now},1,'[]');
   `);
   db.close();
 
@@ -269,57 +303,81 @@ test("真实 sqlite 适配器：按 workspace_key 精确命中，另一个工作
     activity: port,
     audit: { record: async () => {} },
   });
+  try {
+    const measure = await service.measureWorkspace({ workspacePath: KEY });
+    const byId = Object.fromEntries(measure.categories.map((item) => [item.id, item.count]));
+    assert.equal(byId.tasks, 2);
+    assert.equal(byId.automations, 1);
+    assert.equal(byId.automationRuns, 1);
+    assert.equal(byId.offPeakTasks, 1);
+    assert.equal(measure.running, false);
 
-  const measure = await service.measureWorkspace({ workspacePath: KEY });
-  const byId = Object.fromEntries(measure.categories.map((item) => [item.id, item.count]));
-  assert.equal(byId.tasks, 2);
-  assert.equal(byId.automations, 1);
-  assert.equal(measure.running, false);
+    const result = await service.purgeWorkspace({ workspacePath: KEY });
+    assert.equal(result.completed, true);
 
-  const result = await service.purgeWorkspace({ workspacePath: KEY });
-  assert.equal(result.completed, true);
-
-  // 另一个工作区的数据必须原样保留；共享组因为还有成员而保留，独占组被删。
-  const verify = new DatabaseSync(databasePath);
-  const countOf = (sql: string, key: string) =>
-    Number((verify.prepare(sql).get(key) as { count: number }).count);
-  assert.equal(countOf("SELECT COUNT(*) AS count FROM tasks WHERE workspace_key = ?", OTHER), 1);
-  assert.equal(countOf("SELECT COUNT(*) AS count FROM tasks WHERE workspace_key = ?", KEY), 0);
-  assert.equal(
-    countOf("SELECT COUNT(*) AS count FROM workspace_registry WHERE workspace_key = ?", KEY),
-    0,
-  );
-  assert.equal(
-    countOf("SELECT COUNT(*) AS count FROM workspace_registry WHERE workspace_key = ?", OTHER),
-    1,
-  );
-  const groups = verify
-    .prepare("SELECT group_id FROM task_groups ORDER BY group_id")
-    .all() as Array<{ group_id: string }>;
-  assert.deepEqual(
-    groups.map((row) => row.group_id),
-    ["shared"],
-  );
-  verify.close();
-  port.close();
-  rmSync(dir, { recursive: true, force: true });
+    const verify = openDatabase(databasePath);
+    const countOf = (sql: string, key: string) =>
+      Number((verify.prepare(sql).get(key) as { count: number }).count);
+    assert.equal(countOf("SELECT COUNT(*) AS count FROM tasks WHERE workspace_key = ?", OTHER), 1);
+    assert.equal(countOf("SELECT COUNT(*) AS count FROM tasks WHERE workspace_key = ?", KEY), 0);
+    assert.equal(
+      countOf("SELECT COUNT(*) AS count FROM workspace_registry WHERE workspace_key = ?", KEY),
+      0,
+    );
+    assert.equal(
+      countOf("SELECT COUNT(*) AS count FROM workspace_registry WHERE workspace_key = ?", OTHER),
+      1,
+    );
+    const groups = verify
+      .prepare("SELECT group_id FROM task_groups ORDER BY group_id")
+      .all() as Array<{ group_id: string }>;
+    assert.deepEqual(
+      groups.map((row) => row.group_id),
+      ["shared"],
+    );
+    verify.close();
+  } finally {
+    port.close();
+    cleanup();
+  }
 });
 
-test("真实 sqlite 适配器：运行中的任务让 purge 被拒", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "zcode-workspace-running-"));
-  const databasePath = join(dir, "tasks-index.sqlite");
-  const db = new DatabaseSync(databasePath);
-  db.exec(`
-    CREATE TABLE tasks (workspace_key TEXT NOT NULL, workspace_path TEXT NOT NULL, task_id TEXT NOT NULL,
-      task_status TEXT, archived INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, PRIMARY KEY (workspace_key, task_id));
-    CREATE TABLE off_peak_tasks (task_id TEXT PRIMARY KEY, workspace_key TEXT NOT NULL, status TEXT NOT NULL, dispatch_status TEXT NOT NULL DEFAULT 'idle');
-    CREATE TABLE workspace_registry (workspace_key TEXT PRIMARY KEY, workspace_path TEXT NOT NULL, last_activity_at INTEGER NOT NULL);
-  `);
-  db.exec(`INSERT INTO tasks VALUES ('${KEY}','${KEY}','t1','running',0,1);`);
-  db.close();
+test("真实 schema：运行中的任务 / 已认领的闲时任务 / 运行中的自动化都让删除被拒", async () => {
+  const { databasePath, cleanup } = createMigratedDatabase();
+  const now = Date.now();
+  const db = openDatabase(databasePath);
+
   const port = createSqliteWorkspaceMaintenancePort({ databasePath });
-  assert.equal(await port.hasRunningWork(KEY), true);
-  port.close();
-  writeFileSync(join(dir, "keep.txt"), "keep");
-  rmSync(dir, { recursive: true, force: true });
+  try {
+    assert.equal(await port.hasRunningWork(KEY), false, "空库不算运行中");
+
+    db.exec(`INSERT INTO tasks (workspace_key, workspace_path, task_id, task_status, created_at, updated_at)
+      VALUES ('${KEY}','${KEY}','t1','running',${now},${now});`);
+    assert.equal(await port.hasRunningWork(KEY), true, "任务 running");
+
+    db.exec("DELETE FROM tasks");
+    db.exec(`INSERT INTO off_peak_tasks (off_peak_task_id, prompt, permission_mode, workspace_key, workspace_path, status, queued_at, created_at, updated_at)
+      VALUES ('o1','p','build','${KEY}','${KEY}','queued',${now},${now},${now});`);
+    db.exec("UPDATE off_peak_tasks SET claim_running = 1 WHERE off_peak_task_id = 'o1'");
+    assert.equal(await port.hasRunningWork(KEY), true, "闲时任务已认领");
+
+    db.exec("DELETE FROM off_peak_tasks");
+    db.exec(`INSERT INTO automations (automation_id, title, cron_expr, prompt, workspace_key, workspace_path, running, created_at, updated_at)
+      VALUES ('a1','A','0 * * * *','p','${KEY}','${KEY}',1,${now},${now});`);
+    assert.equal(await port.hasRunningWork(KEY), true, "自动化 running");
+
+    await assert.rejects(
+      () =>
+        createWorkspaceMaintenance({
+          database: port,
+          activity: port,
+          audit: { record: async () => {} },
+        }).purgeWorkspace({ workspacePath: KEY }),
+      /workspace_running/,
+    );
+  } finally {
+    db.close();
+    port.close();
+    cleanup();
+  }
 });
