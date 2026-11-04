@@ -2,7 +2,11 @@
 
 import type { JsonSchema } from "../model/index.js";
 import type { TraceContext } from "../tracing/tracer.js";
-import type { McpServerFailureKind, OfficialMcpAuthPortFailureReason } from "@zcode/shared";
+import type {
+  McpServerFailureKind,
+  OfficialMcpAuthPortFailureReason,
+  WorkspaceMcpTrustReview,
+} from "@zcode/shared";
 // Modified by ZCode:F5 mcp-ui 消费侧类型（契约定义在 @zcode/shared/mcp-apps）。
 import type { McpAppsToolVisibility, McpToolUiDescriptor } from "@zcode/shared/mcp-apps";
 
@@ -12,7 +16,7 @@ export type McpServerIsolation = "session" | "workspace";
 
 /** 公共 MCP 配置校验完成后由宿主附加的运行时来源。 */
 export interface McpServerRuntimeSource {
-  kind: "builtin" | "plugin";
+  kind: "builtin" | "plugin" | "workspace" | "user";
 }
 
 /**
@@ -140,6 +144,8 @@ export type McpServerStatusKind =
   | "untrusted";
 
 export interface McpServerStatus {
+  /** 工作区声明的审核摘要；用户 / 插件来源不带。 */
+  workspaceTrust?: WorkspaceMcpTrustReview;
   status: McpServerStatusKind;
   transport: McpServerTransportType;
   toolCount: number;
@@ -451,6 +457,8 @@ export interface McpElicitationPort {
 }
 
 export interface McpPort {
+  /** 只读重算工作区准入并通知会话投影，不连接、不授权、不重放工具。 */
+  refreshWorkspaceTrustAdmission?(reannounce?: boolean): Promise<void>;
   connectConfiguredServers(
     servers: Record<string, McpServerConfig>,
     options?: McpConnectOptions,

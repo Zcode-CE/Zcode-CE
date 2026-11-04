@@ -81,7 +81,7 @@ import {
   moveSavedWorkflowOp,
   updateSavedWorkflowMetaOp,
 } from "./saved-workflows.js";
-import { listMcpServers } from "./mcp.js";
+import { listMcpServers, setWorkspaceMcpTrust } from "./mcp.js";
 import { updateInteractionPreferences } from "./interaction-preferences.js";
 import { updateAccountProviderConfig } from "./account-provider-config.js";
 import { updateModelIoPreferences } from "./model-io-preferences.js";
@@ -626,6 +626,9 @@ export class ZCodeProtocolAgentServer {
         }
         return grantResult;
       }
+      case zcodeProtocolMethods.workspaceMcpTrust:
+        // 与 Hook 信任同一条路径：落盘成功后按 workspace 通知活跃会话重算准入、重发提示条。
+        return await setWorkspaceMcpTrust(this.context, request.params);
       case zcodeProtocolMethods.providerUpdateAccountConfig:
         return await updateAccountProviderConfig(this.context, request.params);
       case zcodeProtocolMethods.workspaceUpdateInteractionPreferences:

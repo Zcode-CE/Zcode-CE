@@ -3014,8 +3014,9 @@ export async function getTaskTokenUsage(
  * - SessionResumed：打开/恢复会话是读取，不是活动。冷恢复路径刚把
  *   record.updatedAt 回填成 store 的真实时间（见 resumeSession op 内说明），
  *   若再被 resume 事件冲成 Date.now()，点开/刷新任务就会被顶到列表最前并整列重排。
- * - WorkspaceHookAdmissionUpdated：冷恢复重新评估工作区 hook 准入状态，不代表用户活动；
- *   若漏掉黑名单，SessionResumed 后的准入状态事件会把历史任务显示为“刚刚”。
+ * - WorkspaceHookAdmissionUpdated / WorkspaceMcpAdmissionUpdated：冷恢复重新评估工作区准入状态
+ *   （hook / MCP），不代表用户活动；若漏掉黑名单，SessionResumed 后的准入状态事件会把历史任务
+ *   显示为“刚刚”。
  * - HookRun*：hook lifecycle 是 turn/session 的内部执行细节；正常 turn 已有消息、工具等
  *   活动事件负责更新时间，冷恢复的 SessionStart hook 不能单独制造一次用户活动。
  */
@@ -3026,6 +3027,7 @@ function isNonActivitySessionEvent(event: SessionEvent): boolean {
     event.type === SessionEventType.SessionTitleUpdated ||
     event.type === SessionEventType.SessionResumed ||
     event.type === SessionEventType.WorkspaceHookAdmissionUpdated ||
+    event.type === SessionEventType.WorkspaceMcpAdmissionUpdated ||
     event.type === SessionEventType.HookRunStarted ||
     event.type === SessionEventType.HookRunProgress ||
     event.type === SessionEventType.HookRunCompleted ||

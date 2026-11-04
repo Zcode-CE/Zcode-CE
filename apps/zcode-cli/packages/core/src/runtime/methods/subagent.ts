@@ -1,10 +1,9 @@
 /* eslint-disable max-lines -- subagent runtime wiring 集中衔接 child runtime、tool pool、权限、MCP 与 activity watchdog，拆分需单独迁移。 */
-import { RESPOND_TO_COORDINATOR_TOOL_NAME, inheritPermissionMode } from "@zcode/contracts";
+import { RESPOND_TO_COORDINATOR_TOOL_NAME } from "@zcode/contracts";
 import type { SubagentRunOptions } from "@zcode/contracts";
+import { resolveExecutionState } from "@zcode/shared";
 import {
   defaultScheduler,
-  PermissionService,
-  defaultPermissionConfig,
   buildExploreAllowedTools,
   buildExploreAgentPrompt,
   createExploreSubagentPort,
@@ -171,8 +170,12 @@ export function createDefaultSubagentPort(
       const childMode = resolveSubagentPermissionMode(
         this.getPlanEnabled() ? "plan" : this.config.mode,
         request.permissionMode,
-        builtInExplore,
       );
+      // 旧 plan 枚举不包含基础权限；拆分后继承父会话的基础模式。新建与恢复子会话共用这一份状态。
+      const childExecutionState = resolveExecutionState({
+        mode: childMode === "plan" ? this.config.mode : childMode,
+        planEnabled: childMode === "plan",
+      });
       const childCuaPolicy = createOfficialCuaPolicy(
         officialCuaServerNames,
         childMcpAccess.parentSnapshot?.tools ?? childMcpAccess.snapshot?.tools ?? [],
@@ -241,8 +244,7 @@ export function createDefaultSubagentPort(
         request.sessionId,
         {
           // 旧 plan 枚举不包含基础权限；拆分后继承完整状态，避免被构造器回退成 build。
-          mode: childMode === "plan" ? this.config.mode : childMode,
-          planEnabled: childMode === "plan",
+          ...childExecutionState,
           // 模型选择的影响不只在最终 request.model：MCS、内建搜索与 token/media 预算会在
           // child runtime 内按 default model 预先塑形。同步 child 因此必须把整套执行
           // 配置都指向父 turn 快照；runner 禁止它转后台，provider registry 则由父 turn
@@ -313,10 +315,9 @@ export function createDefaultSubagentPort(
             parentToolCallId,
             enqueue: (input) => this.enqueueSubagentMessage(input),
           }),
-          // Explore 使用独立只读权限配置；general-purpose 和自定义 agent 继承父权限服务。
-          permissionService: builtInExplore
-            ? new PermissionService(defaultPermissionConfig)
-            : this.permissionService,
+          // 修复原因：Explore 曾新建默认配置的权限服务，父会话的 allowedTools、disallowedTools 和
+          // 会话内授权都不生效。所有子会话（含 Explore）都继承父会话的权限服务。
+          permissionService: this.permissionService,
           toolScheduler: deps.toolScheduler ?? defaultScheduler,
           executionPort: deps.executionPort,
           fileSystemPort: deps.fileSystemPort,
@@ -371,6 +372,9 @@ export function createDefaultSubagentPort(
       const resumesExistingChild = request.resumeFromStore === true;
       if (resumesExistingChild) {
         await childRuntime.resumeFromStore({
+          // 修复原因：恢复曾沿用子会话落盘时的模式，父会话改模式或升级后（Explore 曾固定 yolo）
+          // 恢复的子会话仍按旧模式运行；这里用本次按父会话当前状态算出的模式覆盖。
+          executionStateOverride: childExecutionState,
           traceContext: request.traceContext,
         });
       } else {
@@ -471,23 +475,32 @@ function createSubagentOverrideModelFactory(
   };
 }
 
-function resolveSubagentPermissionMode(
+/**
+ * 不变量：子会话的权限模式不得宽于父会话。
+ *
+ * 这条不变量有两个落点，改任一处前先读这条注释：
+ * 1. 权限模式（本函数）。缺失声明时继承父会话模式与 Plan 状态——不要给任何 profile（尤其内置
+ *    Explore）重新派生 yolo：父会话在 build 或 Plan 下会因此免审批执行任意 Bash，提示注入即可经
+ *    Agent(Explore) 提权。Explore 的只读语义由 shell AST 判定承担（非只读命令按父会话模式询问
+ *    或拒绝），不由「把子会话调成 yolo」承担。
+ * 2. 权限服务实例（本文件 permissionService 传递处）。子会话必须继承父会话的同一个 PermissionService，
+ *    不能新建默认配置的实例，否则父会话的 allowedTools / disallowedTools / 会话内授权对它全部失效。
+ *
+ * 显式 "plan" / "auto" 只会更严（plan 只放行只读；auto 在未实现前一律拒绝），因此不需要再与父模式
+ * 比较——CE 的 profile 词表在解析期就收窄成这两个值（subagent/profile.ts 的 normalizePermissionMode），
+ * 项目级 frontmatter 的模式直接作废，插件也无法用 bypassPermissions / acceptEdits 把子会话提到 yolo。
+ * 父会话是 auto 时子会话保持 auto（任何声明都不能放宽一个未实现即拒绝的模式）。
+ *
+ * 回归护栏：`test/subagentPermissionMode.test.ts` 穷举父模式 × 声明，断言严格序上不宽于父；
+ * 恢复路径另有 `resumeFromStore` 的 executionStateOverride（见 runtime/methods/resume.ts 注释）。
+ */
+export function resolveSubagentPermissionMode(
   parentMode: AgentRuntimeInternal["config"]["mode"],
   permissionMode: ExploreSubagentRuntimeRequest["permissionMode"],
-  builtInExplore: boolean,
 ): AgentRuntimeInternal["config"]["mode"] {
-  switch (permissionMode) {
-    case "auto":
-      return "auto";
-    case "plan":
-      return "plan";
-    case undefined:
-      // Modified by ZCode:F3 guarded 向子会话传播——父 guarded 时内置 explore 的 yolo 派生
-      // 归一为 guarded，子代理的危险命令同样逐次确认（与主会话对齐）。
-      return inheritPermissionMode(parentMode, builtInExplore ? "yolo" : parentMode);
-    default:
-      return parentMode;
-  }
+  // auto 尚未实现、在权限服务里一律拒绝；父会话是 auto 时子会话保持 auto，任何声明都不能放宽它。
+  if (parentMode === "auto") return "auto";
+  return permissionMode ?? parentMode;
 }
 
 function resolveSubagentToolAllowlist(

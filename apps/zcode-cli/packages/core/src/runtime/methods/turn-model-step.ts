@@ -20,12 +20,14 @@ import {
   type RuntimeMessageEntry,
 } from "../../agent/message-history.js";
 import {
+  createContentFilteredModelResultError,
   createModelContextExceededFinishError,
   createCompactRapidRefillError,
   objectKeys,
   projectExecutionErrorPayload,
   finalizeSuspiciousEmptyModelResult,
   isContextExceededFinishReason,
+  isContentFilteredEmptyModelResult,
   isSuspiciousEmptyModelResult,
   readRawFinishReason,
   throwIfTurnAborted,
@@ -528,6 +530,30 @@ async function runModelBackedTurnStepImpl(
       return "continue";
     }
     throw contextError;
+  }
+  if (
+    !localTerminalResponse &&
+    isContentFilteredEmptyModelResult(
+      result.finishReason,
+      rawFinishReason,
+      responseLength,
+      toolCalls.length,
+    )
+  ) {
+    // 内容安全拦截不是可恢复的空回复：重发同一上下文会再被拦一次，必须快速报错（retryable:false）。
+    this.logger?.warn("Model output was blocked by provider content filter", {
+      ...traceContextToLogContext(modelTraceContext),
+      event: "model.response.content_filtered",
+      finishReason: result.finishReason,
+      module: "core.runtime",
+      rawFinishReason,
+      status: "completed",
+    });
+    throw createContentFilteredModelResultError({
+      finishReason: result.finishReason,
+      model: executionModelSelection,
+      rawFinishReason,
+    });
   }
   if (
     !localTerminalResponse &&

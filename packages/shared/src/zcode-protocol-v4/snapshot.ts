@@ -469,6 +469,14 @@ export const workspaceHookAdmissionStateSchema = z.object({
 });
 export type WorkspaceHookAdmissionSnapshotState = z.infer<typeof workspaceHookAdmissionStateSchema>;
 
+// 同一软门禁的工作区 MCP 声明：bundleDigest 只用于提示去重，逐条授权仍用各自的 declarationDigest。
+export const workspaceMcpAdmissionStateSchema = z.object({
+  pendingCount: z.number().int().nonnegative(),
+  bundleDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+  workspaceIdentity: z.string().min(1).optional(),
+});
+export type WorkspaceMcpAdmissionSnapshotState = z.infer<typeof workspaceMcpAdmissionStateSchema>;
+
 export const conversationSnapshotSchema = z.object({
   protocolVersion: z.literal(1),
   sessionId: z.string(),
@@ -505,6 +513,8 @@ export const conversationSnapshotSchema = z.object({
   // 旧快照/旧发送端不携带此字段 → 解析得 null,不破坏兼容性(遵守冻结规则)。
   // pendingCount === 0 时投影层置 null(提示条消失)。
   workspaceHookAdmission: workspaceHookAdmissionStateSchema.nullable().default(null),
+  // 旧发送端可缺席；null 或缺席均表示没有待审核的 MCP 声明。
+  workspaceMcpAdmission: workspaceMcpAdmissionStateSchema.nullable().optional(),
   // （2026-09-12）：原 additive 字段 pluginUiSurfaces 已删除，插件面板 widgetState 只留在
   // 宿主 renderer 内存。
   // B 区

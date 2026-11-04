@@ -215,6 +215,9 @@ export async function resumeFromStore(
   if (savedExecution.success && options?.modeOverride === undefined) {
     Object.assign(this.config, savedExecution.data);
   }
+  // 修复原因：子会话恢复曾沿用落盘的执行状态，父会话从 yolo 改为 build 后，恢复的子会话仍免审批执行命令；
+  // 调用方给出的完整执行状态最后生效，覆盖上面的历史 mode 与落盘状态。
+  if (options?.executionStateOverride) Object.assign(this.config, options.executionStateOverride);
 
   await restorePermissionGrantMarker(this, traceContext);
 

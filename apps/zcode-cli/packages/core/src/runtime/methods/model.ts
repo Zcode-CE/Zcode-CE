@@ -3,7 +3,9 @@ import { runWithModelInvocationContext, traceContextToLogContext } from "../deps
 import type { ModelReasoningContentBlock, ModelToolCall, ModelUsage, ToolCallId } from "../deps.js";
 import {
   buildSuspiciousEmptyDiagnostics,
+  createContentFilteredModelResultError,
   finalizeSuspiciousEmptyModelResult,
+  isContentFilteredEmptyModelResult,
   isContextExceededFinishReason,
   isSuspiciousEmptyModelResult,
   logModelRequestMediaSummary,
@@ -475,6 +477,26 @@ export async function runModelTextRequest(
       rawFinishReason,
       textLength: text.length,
       toolCallCount: toolCalls.length,
+    });
+  }
+
+  if (
+    isContentFilteredEmptyModelResult(finishReason, rawFinishReason, text.length, toolCalls.length)
+  ) {
+    // 内容安全拦截不是可恢复的空回复：重发同一上下文会再被拦一次，必须快速报错（retryable:false）。
+    this.logger?.warn("Model stream was blocked by provider content filter", {
+      ...traceContextToLogContext(options.traceContext),
+      event: "model.runtime.stream.content_filtered",
+      finishReason,
+      module: "core.runtime",
+      modelProviderId: executionModelSelection.providerId,
+      modelId: executionModelSelection.modelId,
+      rawFinishReason,
+    });
+    throw createContentFilteredModelResultError({
+      finishReason,
+      model: executionModelSelection,
+      rawFinishReason,
     });
   }
 

@@ -326,6 +326,11 @@ export interface ZCodeApp {
    * coordinator 并重发 admission 状态，否则已信任 Hook 继续被拒、banner 不刷新。
    */
   reloadWorkspaceHookTrust(): Promise<void>;
+  /**
+   * 工作区 MCP 信任记录落盘后重算本 session 的准入并重发提示条状态。
+   * 与 Hook 同一条路径：server 按 workspace 逐个调用，只更新提示，不连接、不授予权限。
+   */
+  reloadWorkspaceMcpTrust(): Promise<void>;
   close?(): Promise<void>;
   getMode(): CollaborationMode;
   getModel(): string;

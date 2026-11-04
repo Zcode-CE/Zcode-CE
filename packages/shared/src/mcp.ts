@@ -5,7 +5,7 @@
 
 import { normalizeMcpDisabledTools } from "./mcpDisabledTools.js";
 import type { SettingsDirectoryLocation } from "./settings-source.js";
-import type { McpServerFailureKind } from "./zcode-protocol/index.js";
+import type { McpServerFailureKind, WorkspaceMcpTrustReview } from "./zcode-protocol/index.js";
 
 // CUA official plugin 身份常量（port 自 feat；UI 设置面板 + bootstrap 复用以避免字面量漂移）。
 export const ZCODE_CUA_OFFICIAL_PLUGIN_ID = "computer-use@zcode-plugins-official";
@@ -48,7 +48,14 @@ export interface McpServerConfig {
   [key: string]: any;
 }
 
-export type McpServerStatus = "connected" | "disconnected" | "error" | "connecting" | "unknown";
+export type McpServerStatus =
+  | "connected"
+  | "disconnected"
+  | "error"
+  | "connecting"
+  | "unknown"
+  // 工作区 MCP 声明还没被用户信任：CLI 侧不加载、也不 connect（见 workspaceMcpTrust 协议）。
+  | "untrusted";
 
 export interface CliMcpConfig {
   mcpServers: Record<string, McpServerConfig>;
@@ -123,6 +130,12 @@ export interface ZCodeMcpServer {
   failureKind?: McpServerFailureKind;
   serverRequestId?: string;
   toolCount?: number;
+  /**
+   * 工作区声明（.zcode/mcp.json 等）的信任评审快照：声明摘要、来源路径、展示名、
+   * 是否已信任、声明里是否启用、传输方式。未信任时 status 为 "untrusted"，
+   * 设置页据此显示待审核项并提供授权入口。
+   */
+  workspaceTrust?: WorkspaceMcpTrustReview;
   authorization?: {
     type: "oauth_authorization_code";
     authorizationUrl: string;
@@ -265,6 +278,47 @@ export function isZCodeCuaMcpCommand(command: string): boolean {
 export function isZCodeCuaMcpPackageArg(value: string): boolean {
   return matchesZCodeCuaSpec(value) || matchesZCodeCuaSpec(zcodeCuaArgLeaf(value));
 }
+/**
+ * Windows 上 MCP 常写成 `cmd /c npx ...`，而 agent 又以 shell: true 启动子进程，
+ * 会被双重包裹成 `cmd.exe /c cmd /c npx ...` 导致连接失败。
+ * 审核摘要与 Host DTO 必须共用同一份归一化，否则批准 `cmd /c` 之后执行 `npx` 会被误拒绝。
+ */
+export function normalizeMcpStdioCommand(
+  command: string,
+  args: string[] = [],
+): { command: string; args: string[] } {
+  // 自动检测平台：Node.js 用 process.platform，浏览器用 navigator.platform
+  const isWin32 =
+    (typeof process !== "undefined" && process.platform === "win32") ||
+    (typeof navigator !== "undefined" && /win/i.test(navigator.platform));
+  const lowerCmd = command.toLowerCase();
+  // noUncheckedIndexedAccess 下 args[1] 即使经过 length 判断也仍是 string | undefined，
+  // 先显式取值并判空，既满足类型收窄，也避免把空命令传给 ZCode Agent。
+  const unwrappedCommand = args[1];
+  if (
+    isWin32 &&
+    (lowerCmd === "cmd" || lowerCmd === "cmd.exe") &&
+    args[0] === "/c" &&
+    unwrappedCommand
+  ) {
+    return { command: unwrappedCommand, args: args.slice(2) };
+  }
+  return { command, args };
+}
+
+/**
+ * 设置页对一个工作区 MCP 声明做信任决定。
+ * `declarationDigest` 必须与待审核快照（`ZCodeMcpServer.workspaceTrust.declarationDigest`）一致：
+ * 声明在审核与授权之间被改过时，Agent 侧以 `workspace_mcp_declaration_changed` 拒绝，
+ * 不能拿旧摘要放行新声明。
+ */
+export interface WorkspaceMcpTrustDecision {
+  workspacePath: string;
+  workspaceIdentity?: string;
+  serverName: string;
+  declarationDigest: string;
+  trusted: boolean;
+}
 
 export function convertToZCodeAgentMcpServer(
   name: string,
@@ -281,22 +335,7 @@ export function convertToZCodeAgentMcpServer(
     // Windows 上 agent 通常用 shell: true 启动子进程，
     // "cmd /c npx ..." 会被双重包裹成 "cmd.exe /c cmd /c npx ..." 导致连接失败。
     // 这里把 cmd /c 包衣拆掉，直接使用内部命令。
-    let command = config.command;
-    let args = config.args || [];
-    // 自动检测平台：Node.js 用 process.platform，浏览器用 navigator.platform
-    const isWin32 =
-      (typeof process !== "undefined" && process.platform === "win32") ||
-      (typeof navigator !== "undefined" && /win/i.test(navigator.platform));
-    if (isWin32) {
-      const lowerCmd = command.toLowerCase();
-      const unwrappedCommand = args[1];
-      if ((lowerCmd === "cmd" || lowerCmd === "cmd.exe") && args[0] === "/c" && unwrappedCommand) {
-        // noUncheckedIndexedAccess 下 args[1] 即使经过 length 判断也仍是 string | undefined。
-        // 先显式取值并判空，既满足类型收窄，也避免把空命令传给 ZCode Agent。
-        command = unwrappedCommand;
-        args = args.slice(2);
-      }
-    }
+    const { command, args } = normalizeMcpStdioCommand(config.command, config.args);
     return {
       name,
       command,

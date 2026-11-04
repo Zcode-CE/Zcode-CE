@@ -31,6 +31,10 @@ export const TID_OAUTH_LOGIN_BUTTON = "oauth-login-button";
 export const TID_OAUTH_CANCEL = "oauth-cancel";
 /** OAuth 错误提示文本 */
 export const TID_OAUTH_ERROR = "oauth-error";
+/** 设置页工作区 MCP 声明的「信任 / 撤销信任」按钮前缀 */
+export const TID_MCP_WORKSPACE_TRUST_BUTTON = "mcp-workspace-trust";
+/** 浏览器未自动打开时的「复制登录链接」按钮 */
+export const TID_OAUTH_COPY_LOGIN_LINK = "oauth-copy-login-link";
 
 // App
 /** 顶部导航栏 */
@@ -539,6 +543,12 @@ export const TID_V4_WORKSPACE_HOOK_PENDING_BANNER = "v4-workspace-hook-pending-b
 export const TID_V4_WORKSPACE_HOOK_PENDING_REVIEW = "v4-workspace-hook-pending-review";
 /** v4 工作区 Hook 待审核提示条「忽略」按钮 */
 export const TID_V4_WORKSPACE_HOOK_PENDING_DISMISS = "v4-workspace-hook-pending-dismiss";
+/** 工作区 MCP 待信任提示条 */
+export const TID_V4_WORKSPACE_MCP_PENDING_BANNER = "v4-workspace-mcp-pending-banner";
+/** 提示条「去审核」 */
+export const TID_V4_WORKSPACE_MCP_PENDING_REVIEW = "v4-workspace-mcp-pending-review";
+/** 提示条「忽略」 */
+export const TID_V4_WORKSPACE_MCP_PENDING_DISMISS = "v4-workspace-mcp-pending-dismiss";
 /** v4 composer 容器 */
 export const TID_V4_COMPOSER = "v4-composer";
 /** v4 composer 文本输入 */

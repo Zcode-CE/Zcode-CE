@@ -242,10 +242,11 @@ export class ContextBuilder {
       ),
     );
     if (cliPrefixContent) {
+      // 与上游 v3.15.1（aac47556）对齐：cli_prefix 不再占缓存断点。Anthropic 侧的缓存断点上限是 4，
+      // 这里多标一个会挤掉后面 stable body 的断点，反而降低命中率；fork 点（872ad960）之后上游已删。
       messages.push({
         role: "system",
         content: cliPrefixContent,
-        cacheControl: EPHEMERAL_CACHE_CONTROL,
       });
     }
 

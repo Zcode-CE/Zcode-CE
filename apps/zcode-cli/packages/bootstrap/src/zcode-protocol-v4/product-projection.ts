@@ -49,6 +49,7 @@ import type {
   WorkspaceHookReviewSettledPayload,
   WorkspaceHookReviewSupersededPayload,
   WorkspaceHookAdmissionUpdatedPayload,
+  WorkspaceMcpAdmissionUpdatedPayload,
 } from "@zcode/contracts";
 import {
   CoreErrorType,
@@ -1386,6 +1387,8 @@ export class ProductProjection {
         return this.onWorkspaceHookReviewSuperseded(event);
       case SessionEventType.WorkspaceHookAdmissionUpdated:
         return this.onWorkspaceHookAdmissionUpdated(event);
+      case SessionEventType.WorkspaceMcpAdmissionUpdated:
+        return this.onWorkspaceMcpAdmissionUpdated(event);
       case SessionEventType.HookRunStarted:
       case SessionEventType.HookRunProgress:
       case SessionEventType.HookRunCompleted:
@@ -1490,6 +1493,10 @@ export class ProductProjection {
     // epoch 清理时置 null,避免旧 Runtime 的提示条残留到新 Runtime 接管前。
     if (this.snapshot.workspaceHookAdmission !== null) {
       deltas.push({ op: "state.updated", patch: { workspaceHookAdmission: null } });
+    }
+    // 工作区 MCP 准入同一条软门禁语义：旧 Runtime 的提示条不能残留到新 Runtime 重新上报之前。
+    if (this.snapshot.workspaceMcpAdmission) {
+      deltas.push({ op: "state.updated", patch: { workspaceMcpAdmission: null } });
     }
     return deltas;
   }
@@ -3288,6 +3295,20 @@ export class ProductProjection {
             ...(payload.workspaceIdentity ? { workspaceIdentity: payload.workspaceIdentity } : {}),
           };
     return [{ op: "state.updated", patch: { workspaceHookAdmission } }];
+  }
+
+  /** 工作区 MCP 声明的待审核提示：pendingCount=0 时置 null（提示条消失）。 */
+  private onWorkspaceMcpAdmissionUpdated(event: SessionEvent): ConversationDelta[] {
+    const payload = event.payload as WorkspaceMcpAdmissionUpdatedPayload;
+    const workspaceMcpAdmission =
+      payload.pendingCount === 0
+        ? null
+        : {
+            pendingCount: payload.pendingCount,
+            bundleDigest: payload.bundleDigest,
+            ...(payload.workspaceIdentity ? { workspaceIdentity: payload.workspaceIdentity } : {}),
+          };
+    return [{ op: "state.updated", patch: { workspaceMcpAdmission } }];
   }
 
   private onUserInputAutoResolutionUpdated(event: SessionEvent): ConversationDelta[] {

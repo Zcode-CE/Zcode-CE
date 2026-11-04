@@ -135,3 +135,89 @@ test("selection 缺席时按 POSIX 文法匹配（基础设施状态不能静默
   });
   assert.equal(legacy, undefined);
 });
+
+// X19（3.17.2 移植）：Plan 闸门只在原模式之上收紧，不能比原模式更宽。
+// 上游修复前的三条越权路径：① 需审批的只读工具被 Plan 直接 allow（任意 URL 的 WebFetch、
+// readOnlyHint MCP）；② 非 destructive MCP 一律 allow（MCP 写工具、node_repl 的 js）；
+// ③ guarded 的单次确认带 !planEnabled，开 Plan 时被整个跳过，闸门放过后又补回 guarded 放行。
+test("X19 Plan 下需审批的只读工具交回原模式判定，不再被 Plan 直接放行", () => {
+  const service = new PermissionService();
+  const decision = service.checkPermission(
+    {
+      toolName: "WebFetch",
+      input: { url: "https://example.com" },
+      mode: "build",
+      planEnabled: true,
+      riskLevel: "medium",
+    },
+    {
+      readOnly: true,
+      destructive: false,
+      needsApproval: true,
+      sideEffectScope: "network",
+      riskLevel: "medium",
+    },
+  );
+  assert.equal(decision.decision, "ask");
+  assert.equal(decision.ruleId, "mode.build.sideEffect");
+});
+
+test("X19 Plan 下非 destructive MCP：yolo/guarded 放行，build 改为不提供始终允许的询问", () => {
+  const service = new PermissionService();
+  const capability = {
+    permission: {
+      permission: "mcp",
+      reason: "",
+      riskLevel: "medium" as const,
+      sideEffectScope: "workspace" as const,
+      needsApproval: true,
+      patternSources: [],
+      denyPriority: "beforeAsk" as const,
+    },
+  };
+  const context = {
+    toolName: "mcp__fixture__write",
+    input: {},
+    riskLevel: "medium" as const,
+  };
+  const buildPlan = service.checkPermission(
+    { ...context, mode: "build", planEnabled: true },
+    capability,
+  );
+  assert.equal(buildPlan.decision, "ask");
+  assert.equal(buildPlan.ruleId, "mode.plan.mcp");
+  // Plan 下记住的 allow 规则不会生效，所以这次询问不提供「始终允许」。
+  assert.equal(buildPlan.optionsPolicy, "no-always-allow");
+  // 原模式本就放行的 yolo 不被 Plan 收窄，闸门放过后退回 yolo 基础策略。
+  for (const mode of ["yolo", "guarded"] as const) {
+    const decision = service.checkPermission(
+      { ...context, mode, planEnabled: true },
+      capability,
+    );
+    assert.equal(decision.decision, "allow", mode);
+    assert.equal(decision.ruleId, "mode.yolo", mode);
+  }
+});
+
+test("X19 guarded + Plan 下通过闸门的危险命令仍要单次确认", () => {
+  const service = new PermissionService();
+  const decision = service.checkPermission(
+    {
+      toolName: "Bash",
+      input: { command: "rm -rf build" },
+      mode: "guarded",
+      planEnabled: true,
+      riskLevel: "high",
+    },
+    {
+      userApprovalRule: "safety.bash.remove-critical-path",
+      readOnly: true,
+      destructive: false,
+      needsApproval: false,
+    },
+  );
+  assert.equal(decision.decision, "ask");
+  assert.equal(decision.ruleId, "safety.bash.remove-critical-path");
+  assert.equal(decision.approvalMode, "user-once");
+});
+

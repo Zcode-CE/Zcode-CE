@@ -22,7 +22,11 @@ import type {
   ToolSearchMode,
   WorkspaceId,
 } from "@zcode/contracts";
-import type { DangerousCommandPolicy, ZCodeProviderAccountAccess } from "@zcode/shared";
+import type {
+  DangerousCommandPolicy,
+  ExecutionState,
+  ZCodeProviderAccountAccess,
+} from "@zcode/shared";
 import type { EffectiveModelSelectionResult } from "@zcode/shared/model-selection";
 import type { RuntimeMessageEntry } from "../agent/message-history.js";
 import type {
@@ -285,6 +289,11 @@ export interface ResumeSessionOptions {
    * 必须高于历史 session mode；交互式 resume 未指定时保持 undefined，让历史 mode 生效。
    */
   modeOverride?: CollaborationMode;
+  /**
+   * 调用方已算出的完整执行状态（模式与 Plan），覆盖历史 mode 与落盘的执行状态。子会话恢复时传入：
+   * 子会话模式必须按父会话当前状态重算，不能沿用子会话落盘时的模式。
+   */
+  executionStateOverride?: ExecutionState;
 }
 
 export interface MainTurnCacheHitAggregate {

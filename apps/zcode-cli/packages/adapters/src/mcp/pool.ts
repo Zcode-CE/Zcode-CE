@@ -232,7 +232,15 @@ export function createMcpConnectionPool(options: McpConnectionPoolOptions): McpC
           connectionId: connectionContext.mcpConnectionId,
           isolation: connectionContext.mcpIsolation,
           serverName,
-          ...(config.source ? { source: config.source.kind } : {}),
+          // 遥测的连接来源只有 custom/plugin/builtin 三档；用户级与工作区声明都按 custom 上报。
+          ...(config.source
+            ? {
+                source:
+                  config.source.kind === "user" || config.source.kind === "workspace"
+                    ? "custom"
+                    : config.source.kind,
+              }
+            : {}),
         });
         const adapter = options.createAdapter({
           connectionContext,

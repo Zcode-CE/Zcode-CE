@@ -20,6 +20,21 @@ export interface EnvInfo {
   recentCommits?: string[];
 }
 
+/**
+ * 会话上下文用的 Git 事实；不含 cwd、shell 等宿主环境。
+ * isGitRepository 由目录的真实路径（解析链接，与 git 一致）向上查找 `.git` 得到，总是确定的结论，不启动 git 进程。
+ */
+export type GitContext = Pick<
+  EnvInfo,
+  | "isGitRepository"
+  | "gitBranch"
+  | "gitMainBranch"
+  | "gitUser"
+  | "gitStatus"
+  | "gitStatusLines"
+  | "recentCommits"
+>;
+
 export interface UserInstructionsOptions {
   workingDirectory: string;
   projectRoot?: string;

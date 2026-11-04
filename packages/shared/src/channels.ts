@@ -267,6 +267,11 @@ export const PlatformChannels = {
   EmbeddedBrowserPermissionResolve: "zcode:embedded-browser-permission-resolve",
   /** Main → Renderer：agent 首次 browser 命令建好受控 view，通知 renderer 自动开 browser-use tab */
   BrowserViewReady: "zcode:browser-view-ready",
+  /**
+   * Main → Renderer：guest 内发生了下载（`will-download`）。
+   * loadURL 遇到下载响应会以 ERR_FAILED 拒绝，renderer 靠这一帧区分「网络失败」与「下载」。
+   */
+  BrowserViewDownloadStarted: "zcode:browser-view-download-started",
   /** Main → Renderer：agent 正在操作某个 browser-use tab，renderer 临时显示状态图标 */
   BrowserViewOperation: "zcode:browser-view-operation",
   /** Main → Renderer：browser visibility capability 显示/隐藏 IAB 右侧面板 */
@@ -895,6 +900,10 @@ export interface PlatformChannelMap {
   [PlatformChannels.ResetEmbeddedBrowserSitePermission]: {
     request: EmbeddedBrowserSitePermissionResetRequest;
     response: EmbeddedBrowserSitePermissionsSnapshot;
+  };
+  [PlatformChannels.BrowserViewDownloadStarted]: {
+    request: { webContentsId: number; urls: string[] };
+    response: void;
   };
   [PlatformChannels.BrowserViewReady]: {
     request: {

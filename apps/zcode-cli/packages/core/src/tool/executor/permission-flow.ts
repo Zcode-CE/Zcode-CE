@@ -185,7 +185,7 @@ export async function resolveToolPermission(
 
   // 传 rulePolicy：Bash 用它在运行时收窄选项集（危险命令不得持久授权），
   // 静态的 entry.permission.askOptions 表达不了「取决于这次命令内容」的策略。
-  const approval = resolveToolApproval(
+  const toolApproval = resolveToolApproval(
     deps,
     toolCall,
     entry,
@@ -193,6 +193,11 @@ export async function resolveToolPermission(
     traceContext,
     rulePolicy,
   );
+  // 判定自带的选项策略（Plan 下的 MCP 询问）覆盖工具声明的策略。
+  const approval =
+    permissionDecision.optionsPolicy && toolApproval.gate === "ask"
+      ? { ...toolApproval, optionsPolicy: permissionDecision.optionsPolicy }
+      : toolApproval;
   if (approval.gate === "proceed") {
     telemetry?.setPermissionDecision("not_required");
     return { allowed: true, executionInput };

@@ -30,6 +30,7 @@ import {
   type TraceContext,
   createSessionId,
   createSessionEvent,
+  SessionEventType,
   type ExecutionShellSelection,
   type MessageId,
 } from "@zcode/contracts";
@@ -40,6 +41,7 @@ import {
 } from "@zcode/shared/zcode-protocol-v4";
 
 import { createModelAdapter } from "../model-factory.js";
+import { createWorkspaceMcpTrust } from "../workspace-mcp-trust/index.js";
 import { StartupTimer, startupNow } from "../startup-logging.js";
 import { scheduleStartupLogRetentionCleanup } from "../log-retention.js";
 import type {
@@ -382,7 +384,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       startupTimer,
       storageRoot,
     });
-    const mcpPort =
+    const rawMcpPort =
       options.mcpPort ??
       (runtimeConfig.mcp?.enabled === false
         ? undefined
@@ -398,6 +400,31 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
             },
             workingDirectory,
           })));
+    // 工作区 MCP 声明必须先经用户审核才允许连接：仓库里落一个 MCP 配置就等于任意命令执行，
+    // 因此在 lease 外层包一道 gate（连接/复用/工具/资源都过同一道边界，见 workspace-mcp-trust/CONTRACT.md）。
+    // 用户级与插件来源不在审核范围内，gate 原样放行。
+    const mcpPort = rawMcpPort
+      ? createWorkspaceMcpTrust({
+          workingDirectory,
+          workspaceIdentity: options.runtimeConfig?.memory?.workspaceIdentity,
+          userConfigPath: options.userConfigPath,
+          projectConfigPath: options.projectConfigPath,
+          skipUserConfig: options.skipUserConfig,
+          env: options.env,
+          onAdmissionChanged: async (payload) => {
+            if (!runtime) return;
+            await runtime.appendEvent(
+              createSessionEvent(
+                SessionEventType.WorkspaceMcpAdmissionUpdated,
+                sessionId,
+                payload,
+                { traceId: traceContext.traceId },
+              ),
+              traceContext,
+            );
+          },
+        }).guard(rawMcpPort)
+      : undefined;
     const ownsMcpPort = options.mcpPort === undefined && mcpPort !== undefined;
     const executionPort =
       options.executionPort ??
@@ -502,6 +529,16 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
           traceContext: resumeTraceContext,
         });
         await runtime.activatePausedTargetAfterResume(resumeTraceContext);
+        // SessionResumed 已清理旧投影；即使声明未变也要重新发布当前准入，否则提示条在恢复后消失。
+        try {
+          await mcpPort?.refreshWorkspaceTrustAdmission?.(true);
+        } catch (error) {
+          logger.warn("MCP trust admission publication failed after resume", {
+            event: "mcp.trust.admission.failed",
+            sessionId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
         resumePrepared = true;
         return { ...result, modelSelection };
       } finally {
@@ -804,7 +841,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
     scheduleStartupLogRetentionCleanup(loggerFactory, logger);
     const inputFacade = createInputFacade({
       artifactStore,
-      customCommandPromptResolver: async (text, resolverOptions) => {
+      customCommandPromptResolver: async (text) => {
         const builtinPrompt = resolveZCodeBuiltinPromptCommand(text, {
           // `/workflow` 3.14.3 起是内置命令（不再由 zcode-guide 插件提供），灰度门跟着搬到
           // 内置展开这一跳：关闭时既不展开、也不出现在 `/` 目录。
@@ -824,13 +861,9 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
             : {}),
           additionalDirectories,
           env: options.env,
-          executionPort,
           logger,
           projectConfigPath: options.projectConfigPath,
-          sessionId,
-          signal: resolverOptions?.abortSignal,
           skipUserConfig: options.skipUserConfig,
-          traceContext: resolverOptions?.traceContext ?? traceContext,
           userConfigPath: options.userConfigPath,
           workingDirectory,
         });
@@ -1016,6 +1049,8 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       // session 的 coordinator 并重发 admission 状态（详见 types.ts 注释）。
       reloadWorkspaceHookTrust: () =>
         workspaceHookRuntimeSecurity?.reloadTrust() ?? Promise.resolve(),
+      // 与 Hooks 同一条路径：设置页写完信任记录后由 server 按 workspace 调用，重算准入并重发提示。
+      reloadWorkspaceMcpTrust: () => mcpPort?.refreshWorkspaceTrustAdmission?.() ?? Promise.resolve(),
       setModelIoFullRetentionEnabled: (enabled) =>
         modelAdapter.setModelIoFullRetentionEnabled(enabled),
       readToolResultArtifact: (uri) =>

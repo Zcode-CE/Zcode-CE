@@ -999,6 +999,10 @@ export interface IPlatformService {
   resetEmbeddedBrowserSitePermission?(
     request: EmbeddedBrowserSitePermissionResetRequest,
   ): Promise<EmbeddedBrowserSitePermissionsSnapshot>;
+  /** guest 内发生下载（will-download）时通知 renderer；用于区分「下载」与「导航失败」，返回 disposer */
+  onBrowserViewDownloadStarted?(
+    handler: (payload: { webContentsId: number; urls: string[] }) => void,
+  ): () => void;
   /** 注册 agent 首次 browser 命令建好受控 view 的回调（自动开 browser-use tab），返回 disposer */
   onBrowserViewReady?(
     handler: (payload: {

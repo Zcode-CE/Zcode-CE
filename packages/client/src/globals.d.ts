@@ -177,6 +177,10 @@ declare global {
       onNewTab(handler: () => void): () => void;
       /** 注册内置浏览器 webview 请求打开新页面的回调，返回 disposer */
       onOpenBrowserUrl?(handler: (request: EmbeddedBrowserOpenUrlRequest) => void): () => void;
+      /** guest 内发生下载（will-download）时通知 renderer；用于区分「下载」与「导航失败」，返回 disposer */
+      onBrowserViewDownloadStarted?(
+        handler: (payload: { webContentsId: number; urls: string[] }) => void,
+      ): () => void;
       onBrowserViewReady?(
         handler: (payload: {
           workspaceKey: string;

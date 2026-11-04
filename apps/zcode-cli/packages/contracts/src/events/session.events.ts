@@ -156,6 +156,7 @@ export const SessionEventType = {
   WorkspaceHookReviewSuperseded: "workspace_hook_review_superseded",
   // 软门禁:准入状态变化时发射,pendingCount=0 时投影层清空 snapshot 字段。
   WorkspaceHookAdmissionUpdated: "workspace_hook_admission_updated",
+  WorkspaceMcpAdmissionUpdated: "workspace_mcp_admission_updated",
   HookRunStarted: "hook_run_started",
   HookRunProgress: "hook_run_progress",
   HookRunCompleted: "hook_run_completed",
@@ -1079,6 +1080,13 @@ export interface WorkspaceHookAdmissionUpdatedPayload {
   workspaceIdentity?: string;
 }
 
+/** MCP 的声明集合摘要仅供提示去重；逐条授权仍使用各自的 declarationDigest。 */
+export interface WorkspaceMcpAdmissionUpdatedPayload {
+  pendingCount: number;
+  bundleDigest: string;
+  workspaceIdentity?: string;
+}
+
 export type PermissionDecision = "allow" | "deny" | "escalate" | "modify";
 
 export type TargetChangedAction =
@@ -1284,6 +1292,7 @@ export type SessionEventPayload =
   | WorkspaceHookReviewSettledPayload
   | WorkspaceHookReviewSupersededPayload
   | WorkspaceHookAdmissionUpdatedPayload
+  | WorkspaceMcpAdmissionUpdatedPayload
   | HookRunLifecyclePayload
   | CompactLifecyclePayload
   | MicrocompactBoundaryEventPayload
