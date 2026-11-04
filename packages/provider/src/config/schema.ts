@@ -58,7 +58,7 @@ export interface ZCodeBuiltinProviderConfigParseResult {
  * 解析 CDN 下发的 ZCode Built-in Provider 规则。
  *
  * 为什么逐条 safeParse 而不是整份 strict parse：服务端可以先行上线新能力（例如新增
- * access.mode = "highspeed" 的 provider），老客户端不该因此**整份刷新失败**——那样连已有
+ * access.mode = "highspeed" 的 provider），老客户端不该因此整份刷新失败——那样连已有
  * 的可用配置都拿不到（真机证据：revision 43 的 providerRules[8]/[9] 是 highspeed 卡，
  * 本地 enum 只认识四个 coding plan 模式）。这里保留严格校验（每条仍必须是合法规则），
  * 只把"不认识的那条"跳过并记录，其余规则照常生效。
@@ -97,7 +97,7 @@ export function parseZCodeBuiltinProviderConfigRules(
     return [];
   });
 
-  // 唯一性只在**保留下来**的规则上校验：被跳过的规则不会进入运行时，重复它们没有意义。
+  // 唯一性只在保留下来的规则上校验：被跳过的规则不会进入运行时，重复它们没有意义。
   for (const [index, rule] of providerRules.entries()) {
     const first = providerRules.findIndex((other) => other.providerId === rule.providerId);
     if (first !== index) {

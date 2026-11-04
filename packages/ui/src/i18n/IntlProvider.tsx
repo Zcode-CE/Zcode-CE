@@ -70,7 +70,7 @@ function resolveLocaleBroadcastPayload(payload: unknown): LocaleBroadcastPayload
   return null;
 }
 
-function resolveLocalePreferenceFromSettings({
+export function resolveLocalePreferenceFromSettings({
   storedPreference,
   settingsLocale,
   settingsLocalePreference,
@@ -81,11 +81,15 @@ function resolveLocalePreferenceFromSettings({
   settingsLocalePreference: LocalePreference | undefined;
   preferSettingServiceLocale: boolean;
 }): LocalePreference | null {
-  if (preferSettingServiceLocale && settingsLocale) {
-    if (settingsLocalePreference === "system") {
-      return settingsLocale;
-    }
-    return settingsLocale;
+  if (preferSettingServiceLocale) {
+    // 以 setting service 为准（远控）时只看桌面侧的设置，本机残留偏好不参与——否则会出现
+    // 桌面中文、手机英文。
+    //
+    // 桌面选「跟随系统」时返回桌面已解析好的 locale，而不是把 "system" 传下去：Web 远控端没有
+    // 桌面系统语言的解析通道（没有 resolveSystemLocale，也没有暴露宿主 locale 的服务），
+    // 保留 "system" 只会退回到手机浏览器的 navigator 语言。「跟随系统」在远控下的准确含义就是
+    // 跟随桌面的系统语言，而 settingsLocale 正是它的解析结果。
+    return settingsLocale ?? settingsLocalePreference ?? storedPreference ?? null;
   }
 
   return storedPreference ?? settingsLocalePreference ?? settingsLocale ?? null;

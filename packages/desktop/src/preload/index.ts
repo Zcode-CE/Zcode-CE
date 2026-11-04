@@ -378,12 +378,6 @@ contextBridge.exposeInMainWorld("zcode", {
     ipcRenderer.on(PlatformChannels.FocusTab, handler);
     return () => ipcRenderer.removeListener(PlatformChannels.FocusTab, handler);
   },
-  /** 注册 main 进程触发新建 tab 的回调，返回 disposer */
-  onNewTab: (callback: () => void): (() => void) => {
-    const handler = () => callback();
-    ipcRenderer.on(PlatformChannels.NewTab, handler);
-    return () => ipcRenderer.removeListener(PlatformChannels.NewTab, handler);
-  },
   /** 注册 main 进程请求关闭当前上下文的回调，返回 disposer */
   onCloseActiveContextRequest: (callback: () => void): (() => void) => {
     const handler = () => callback();

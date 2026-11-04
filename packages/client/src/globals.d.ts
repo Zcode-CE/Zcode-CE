@@ -180,8 +180,6 @@ declare global {
       setShortcutRecordingActive?(active: boolean): void;
       /** 注册 main 进程要求聚焦指定 workspace tab 的回调，返回 disposer */
       onFocusTab(handler: (path: string) => void): () => void;
-      /** 注册 main 进程触发新建 tab 的回调，返回 disposer */
-      onNewTab(handler: () => void): () => void;
       /** 注册内置浏览器 webview 请求打开新页面的回调，返回 disposer */
       onOpenBrowserUrl?(handler: (request: EmbeddedBrowserOpenUrlRequest) => void): () => void;
       /** guest 内发生下载（will-download）时通知 renderer；用于区分「下载」与「导航失败」，返回 disposer */

@@ -33,7 +33,6 @@ export function useRootPlatformEffects({
   startNewTaskFromActiveWorkspace,
   openWorkspace,
   openWorkspacePath,
-  setWorkspaceActionError,
   allowOpenWorkspace = true,
   isDesktop,
   locale,
@@ -66,7 +65,6 @@ export function useRootPlatformEffects({
   startNewTaskFromActiveWorkspace: (source: string) => void;
   openWorkspace: () => void;
   openWorkspacePath: (workspacePath: string) => void;
-  setWorkspaceActionError: (message: string | null) => void;
   allowOpenWorkspace?: boolean;
   isDesktop?: boolean;
   locale: ReturnType<typeof import("@/i18n/IntlProvider.js").useZCodeIntl>["locale"];
@@ -142,13 +140,6 @@ export function useRootPlatformEffects({
         // 显式 taskId 路径，不能在这里隐式恢复这个 workspace 上次选中的 session。
         startDraftInWorkspace(path);
       }
-    });
-    const disposeNewTab = platform.onNewTab(() => {
-      logger.info("[Root] onNewTab");
-      setWorkspaceActionError(null);
-      // 新标签过去会打开工作区中间页，导致启动/快捷键都可能进入中间页。
-      // 现在新标签语义收敛为“打开工作区”动作，由 Root 决定目录选择或默认 workspace 兜底。
-      openWorkspace();
     });
     const disposeNewTask = platform.onNewTask(() => {
       startNewTaskFromActiveWorkspace("onNewTask");
@@ -277,7 +268,6 @@ export function useRootPlatformEffects({
       : () => {};
     return () => {
       disposeFocusTab();
-      disposeNewTab();
       disposeNewTask();
       disposeOpenWorkspace();
       disposeOpenWorkspacePath();

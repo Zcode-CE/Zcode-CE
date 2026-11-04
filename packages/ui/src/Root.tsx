@@ -578,7 +578,6 @@ function RootInner({
     openWorkspacePath: (path) => {
       void handleSelectProject(path);
     },
-    setWorkspaceActionError,
     allowOpenWorkspace,
     isDesktop,
     locale,

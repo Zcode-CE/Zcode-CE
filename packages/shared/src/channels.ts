@@ -259,8 +259,6 @@ export const PlatformChannels = {
   SetShortcutRecordingActive: "zcode:set-shortcut-recording-active",
   /** Main → Renderer：聚焦到指定 workspace 路径的 tab */
   FocusTab: "zcode:focus-tab",
-  /** Main → Renderer：菜单触发新建 tab */
-  NewTab: "zcode:new-tab",
   /** Main → Renderer：菜单或快捷键请求关闭当前上下文 */
   CloseActiveContextRequest: "zcode:close-active-context-request",
   /** Main → Renderer：内置 webview 请求打开新的浏览器 tab */

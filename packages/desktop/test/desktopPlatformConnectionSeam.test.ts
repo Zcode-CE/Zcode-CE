@@ -54,7 +54,6 @@ const FAKE_ZCODE_BASE: Record<string, unknown> = {
   syncWindowUnreadCount: () => {},
   syncActiveTaskSession: () => {},
   onFocusTab: () => () => {},
-  onNewTab: () => () => {},
   onNewTask: () => () => {},
   onOpenWorkspace: () => () => {},
   onOpenWorkspacePath: () => () => {},

@@ -288,7 +288,6 @@ function createWebPlatform(): IPlatformService {
     syncWindowUnreadCount: () => {},
     syncActiveTaskSession: () => {},
     onFocusTab: () => () => {},
-    onNewTab: () => () => {},
     onCloseActiveContextRequest: () => () => {},
     onOpenBrowserUrl: () => () => {},
     onNewTask: () => () => {},

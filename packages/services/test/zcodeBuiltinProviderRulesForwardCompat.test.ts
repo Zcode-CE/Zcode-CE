@@ -10,7 +10,7 @@ import { decodeZCodeBuiltinRelease } from "@zcode/provider-node";
  * `config.access.mode = "highspeed"`；本地 enum 只认识四个 coding plan 模式，于是整份
  * Release 校验失败 ⇒ `provider-settings.refresh` 直接报错，连已知的 8 条规则也拿不到。
  *
- * 判据：**新增枚举值属于服务端能力扩展，老客户端必须降级而不是拒绝整份配置**。
+ * 判据：新增枚举值属于服务端能力扩展，老客户端必须降级而不是拒绝整份配置。
  * 这里钉住三点：已知规则照常生效 / 未知规则被标记跳过 / 外层结构错误仍然直接失败。
  *
  * 测试放在 services 包：它是已登记进 CI 的包，而 provider 包本身没有测试入口。

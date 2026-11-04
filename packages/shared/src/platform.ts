@@ -1041,9 +1041,6 @@ export interface IPlatformService {
   /** 注册 main 进程要求聚焦某个 workspace tab 的回调，返回 disposer */
   onFocusTab(handler: (path: string) => void): () => void;
 
-  /** 注册 main 进程触发新建 tab 的回调，返回 disposer */
-  onNewTab(handler: () => void): () => void;
-
   /** 注册 main 进程请求关闭当前上下文的回调，返回 disposer */
   onCloseActiveContextRequest?(handler: () => void): () => void;
 

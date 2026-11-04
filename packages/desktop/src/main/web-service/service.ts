@@ -99,7 +99,7 @@ export interface WebServiceControllerDeps {
   /** 选一个空闲端口；`preferred` 可用时应当原样返回它。 */
   pickFreePort: (preferred: number) => Promise<number>;
   /**
-   * 等待服务就绪。传入 `child` 时，子进程提前退出应**立刻**失败 —— 否则缺文件/端口被占这类
+   * 等待服务就绪。传入 `child` 时，子进程提前退出应立刻失败 —— 否则缺文件/端口被占这类
    * 立即崩溃要空等满超时（15s），用户只看到「启动中」然后莫名失败。
    */
   waitUntilReady: (input: {
