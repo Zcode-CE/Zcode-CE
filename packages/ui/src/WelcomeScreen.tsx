@@ -11,6 +11,7 @@ import {
   BIGMODEL_PROVIDER_ID,
   TID_LOGIN_USE_API_KEY_BUTTON,
   TID_OAUTH_CANCEL,
+  TID_OAUTH_COPY_LOGIN_LINK,
   TID_OAUTH_ERROR,
   TID_OAUTH_LOGIN_BUTTON,
   ZAI_PROVIDER_ID,
@@ -18,6 +19,7 @@ import {
 } from "@zcode/shared";
 import { Alert, AlertDescription } from "./components/ui/alert.js";
 import { Button } from "./components/ui/button.js";
+import { toast } from "./components/ui/toast.js";
 import { ZCodeAboutLogo } from "@/components/ui/ZCodeAboutLogo.js";
 import { useOAuth } from "./hooks/useOAuth.js";
 import { useZCodeIntl } from "./i18n/IntlProvider.js";
@@ -79,6 +81,7 @@ function LoginPanel({ active, onComplete }: LoginPanelProps) {
     providers,
     loadingProviders,
     pendingProvider,
+    authorizeUrl,
     refreshProviders,
   } = useOAuth();
   const user = useZCodeStore((s) => s.user);
@@ -247,6 +250,21 @@ function LoginPanel({ active, onComplete }: LoginPanelProps) {
     setLoginMode("providers");
   }, []);
 
+  // 授权链接只在本次登录尝试内有效；浏览器未自动打开时用它手动继续。
+  const handleCopyLoginLink = useCallback(async () => {
+    if (!authorizeUrl || typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+      toast(intl.formatMessage({ id: "login.oauth.copyLinkFailed" }));
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(authorizeUrl);
+      toast(intl.formatMessage({ id: "login.oauth.copyLinkSuccess" }));
+    } catch {
+      toast(intl.formatMessage({ id: "login.oauth.copyLinkFailed" }));
+    }
+  }, [authorizeUrl, intl]);
+
   useEffect(() => {
     if (active) {
       wasActiveRef.current = true;
@@ -391,6 +409,19 @@ function LoginPanel({ active, onComplete }: LoginPanelProps) {
             >
               {intl.formatMessage({ id: "login.oauth.cancel" })}
             </Button>
+            {authorizeUrl ? (
+              <div className="flex items-center justify-center gap-1 text-center text-ui-sm text-foreground-subtle">
+                <span>{intl.formatMessage({ id: "login.oauth.browserNotOpened" })}</span>
+                <button
+                  type="button"
+                  className="font-medium text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  data-testid={TID_OAUTH_COPY_LOGIN_LINK}
+                  onClick={() => void handleCopyLoginLink()}
+                >
+                  {intl.formatMessage({ id: "login.oauth.copyLoginLink" })}
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
 

@@ -126,7 +126,10 @@ import { ConversationQueuePanel } from "@/v4/ConversationQueuePanel.js";
 import { projectPendingGuideQueue } from "@/v4/pendingGuideProjection.js";
 import { ConversationQuotaBanner } from "@/v4/ConversationQuotaBanner.js";
 import { PendingCommandRecoveryBanner } from "@/v4/PendingCommandRecoveryBanner.js";
-import { WorkspaceHookPendingBanner } from "@/v4/WorkspaceHookPendingBanner.js";
+import {
+  WorkspaceHookPendingBanner,
+  WorkspaceMcpPendingBanner,
+} from "@/v4/WorkspaceHookPendingBanner.js";
 import { ConversationStatusPanel } from "@/v4/ConversationStatusPanel.js";
 import { SessionSubscriptionErrorPanel } from "@/v4/SessionSubscriptionErrorPanel.js";
 import { ConversationTimeline } from "@/v4/ConversationTimeline.js";
@@ -606,22 +609,25 @@ export function SessionPane({
     onDismiss: dismissShareSelectionPanel,
   });
   const shareRenderUnits = useMemo(
-    () => buildConversationTurnRenderUnits(snapshot?.rows.window ?? []),
-    [snapshot?.rows.window],
+    // 分享未开启时不需要目录：否则每个文本 delta 都会重建全部历史的 render unit 并生成分享摘要。
+    () => (shareActive ? buildConversationTurnRenderUnits(snapshot?.rows.window ?? []) : null),
+    [shareActive, snapshot?.rows.window],
   );
   const shareItems = useMemo(
     () =>
-      buildConversationTurnNavigatorItems(shareRenderUnits, {
-        assistantEmptyPreview: intl.formatMessage({
-          id: "chat.turnNavigator.emptyAssistant",
-        }),
-        assistantRunningPreview: intl.formatMessage({
-          id: "chat.turnNavigator.runningAssistant",
-        }),
-        userFallbackPreview: intl.formatMessage({
-          id: "chat.turnNavigator.userFallback",
-        }),
-      }),
+      !shareRenderUnits
+        ? []
+        : buildConversationTurnNavigatorItems(shareRenderUnits, {
+            assistantEmptyPreview: intl.formatMessage({
+              id: "chat.turnNavigator.emptyAssistant",
+            }),
+            assistantRunningPreview: intl.formatMessage({
+              id: "chat.turnNavigator.runningAssistant",
+            }),
+            userFallbackPreview: intl.formatMessage({
+              id: "chat.turnNavigator.userFallback",
+            }),
+          }),
     [intl, shareRenderUnits],
   );
   const eligibleShareItems = useMemo(
@@ -4312,6 +4318,15 @@ export function SessionPane({
           workspacePath={workspacePath}
           workspaceIdentity={workspaceIdentity}
           admission={snapshot.workspaceHookAdmission}
+        />
+      ) : null}
+      {/* 工作区 MCP 声明在信任前不会被 CLI 加载：这条提示是用户唯一的授权入口。 */}
+      {sessionId && snapshot?.workspaceMcpAdmission ? (
+        <WorkspaceMcpPendingBanner
+          sessionId={sessionId}
+          workspacePath={workspacePath}
+          workspaceIdentity={workspaceIdentity}
+          admission={snapshot.workspaceMcpAdmission}
         />
       ) : null}
       {sessionId && snapshot ? (

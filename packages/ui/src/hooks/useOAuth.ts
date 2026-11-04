@@ -26,6 +26,8 @@ export function useOAuth() {
   const [activeProvider, setActiveProvider] = useState<OAuthProviderId | null>(null);
   const [loadingProviders, setLoadingProviders] = useState(true);
   const [pendingProvider, setPendingProvider] = useState<OAuthProviderId | null>(null);
+  // 浏览器没自动打开时可以复制本条授权链接；它只属于当前这次登录尝试，换代即清空。
+  const [authorizeUrl, setAuthorizeUrl] = useState<string | null>(null);
   const loginAttemptRef = useRef(0);
   const setOAuthPollingActive = useZCodeStore((state) => state.setOAuthPollingActive);
 
@@ -69,6 +71,7 @@ export function useOAuth() {
         setStatus("waiting");
         setError(null);
         setPendingProvider(provider);
+        setAuthorizeUrl(null);
 
         const {
           authorizeUrl,
@@ -84,6 +87,7 @@ export function useOAuth() {
         setOAuthPollingActive(
           startedProvider === ZAI_PROVIDER_ID || startedProvider === BIGMODEL_PROVIDER_ID,
         );
+        setAuthorizeUrl(authorizeUrl);
         platform.openExternal(authorizeUrl);
 
         logger.info("[useOAuth] OAuth 流程已启动，等待浏览器回调", {
@@ -102,6 +106,7 @@ export function useOAuth() {
         // 原文通过 i18n 渲染，避免登录页出现 provider/token 等具体失败原因。
         setError(intl.formatMessage({ id: "login.oauth.loginFailure" }));
         setPendingProvider(null);
+        setAuthorizeUrl(null);
       }
     },
     [intl, oauthService, platform, setOAuthPollingActive],
@@ -115,6 +120,7 @@ export function useOAuth() {
       setStatus("idle");
       setError(null);
       setPendingProvider(null);
+      setAuthorizeUrl(null);
     },
     [oauthService, setOAuthPollingActive],
   );
@@ -123,6 +129,7 @@ export function useOAuth() {
     setStatus("idle");
     setError(null);
     setPendingProvider(null);
+    setAuthorizeUrl(null);
   }, []);
 
   /** 由 Root/App 层的回调监听器调用，更新 UI 状态 */
@@ -130,12 +137,14 @@ export function useOAuth() {
     setStatus("error");
     setError(message);
     setPendingProvider(null);
+    setAuthorizeUrl(null);
   }, []);
 
   const setOAuthSuccess = useCallback(async () => {
     setStatus("idle");
     setError(null);
     setPendingProvider(null);
+    setAuthorizeUrl(null);
     await refreshProviders();
   }, [refreshProviders]);
 
@@ -149,6 +158,7 @@ export function useOAuth() {
     activeProvider,
     loadingProviders,
     pendingProvider,
+    authorizeUrl,
     refreshProviders,
     setOAuthError,
     setOAuthSuccess,

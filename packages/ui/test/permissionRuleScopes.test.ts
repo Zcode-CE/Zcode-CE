@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
+import enUS from "../src/i18n/locales/en-US.js";
+import zhCN from "../src/i18n/locales/zh-CN.js";
 import { readPermissionRuleScopes } from "../src/lib/permissionRuleScopes.js";
 
 /**
@@ -106,4 +111,61 @@ test("超长规则截断并标记 truncated", () => {
   });
   assert.equal(scopes[0]?.truncated, true);
   assert.ok((scopes[0]?.display.length ?? 0) <= 160);
+});
+
+/**
+ * 切到「完全访问」（yolo）前的风险确认（上游 3.17.2 X19 的 UI 侧）。
+ *
+ * 回归形态：切档时不告知风险就放宽权限；或者告知了但仍能用 Enter / 默认焦点
+ * 一路确认过去 —— 这等于确认框不存在。这里钉住四处结构约束：
+ * ① 只有「切入 yolo」才弹（已经在 yolo 时不重复打扰）；
+ * ② Enter 兜底对该弹窗失效；
+ * ③ 确认按钮必须勾选风险告知后才可用，默认焦点落在「取消」；
+ * ④ 组合器（模式菜单与快捷键循环）都走带确认的入口，不能绕过。
+ */
+const here = dirname(fileURLToPath(import.meta.url));
+const readSource = (relative: string) => readFileSync(resolve(here, relative), "utf8");
+const dialogSource = readSource("../src/ConfirmDialog.tsx");
+const confirmHookSource = readSource("../src/hooks/useConfirmDialog.ts");
+const composerModeSource = readSource("../src/v4/composer/V4ComposerModeControls.tsx");
+
+const YOLO_KEYS = [
+  "mode.yoloConfirmation.title",
+  "mode.yoloConfirmation.description",
+  "mode.yoloConfirmation.files",
+  "mode.yoloConfirmation.files.description",
+  "mode.yoloConfirmation.commands",
+  "mode.yoloConfirmation.commands.description",
+  "mode.yoloConfirmation.network",
+  "mode.yoloConfirmation.network.description",
+  "mode.yoloConfirmation.risk",
+  "mode.yoloConfirmation.acknowledgement",
+  "mode.yoloConfirmation.confirm",
+] as const;
+
+test("只在切入完全访问时弹确认，已在完全访问不重复打扰", () => {
+  assert.match(confirmHookSource, /nextMode !== "yolo" \|\| currentMode === "yolo"/);
+  assert.match(confirmHookSource, /presentation: "yolo-confirmation"/);
+});
+
+test("确认弹窗接管风险告知：Enter 兜底失效、必须勾选、默认焦点在取消", () => {
+  assert.match(dialogSource, /presentation === "yolo-confirmation"/);
+  assert.match(dialogSource, /if \(!open \|\| isYoloConfirmation\)/);
+  assert.match(dialogSource, /disabled=\{!checkboxChecked\}/);
+  assert.match(dialogSource, /cancelRef\.current\?\.focus\(\)/);
+  // 勾选只属于本次请求：关闭后重开不能沿用上次的风险确认。
+  assert.match(dialogSource, /checkboxSelection\.request === displayedRequest/);
+});
+
+test("模式菜单与快捷键循环都走带确认的切换入口", () => {
+  assert.match(composerModeSource, /useYoloModeConfirmation\(/);
+  assert.match(composerModeSource, /onValueChange=\{requestSwitchMode\}/);
+  assert.match(composerModeSource, /if \(next\) requestSwitchMode\(next\);/);
+});
+
+test("风险告知文案两份字典齐全", () => {
+  for (const key of YOLO_KEYS) {
+    assert.ok(key in zhCN, "zh-CN 缺少 " + key);
+    assert.ok(key in enUS, "en-US 缺少 " + key);
+  }
 });

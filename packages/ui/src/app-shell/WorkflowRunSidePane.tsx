@@ -15,6 +15,7 @@ import {
   WorkflowRunResultSections,
   WorkflowRunStatusHeader,
 } from "@/app-shell/WorkflowRunSidePaneSections.js";
+import { WorkflowRunPaneSaveSlots } from "@/app-shell/WorkflowRunPaneSaveSlots.js";
 import {
   useWorkflowRunPaneSettings,
   workflowRunTabScope,
@@ -344,23 +345,30 @@ const WorkflowRunContent = memo(function WorkflowRunContent({
       data-workflow-run-id={tab.runId}
       data-workflow-run-status={run?.status ?? "absent"}
     >
-      <WorkflowRunStatusHeader
-        cancellable={cancellable}
-        configureOpen={settings.popover.open}
-        onCancel={handleCancel}
-        {...(settings.configurable ? { onConfigureFrom: settings.popover.toggleFrom } : {})}
-        {...(onOpenWorkflowRun === undefined || successor === undefined
-          ? {}
-          : { onOpenSuccessor: handleOpenSuccessor })}
-        onResume={handleResume}
-        {...(rejectionView === undefined ? {} : { rejection: rejectionView })}
-        resumable={resumable}
-        run={run}
-        {...(subagentModel === undefined ? {} : { subagentModel })}
-        summaryParts={summaryParts}
-        title={runTitle}
-        usage={run?.usage}
-      />
+      {/* 「保存 / 再次运行」（docs/dynamic-workflow/transcript-and-notifications.md「Saving the run,
+          and running it again」）：与完成卡同一个控制器，因此同一个 run 在两处说同一句话。 */}
+      <WorkflowRunPaneSaveSlots rows={snapshot?.rows.window} run={run} tab={tab}>
+        {(slots) => (
+          <WorkflowRunStatusHeader
+            cancellable={cancellable}
+            configureOpen={settings.popover.open}
+            onCancel={handleCancel}
+            {...(settings.configurable ? { onConfigureFrom: settings.popover.toggleFrom } : {})}
+            {...(onOpenWorkflowRun === undefined || successor === undefined
+              ? {}
+              : { onOpenSuccessor: handleOpenSuccessor })}
+            onResume={handleResume}
+            {...(rejectionView === undefined ? {} : { rejection: rejectionView })}
+            resumable={resumable}
+            run={run}
+            saveSlots={slots}
+            {...(subagentModel === undefined ? {} : { subagentModel })}
+            summaryParts={summaryParts}
+            title={runTitle}
+            usage={run?.usage}
+          />
+        )}
+      </WorkflowRunPaneSaveSlots>
 
       {run === undefined || !settings.configurable ? null : (
         <WorkflowRunSettingsPopover

@@ -48,9 +48,10 @@ import {
   getConversationStatusPanelOffsetClassName,
 } from "@/v4/conversationLayout.js";
 import {
-  buildConversationTurnRenderUnits,
+  createConversationTurnRenderUnitsSelector,
   type ConversationTurnRenderUnit,
 } from "@/v4/conversationTurnRenderUnits.js";
+import { getConversationRowsPartition } from "@/v4/conversationProjectionStore.js";
 import {
   resolveConversationTurnNavigatorActiveQueryRowId,
   resolveConversationTurnNavigatorHydrationRetryDelayMs,
@@ -421,18 +422,22 @@ function ConversationTimelineImpl({
   const [liveNowMs, setLiveNowMs] = useState(() => Date.now());
   // 群话题准备态：未接受的群材料投影进最后一条轮次，不伪造 CLI row（不产生任务/轮次/可编辑假消息）。
   const topicPreparations = useBotTopicPreparations();
-  const renderUnits = useMemo(
-    () =>
-      withTopicPreparationMessages(
-        buildConversationTurnRenderUnits(rows, {
-          nowMs: liveNowMs,
-          sessionPhase,
-        }),
-        rows,
-        topicPreparations,
-      ),
-    [liveNowMs, rows, sessionPhase, topicPreparations],
-  );
+  // 「冻结历史 + 尾轮」分区（spec：docs/ui/chat-virtual-scroll.md「每帧派生成本」）：
+  // 流式帧只改最后一轮，历史段按 history 数组引用复用，每帧只对尾轮重新分组与 materialize。
+  // 这里再拼回扁平数组，下游既有的虚拟化与派生逻辑保持不变。
+  const rowsPartition = getConversationRowsPartition(rows);
+  const selectRenderUnits = useMemo(() => createConversationTurnRenderUnitsSelector(), []);
+  const renderUnits = useMemo(() => {
+    const partition = selectRenderUnits(rowsPartition, {
+      nowMs: liveNowMs,
+      sessionPhase,
+    });
+    return withTopicPreparationMessages(
+      [...partition.history, ...partition.tail],
+      rows,
+      topicPreparations,
+    );
+  }, [liveNowMs, rows, rowsPartition, selectRenderUnits, sessionPhase, topicPreparations]);
   const { virtualizedUnits, liveUnit, liveUnitIndex } = useMemo(
     () => splitConversationTimelineLiveTail(renderUnits),
     [renderUnits],

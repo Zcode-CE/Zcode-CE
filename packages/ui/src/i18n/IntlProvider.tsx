@@ -16,6 +16,7 @@ import {
   readSafeLocalStorage,
   writeSafeLocalStorage,
 } from "@/lib/browserEnvironment.js";
+import { logger } from "@/logger.js";
 import zhCN from "./locales/zh-CN.js";
 import enUS from "./locales/en-US.js";
 
@@ -216,41 +217,51 @@ export function ZCodeIntlProvider({
     if (!settingService) return;
     let disposed = false;
     const initialOperationSeq = localePreferenceOperationSeqRef.current;
-    settingService.get().then(async (settings) => {
-      if (disposed || localePreferenceOperationSeqRef.current !== initialOperationSeq) {
-        return;
-      }
-      const nextPreference = resolveLocalePreferenceFromSettings({
-        storedPreference: readStoredPreference(),
-        settingsLocale: settings.locale,
-        settingsLocalePreference: settings.localePreference,
-        preferSettingServiceLocale,
+    settingService
+      .get()
+      .then(async (settings) => {
+        if (disposed || localePreferenceOperationSeqRef.current !== initialOperationSeq) {
+          return;
+        }
+        const nextPreference = resolveLocalePreferenceFromSettings({
+          storedPreference: readStoredPreference(),
+          settingsLocale: settings.locale,
+          settingsLocalePreference: settings.localePreference,
+          preferSettingServiceLocale,
+        });
+        if (disposed) {
+          return;
+        }
+        if (nextPreference) {
+          // 手机远控和桌面连接到同一个 settingService，但手机浏览器本地可能残留
+          // en-US/system 偏好。远控入口必须以桌面 setting.json 为准，否则会出现桌面中文、手机英文。
+          setLocalePreferenceState(nextPreference);
+          if (preferSettingServiceLocale) {
+            persistLocalePreference(nextPreference);
+          }
+          if (nextPreference === "system") {
+            const resolvedLocale = await resolveSystemLocale();
+            if (disposed || localePreferenceOperationSeqRef.current !== initialOperationSeq) {
+              return;
+            }
+            setSystemLocale(resolvedLocale);
+            if (settings.locale !== resolvedLocale) {
+              // setting.json 里的 locale 是 main 进程菜单、远控等非浏览器上下文的实际语言。
+              // system 模式必须使用宿主系统语言；Electron renderer 的 navigator.language 可能和
+              // macOS app.getLocale() 不一致，直接写回会把中文系统错误持久化成英文。
+              enqueueLocalePreferenceUpdate(initialOperationSeq, resolvedLocale, "system");
+            }
+          }
+        }
+      })
+      .catch((error: unknown) => {
+        // 读取 setting.json 失败（首次启动无文件、权限不足、远控 attachment 尚未就绪）时，
+        // 不能让它变成未处理的 rejection：保留 localStorage / 系统语言作为回退，
+        // 否则手机远控页会停在浏览器默认语言，而不是桌面已保存的语言。
+        logger.warn("[IntlProvider] 读取语言设置失败，沿用本地回退", {
+          error: error instanceof Error ? error.message : String(error),
+        });
       });
-      if (disposed) {
-        return;
-      }
-      if (nextPreference) {
-        // 手机远控和桌面连接到同一个 settingService，但手机浏览器本地可能残留
-        // en-US/system 偏好。远控入口必须以桌面 setting.json 为准，否则会出现桌面中文、手机英文。
-        setLocalePreferenceState(nextPreference);
-        if (preferSettingServiceLocale) {
-          persistLocalePreference(nextPreference);
-        }
-        if (nextPreference === "system") {
-          const resolvedLocale = await resolveSystemLocale();
-          if (disposed || localePreferenceOperationSeqRef.current !== initialOperationSeq) {
-            return;
-          }
-          setSystemLocale(resolvedLocale);
-          if (settings.locale !== resolvedLocale) {
-            // setting.json 里的 locale 是 main 进程菜单、远控等非浏览器上下文的实际语言。
-            // system 模式必须使用宿主系统语言；Electron renderer 的 navigator.language 可能和
-            // macOS app.getLocale() 不一致，直接写回会把中文系统错误持久化成英文。
-            enqueueLocalePreferenceUpdate(initialOperationSeq, resolvedLocale, "system");
-          }
-        }
-      }
-    });
     return () => {
       disposed = true;
     };

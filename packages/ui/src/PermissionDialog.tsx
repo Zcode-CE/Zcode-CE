@@ -15,7 +15,11 @@ import {
   type ZCodePermissionRequest,
   type ZCodeProvider,
 } from "@zcode/shared";
-import { MAX_PERMISSION_FEEDBACK_CHARS } from "@zcode/shared/zcode-protocol-v4";
+import {
+  MAX_PERMISSION_FEEDBACK_CHARS,
+  PERMISSION_FULL_ACCESS_OPTION_ID,
+} from "@zcode/shared/zcode-protocol-v4";
+import { useYoloModeConfirmation } from "@/hooks/useConfirmDialog.js";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { Textarea } from "@/components/ui/textarea.js";
@@ -542,6 +546,14 @@ export function PermissionDialog({
     [selectableCount],
   );
 
+  // 确认作用域 = 这条请求 + 应答态：换请求、换会话或已应答都会撤销在途的全权限确认，
+  // 免得上一条请求的风险确认落到下一条上。当前档位不参与判定——已经处在完全访问时
+  // 根本不会出现权限弹窗，这里只可能是一次真正的放宽。
+  const confirmMode = useYoloModeConfirmation(
+    JSON.stringify([workspacePath, request.taskId, request.requestId, responding]),
+    undefined,
+  );
+
   const respondWithOption = useCallback(
     (option: ZCodePermissionOption) => {
       if (responding) return;
@@ -551,9 +563,16 @@ export function PermissionDialog({
       // 模型收不到 workflow_refine_feedback 的升级递送。
       const trimmedFeedback =
         !refineOption && selectedKind.startsWith("reject") ? feedback.trim() : "";
-      onRespond(request.requestId, option, trimmedFeedback || undefined);
+      // 「完全访问」是持久放宽全部确认的选择：点它就等于把后续动作都交出去，
+      // 所以先过一遍风险告知再发出应答；其余选项原样直发。
+      confirmMode(
+        option.optionId === PERMISSION_FULL_ACCESS_OPTION_ID ? "yolo" : "unchanged",
+        () => {
+          onRespond(request.requestId, option, trimmedFeedback || undefined);
+        },
+      );
     },
-    [feedback, onRespond, refineOption, request.requestId, responding],
+    [confirmMode, feedback, onRespond, refineOption, request.requestId, responding],
   );
 
   const submitFeedback = useCallback(() => {

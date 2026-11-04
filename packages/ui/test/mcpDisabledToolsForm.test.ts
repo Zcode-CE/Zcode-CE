@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { convertToZCodeAgentMcpServer } from "@zcode/shared";
+import enUS from "../src/i18n/locales/en-US.js";
+import zhCN from "../src/i18n/locales/zh-CN.js";
+import { buildWorkspaceMcpTrustDecision } from "../src/settings/mcpWorkspaceTrust.js";
 import {
   EMPTY_FORM,
   formToConfig,
@@ -19,6 +25,8 @@ import {
  *
  * 运行：cd packages/ui && node --import tsx --test test/mcpDisabledToolsForm.test.ts
  */
+
+const here = dirname(fileURLToPath(import.meta.url));
 
 function server(config: Record<string, unknown>) {
   return {
@@ -92,4 +100,112 @@ test("DTO 投影：非法/空清单不落字段（老配置形态不变）", () 
     disabledTools: "get_issue",
   } as never);
   assert.equal(invalid?.disabledTools, undefined);
+});
+
+/**
+ * 工作区 MCP 信任决定（`workspace/mcp/trust`）。
+ *
+ * 回归形态：project 作用域的 MCP 声明在信任前不会被 CLI 加载，若设置页既不给入口、
+ * 也不把它呈现成「待信任」，用户就永远无法授权——该作用域的 MCP 等于不可用。
+ * 这里钉住决定 DTO 的形状（含审核时的 declarationDigest），以及按钮/服务/文案在位。
+ */
+test("信任决定 DTO：带审核摘要、方向取反、非工作区不产生决定", () => {
+  const review = {
+    declarationDigest: "a".repeat(64),
+    sourcePaths: [".zcode/mcp.json"],
+    display: "{}",
+    trusted: false,
+    configuredEnabled: true,
+    transport: "stdio" as const,
+  };
+  const server = { name: "github", scope: "workspace" as const, workspaceTrust: review };
+
+  assert.deepEqual(
+    buildWorkspaceMcpTrustDecision(server, {
+      workspacePath: "/repo",
+      workspaceIdentity: "ssh://host/repo",
+    }),
+    {
+      workspacePath: "/repo",
+      workspaceIdentity: "ssh://host/repo",
+      serverName: "github",
+      declarationDigest: review.declarationDigest,
+      trusted: true,
+    },
+  );
+  // identity 缺席时不写空键（exactOptionalPropertyTypes）。
+  assert.deepEqual(buildWorkspaceMcpTrustDecision(server, { workspacePath: "/repo" }), {
+    workspacePath: "/repo",
+    serverName: "github",
+    declarationDigest: review.declarationDigest,
+    trusted: true,
+  });
+  // 已信任 → 决定是「撤销」。
+  assert.equal(
+    buildWorkspaceMcpTrustDecision(
+      { ...server, workspaceTrust: { ...review, trusted: true } },
+      { workspacePath: "/repo" },
+    )?.trusted,
+    false,
+  );
+  // 用户级配置没有可审核的声明；没有摘要或没有工作区路径都不能提交。
+  assert.equal(
+    buildWorkspaceMcpTrustDecision(
+      { ...server, scope: "user" as never },
+      { workspacePath: "/repo" },
+    ),
+    null,
+  );
+  assert.equal(
+    buildWorkspaceMcpTrustDecision(
+      { name: "github", scope: "workspace" },
+      { workspacePath: "/repo" },
+    ),
+    null,
+  );
+  assert.equal(buildWorkspaceMcpTrustDecision(server, { workspacePath: null }), null);
+});
+
+test("信任入口接线：列表按 scope 给按钮，设置页走既有 mcpSyncService 方法", () => {
+  const listSource = readFileSync(resolve(here, "../src/settings/McpServerList.tsx"), "utf8");
+  const sectionSource = readFileSync(
+    resolve(here, "../src/settings/McpSettingsSection.tsx"),
+    "utf8",
+  );
+  const statusListSource = readFileSync(
+    resolve(here, "../src/store/mcpStoreStatusList.ts"),
+    "utf8",
+  );
+
+  // 只有工作区声明才画信任按钮，且按钮只在有 onTrust 通道时出现。
+  assert.match(listSource, /server\.scope === "workspace" && onTrust \?/);
+  assert.match(listSource, /TID_MCP_WORKSPACE_TRUST_BUTTON/);
+  // workspace 声明的 args/URL 不进列表（Host 脱敏摘要才是展示面）。
+  assert.match(listSource, /server\.scope === "workspace"\s*\? typeLabel/);
+  // 状态不被降级成 unknown——否则列表没有可授权的落点。
+  assert.match(statusListSource, /status: "untrusted"/);
+  // 设置页经服务既有方法提交，不自己发协议方法。
+  assert.match(sectionSource, /services\.mcpSyncService\.setWorkspaceMcpTrust/);
+  assert.match(sectionSource, /buildWorkspaceMcpTrustDecision\(/);
+});
+
+test("信任与待审核文案双语在位", () => {
+  const keys = [
+    "settings.mcp.trust.action",
+    "settings.mcp.trust.revoke",
+    "settings.mcp.trust.title",
+    "settings.mcp.trust.revokeTitle",
+    "settings.mcp.trust.description",
+    "settings.mcp.trust.pending",
+    "settings.mcp.trust.trusted",
+    "settings.mcp.trust.failed",
+    "chat.workspaceMcpPending.label",
+    "chat.workspaceMcpPending.message",
+    "chat.workspaceMcpPending.review",
+    "chat.workspaceMcpPending.dismiss",
+  ];
+  for (const key of keys) {
+    assert.ok(key in zhCN, "zh-CN 缺少 " + key);
+    assert.ok(key in enUS, "en-US 缺少 " + key);
+  }
 });

@@ -68,6 +68,20 @@ function addRef(key: string, file: string): void {
   refs.set(key, set);
 }
 
+/** 承载 i18n 键的常见属性名。labelId 等来自能力表，键值仍是字面量，不能漏。 */
+const KEY_PROPERTY_NAMES = new Set(["id", "messageId", "labelId", "titleId", "descriptionId"]);
+
+/**
+ * 前缀包装：`const t = (id) => intl.formatMessage({ id: \`browser.permission.${id}\` })` 之后，
+ * `t("unsupported")` 的键是 `browser.permission.unsupported`，字面量本身不含点。
+ * 只认以 "." 结尾的静态头部，其余模板按动态键跳过（无法静态判定）。
+ */
+function prefixedId(node: ts.Expression): string | null {
+  if (!ts.isTemplateExpression(node)) return null;
+  const head = node.head.text;
+  return head.endsWith(".") ? head : null;
+}
+
 const files: string[] = [];
 for (const dir of SCAN_DIRS) filesUnder(resolve(repoRoot, dir), files);
 
@@ -75,18 +89,45 @@ for (const file of files) {
   const source = readFileSync(file, "utf8");
   const sf = ts.createSourceFile(file, source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TSX);
   const rel = file.slice(repoRoot.length + 1);
+  // 先收齐本文件的前缀包装，再判定 t("...")：包装可能写在使用点之后。
+  const prefixes: string[] = [];
+  (function collectPrefixes(node: ts.Node): void {
+    if (ts.isPropertyAssignment(node)) {
+      const name =
+        ts.isIdentifier(node.name) || ts.isStringLiteral(node.name) ? node.name.text : null;
+      const prefix = name && KEY_PROPERTY_NAMES.has(name) ? prefixedId(node.initializer) : null;
+      if (prefix) prefixes.push(prefix);
+    }
+    ts.forEachChild(node, collectPrefixes);
+  })(sf);
+  function addCallRef(value: string): void {
+    if (value.includes(".")) {
+      addRef(value, rel);
+      return;
+    }
+    for (const prefix of prefixes) addRef(prefix + value, rel);
+  }
   function walk(node: ts.Node): void {
     if (ts.isCallExpression(node)) {
       const callee = node.expression;
       const name = ts.isIdentifier(callee) ? callee.text : null;
-      if ((name === "t" || name === "translate" || name === "useT") && node.arguments.length > 0) {
-        for (const value of literalValues(node.arguments[0] as ts.Expression)) addRef(value, rel);
+      // format / formatMessage 是各域常见的本地包装（`const format = (id) => intl.formatMessage({ id })`），
+      // 漏掉它们会让「组件接了、字典没补」整族静默通过。
+      if (
+        (name === "t" ||
+          name === "translate" ||
+          name === "useT" ||
+          name === "format" ||
+          name === "formatMessage") &&
+        node.arguments.length > 0
+      ) {
+        for (const value of literalValues(node.arguments[0] as ts.Expression)) addCallRef(value);
       }
     }
     if (ts.isPropertyAssignment(node)) {
       const name =
         ts.isIdentifier(node.name) || ts.isStringLiteral(node.name) ? node.name.text : null;
-      if (name === "id" || name === "messageId") {
+      if (name && KEY_PROPERTY_NAMES.has(name)) {
         for (const value of literalValues(node.initializer)) addRef(value, rel);
       }
     }

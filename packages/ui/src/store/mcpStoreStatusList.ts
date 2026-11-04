@@ -34,10 +34,11 @@ function mapRuntimeStatusToUi(snapshot: ZCodeMcpServerStatusSnapshot): MappedMcp
     case "disabled":
       return { status: "unknown", error: snapshot.error };
     case "untrusted":
+      // 待信任不是「状态未知」：列表要据此显示信任入口与待审核说明，
+      // 降级成 unknown 会让用户看不到任何可授权的入口（项目作用域 MCP 便永久不可用）。
       return {
-        status: "unknown",
-        error: snapshot.error ?? "Project MCP server requires explicit connection before use.",
-        failureKind: snapshot.failureKind ?? "status_unavailable",
+        status: "untrusted",
+        ...(snapshot.error === undefined ? {} : { error: snapshot.error }),
         serverRequestId: snapshot.serverRequestId,
       };
   }

@@ -18,6 +18,26 @@ function buildPluginOperationId(
   return `${scope}:${pluginName}@${marketplace}`;
 }
 
+/**
+ * 概览请求代号。切换工作区（或清空上下文）后，旧请求仍会返回；
+ * 慢的旧响应若照常落盘，会把上一台机器的市场与开关状态写进当前工作区。
+ * 发起时领号，落盘前同时核对代号与当前目标，二者任一变化即丢弃。
+ */
+let overviewRequestGeneration = 0;
+
+/** 代号与目标都必须仍是发起时的那一份，才允许把概览结果写入 store。 */
+function isCurrentOverviewRequest(
+  get: () => PluginStoreState,
+  generation: number,
+  workspacePath: string,
+  workspaceIdentity: string | null,
+): boolean {
+  if (generation !== overviewRequestGeneration) return false;
+  const state = get();
+  // 远程同路径 workspace 共享 workspacePath，只有 identity 一起比较才能区分主机。
+  return state.workspacePath === workspacePath && state.workspaceIdentity === workspaceIdentity;
+}
+
 interface PluginStoreState {
   workspacePath: string | null;
   workspaceIdentity: string | null;
@@ -104,6 +124,8 @@ export const usePluginStore = create<PluginStoreState>((set, get) => ({
   settingPluginEnabledId: null,
   settingPluginEnabledValue: null,
   resetWorkspaceContext() {
+    // 清空上下文同样让在途概览过期：否则它会重新填回刚被清掉的清单。
+    overviewRequestGeneration += 1;
     set({
       workspacePath: null,
       workspaceIdentity: null,
@@ -142,6 +164,7 @@ export const usePluginStore = create<PluginStoreState>((set, get) => ({
     // 远程同路径 workspace 会共享同一个 workspacePath。
     // 如果这里只按路径复用插件缓存，上一台机器的市场和开关状态会短暂显示到当前远端。
     // 这里把 workspaceIdentity 一起纳入命中条件，保证同路径不同主机严格隔离。
+    const generation = ++overviewRequestGeneration;
     set({
       workspacePath,
       workspaceIdentity: normalizedWorkspaceIdentity,
@@ -158,6 +181,9 @@ export const usePluginStore = create<PluginStoreState>((set, get) => ({
         workspacePath,
         ...(normalizedWorkspaceIdentity ? { workspaceIdentity: normalizedWorkspaceIdentity } : {}),
       });
+      if (!isCurrentOverviewRequest(get, generation, workspacePath, normalizedWorkspaceIdentity)) {
+        return;
+      }
       set({
         marketplaces: result.marketplaces,
         availablePlugins: result.availablePlugins,
@@ -169,6 +195,10 @@ export const usePluginStore = create<PluginStoreState>((set, get) => ({
         loadedWorkspaceIdentity: normalizedWorkspaceIdentity,
       });
     } catch (error) {
+      // 旧请求的失败同样过时：它会把新工作区的列表清空并挂上上一台机器的错误。
+      if (!isCurrentOverviewRequest(get, generation, workspacePath, normalizedWorkspaceIdentity)) {
+        return;
+      }
       set({
         loading: false,
         refreshing: false,
@@ -192,12 +222,17 @@ export const usePluginStore = create<PluginStoreState>((set, get) => ({
       state.installedPlugins.length > 0;
     // 插件开关/卸载后会走 refresh，之前强制 loading=true 会让列表切成空态再恢复，造成“闪一下”。
     // 这里保留已有列表做后台刷新，只在首次无缓存数据时显示 loading。
+    const generation = ++overviewRequestGeneration;
+    const expectedIdentity = state.workspaceIdentity;
     set({ loading: !hasCachedData, refreshing: true, error: null });
     try {
       const result = await pluginsService.getOverview({
         workspacePath,
         ...(workspaceIdentityFromState ? { workspaceIdentity: workspaceIdentityFromState } : {}),
       });
+      if (!isCurrentOverviewRequest(get, generation, workspacePath, expectedIdentity)) {
+        return;
+      }
       set({
         marketplaces: result.marketplaces,
         availablePlugins: result.availablePlugins,
@@ -209,6 +244,9 @@ export const usePluginStore = create<PluginStoreState>((set, get) => ({
         loadedWorkspaceIdentity: workspaceIdentityFromState ?? null,
       });
     } catch (error) {
+      if (!isCurrentOverviewRequest(get, generation, workspacePath, expectedIdentity)) {
+        return;
+      }
       set({
         loading: false,
         refreshing: false,

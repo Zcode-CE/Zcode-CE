@@ -27,6 +27,7 @@ import { toast } from "@/components/ui/toast.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
+import { buildWorkspaceMcpTrustDecision } from "@/settings/mcpWorkspaceTrust.js";
 import { logger } from "@/logger.js";
 import { McpServerForm } from "@/settings/McpServerForm.js";
 import { McpServerList, McpStatusDot } from "@/settings/McpServerList.js";
@@ -870,6 +871,89 @@ export function McpSettingsSection({
     setMcpStatusOnlyUnsupported(false);
   }, [activeWorkspaceKey, services.mcpSyncService]);
 
+  // 工作区 MCP 声明的信任 / 撤销信任。确认框展示 Host 脱敏后的声明摘要；
+  // 提交时带审核那一刻的 declarationDigest——声明若在此期间被改过，Agent 会以
+  // workspace_mcp_declaration_changed 拒绝，不能拿旧摘要放行新声明。
+  const trustTargetRef = useRef<{
+    workspaceKey: string;
+    service: typeof services.mcpSyncService;
+  }>({ workspaceKey: activeWorkspaceKey, service: services.mcpSyncService });
+  trustTargetRef.current = { workspaceKey: activeWorkspaceKey, service: services.mcpSyncService };
+  const trustAbortRef = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      // 切工作区或换服务即作废在途决定：迟到的确认不能落到新目标上。
+      trustAbortRef.current?.abort();
+      trustAbortRef.current = null;
+    },
+    [activeWorkspaceKey, services.mcpSyncService],
+  );
+
+  const handleWorkspaceMcpTrust = useCallback(
+    async (server: ZCodeMcpServer) => {
+      const review = server.workspaceTrust;
+      const decide = services.mcpSyncService.setWorkspaceMcpTrust;
+      const request = buildWorkspaceMcpTrustDecision(server, {
+        workspacePath: activeWorkspacePath,
+        workspaceIdentity: activeWorkspaceIdentity,
+      });
+      if (trustAbortRef.current || !review || !request || !decide) return;
+      const controller = new AbortController();
+      const target = trustTargetRef.current;
+      const isCurrentTarget = () =>
+        !controller.signal.aborted &&
+        target.workspaceKey === trustTargetRef.current.workspaceKey &&
+        target.service === trustTargetRef.current.service;
+      trustAbortRef.current = controller;
+      const trusted = request.trusted;
+      if (!isCurrentTarget()) {
+        trustAbortRef.current = null;
+        return;
+      }
+      const confirmed = await confirmDialog(
+        {
+          title: intl.formatMessage(
+            { id: trusted ? "settings.mcp.trust.title" : "settings.mcp.trust.revokeTitle" },
+            { name: server.name },
+          ),
+          description: [
+            intl.formatMessage({ id: "settings.mcp.trust.description" }),
+            ...review.sourcePaths,
+            review.display,
+          ].join("\n\n"),
+          intent: "workspace-mcp-trust",
+          confirmLabel: intl.formatMessage({
+            id: trusted ? "settings.mcp.trust.action" : "settings.mcp.trust.revoke",
+          }),
+        },
+        controller.signal,
+      );
+      if (!confirmed) {
+        if (trustAbortRef.current === controller) trustAbortRef.current = null;
+        return;
+      }
+      try {
+        // 走服务既有的 trust 方法：Host 注入的实现再发 `workspace/mcp/trust`。
+        const result = await decide.call(services.mcpSyncService, request);
+        if (!result.accepted)
+          throw new Error(result.reasonCode ?? "workspace_mcp_trust_unavailable");
+        if (isCurrentTarget()) await requestMcpServerStatusList({ mode: "status" });
+      } catch {
+        if (isCurrentTarget()) toast(intl.formatMessage({ id: "settings.mcp.trust.failed" }));
+      } finally {
+        if (trustAbortRef.current === controller) trustAbortRef.current = null;
+      }
+    },
+    [
+      activeWorkspaceIdentity,
+      activeWorkspacePath,
+      confirmDialog,
+      intl,
+      requestMcpServerStatusList,
+      services.mcpSyncService,
+    ],
+  );
+
   useEffect(() => {
     let cancelled = false;
     setMcpConfigReadyWorkspaceKey("");
@@ -1488,6 +1572,7 @@ export function McpSettingsSection({
               onEdit={handleEdit}
               onToggle={handleToggle}
               onOpenAuthorization={handleOpenAuthorization}
+              onTrust={handleWorkspaceMcpTrust}
               emptyTitle={intl.formatMessage({ id: "settings.mcp.emptyTitle" })}
               emptyDescription={intl.formatMessage({
                 id: "settings.mcp.emptyDescription",

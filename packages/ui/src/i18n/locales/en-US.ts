@@ -416,9 +416,9 @@ const enUS: Record<string, string> = {
   "conversationShare.import.source": "Imported from share: {title}",
   "conversationShare.import.dividerLabel": "Imported from share",
   "conversationShare.import.fallbackRemoteWorkspace":
-    "Imported from share: {title}. The current project is remote, which import does not support yet, so the session was created in the local project {projectPath}.",
+    "Imported from share: {title}. The current project is remote, which import does not support yet, so the session was created in the local project {workspacePath}.",
   "conversationShare.import.fallbackDefaultWorkspace":
-    "Imported from share: {title}. No target project was available, so the session was created in the default project {projectPath}.",
+    "Imported from share: {title}. No target project was available, so the session was created in the default project {workspacePath}.",
   "conversationShare.import.downloading": "Downloading shared files: {completed}/{total}",
   "conversationShare.import.installing": "Installing shared files",
   "conversationShare.import.committing": "Creating the shared conversation",
@@ -568,6 +568,10 @@ const enUS: Record<string, string> = {
   "login.oauth.regionTag.zai": "Global",
   "login.oauth.regionTag.bigmodel": "CN",
   "login.oauth.waiting": "Waiting for {provider} authentication...",
+  "login.oauth.browserNotOpened": "Browser didn't open?",
+  "login.oauth.copyLoginLink": "Copy login link",
+  "login.oauth.copyLinkSuccess": "Copied. Paste and open it in your browser.",
+  "login.oauth.copyLinkFailed": "Could not copy the login link. Please try again.",
   "login.oauth.loginFailure": "Login failed, please try again",
   "login.oauth.cancel": "Cancel",
   "login.oauth.retry": "Retry login",
@@ -1206,6 +1210,10 @@ const enUS: Record<string, string> = {
   "workspaceHeader.help.menu": "Help",
   "workspaceHeader.help.issueReport": "Report an issue",
   "workspaceHeader.help.productRequest": "Request a feature",
+  "workspaceHeader.help.copyDeviceMid": "Copy device MID",
+  "workspaceHeader.help.deviceMidCopied": "Device MID copied",
+  "workspaceHeader.help.deviceMidCopyFailed":
+    "Could not copy the device MID. Check clipboard permission and try again.",
   "workspaceHeader.help.productRequestDraft": "I would like to suggest: ",
   "workspaceHeader.help.community": "User community",
   "workspaceHeader.help.docs": "Product docs",
@@ -1357,7 +1365,7 @@ const enUS: Record<string, string> = {
   "workspaceSidebar.reconnect": "Reconnect",
   "workspaceSidebar.connecting": "Connecting",
   "workspaceRuntime.starting.title": "Starting project…",
-  "workspaceRuntime.failed.title": "Failed to start “{project}”",
+  "workspaceRuntime.failed.title": "Failed to start “{workspace}”",
   "workspaceRuntime.failed.reasonUnavailable":
     "No specific reason was reported. Retry once; check logs if it keeps failing.",
   "workspaceRuntime.failed.retry": "Retry",
@@ -2548,6 +2556,22 @@ const enUS: Record<string, string> = {
   "settings.mcp.status.errorReason": "The MCP server failed to connect.",
   "settings.mcp.status.disconnectedReason": "The MCP server is not connected.",
   "settings.mcp.status.unknownReason": "The MCP server status is unavailable.",
+  // Workspace MCP declaration trust review (workspace/mcp/trust)
+  "chat.workspaceMcpPending.dismiss": "Dismiss",
+  "chat.workspaceMcpPending.label": "Workspace MCP servers awaiting trust",
+  "chat.workspaceMcpPending.message":
+    "{count} workspace MCP server(s) await trust. Trust changes apply to new or restarted chats; you can continue chatting.",
+  "chat.workspaceMcpPending.review": "Review",
+  "settings.mcp.trust.action": "Trust",
+  "settings.mcp.trust.description":
+    "Connections may run code or send data. Trust does not enable MCP. Existing chats keep their authorization. Changes apply to new or restarted chats.",
+  "settings.mcp.trust.failed":
+    "The declaration changed or trust is unavailable. Refresh and try again.",
+  "settings.mcp.trust.pending": "Current declaration awaits trust",
+  "settings.mcp.trust.revoke": "Revoke trust",
+  "settings.mcp.trust.revokeTitle": "Revoke workspace MCP trust: {name}",
+  "settings.mcp.trust.title": "Trust workspace MCP: {name}",
+  "settings.mcp.trust.trusted": "Current declaration trusted",
   "settings.mcp.failure.config_invalid":
     "The MCP configuration is invalid. Check the server settings.",
   "settings.mcp.failure.runtime_unavailable":
@@ -4490,7 +4514,7 @@ const enUS: Record<string, string> = {
   "onboarding.migration.confirmCloseConfirm": "Close anyway",
   "onboarding.finish.done": "Migration complete",
   "onboarding.finish.ready": "Review what was imported before you continue.",
-  "onboarding.finish.currentWorkspace": "Migrating sessions from {project}",
+  "onboarding.finish.currentWorkspace": "Migrating sessions from {workspace}",
   "onboarding.finish.currentAgentsFile": "Migrating AGENTS.md",
   "onboarding.finish.currentSettings": "Importing agent settings",
   "onboarding.finish.summary.sessions": "Session migration",
@@ -5407,6 +5431,49 @@ const enUS: Record<string, string> = {
     "This agent cannot resume workflow runs.",
   "chat.toolCall.workflow.run.rejection.resume.generic": "The run could not be resumed ({code}).",
   "chat.toolCall.workflow.run.resume": "Resume run",
+  // "Save / run again" family (side pane header and completion card share one controller)
+  "chat.toolCall.workflow.saveRun.action": "Save",
+  "chat.toolCall.workflow.saveRun.announce.global": "Saved as a global workflow",
+  "chat.toolCall.workflow.saveRun.announce.project": "Saved to the project",
+  "chat.toolCall.workflow.saveRun.chip": "Saved",
+  "chat.toolCall.workflow.saveRun.chip.hint": "View in the workflow hub",
+  "chat.toolCall.workflow.saveRun.consequence":
+    "Writes {path}; afterwards it runs again by name from Automations › Workflows.",
+  "chat.toolCall.workflow.saveRun.description": "Description",
+  "chat.toolCall.workflow.saveRun.description.helper":
+    "When-to-use and arguments can be added later in the workflow hub.",
+  "chat.toolCall.workflow.saveRun.error.compile_failed":
+    "The script did not pass typecheck; nothing was written.",
+  "chat.toolCall.workflow.saveRun.error.generic": "Saving failed.",
+  "chat.toolCall.workflow.saveRun.error.invalid_name": "Only letters, digits and - _ .",
+  "chat.toolCall.workflow.saveRun.error.run_not_found":
+    "This run has no record here, so it cannot be saved directly.",
+  "chat.toolCall.workflow.saveRun.error.script_missing":
+    "This run did not keep its script, so use the path above.",
+  "chat.toolCall.workflow.saveRun.error.target_exists":
+    "A workflow of this name exists; confirm the overwrite and save again.",
+  "chat.toolCall.workflow.saveRun.error.write_error": "Writing failed; nothing was saved.",
+  "chat.toolCall.workflow.saveRun.lead": "Let ZCode refine and save it",
+  "chat.toolCall.workflow.saveRun.lead.hint":
+    "ZCode distills a reusable workflow for you, then asks you to confirm.",
+  "chat.toolCall.workflow.saveRun.lead.sending": "Handed to ZCode…",
+  "chat.toolCall.workflow.saveRun.lead.unsupported": "This agent cannot save directly.",
+  "chat.toolCall.workflow.saveRun.name": "Name",
+  "chat.toolCall.workflow.saveRun.name.helper": "Letters, digits, - _ . ; 64 characters at most",
+  "chat.toolCall.workflow.saveRun.name.invalid": "Only letters, digits and - _ .",
+  "chat.toolCall.workflow.saveRun.name.placeholder": "pr-layered-review",
+  "chat.toolCall.workflow.saveRun.or": "or save it as is",
+  "chat.toolCall.workflow.saveRun.overwrite":
+    "This project already has a workflow of this name; saving overwrites it. Its run records stay.",
+  "chat.toolCall.workflow.saveRun.runAgain": "Run again",
+  "chat.toolCall.workflow.saveRun.scope.remoteOnly":
+    "A remote project can only save into the project.",
+  "chat.toolCall.workflow.saveRun.shadowing": "{text}.",
+  "chat.toolCall.workflow.saveRun.starting": "Starting…",
+  "chat.toolCall.workflow.saveRun.submit": "Save as is",
+  "chat.toolCall.workflow.saveRun.submit.overwrite": "Overwrite and save as is",
+  "chat.toolCall.workflow.saveRun.submit.saving": "Saving…",
+  "chat.toolCall.workflow.saveRun.title": "Save workflow",
   "chat.toolCall.workflow.run.resumeHint":
     "Continue from where it stopped: finished steps are reused, interrupted steps run again.",
   "chat.toolCall.workflow.run.configure": "Configure",
@@ -5900,6 +5967,23 @@ const enUS: Record<string, string> = {
 
   // Modes
   "mode.plan": "Plan",
+  // Full-access confirmation (risk notice before switching to yolo; must tick to confirm)
+  "mode.yoloConfirmation.title": "Enable full access?",
+  "mode.yoloConfirmation.description":
+    "Tasks can perform the following actions without asking for your approval each time.",
+  "mode.yoloConfirmation.files": "Files and folders",
+  "mode.yoloConfirmation.files.description": "Read, create, change, and delete accessible files.",
+  "mode.yoloConfirmation.commands": "Terminal commands",
+  "mode.yoloConfirmation.commands.description":
+    "Run commands, install software, or change system settings.",
+  "mode.yoloConfirmation.network": "Network and apps",
+  "mode.yoloConfirmation.network.description":
+    "Access the network, send data, and use connected apps.",
+  "mode.yoloConfirmation.risk":
+    "These actions may cause data loss or disclosure. Enable only for tasks you trust. You can switch to another permission mode at any time.",
+  "mode.yoloConfirmation.acknowledgement":
+    "I understand the risks and take responsibility for my data security.",
+  "mode.yoloConfirmation.confirm": "Confirm",
   "mode.label.glm.build": "Ask before changes",
   "mode.label.glm.edit": "Edit automatically",
   "mode.label.glm.plan": "Plan mode",
@@ -7308,6 +7392,15 @@ const enUS: Record<string, string> = {
   "chat.toolCall.workflow.hole.head.title.untimed": "Hole “{name}” · filled by the agent",
   "chat.toolCall.workflow.hole.open": "Open the fill of “{name}”",
   "chat.toolCall.workflow.hole.waiting": "waiting",
+  "chat.toolCall.workflow.hole.stands.between":
+    "The hole stands after “{before}” and before “{after}”;",
+  "chat.toolCall.workflow.hole.stands.after": "The hole stands after “{before}”;",
+  "chat.toolCall.workflow.hole.stands.before": "The hole stands before “{after}”;",
+  "chat.backgroundResult.workflow.hole.waiting": "Workflow waiting for code",
+  "chat.backgroundResult.workflow.hole.filled": "Hole filled",
+  "chat.backgroundResult.workflow.hole.left": "Workflow left a hole",
+  "chat.toolCall.workflow.run.settings.consequence.concurrencyLive":
+    "Applies to this run right away; no new run is started.",
   "chat.toolCall.workflow.run.hole.waitingFor": "Waiting for the agent to fill it",
   "chat.toolCall.workflow.run.settings.limit.atDefault": "= default",
   "chat.toolCall.workflow.run.settings.limit.default": "default {n}",
@@ -7356,6 +7449,38 @@ const enUS: Record<string, string> = {
   "browser.permission.close": "Close",
   "browser.permission.connect": "Connect",
   "browser.permission.denyThisTime": "Don't allow",
+  "browser.permission.clipboardRead": "clipboard reading",
+  "browser.permission.deviceBluetooth": "Bluetooth devices",
+  "browser.permission.deviceHid": "HID devices",
+  "browser.permission.deviceSerial": "serial devices",
+  "browser.permission.deviceUsb": "USB devices",
+  "browser.permission.fileSystem": "file access",
+  "browser.permission.geolocation": "location",
+  "browser.permission.idleDetection": "idle detection",
+  "browser.permission.keyboardLock": "keyboard lock",
+  "browser.permission.media": "camera and microphone",
+  "browser.permission.mediaAudio": "microphone",
+  "browser.permission.mediaBoth": "camera and microphone",
+  "browser.permission.mediaVideo": "camera",
+  "browser.permission.midi": "MIDI devices",
+  "browser.permission.notifications": "notifications",
+  "browser.permission.readError": "Could not load permissions.",
+  "browser.permission.reset": "Reset site permissions",
+  "browser.permission.resetDone": "Permissions reset. Reload the page to request access again.",
+  "browser.permission.resetError": "Could not complete the permission reset.",
+  "browser.permission.retry": "Retry",
+  "browser.permission.saved":
+    "Permissions updated. Reload the page to apply changes to active resources.",
+  "browser.permission.saveError": "Could not save permission changes.",
+  "browser.permission.siteInfo": "View site information",
+  "browser.permission.speakerSelection": "audio output selection",
+  "browser.permission.stateAllow": "Allow",
+  "browser.permission.stateAsk": "Ask",
+  "browser.permission.stateDeny": "Block",
+  "browser.permission.storageAccess": "storage access",
+  "browser.permission.unknownCapability": "an unknown capability",
+  "browser.permission.unsupported": "Site permissions are available in the desktop browser.",
+  "browser.permission.windowManagement": "window management",
   "browser.permission.deviceTitle": "{origin} wants to connect a device",
   "browser.permission.promptAriaLabel": "Site permission request",
   "browser.permission.screenGroup.screen": "Entire Screen",
