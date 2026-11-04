@@ -1263,6 +1263,7 @@ export function AnimatedSidePanePanel({
                           />
                         ) : tab.type === "code-viewer" ? (
                           <PreviewPane
+                            isDesktop={isDesktop}
                             markdownSelectionTarget={{ sessionId: activeTaskId, workspaceKey }}
                             source={tab.source}
                             onClose={onCloseCodeViewer}

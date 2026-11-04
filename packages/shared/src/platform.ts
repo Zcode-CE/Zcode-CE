@@ -102,6 +102,21 @@ export interface BrowserViewCloseTabRequest {
 
 export const LOCAL_MEDIA_PREVIEW_SCHEME = "zcode-media";
 
+/** 系统关联应用（「打开方式」菜单的一项）。身份只下发摘要 id，真实路径不跨 IPC。 */
+export interface FileApplicationInfo {
+  id: string;
+  name: string;
+  iconDataUrl?: string;
+  isDefault: boolean;
+}
+
+export interface FileApplicationTarget {
+  path: string;
+  pathKind: "file" | "directory";
+  workspaceIdentity?: string;
+  remoteTarget?: OpenInEditorRemoteTarget;
+}
+
 export function buildLocalMediaPreviewUrl(path: string): string {
   const url = new URL(`${LOCAL_MEDIA_PREVIEW_SCHEME}://local/preview`);
   url.searchParams.set("path", path);
@@ -1273,6 +1288,15 @@ export interface IPlatformService {
 
   /** 获取系统中已安装的编辑器/终端列表（含图标） */
   getInstalledEditors(): Promise<EditorInfo[]>;
+
+  /** 枚举本机文件关联应用；平台不支持或系统失败时返回空数组（不抛错）。 */
+  getFileApplications?(target: FileApplicationTarget): Promise<FileApplicationInfo[]>;
+
+  /** 用指定系统关联应用打开本机文件。 */
+  openFileWithApplication?(
+    applicationId: string,
+    target: FileApplicationTarget,
+  ): Promise<{ success: boolean; error?: string }>;
 
   /** 用指定编辑器打开路径 */
   openInEditor(

@@ -197,11 +197,9 @@ export function WorkspaceFileTreeRowView({
     onOpenBrowserUrl?.(url);
   };
   const handleRevealInFileManager = async () => {
-    if (wslFileManagerEditor) {
-      await handleOpenInEditor(wslFileManagerEditor);
-      return;
-    }
-    await fileActions.revealInFileManager({
+    // 文件直达：macOS / Windows 打开所在目录并选中该文件（WSL 走 UNC + /select），
+    // 没有系统定位能力的平台或定位失败时，hook 内部回退为「只打开所在目录」。
+    await fileActions.revealFileInFileManager({
       path: row.path,
       deleted: isDeletedFile,
       kind: isDirectory ? "directory" : "file",

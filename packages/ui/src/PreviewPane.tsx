@@ -18,6 +18,7 @@ import {
   EyeIcon,
   ExternalLinkIcon,
   FileCode2Icon,
+  FolderOpenIcon,
   CopyIcon,
 } from "lucide-react";
 import { nanoid } from "nanoid";
@@ -48,6 +49,7 @@ import { decodeBase64ToArrayBuffer, getOfficeFilePreviewKind } from "@/lib/offic
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useFileContextActions } from "@/hooks/useFileContextActions.js";
 import { useWorkspaceOpenInEditorTarget } from "@/hooks/useWorkspaceOpenInEditorTarget.js";
+import { getFileManagerLabel } from "@/workspace-file-tree/helpers.js";
 import { logger } from "@/logger.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
 import { useCodeCommentPreviewStore } from "@/store/codeCommentPreviewStore.js";
@@ -484,6 +486,7 @@ export function PreviewPane({
   onOpenCodeViewer,
   renderHeavyContent = true,
   markdownSelectionTarget,
+  isDesktop = false,
 }: {
   source: CodeViewerSource | null;
   onClose: () => void;
@@ -492,6 +495,8 @@ export function PreviewPane({
   onOpenCodeViewer?: (source: CodeViewerSource) => void;
   renderHeavyContent?: boolean;
   markdownSelectionTarget?: MarkdownSelectionTarget;
+  /** 「在 Finder / 资源管理器中显示」只在本机桌面端成立（Web 没有本机文件管理器）。 */
+  isDesktop?: boolean;
 }) {
   const platform = usePlatform();
   const { intl } = useZCodeIntl();
@@ -513,7 +518,14 @@ export function PreviewPane({
     source?.workspaceRemoteSessionId ||
     matchedOpenContext.isRemoteWorkspace,
   );
-  const fileActions = useFileContextActions();
+  // 定位入口需要真实的平台能力与远端判定：缺省构造会让 canRevealInFileManager 恒为 false，
+  // 菜单项永远不出现（比报错更难查）。
+  const fileActions = useFileContextActions({
+    canOpenLocalFileManager: isDesktop,
+    isRemoteWorkspace: isRemoteSource,
+    remoteTarget: openInEditorRemoteTarget,
+    workspaceIdentity: source?.workspaceIdentity,
+  });
   const { fileService, fileWatcherService, mediaPreviewService } = useWorkspaceServices(
     sourceWorkspacePath,
     source?.workspaceRemoteSessionId,
@@ -1671,6 +1683,24 @@ export function PreviewPane({
                 {source.path ? (
                   <>
                     {hasMoreMenu ? <DropdownMenuSeparator /> : null}
+                    {/* 文件直达：打开所在目录并选中该文件；平台无定位能力时该项不出现。 */}
+                    {fileActions.canRevealInFileManager({
+                      path: source.path,
+                      kind: "file",
+                    }) ? (
+                      <DropdownMenuItem
+                        data-testid="preview-pane-reveal-in-file-manager"
+                        onSelect={() =>
+                          void fileActions.revealFileInFileManager({
+                            path: source.path!,
+                            kind: "file",
+                          })
+                        }
+                      >
+                        <FolderOpenIcon className="size-4" />
+                        {getFileManagerLabel(intl)}
+                      </DropdownMenuItem>
+                    ) : null}
                     <DropdownMenuItem
                       onSelect={() => void fileActions.copyAbsolutePath({ path: source.path! })}
                     >
