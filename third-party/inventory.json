@@ -1702,7 +1702,7 @@
     "packages/shared/src/attachment-source.ts": "1ab5985a30d2be53e9e3af364e04c8a902ce4a6dc3b9bcc18e8d81c227d37069",
     "packages/shared/src/bots.ts": "c9ae67d700e4f744118348e3cb4517968393d9f86fa7d0e8cbf5c957b3ba315d",
     "packages/shared/src/channel-mention.ts": "0266aa4b95b1d8d86ac41be66a7ae9e3f9be0a945c11dedba358c5892ab94ebf",
-    "packages/shared/src/channels.ts": "419f38ec38ca107cf6d3e42e482bc959bdf9d9891b0df26a72017b5777c72113",
+    "packages/shared/src/channels.ts": "8e6b35b3adba6557cc5efd1c319ff694c4c79a6988f5725625718683031576be",
     "packages/shared/src/conversationSelection.ts": "b76e80d143f71afea20dcddee9414324c4964f1d1ef36e836a39a810a6960e75",
     "packages/shared/src/execution-state.ts": "f038842aaab66675fe3f6a430cacfc72536480029b8b3544f995d860ddb8533c",
     "packages/shared/src/gen-ui/contract.example.ts": "41fbfd962f28bff286be97e59675634c99450fb2d8de7b54f81c10140e8cea48",
@@ -1712,7 +1712,7 @@
     "packages/shared/src/gen-ui/module.ts": "e2ce94c157dee72a908d44e6c39e97fb8df62f0e7d88533e7f19a75a123f115f",
     "packages/shared/src/gen-ui/tweakProtocol.ts": "474b7bc47a6c4d6fca8620834ac5c09b056c81e8cd938a585d8565200d1cd05a",
     "packages/shared/src/highspeed.ts": "baefa07e92d934e9e0af62518694445d56e4025da6bfda006f0a1cea92092c5d",
-    "packages/shared/src/index.ts": "463b69f2cdc412f399d30ec8c10e5d5c575b1ee10bc1fd634f0c93dd5efa8f3a",
+    "packages/shared/src/index.ts": "052ed3c0e9c65fa82a7aca1e56259390a82e1fccfc02676772afa1e9b257985c",
     "packages/shared/src/mcp-apps/appTools.ts": "56e79ed990a404269084450bb4eec4297df07b43de5a5b0399123c56342483b4",
     "packages/shared/src/mcp-apps/content.ts": "1675b0b89b82c70573b8e60ddd75b25e6a81c8620ce9d2e49d8363900b207056",
     "packages/shared/src/mcp-apps/contract.example.ts": "17189b1f889d1ad128cde9de4cf09b2990e598c61ed926bd641b35a63179c035",
@@ -1729,7 +1729,7 @@
     "packages/shared/src/model-execution.ts": "80fa91908eeb4a1358c6282af59e54c1adcd8c24bb419cf3b60aeb23201b1fc6",
     "packages/shared/src/node.ts": "1964469bfb5f6f8b1c46a44a8372914158c8693b17d8603a0aab0f9295503e39",
     "packages/shared/src/node/genUiPaths.ts": "9fe594b8a77cc74114d09146ee2a2f55e9ac2730fad7bfcacdaea82be63b7675",
-    "packages/shared/src/platform.ts": "4383f7a39bee6f93f018e1024ad66e218f968bfabaa057a762492bda5635b148",
+    "packages/shared/src/platform.ts": "34a2b47c496c48d34fdef69127809acca3882ea513ff4ee266d93aff5f338742",
     "packages/shared/src/protocol.ts": "b4c5c120aafb0252faf787a81136002f6474cb6843deabec911745f0f0b6f809",
     "packages/shared/src/request-security-edition/index.ts": "12735d8622bfd0b1b4e566cb5bf773e530805c976880fab37d85a9cbfb8941e4",
     "packages/shared/src/request-security-edition/policy.ts": "b3c87d9f01bf3c9477188399d841dd8f63a6e6a02737f78777bce0a6c4201c42",
@@ -2054,8 +2054,8 @@
     "packages/ui/src/hooks/useBrowserSitePermissions.ts": "75d84af4d726b95d0d7cd166b1977514dc56d1644122b5857724cfc349ff0faa",
     "packages/ui/src/hooks/useCodingPlanQuotaResetUi.ts": "eed75a370ca2a08fa78ecd9129ac36355017b4ab9ed5d05c7c603d252587b6b4",
     "packages/ui/src/hooks/useWorkflowRunSave.ts": "e29d0d84541ecc772c8295255fefab7c537f9c75948210147838a82ec3dbc40d",
-    "packages/ui/src/i18n/locales/en-US.ts": "4a13036a53800b9c500c070cd6e947528ee05d6406c9755255ad2ae68625b429",
-    "packages/ui/src/i18n/locales/zh-CN.ts": "131de54c3cd7d68be9f9c1d5963d7a126b8d5ef6a2630944310fd4e5faa07927",
+    "packages/ui/src/i18n/locales/en-US.ts": "3d8bd56bbbf5ece300a63457e7501fa28135c5cd7b709f8b2728397f06f22dcd",
+    "packages/ui/src/i18n/locales/zh-CN.ts": "364b7ddafabb5b52295a2b0e1f22ac866b8f98a0da543f80eb5fa657a5ae7120",
     "packages/ui/src/lib/assistantDirectiveParser.ts": "c64b119e46f917e2d869658559cb1113cc40caae1a89d68328b256ee4d76e09f",
     "packages/ui/src/lib/builtinSkillI18n.ts": "fbb44f7044214b70148f64dbafc1cea5ea550531e8084965ea978c5defc06deb",
     "packages/ui/src/lib/codingPlanQuotaResetUi.ts": "9ff69e18487e842d56136283b15fe9bfdfd383b79d911b25f967ec69f65af11f",
@@ -32847,11 +32847,11 @@
       "files": [
         {
           "file": "packages/shared/src/platform.ts",
-          "sha256": "4383f7a39bee6f93f018e1024ad66e218f968bfabaa057a762492bda5635b148"
+          "sha256": "34a2b47c496c48d34fdef69127809acca3882ea513ff4ee266d93aff5f338742"
         },
         {
           "file": "packages/shared/src/channels.ts",
-          "sha256": "419f38ec38ca107cf6d3e42e482bc959bdf9d9891b0df26a72017b5777c72113"
+          "sha256": "8e6b35b3adba6557cc5efd1c319ff694c4c79a6988f5725625718683031576be"
         },
         {
           "file": "packages/shared/src/validation.ts",
@@ -32867,7 +32867,7 @@
         },
         {
           "file": "packages/shared/src/index.ts",
-          "sha256": "463b69f2cdc412f399d30ec8c10e5d5c575b1ee10bc1fd634f0c93dd5efa8f3a"
+          "sha256": "052ed3c0e9c65fa82a7aca1e56259390a82e1fccfc02676772afa1e9b257985c"
         },
         {
           "file": "packages/shared/src/test-ids.ts",
@@ -33955,11 +33955,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "131de54c3cd7d68be9f9c1d5963d7a126b8d5ef6a2630944310fd4e5faa07927"
+          "sha256": "364b7ddafabb5b52295a2b0e1f22ac866b8f98a0da543f80eb5fa657a5ae7120"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "4a13036a53800b9c500c070cd6e947528ee05d6406c9755255ad2ae68625b429"
+          "sha256": "3d8bd56bbbf5ece300a63457e7501fa28135c5cd7b709f8b2728397f06f22dcd"
         },
         {
           "file": "packages/ui/src/v4/WorkflowNotificationToolRow.tsx",
@@ -34787,11 +34787,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "131de54c3cd7d68be9f9c1d5963d7a126b8d5ef6a2630944310fd4e5faa07927"
+          "sha256": "364b7ddafabb5b52295a2b0e1f22ac866b8f98a0da543f80eb5fa657a5ae7120"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "4a13036a53800b9c500c070cd6e947528ee05d6406c9755255ad2ae68625b429"
+          "sha256": "3d8bd56bbbf5ece300a63457e7501fa28135c5cd7b709f8b2728397f06f22dcd"
         }
       ]
     },
