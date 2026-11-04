@@ -48,6 +48,7 @@ export class ChannelServer<TContext = string> implements IChannelServer<TContext
       case ResponseType.PromiseSuccess:
       case ResponseType.PromiseError:
       case ResponseType.EventFire:
+      case ResponseType.EventError:
       case ResponseType.PromiseErrorObj:
         this.send([response.type, response.id], response.data);
         return;
@@ -66,9 +67,10 @@ export class ChannelServer<TContext = string> implements IChannelServer<TContext
   }
 
   private onRawMessage(message: VSBuffer): void {
+    // 修复原因：同一 protocol 上还有反向 ChannelClient，对方发来的响应也会到这里；原来先解码消息体
+    // 再判断类型，每条响应都被完整解码两次。修法：先读消息头，只解码属于本端的请求体。
     const reader = new BufferReader(message);
     const header = deserialize(reader);
-    const body = deserialize(reader);
     const type = header[0] as RequestType;
 
     switch (type) {
@@ -78,7 +80,7 @@ export class ChannelServer<TContext = string> implements IChannelServer<TContext
           id: header[1],
           channelName: header[2],
           name: header[3],
-          arg: body,
+          arg: deserialize(reader),
         });
         return;
       case RequestType.EventListen:
@@ -87,7 +89,7 @@ export class ChannelServer<TContext = string> implements IChannelServer<TContext
           id: header[1],
           channelName: header[2],
           name: header[3],
-          arg: body,
+          arg: deserialize(reader),
         });
         return;
       case RequestType.PromiseCancel:
@@ -203,18 +205,33 @@ export class ChannelServer<TContext = string> implements IChannelServer<TContext
       return;
     }
 
-    const disposable = channel.listen(
-      this.ctx,
-      request.name,
-      request.arg,
-    )((data) => {
+    try {
+      const disposable = channel.listen(
+        this.ctx,
+        request.name,
+        request.arg,
+      )((data) => {
+        this.sendResponse({
+          id: request.id,
+          data,
+          type: ResponseType.EventFire,
+        });
+      });
+      this.activeRequests.set(request.id, disposable);
+    } catch (error) {
+      // 根因：已结束的终端等资源会拒绝迟到订阅；该拒绝过去直接从 listen 抛出并冒泡到 onRawMessage 的
+      // 调用栈（协议 onMessage），在没有上层 catch 的场景会让整个 Host 进程退出。
+      // 修法：拒绝属于本次请求，回一帧独立的 EventError（旧客户端不会把它当业务事件），也不登记活动订阅。
       this.sendResponse({
         id: request.id,
-        data,
-        type: ResponseType.EventFire,
+        type: ResponseType.EventError,
+        data: {
+          name: error instanceof Error ? error.name : "Error",
+          message: error instanceof Error ? error.message : String(error),
+          ...(error instanceof Error && error.stack ? { stack: error.stack.split("\n") } : {}),
+        },
       });
-    });
-    this.activeRequests.set(request.id, disposable);
+    }
   }
 
   private disposeActiveRequest(id: number): void {

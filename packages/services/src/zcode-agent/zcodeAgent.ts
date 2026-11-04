@@ -77,6 +77,8 @@ import type {
   ZCodeWorkspaceGenerateTextResult,
   ZCodeWorkspaceGenerateTextParams,
   ZCodeWorkspaceHookTrustGrantResult,
+  ZCodeWorkspaceMcpTrustResult,
+  WorkspaceMcpTrustDecision,
   ZCodeAutomationBotDeliveryTarget,
 } from "@zcode/shared";
 import type {
@@ -694,6 +696,8 @@ export interface IZCodeAgentService {
   grantWorkspaceHookTrust(
     params: ZCodeAgentGrantWorkspaceHookTrustParams,
   ): Promise<ZCodeWorkspaceHookTrustGrantResult>;
+  /** 工作区 MCP 声明的信任决定；Agent 侧校验摘要，不一致时拒绝（不静默接受旧摘要）。 */
+  setWorkspaceMcpTrust(params: WorkspaceMcpTrustDecision): Promise<ZCodeWorkspaceMcpTrustResult>;
   listMcpServerStatuses(params: ZCodeAgentListMcpServerStatusesParams): Promise<ZCodeMcpListResult>;
   // Modified by ZCode: 增量自上游 aac47556——插件 UI（plugin-ui）服务族的 agent 通道。
   /** 插件 UI：读取插件 MCP 的 ui:// 资源；走 session 所在 workspace agent 进程。 */

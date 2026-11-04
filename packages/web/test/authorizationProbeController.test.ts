@@ -179,3 +179,47 @@ test("真实 socket：上游从「连接被拒」变成「401 拒绝陈旧 cooki
 
   // 清理在 t.after 里统一做（见上）。
 });
+test("第二轮断线必须重新探测：去重键随连接世代归零", async () => {
+  // 回归形态：去重键是「已探测过的最大 attempt」，而 connectionRecovery 在连接成功时把
+  // failureCount 归零（下一轮断线仍从 attempt=1 数起）。键不归零 ⇒ 第二轮断线的前 N 次重连
+  // 全部被上一轮的 N 挡住，服务已用 401 拒绝这个浏览器时页面仍停在「正在重连」，
+  // 用户拿不到「用带令牌链接重开」的文案。
+  const sequences: Array<"authorized" | "unauthorized" | "unreachable"> = [
+    "unreachable",
+    "unreachable",
+    "unauthorized",
+  ];
+  let probeCalls = 0;
+  let unauthorizedCalls = 0;
+  const controller = createAuthorizationProbeController({
+    probe: async () => {
+      probeCalls += 1;
+      return sequences.shift() ?? "authorized";
+    },
+    onUnauthorized: () => {
+      unauthorizedCalls += 1;
+    },
+  });
+  const settle = async () => {
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+  };
+
+  // 第一轮断线：服务在重启，两次 attempt 都探不到（仍不是授权结论）。
+  controller.notifyConnectionState("reconnecting", 1);
+  await settle();
+  controller.notifyConnectionState("reconnecting", 2);
+  await settle();
+  assert.equal(probeCalls, 2, "第一轮两次 attempt 各探一次");
+  assert.equal(unauthorizedCalls, 0);
+
+  // 连接恢复：connectionRecovery 把 failureCount 归零，下一轮从 attempt=1 重新计数。
+  controller.notifyConnectionState("connected", 0);
+  await settle();
+
+  // 第二轮断线：第一次重连就探到 401，必须切到未授权态。
+  controller.notifyConnectionState("reconnecting", 1);
+  await settle();
+  assert.equal(probeCalls, 3, "新一轮断线的 attempt=1 必须真的探测（旧实现被上一轮的 2 永久挡住）");
+  assert.equal(unauthorizedCalls, 1, "第二轮必须能切到未授权态，否则用户没有可照做的文案");
+});

@@ -372,7 +372,13 @@ export class TaskRealtimeBus {
     if (!existing || existing.ownerHostId !== hostId || existing.runId !== target.runId) {
       return;
     }
-    this.flushBatch(this.getBatchKey(target.workspaceKey, target.taskId, target.runId), true);
+    // 根因：租约释放是「这次 run 结束」的唯一确定信号，但过去只 flush、不回收表项；
+    // 非终态结束（异常、取消、owner 先退出、最后一个 op 是 permission_request 等）时
+    // flushBatch 的 terminal 检查恒为 false，streamBatches 表项连同最多 512KB replay 永久驻留，
+    // 主进程内存随跑过的任务数单调增长。修法：释放路径一律带 retire 回收。
+    this.flushBatch(this.getBatchKey(target.workspaceKey, target.taskId, target.runId), true, {
+      retire: true,
+    });
     this.leases.delete(key);
     this.logger.info("[task-realtime] task run lease released", {
       hostId,
@@ -388,7 +394,10 @@ export class TaskRealtimeBus {
       if (lease.ownerHostId !== hostId) {
         continue;
       }
-      this.flushBatch(this.getBatchKey(lease.workspaceKey, lease.taskId, lease.runId), true);
+      // 同 releaseLease：owner host 退出（崩溃、窗口关闭）同样必须回收 mirror 表项。
+      this.flushBatch(this.getBatchKey(lease.workspaceKey, lease.taskId, lease.runId), true, {
+        retire: true,
+      });
       this.leases.delete(key);
       released.push(lease);
     }
@@ -410,8 +419,10 @@ export class TaskRealtimeBus {
     batch.pendingOps.push(op);
 
     if (this.isTerminalOrImmediateOp(op)) {
-      this.flushBatch(batchKey, true);
-      if (op.kind === "stream_event" && this.isTerminalEventType(op.event.type)) {
+      const terminalStreamEvent =
+        op.kind === "stream_event" && this.isTerminalEventType(op.event.type);
+      this.flushBatch(batchKey, true, { retire: terminalStreamEvent });
+      if (terminalStreamEvent) {
         this.leases.delete(this.getLeaseKey(target.workspaceKey, target.taskId));
       }
       return;
@@ -471,9 +482,36 @@ export class TaskRealtimeBus {
     this.flushBatch(this.getBatchKey(event.workspaceKey, event.taskId, event.traceId), true);
   }
 
-  private flushBatch(batchKey: string, force: boolean): void {
+  /**
+   * 回收一个 run 的 mirror 表项：清定时器与 replay 缓冲后再删除，避免 512KB replay 白白驻留。
+   * 只有这里删除 streamBatches，保证「删除时一定释放缓冲」。
+   */
+  private deleteStreamBatch(batchKey: string): void {
     const batch = this.streamBatches.get(batchKey);
-    if (!batch || batch.pendingOps.length === 0) {
+    if (!batch) {
+      return;
+    }
+    if (batch.timer) {
+      clearTimeout(batch.timer);
+      batch.timer = null;
+    }
+    batch.pendingOps = [];
+    batch.replay = [];
+    batch.replayInitializedHostIds.clear();
+    this.streamBatches.delete(batchKey);
+  }
+
+  /**
+   * `retire`：这次 flush 之后该 run 不会再有事件（终态、租约释放、owner host 退出），
+   * 无论最后一批 ops 是否构成 terminal 都要回收表项。
+   */
+  private flushBatch(batchKey: string, force: boolean, options?: { retire?: boolean }): void {
+    const batch = this.streamBatches.get(batchKey);
+    if (!batch) {
+      return;
+    }
+    if (batch.pendingOps.length === 0) {
+      if (options?.retire) this.deleteStreamBatch(batchKey);
       return;
     }
     if (!force && batch.pendingOps.length === 0) {
@@ -514,20 +552,21 @@ export class TaskRealtimeBus {
       // 单次 mirror batch 过大时，RPC/base64/JSON 会在链路上多次复制，导致 host 堆内存打满。
       // owner 仍依赖 mirror seq 流渲染主动发送端，所以这里对 owner 做小批次分片；observer
       // 不消费正文流，只收到 snapshot invalidation/remoteGenerating 状态。
-      this.deliverOversizedStreamBatchFallback(batch, event);
+      this.deliverOversizedStreamBatchFallback(batch, event, options?.retire === true);
       return;
     }
     this.rememberReplayBatch(batch, event);
     this.deliverStreamBatch(batch, event);
 
-    if (event.terminal) {
-      this.streamBatches.delete(batchKey);
+    if (event.terminal || options?.retire) {
+      this.deleteStreamBatch(batchKey);
     }
   }
 
   private deliverOversizedStreamBatchFallback(
     batch: PendingStreamBatch,
     event: TaskStreamMirrorBatchEvent,
+    retire = false,
   ): void {
     // 不能丢弃 owner 的 mirror seq。ZCode Agent 有 realtime port 时 owner direct stream 会被关闭，
     // 如果 oversized batch 只发 gap，service 会因为后续 seq 缺口禁用 mirror，桌面端就停到终态快照。
@@ -544,8 +583,8 @@ export class TaskRealtimeBus {
       undefined,
       { runId: event.runId, opSeq: event.toSeq },
     );
-    if (event.terminal) {
-      this.streamBatches.delete(batch.batchKey);
+    if (event.terminal || retire) {
+      this.deleteStreamBatch(batch.batchKey);
     }
   }
 

@@ -21,17 +21,7 @@ import type {
   SettingsSyncSourceRootSummary,
   SettingsSyncTaskImportResult,
 } from "@zcode/shared";
-import {
-  copyFile,
-  cp,
-  link,
-  lstat,
-  mkdir,
-  readFile,
-  readdir,
-  symlink,
-  writeFile,
-} from "node:fs/promises";
+import { copyFile, cp, link, lstat, mkdir, readFile, readdir, symlink } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
@@ -39,6 +29,7 @@ import { parse as parseToml } from "smol-toml";
 import { CommandFileParser } from "../commands/commandFileParser.js";
 import type { ISettingService } from "../setting/setting.js";
 import { createServiceLogger } from "../logger/serviceLogger.js";
+import { updateJsonObjectFile } from "#src/fs/atomicFileUtils.js";
 import { walkSkillMarkdownPaths } from "../skills/skillDiscoveryWalk.js";
 import type { ISettingsSyncService } from "./settingsSync.js";
 
@@ -1104,24 +1095,28 @@ async function collectExistingMcpServerNameKeys(
   return nameKeys;
 }
 
+/**
+ * 迁移导入写 config.json（MCP 的 mcp.servers、插件的 plugins.dirs）。
+ * 根因：旧实现写入前用 readJsonFileOrEmpty 读取，读失败或 JSON 损坏时返回空对象，再用 writeFile
+ * 整文件写回，config.json 里的命令、技能、钩子等其他配置会被冲掉；writeFile 也不是原子写。
+ * 修法：改用 updateJsonObjectFile——文件损坏时报错不写，写前重读，只改自己的字段，原子替换。
+ * 错误交给 importXxxForAgent 的 catch，按现有方式把该项标为 failed 显示在迁移结果里。
+ */
 async function addMcpServerToZcodeConfig(
   filePath: string,
   name: string,
   config: McpServerConfig,
 ): Promise<void> {
-  const parsed = await readJsonFileOrEmpty(filePath);
-  const currentMcp = isRecord(parsed.mcp) ? parsed.mcp : {};
-  const servers = readZcodeMcpServers(parsed);
-  await writeJsonFile(filePath, {
-    ...parsed,
+  await updateJsonObjectFile(filePath, (current) => ({
+    ...current,
     mcp: {
-      ...currentMcp,
+      ...(isRecord(current.mcp) ? current.mcp : {}),
       servers: {
-        ...servers,
+        ...readZcodeMcpServers(current),
         [name]: config,
       },
     },
-  });
+  }));
 }
 
 function readStringArray(value: unknown): string[] {
@@ -1130,25 +1125,21 @@ function readStringArray(value: unknown): string[] {
     : [];
 }
 
-async function writeJsonFile(filePath: string, value: Record<string, unknown>): Promise<void> {
-  await mkdir(dirname(filePath), { recursive: true });
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf-8");
-}
-
 async function addPluginDirToConfig(filePath: string, pluginPath: string): Promise<void> {
-  const parsed = await readJsonFileOrEmpty(filePath);
-  const plugins = isRecord(parsed.plugins) ? parsed.plugins : {};
-  const dirs = readStringArray(plugins.dirs);
   const resolvedPluginPath = resolve(pluginPath);
-  if (dirs.map((item) => resolve(item)).includes(resolvedPluginPath)) {
-    return;
-  }
-  await writeJsonFile(filePath, {
-    ...parsed,
-    plugins: {
-      ...plugins,
-      dirs: [...dirs, resolvedPluginPath],
-    },
+  await updateJsonObjectFile(filePath, (current) => {
+    const plugins = isRecord(current.plugins) ? current.plugins : {};
+    const dirs = readStringArray(plugins.dirs);
+    if (dirs.map((item) => resolve(item)).includes(resolvedPluginPath)) {
+      return current;
+    }
+    return {
+      ...current,
+      plugins: {
+        ...plugins,
+        dirs: [...dirs, resolvedPluginPath],
+      },
+    };
   });
 }
 

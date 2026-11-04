@@ -197,3 +197,53 @@ test("审计写入失败不影响调用方，且不静默（fail-loud）", () =>
     console.error = originalError;
   }
 });
+test("合并键不可注入：含分隔符的字段不会伪造汇总行，也不会把两组字段并成一个桶", () => {
+  const { audit, lines, parsed } = captureAudit({
+    // 固定时钟：两次 record 落在同一窗口内，才会真正走进「同键合并」分支。
+    now: () => Date.parse("2026-09-24T12:00:00.000Z"),
+  });
+
+  // 旧实现把五个字段 join("|") 拼键，下面两条会拼出同一个键（kind|a|b||||）：
+  // 一条是 peer="a|b"，另一条是 peer="a" + reason="b|"。
+  // 后果有两层：不同来源被合并成一条；flush 时 split("|") 还原出错位的 peer/reason。
+  audit.record({ kind: "audit:auth-failure", peer: "a|b" });
+  audit.record({ kind: "audit:auth-failure", peer: "a", reason: "b|" });
+  assert.equal(audit.pendingKeyCount(), 2, "字段不同就必须是两个桶，不能被分隔符拼成同一个键");
+
+  audit.flush();
+  const summaries = parsed().filter((payload) => payload.coalesced !== undefined);
+  assert.equal(summaries.length, 2, "两个桶各自写出汇总");
+  assert.deepEqual(
+    summaries.map((payload) => payload.peer).sort(),
+    ["a", "a|b"],
+    "汇总行的 peer 必须是原始值，不能被 split 出别的字段",
+  );
+  const withReason = summaries.find((payload) => payload.peer === "a");
+  assert.equal(withReason?.reason, "b|", "reason 也必须是原始值");
+  assert.ok(lines.length >= 2);
+});
+
+test("合并桶有界：超上限按窗口淘汰并补写汇总，计数不丢", () => {
+  let clock = Date.parse("2026-09-24T12:00:00.000Z");
+  const { audit, parsed } = captureAudit({
+    now: () => clock,
+    coalesceMaxBuckets: 4,
+  });
+
+  for (let index = 0; index < 10; index += 1) {
+    audit.record({ kind: "audit:auth-failure", peer: "198.51.100." + index });
+    assert.ok(
+      audit.pendingKeyCount() <= 4,
+      "驻留桶数不得超过上限（被扫描时不能按对端数无界增长），实际 " + audit.pendingKeyCount(),
+    );
+  }
+
+  // 淘汰路径必须补汇总（否则「计数不丢」的承诺在压力下失效）。
+  const evictedSummary = parsed().filter((payload) => payload.coalesced !== undefined);
+  assert.ok(evictedSummary.length > 0, "被淘汰的桶必须先写出汇总");
+
+  // 窗口过期后：再记录一次就应把过期桶全部清掉（只剩新桶）。
+  clock += 10 * 60_000;
+  audit.record({ kind: "audit:ws-open", peer: "203.0.113.9" });
+  assert.equal(audit.pendingKeyCount(), 1, "过期窗口的桶必须被回收，只留当前新桶");
+});

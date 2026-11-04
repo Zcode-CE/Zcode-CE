@@ -48,6 +48,12 @@ export function createAuthorizationProbeController({
         return;
       }
       if (phase !== "reconnecting" && phase !== "failed") {
+        // 根因：去重键是「已探测过的最大 attempt」，而 connectionRecovery 在连接成功时把
+        // failureCount 归零（下一轮断线又从 attempt=1 数起）。键不跟着归零，第二轮及以后的
+        // 前 N 次重连（N = 上一轮的失败次数）会全部被跳过：服务明明已用 401 拒绝这个浏览器，
+        // 页面却一直显示「正在重连」，用户拿不到「用带令牌链接重开」的文案。
+        // 修法：进入非「连不上」相位即视为新的连接世代，把去重键一起归零。
+        lastProbedAttempt = null;
         return;
       }
       if (lastProbedAttempt !== null && attempt <= lastProbedAttempt) {

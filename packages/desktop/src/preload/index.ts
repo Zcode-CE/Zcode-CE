@@ -388,6 +388,17 @@ contextBridge.exposeInMainWorld("zcode", {
     return () => ipcRenderer.removeListener(PlatformChannels.OpenBrowserUrl, handler);
   },
   /** 注册 agent 首次 browser 命令建好受控 view 的回调（自动开 browser-use tab），返回 disposer */
+  /** guest 内发生下载（will-download）时通知 renderer，用于区分下载与导航失败 */
+  onBrowserViewDownloadStarted: (
+    callback: (payload: { webContentsId: number; urls: string[] }) => void,
+  ): (() => void) => {
+    const handler = (_event: unknown, payload: { webContentsId: number; urls: string[] }) =>
+      callback(payload);
+    ipcRenderer.on(PlatformChannels.BrowserViewDownloadStarted, handler);
+    return () => {
+      ipcRenderer.removeListener(PlatformChannels.BrowserViewDownloadStarted, handler);
+    };
+  },
   onBrowserViewReady: (
     callback: (payload: {
       workspaceKey: string;

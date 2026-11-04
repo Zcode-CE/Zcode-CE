@@ -1,15 +1,5 @@
 /* eslint-disable max-lines -- skill 发现 + 校验 + 状态 + 通用目录管理在同一服务里聚合，分层后跳转成本更高 */
-import {
-  access,
-  appendFile,
-  cp,
-  mkdir,
-  realpath,
-  rm,
-  readFile,
-  readdir,
-  writeFile,
-} from "node:fs/promises";
+import { access, appendFile, cp, mkdir, realpath, rm, readFile, readdir } from "node:fs/promises";
 import { existsSync, type Dirent } from "node:fs";
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
@@ -29,6 +19,7 @@ import { DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS } from "@zcode/shared";
 import type { ISkillsService } from "./skills.js";
 import { SKILL_FILE_NAME, walkSkillMarkdownPaths } from "./skillDiscoveryWalk.js";
 import { readInstalledPluginRoots } from "#src/plugins/installedPluginRoots.js";
+import { updateJsonObjectFile } from "#src/fs/atomicFileUtils.js";
 
 interface DiscoverResult {
   skills: SkillSummary[];
@@ -529,6 +520,7 @@ function normalizeSkillConfigPath(path: string): string {
   return path.replaceAll("\\", "/");
 }
 
+// 只用于列表展示：config.json 损坏时按空配置展示技能，不影响浏览。写入走 writeSkillEnabledMap。
 async function readCliConfigFile(): Promise<Record<string, unknown>> {
   try {
     const raw = await readFile(SKILL_CLI_CONFIG_FILE, "utf-8");
@@ -558,29 +550,35 @@ async function readSkillEnabledMap(): Promise<Record<string, boolean>> {
   return readSkillEnabledMapFromConfig(await readCliConfigFile());
 }
 
+/**
+ * 根因：旧实现写入前用 readCliConfigFile 读取，读失败或 JSON 损坏时返回空对象，再用 writeFile
+ * 整文件写回，config.json 里的 MCP 服务器、plugin.dirs 等其他配置会被冲掉；writeFile 也不是原子写。
+ * 修法：改用 updateJsonObjectFile——文件损坏时报错不写，写前重读，只改 skills 字段，原子替换。
+ */
 async function writeSkillEnabledMap(next: Record<string, boolean>): Promise<void> {
-  const config = await readCliConfigFile();
-  const skillsConfig = isObjectRecord(config.skills) ? config.skills : {};
-  for (const [path, enable] of Object.entries(next).sort(([left], [right]) =>
-    left.localeCompare(right),
-  )) {
-    // 技能开关之前分散在 workspace/provider/context 状态文件，导致同一技能在不同入口表现不一致。
-    // 现在只按 SKILL.md 路径写入 CLI config 的 skills 字段，避免额外迁移或旧文件副作用。
-    const normalizedPath = normalizeSkillConfigPath(path);
-    if (enable) {
-      // 开启态是默认值，不应落盘成 `{ enable: true }`；删除 override 才能跟随插件/默认配置变化。
-      delete skillsConfig[normalizedPath];
-    } else {
-      skillsConfig[normalizedPath] = { enable };
+  await updateJsonObjectFile(SKILL_CLI_CONFIG_FILE, (current) => {
+    const config = { ...current };
+    const skillsConfig = isObjectRecord(config.skills) ? { ...config.skills } : {};
+    for (const [path, enable] of Object.entries(next).sort(([left], [right]) =>
+      left.localeCompare(right),
+    )) {
+      // 技能开关之前分散在 workspace/provider/context 状态文件，导致同一技能在不同入口表现不一致。
+      // 现在只按 SKILL.md 路径写入 CLI config 的 skills 字段，避免额外迁移或旧文件副作用。
+      const normalizedPath = normalizeSkillConfigPath(path);
+      if (enable) {
+        // 开启态是默认值，不应落盘成 `{ enable: true }`；删除 override 才能跟随插件/默认配置变化。
+        delete skillsConfig[normalizedPath];
+      } else {
+        skillsConfig[normalizedPath] = { enable };
+      }
     }
-  }
-  if (Object.keys(skillsConfig).length > 0) {
-    config.skills = skillsConfig;
-  } else {
-    delete config.skills;
-  }
-  await mkdir(SKILL_CLI_SETTINGS_DIR, { recursive: true });
-  await writeFile(SKILL_CLI_CONFIG_FILE, `${JSON.stringify(config, null, 2)}\n`, "utf-8");
+    if (Object.keys(skillsConfig).length > 0) {
+      config.skills = skillsConfig;
+    } else {
+      delete config.skills;
+    }
+    return config;
+  });
 }
 
 interface SkillRootDescriptor {

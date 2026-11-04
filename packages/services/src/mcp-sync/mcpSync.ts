@@ -8,9 +8,11 @@ import type {
   McpSyncRemoteStatusResult,
   RemoteSyncWriteAccessResult,
   SaveCliMcpToUserDirectoryRequest,
+  WorkspaceMcpTrustDecision,
   ZCodeAgentMcpServer,
   ZCodeMcpListMode,
   ZCodeMcpListResult,
+  ZCodeWorkspaceMcpTrustResult,
 } from "@zcode/shared";
 import { ServiceChannels } from "@zcode/shared";
 import { createServiceDescriptor } from "../descriptors.js";
@@ -30,6 +32,11 @@ export interface IMcpSyncService {
     mcpServers?: ZCodeAgentMcpServer[];
     mode?: ZCodeMcpListMode;
   }): Promise<ZCodeMcpListResult>;
+  /**
+   * 对一个工作区 MCP 声明做信任决定（授权/撤销）。真实写入与校验在 agent 进程：
+   * 摘要与当前声明不一致时返回 `workspace_mcp_declaration_changed`，不能拿旧摘要放行新声明。
+   */
+  setWorkspaceMcpTrust?(params: WorkspaceMcpTrustDecision): Promise<ZCodeWorkspaceMcpTrustResult>;
   saveMcpToUserDirectory(payload: SaveCliMcpToUserDirectoryRequest): Promise<void>;
   listLocalUserMcpCandidates(): Promise<McpSyncCandidateListResult>;
   listRemoteUserMcpStatuses(params: { names: string[] }): Promise<McpSyncRemoteStatusResult>;

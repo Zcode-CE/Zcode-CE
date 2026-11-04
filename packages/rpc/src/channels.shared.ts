@@ -28,6 +28,7 @@ export const enum ResponseType {
   PromiseError = 202,
   PromiseErrorObj = 203,
   EventFire = 204,
+  EventError = 205,
 }
 
 export type IRawResponse =
@@ -52,7 +53,12 @@ export type IRawResponse =
       };
     }
   | { type: ResponseType.PromiseErrorObj; id: number; data: any }
-  | { type: ResponseType.EventFire; id: number; data: any };
+  | { type: ResponseType.EventFire; id: number; data: any }
+  | {
+      type: ResponseType.EventError;
+      id: number;
+      data: { name: string; message: string; stack?: string[] };
+    };
 
 export type IHandler = (response: IRawResponse) => void;
 

@@ -114,6 +114,7 @@ import {
   zcodeWorkspaceCancelGenerateTextResultSchema,
   zcodeWorkspaceGenerateTextResultSchema,
   zcodeWorkspaceHookTrustGrantResultSchema,
+  zcodeWorkspaceMcpTrustResultSchema,
   zcodeWorkspaceUpdateInteractionPreferencesResultSchema,
   zcodeWorkspaceUpdateModelIoPreferencesResultSchema,
   zcodeProviderUpdateAccountConfigResultSchema,
@@ -157,6 +158,7 @@ import type {
   ZCodeWorkspacePresentation,
   ZCodeWorkspaceRef,
   ZCodeSessionRuntimePreferencesResult,
+  WorkspaceMcpTrustDecision,
 } from "@zcode/shared";
 import type {
   IZCodeAgentService,
@@ -4153,6 +4155,22 @@ export function createZCodeAgentService(
           hookDeclarationDigest: params.hookDeclarationDigest,
         },
         zcodeWorkspaceHookTrustGrantResultSchema,
+      );
+    },
+
+    async setWorkspaceMcpTrust(params: WorkspaceMcpTrustDecision) {
+      // 与 grantWorkspaceHookTrust 同一条控制面：Settings 里的信任操作没有 task/session，
+      // 只能起 read-only Agent；真实校验与落盘在 agent 进程（声明摘要不一致会被拒绝）。
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        zcodeProtocolMethods.workspaceMcpTrust,
+        {
+          workspace: buildWorkspaceRef(params),
+          serverName: params.serverName,
+          declarationDigest: params.declarationDigest,
+          trusted: params.trusted,
+        },
+        zcodeWorkspaceMcpTrustResultSchema,
       );
     },
 

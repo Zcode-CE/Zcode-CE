@@ -1,7 +1,7 @@
-import { mkdir, writeFile, rename, rm, readdir, stat } from "node:fs/promises";
+import { mkdir, writeFile, rename, rm, readdir, readFile, stat } from "node:fs/promises";
 import { dirname, basename, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { acquireFileLock } from "@zcode/shared/node";
+import { acquireFileLock, atomicWritePrivateTextFile } from "@zcode/shared/node";
 import { isInjectedFsFaultError, maybeThrowInjectedFsFault } from "./fsFaultInjection.js";
 
 const DEFAULT_RENAME_RETRY_DELAYS_MS = [50, 100, 200, 400, 800, 1600, 3200] as const;
@@ -163,4 +163,74 @@ export async function atomicWriteJson(
   options?: AtomicWriteTextOptions,
 ): Promise<void> {
   await atomicWriteText(filePath, JSON.stringify(data, null, 2), options);
+}
+
+/**
+ * 配置文件存在但读不出来、不是合法 JSON 或根节点不是对象时抛出。
+ * 调用方必须中止写入，把错误交给界面现有的失败反馈。
+ */
+export class JsonObjectFileUnreadableError extends Error {
+  constructor(
+    readonly filePath: string,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+    this.name = "JsonObjectFileUnreadableError";
+  }
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * 写入前读取 JSON 对象文件：不存在视为空对象；读失败、JSON 无效或根节点不是对象时抛错。
+ * 只读展示路径可以把损坏文件当作空配置，写入路径不行，否则会把整份文件写回成只剩自己的字段。
+ */
+export async function readJsonObjectFileForUpdate(
+  filePath: string,
+): Promise<Record<string, unknown>> {
+  let raw: string;
+  try {
+    raw = await readFile(filePath, "utf-8");
+  } catch (error) {
+    if (getErrorCode(error) === "ENOENT") return {};
+    throw new JsonObjectFileUnreadableError(filePath, `Failed to read config file ${filePath}`, {
+      cause: error,
+    });
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch (error) {
+    throw new JsonObjectFileUnreadableError(filePath, `Config file ${filePath} is not valid JSON`, {
+      cause: error,
+    });
+  }
+  if (!isJsonObject(parsed)) {
+    throw new JsonObjectFileUnreadableError(
+      filePath,
+      `Config file ${filePath} must contain a JSON object`,
+    );
+  }
+  return parsed;
+}
+
+/**
+ * `~/.zcode/cli/config.json` 有多个写入方（命令、钩子、技能、MCP、插件、同步导入，以及 CLI 自身），彼此不加锁。
+ * 每个写入方都按「写前重读 → 只改自己的字段 → 原子替换」执行：
+ * - update 拿到的是读取那一刻磁盘上的内容，只能改自己负责的字段；
+ * - 临时文件 + rename 替换，写入中途失败不会留下半截文件；
+ * - 不做 rename 重试，失败直接抛给调用方。
+ * 已知限制：读取与替换之间没有任何锁。两个写入方同时执行时，后替换的一方会覆盖前一方刚写入的字段
+ * （进程内并发同样如此）。
+ */
+export async function updateJsonObjectFile(
+  filePath: string,
+  update: (current: Record<string, unknown>) => Record<string, unknown>,
+): Promise<void> {
+  const next = update(await readJsonObjectFileForUpdate(filePath));
+  await atomicWritePrivateTextFile(filePath, `${JSON.stringify(next, null, 2)}\n`, []);
 }

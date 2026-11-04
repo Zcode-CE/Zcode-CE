@@ -56,6 +56,12 @@ export type {
   FsFaultRuleConfig,
   InjectedFsFaultError,
 } from "./fs/fsFaultInjection.js";
+// config.json 多写入方共用的「严格读取 + 写前重读 + 原子替换（0600）」（主进程 MCP 设置页也用）。
+export {
+  JsonObjectFileUnreadableError,
+  readJsonObjectFileForUpdate,
+  updateJsonObjectFile,
+} from "./fs/atomicFileUtils.js";
 export {
   setDataBaseDir,
   getDataBaseDir,
@@ -1737,6 +1743,8 @@ export function createLocalServices(options: {
   const mcpSyncService = createMcpSyncService({
     // mcp/list 的 host 消费点收拢到 mcpSync 服务；真实状态检查仍在 agent 进程。
     listMcpServerStatuses: (params) => zcodeAgentService.listMcpServerStatuses(params),
+    // 工作区 MCP 信任决定同样只能在 agent 进程落盘：Declaration 摘要由它校验。
+    setWorkspaceMcpTrust: (params) => zcodeAgentService.setWorkspaceMcpTrust(params),
   });
   const pluginSyncService = createPluginSyncService();
   // Modified by ZCode: 增量自上游 aac47556——plugin-ui 桥服务族装配。

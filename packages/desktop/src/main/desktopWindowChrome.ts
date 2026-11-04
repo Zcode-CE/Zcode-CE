@@ -3,6 +3,8 @@ import { app, BrowserWindow, Menu, nativeImage, nativeTheme, screen, shell } fro
 import { join } from "node:path";
 import type {
   ContextMenuParams,
+  DownloadItem,
+  Event,
   Input,
   MenuItemConstructorOptions,
   WebContents,
@@ -265,6 +267,15 @@ function attachWindowsWindowRepaint(targetWindow: BrowserWindow) {
     // renderer 与 host 仍存活但窗口只剩宿主底色；复用 resize 的有界双帧重绘，不 reload renderer 或会话。
     scheduleRepaint();
   });
+  targetWindow.on("focus", () => {
+    // 根因：窗口被其他程序完全覆盖后，Chromium 的 Windows 遮挡检测（native window occlusion）
+    // 把它标记为 occluded 并停止提交帧、暂停计时器；部分 Intel 核显驱动组合下切回前台
+    // （Alt-Tab / 点通知 / 点击窗口）时遮挡状态不重算，画面停留在最后一帧，像一张截图。
+    // 该路径只触发 focus，不触发 show/resized，托盘恢复与手动拉伸的补丁都盖不到。
+    // 用户手动拖动窗口或点标题栏能恢复，说明强制重绘一帧即可打破残留状态；
+    // 这里补同样的有界双帧重绘，等价于把用户的手动恢复动作自动化。
+    scheduleRepaint();
+  });
 }
 
 function isAllowedEmbeddedBrowserUrl(url: string): boolean {
@@ -362,6 +373,21 @@ function attachEmbeddedBrowserWindowOpenHandler(options: {
     | undefined;
   logger: { warn: (...args: unknown[]) => void };
 }) {
+  // 根因：guest 里点下载链接时，loadURL/reload 会以 ERR_FAILED 拒绝，renderer 分不清
+  // 「下载成功」与「网络失败」，于是把同一附件反复重新下载。用真实的 will-download 事件
+  // 把下载意图报给 renderer，让它按下载处理而不是重试导航。
+  const downloadSession = options.guestWebContents.session;
+  const onDownload = (_event: Event, item: DownloadItem, contents: WebContents) => {
+    if (contents !== options.guestWebContents || options.hostWebContents.isDestroyed()) return;
+    options.hostWebContents.send(PlatformChannels.BrowserViewDownloadStarted, {
+      webContentsId: contents.id,
+      urls: item.getURLChain(),
+    });
+  };
+  downloadSession.on("will-download", onDownload);
+  options.guestWebContents.once("destroyed", () => {
+    downloadSession.removeListener("will-download", onDownload);
+  });
   let externalBrowserModifierActive = false;
 
   options.guestWebContents.on("before-input-event", (_event, input) => {

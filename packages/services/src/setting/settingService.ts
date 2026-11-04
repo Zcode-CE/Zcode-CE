@@ -74,11 +74,13 @@ function buildCorruptSettingsBackupPath(settingsFile: string): string {
 async function quarantineCorruptSettingsFile(settingsFile: string, error: unknown): Promise<void> {
   const backupPath = buildCorruptSettingsBackupPath(settingsFile);
   try {
-    // 用户手动编辑或远端磁盘异常可能把 setting.json 写成非 JSON（例如 ":wq"）。
-    // 如果只返回默认值不隔离坏文件，每次启动都会重复解析失败；这里保留备份后让后续 update 重建合法配置。
+    // 用户手动编辑、远端磁盘异常或 schema 漂移都可能让 setting.json 不可用。
+    // 只返回默认值而不隔离坏文件时，后续 update 会以「默认值 + 本次补丁」整份覆盖它，
+    // 用户其他偏好（recentProjects、展示名、附加目录等）随之丢失且无法恢复；
+    // 这里先把原文件整份改名保留为 .corrupt-<时间戳>，后续写入只能落到新文件。
     maybeThrowInjectedFsFault({ operation: "rename", path: settingsFile });
     await rename(settingsFile, backupPath);
-    log("invalid settings json backed up:", backupPath, "error:", error);
+    log("invalid settings file backed up:", backupPath, "error:", error);
   } catch (renameError) {
     if (
       renameError &&
@@ -148,8 +150,13 @@ async function readSettingsWithMeta(): Promise<ReadSettingsResult> {
     }
     const result = appSettingsSchema.safeParse(migrateLegacyAccountConnectionSettings(rawValue));
     if (!result.success) {
+      // 根因：schema 校验失败时只降级返回默认值、不隔离坏文件，紧接着的 update 会以
+      // 「默认值 + 本次补丁」原子覆盖原文件——用户改一个主题就丢掉 recentProjects、展示名、
+      // 附加目录等全部偏好，且没有任何备份。修法：与 JSON 解析失败走同一条隔离备份路径，
+      // 原文件整份改名保留，写入只能落到新文件。
+      await quarantineCorruptSettingsFile(settingsFile, result.error);
       log(
-        "read failed schema validation, returning defaults. error:",
+        "read failed schema validation, invalid settings file backed up, returning defaults. error:",
         formatZodError(result.error),
       );
       return {

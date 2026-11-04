@@ -103,6 +103,8 @@ export interface AuditLogOptions {
   coalesceWindowMs?: number;
   /** 单个键在一个窗口内允许逐条写出的上限。默认 200。 */
   coalesceMaxEventsPerWindow?: number;
+  /** 同时驻留的合并桶上限（超过后先按窗口淘汰，仍满则淘汰最早的一条）。默认 4096。 */
+  coalesceMaxBuckets?: number;
 }
 
 export interface AuditLog {
@@ -113,17 +115,35 @@ export interface AuditLog {
   flush(): void;
 }
 
+/** 汇总行需要复用的原始字段；不从 key 反解析，避免含分隔符的字段伪造出别的审计字段。 */
+type CoalesceBucketFields = Pick<AuditEvent, "kind" | "peer" | "reason" | "path" | "role">;
+
 interface CoalesceBucket {
   count: number;
   windowStartedAt: number;
   lastAt: number;
+  fields: CoalesceBucketFields;
 }
 
 const DEFAULT_WINDOW_MS = 60_000;
 const DEFAULT_MAX_EVENTS_PER_WINDOW = 200;
+// 与 authThrottle 的 DEFAULT_MAX_TRACKED 同量级：合并桶由对端/路径驱动，必须设上限。
+const DEFAULT_MAX_COALESCE_BUCKETS = 4096;
 
+/**
+ * 合并键。根因：旧实现用 join("|") 拼键、flush 时再 split("|") 还原字段，
+ * 于是 peer/path/reason 里带 `|` 就能让汇总行写出错位的审计字段（伪造对端或角色）；
+ * 相同的分隔符还会让两组不同的字段拼出同一个键，把不同来源的事件错误合并。
+ * 修法：用 JSON 元组做键（天然无歧义），汇总字段另行随桶保存。
+ */
 function bucketKey(event: AuditEvent): string {
-  return [event.kind, event.peer, event.reason ?? "", event.path ?? "", event.role ?? ""].join("|");
+  return JSON.stringify([
+    event.kind,
+    event.peer,
+    event.reason ?? "",
+    event.path ?? "",
+    event.role ?? "",
+  ]);
 }
 
 /**
@@ -137,6 +157,7 @@ export function createAuditLog(options: AuditLogOptions = {}): AuditLog {
   const now = options.now ?? Date.now;
   const windowMs = options.coalesceWindowMs ?? DEFAULT_WINDOW_MS;
   const maxEventsPerWindow = options.coalesceMaxEventsPerWindow ?? DEFAULT_MAX_EVENTS_PER_WINDOW;
+  const maxBuckets = options.coalesceMaxBuckets ?? DEFAULT_MAX_COALESCE_BUCKETS;
   const buckets = new Map<string, CoalesceBucket>();
   const prefix = formatLogPrefix(
     AUDIT_LOG_SCOPE,
@@ -179,34 +200,75 @@ export function createAuditLog(options: AuditLogOptions = {}): AuditLog {
       ? "info"
       : "warn";
 
+  /** 写出一条窗口汇总（明细已按上限逐条写过，汇总只补总数与首末时间，不丢事件）。 */
+  const emitBucketSummary = (bucket: CoalesceBucket): void => {
+    const { kind, peer, reason, path, role } = bucket.fields;
+    emit(
+      {
+        ts: new Date(bucket.lastAt).toISOString(),
+        kind,
+        peer,
+        ...(role ? { role } : {}),
+        ...(reason ? { reason } : {}),
+        ...(path ? { path } : {}),
+        coalesced: {
+          count: bucket.count,
+          windowMs,
+          firstAt: new Date(bucket.windowStartedAt).toISOString(),
+          lastAt: new Date(bucket.lastAt).toISOString(),
+        },
+      },
+      levelOf(kind),
+    );
+  };
+
+  /**
+   * 淘汰窗口已经结束的桶：它们的汇总不可能再被续写，先补汇总再删除，计数不丢。
+   * 根因：旧实现只在进程退出 flush() 时清空，被扫描时每个新对端/路径都会留下一个永久桶，
+   * 内存随扫描维度单调增长。
+   */
+  const pruneExpiredBuckets = (at: number): void => {
+    for (const [key, bucket] of buckets) {
+      if (at - bucket.lastAt < windowMs) continue;
+      emitBucketSummary(bucket);
+      buckets.delete(key);
+    }
+  };
+
   return {
     record(event) {
       const at = now();
+      if (buckets.size >= maxBuckets) {
+        pruneExpiredBuckets(at);
+        if (buckets.size >= maxBuckets) {
+          // 仍然满：淘汰最早的一条。汇总先写出，所以只降级为「明细不全」，不丢总数。
+          const oldest = buckets.entries().next();
+          if (!oldest.done) {
+            emitBucketSummary(oldest.value[1]);
+            buckets.delete(oldest.value[0]);
+          }
+        }
+      }
       const key = bucketKey(event);
       const bucket = buckets.get(key);
       const payload: Record<string, unknown> = { ts: new Date(at).toISOString(), ...event };
       if (!bucket || at - bucket.windowStartedAt >= windowMs) {
         if (bucket) {
           // 上一个窗口还没写汇总就跨窗了：先把它的计数补上（不丢计数）。
-          emit(
-            {
-              ts: new Date(bucket.windowStartedAt).toISOString(),
-              kind: event.kind,
-              peer: event.peer,
-              ...(event.role ? { role: event.role } : {}),
-              ...(event.reason ? { reason: event.reason } : {}),
-              ...(event.path ? { path: event.path } : {}),
-              coalesced: {
-                count: bucket.count,
-                windowMs,
-                firstAt: new Date(bucket.windowStartedAt).toISOString(),
-                lastAt: new Date(bucket.lastAt).toISOString(),
-              },
-            },
-            levelOf(event.kind),
-          );
+          emitBucketSummary(bucket);
         }
-        buckets.set(key, { count: 1, windowStartedAt: at, lastAt: at });
+        buckets.set(key, {
+          count: 1,
+          windowStartedAt: at,
+          lastAt: at,
+          fields: {
+            kind: event.kind,
+            peer: event.peer,
+            reason: event.reason,
+            path: event.path,
+            role: event.role,
+          },
+        });
         emit(payload, levelOf(event.kind));
         return;
       }
@@ -222,25 +284,8 @@ export function createAuditLog(options: AuditLogOptions = {}): AuditLog {
       return buckets.size;
     },
     flush() {
-      for (const [key, bucket] of buckets) {
-        const [kind, peer, reason, path, role] = key.split("|");
-        emit(
-          {
-            ts: new Date(bucket.lastAt).toISOString(),
-            kind,
-            peer,
-            ...(role ? { role } : {}),
-            ...(reason ? { reason } : {}),
-            ...(path ? { path } : {}),
-            coalesced: {
-              count: bucket.count,
-              windowMs,
-              firstAt: new Date(bucket.windowStartedAt).toISOString(),
-              lastAt: new Date(bucket.lastAt).toISOString(),
-            },
-          },
-          levelOf(kind as AuditEventKind),
-        );
+      for (const bucket of buckets.values()) {
+        emitBucketSummary(bucket);
       }
       buckets.clear();
     },
