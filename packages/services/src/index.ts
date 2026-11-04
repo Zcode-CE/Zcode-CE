@@ -251,6 +251,16 @@ export type { OffPeakUpdateTaskParams } from "./session/offPeakTask.js";
 // 工作区注册表（M1.3）：可见工作区集合的唯一真相源，只读面。
 export { IWorkspaceRegistryService } from "./session/workspaceRegistry.js";
 export type { WorkspaceRegistryListParams } from "./session/workspaceRegistry.js";
+// 工作区删除与数据清理（F7 后半）：measure / purge / removeFromList。
+export { IWorkspaceMaintenanceService } from "./workspace-maintenance/contract.js";
+export type {
+  WorkspacePurgeCategoryId,
+  WorkspacePurgeCounts,
+  WorkspacePurgeMeasure,
+  WorkspacePurgeResult,
+  WorkspacePurgeSkippedId,
+  WorkspaceRef,
+} from "./workspace-maintenance/contract.js";
 
 // Skills service — ISkillsService is both a type (interface) and value (descriptor)
 export { ISkillsService } from "./skills/skills.js";

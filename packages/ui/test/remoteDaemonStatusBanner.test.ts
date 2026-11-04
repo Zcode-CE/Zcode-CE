@@ -35,13 +35,19 @@ test("重连中：显示次数与下次等待秒数", () => {
   assert.deepEqual(model.descriptionParams, { attempt: 2, maxAttempts: 4, seconds: 2 });
 });
 
-test("重连成功但未 re-attach：不得显示成功态，动作是重新加载工作区", () => {
+test("接回过程中（reattaching）：进行中，不得提前报已恢复", () => {
+  const model = describeRemoteDaemonBanner({ kind: "reattaching", reason: "port swap" });
+  assert.ok(model);
+  assert.equal(model.tone, "progress");
+  assert.notEqual(model.tone, "success", "端口换代完成前不能显示成功");
+});
+
+test("re-attach 全部完成才是成功态（recovered）", () => {
   const model = describeRemoteDaemonBanner({ kind: "recovered", identity });
   assert.ok(model);
-  assert.notEqual(model.tone, "success", "连接没回到 registry 时不得宣称成功");
-  assert.equal(model.tone, "warning");
+  assert.equal(model.tone, "success");
   assert.equal(model.titleKey, "remote.daemon.recovered.title");
-  assert.equal(model.action, "reopen-session");
+  assert.equal(model.action, "none");
 });
 
 test("daemon 重启：警告 + 可查看日志（不能显示成已恢复）", () => {

@@ -40,6 +40,7 @@ import type { IWindowControllerService } from "./window-controller/windowControl
 import type { IOnboardingRecordService } from "./onboarding/onboardingRecord.js";
 import type { IConversationShareService } from "./conversation-share/conversationShare.js";
 import type { IWorkspaceRegistryService } from "./session/workspaceRegistry.js";
+import type { IWorkspaceMaintenanceService } from "./workspace-maintenance/contract.js";
 import type { IBotsService } from "./bots/bots.js";
 
 /** UI 层消费的统一服务接口 */
@@ -81,6 +82,8 @@ export interface IServiceAccessor {
    * 而不是把空列表当成事实（见 docs/development/workspace-registry.md §3.2）。
    */
   readonly workspaceRegistryService?: IWorkspaceRegistryService;
+  /** 工作区删除与数据清理；旧 host 未注册该 channel 时缺席（UI 只提供「从列表移除」）。 */
+  readonly workspaceMaintenanceService?: IWorkspaceMaintenanceService;
   /**
    * Bot 管理面（ce.5）：远控面板「IM 机器人」标签页与 BotsDialog 的数据源。
    * 与上游一致为必填：createLocalServices 在所有 host（desktop / web server / stdio）

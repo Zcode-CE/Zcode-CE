@@ -574,8 +574,14 @@ test("设置页分区读注册表、展示名按键补丁写入、排序落在�
   // 展示名只提交被改的那个键，并归一化输入。
   assert.match(section, /buildWorkspaceDisplayNamePatch\(workspaceKey, nextName\)/u);
   assert.match(section, /normalizeWorkspaceDisplayName\(draftName\)/u);
-  // 本轮不做删除：出现删除入口就说明越过了「清理边界 spec」这道门。
-  assert.doesNotMatch(section, /deleteWorkspace|removeWorkspace|Trash2/u);
+  // 删除入口的条件必须写死在渲染里：仅有服务时才出现、远端工作区（带 identity）不提供，
+  // 且确认框必须先用后端 measure 的计数并要求输入展示名。
+  assert.match(section, /workspaceMaintenanceService && !entry\.workspaceIdentity/u);
+  assert.match(section, /measureWorkspace\(/u);
+  assert.match(section, /confirmName\.trim\(\) !== pending\.displayName/u);
+  // 两步分离：移除只删注册表行，删除才走 purge。
+  assert.match(section, /removeWorkspaceFromList\(/u);
+  assert.match(section, /purgeWorkspace\(/u);
 
   // 分区在设置页可见，且排序偏好落在本机键上。
   assert.match(config, /id: "workspaceManagement"/u);
@@ -583,7 +589,7 @@ test("设置页分区读注册表、展示名按键补丁写入、排序落在�
   assert.match(prefs, /export function sortWorkspaceRegistryEntries/u);
 });
 
-test("工作区管理文案双语在位", () => {
+test("工作区管理文案双语在位（含清理清单与不删项）", () => {
   const keys = [
     "settings.workspaceManagement.title",
     "settings.workspaceManagement.description",
@@ -598,6 +604,28 @@ test("工作区管理文案双语在位", () => {
     "settings.workspaceManagement.loading",
     "settings.workspaceManagement.loadFailed",
     "settings.workspaceManagement.empty",
+    "settings.workspaceManagement.removeFromList",
+    "settings.workspaceManagement.deleteWithData",
+    "settings.workspaceManagement.purgeTitle",
+    "settings.workspaceManagement.removeTitle",
+    "settings.workspaceManagement.confirmNameLabel",
+    "settings.workspaceManagement.purgeConfirm",
+    "settings.workspaceManagement.category.tasks",
+    "settings.workspaceManagement.category.taskGroups",
+    "settings.workspaceManagement.category.automations",
+    "settings.workspaceManagement.category.automationRuns",
+    "settings.workspaceManagement.category.offPeakTasks",
+    "settings.workspaceManagement.category.legacySnapshots",
+    "settings.workspaceManagement.category.checkpoints",
+    "settings.workspaceManagement.category.workspaceSettings",
+    "settings.workspaceManagement.category.hookTrust",
+    "settings.workspaceManagement.category.workspaceRegistry",
+    "settings.workspaceManagement.skipped.cliSessions",
+    "settings.workspaceManagement.skipped.subagentTranscripts",
+    "settings.workspaceManagement.skipped.memory",
+    "settings.workspaceManagement.skipped.mcpTrust",
+    "settings.workspaceManagement.blockedRunning",
+    "settings.workspaceManagement.purgeIncomplete",
   ];
   for (const key of keys) {
     assert.equal(typeof zhCN[key], "string", "zh-CN 缺文案：" + key);

@@ -1506,8 +1506,8 @@ const zhCN: Record<string, string> = {
   "remote.daemon.reconnecting.title": "正在重连远程工作区",
   "remote.daemon.reconnecting.description":
     "第 {attempt}/{maxAttempts} 次尝试，约 {seconds} 秒后重试；会话仍在远端常驻进程里。",
-  "remote.daemon.recovered.title": "连接已重建，需要重新加载工作区",
-  "remote.daemon.recovered.description": "远端服务没有重启，会话仍在；重新加载后会接回原来的会话。",
+  "remote.daemon.reattaching.title": "正在重新接回远程工作区…",
+  "remote.daemon.recovered.title": "远程工作区已恢复连接",
   "remote.daemon.needsRebuild.title": "远端服务已重启，会话已结束",
   "remote.daemon.needsRebuild.description": "常驻服务重启会清空会话状态，请重新打开该会话。",
   "remote.daemon.disconnected.title": "远程工作区已断开",
@@ -4055,6 +4055,43 @@ const zhCN: Record<string, string> = {
   "settings.workspaceManagement.loading": "正在读取工作区…",
   "settings.workspaceManagement.loadFailed": "读不到工作区列表，请重试或检查连接。",
   "settings.workspaceManagement.empty": "这台机器上还没有记录过工作区。",
+  "settings.workspaceManagement.removeFromList": "从列表移除",
+  "settings.workspaceManagement.deleteWithData": "删除并清理数据",
+  "settings.workspaceManagement.removeTitle": "从列表移除工作区？",
+  "settings.workspaceManagement.removeDescription":
+    "「{name}」会从本机工作区列表消失，数据保留。重新打开这个目录它就会回来。",
+  "settings.workspaceManagement.purgeTitle": "删除工作区并清理数据？",
+  "settings.workspaceManagement.purgeDescription":
+    "将永久删除「{name}」在本机的任务、分组、自动化、检查点与相关设置。此操作不可恢复，也不会备份；工作区目录里的文件不会被删除。",
+  "settings.workspaceManagement.measuring": "正在统计将删除的数据…",
+  "settings.workspaceManagement.confirmNameLabel": "输入「{name}」以确认删除",
+  "settings.workspaceManagement.removeConfirm": "移除",
+  "settings.workspaceManagement.purgeConfirm": "永久删除",
+  "settings.workspaceManagement.category.tasks": "任务",
+  "settings.workspaceManagement.category.taskGroups": "任务分组（仅本工作区独占的组）",
+  "settings.workspaceManagement.category.automations": "自动化",
+  "settings.workspaceManagement.category.automationRuns": "自动化运行记录",
+  "settings.workspaceManagement.category.offPeakTasks": "闲时任务",
+  "settings.workspaceManagement.category.legacySnapshots": "旧版任务快照文件",
+  "settings.workspaceManagement.category.checkpoints": "检查点文件",
+  "settings.workspaceManagement.category.workspaceSettings": "工作区设置（展示名 / 附加目录等）",
+  "settings.workspaceManagement.category.hookTrust": "工作区 Hook 信任记录",
+  "settings.workspaceManagement.category.workspaceRegistry": "工作区注册表记录",
+  "settings.workspaceManagement.skipped.cliSessions":
+    "不会删除：Agent 会话库由命令行进程持有，本次不触碰。",
+  "settings.workspaceManagement.skipped.subagentTranscripts":
+    "不会删除：子代理转写按会话目录存放，本机没有可靠映射。",
+  "settings.workspaceManagement.skipped.memory":
+    "不会删除：记忆文件在项目目录内，属于你的仓库文件。",
+  "settings.workspaceManagement.skipped.mcpTrust":
+    "不会删除：MCP 信任记录只存声明摘要，无法按工作区精确命中。",
+  "settings.workspaceManagement.removed": "已从列表移除",
+  "settings.workspaceManagement.purged": "已删除并清理数据",
+  "settings.workspaceManagement.purgeIncomplete": "部分数据未能删除，可重试",
+  "settings.workspaceManagement.measureFailed": "统计工作区数据失败，请重试。",
+  "settings.workspaceManagement.blockedRunning": "该工作区有运行中的任务，请先停止后再删除。",
+  "settings.workspaceManagement.blockedConcurrent": "另一个删除操作正在进行，请稍后再试。",
+  "settings.workspaceManagement.actionFailed": "操作失败，请重试。",
 
   "settings.workspaceAdditionalDirectories.description":
     "把这个工作区之外、但同属这个项目的目录一并交给 Agent：它们会出现在环境信息里，并作为技能、命令与子智能体的搜索根。",

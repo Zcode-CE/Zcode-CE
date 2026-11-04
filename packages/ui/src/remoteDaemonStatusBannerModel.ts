@@ -49,14 +49,22 @@ export function describeRemoteDaemonBanner(
         },
         action: "none",
       };
-    case "recovered":
-      // 传输层重连成功 ≠ 本地已重新挂载：新连接没有回到 registry，界面上的服务引用
-      // 仍指向旧连接。所以这里不能报「已恢复」，只报「远端会话还在、需要重新加载工作区」。
+    case "reattaching":
+      // 传输已重连、正在把新连接挂回窗口：仍属进行中，不能说已恢复。
       return {
-        tone: "warning",
+        tone: "progress",
+        titleKey: "remote.daemon.reattaching.title",
+        descriptionKey: "",
+        action: "none",
+      };
+    case "recovered":
+      // 到这里说明传输重连 + registry 换 handle + renderer 端口换代全部成功，
+      // 用户确实可以继续操作，才允许报成功态。
+      return {
+        tone: "success",
         titleKey: "remote.daemon.recovered.title",
-        descriptionKey: "remote.daemon.recovered.description",
-        action: "reopen-session",
+        descriptionKey: "",
+        action: "none",
       };
     case "needs-rebuild":
       return {

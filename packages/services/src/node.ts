@@ -463,6 +463,13 @@ import {
   createWorkspaceRegistryService,
   IWorkspaceRegistryService,
 } from "./session/workspaceRegistry.js";
+import { IWorkspaceMaintenanceService } from "./workspace-maintenance/contract.js";
+import {
+  createFilesMaintenancePort,
+  createSettingsMaintenancePort,
+  createSqliteWorkspaceMaintenancePort,
+  createWorkspaceMaintenance,
+} from "./workspace-maintenance/index.js";
 import { OffPeakTaskService } from "./session/offPeakTaskService.js";
 import { OffPeakTaskRepo } from "./session/offPeakTaskRepo.js";
 import { createOffPeakServerClient } from "./session/offPeakServerClient.js";
@@ -2624,6 +2631,32 @@ export function createLocalServices(options: {
       }),
     )
     .register(IClientScenesService, createClientScenesService({ apiClient }))
+    .register(
+      IWorkspaceMaintenanceService,
+      // 工作区删除与数据清理（F7 后半）：自身持一个 tasks-index 句柄（一次性破坏性操作，
+      // busy_timeout + 既有 WAL 与宿主连接并存），登记进关闭链；顺序在服务内部固定为
+      // 「先删数据、注册表行最后删」。
+      (() => {
+        const maintenancePort = createSqliteWorkspaceMaintenancePort();
+        sqliteReposToClose.push(maintenancePort);
+        const maintenanceLogger = createServiceLogger("workspace-maintenance");
+        return createWorkspaceMaintenance({
+          database: maintenancePort,
+          activity: maintenancePort,
+          files: createFilesMaintenancePort(),
+          settings: createSettingsMaintenancePort({
+            read: () => settingService.get(),
+            update: (patch) => settingService.update(patch),
+          }),
+          audit: {
+            record: async (entry) => {
+              // 本地审计：只进服务日志，不上报（spec §5）。
+              maintenanceLogger.info("workspace maintenance", entry);
+            },
+          },
+        });
+      })(),
+    )
     .register(
       IWorkspaceRegistryService,
       // 工作区注册表（M1.3）：宿主只提供「怎么拿条目」，服务本身是纯计算。

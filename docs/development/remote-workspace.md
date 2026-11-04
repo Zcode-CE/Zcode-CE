@@ -37,15 +37,15 @@
 远端装了 [无头服务器](headless-server.md) 的 `zcode-server` 时，远程工作区会**优先走常驻 daemon**：会话跑在远端的常驻进程里，
 本机断网/关窗/断连都不会结束它。没装时行为**完全不变**（仍是 stdio 链路，断连即结束远端会话）。
 
-| 项       | 事实                                                                                                                                                                                                     |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 检测顺序 | `ZCODE_SERVER_BIN` → `~/.zcode/server/bin/zcode-server` → `PATH` 上的 `zcode-server`                                                                                                                     |
-| 判据     | 远端执行 `zcode-server status --json`：`installed:false` 未安装 / `installed:true + state:stopped` 已安装未运行 / `state:ready` 运行中                                                                   |
-| 现场拉起 | 已安装未运行时用 `ZCODE_SERVER_SKIP_SERVICE_REGISTRATION=1 zcode-server serve --daemon`（**不假设** systemd/launchd/schtasks 可用：裸 SSH 常缺用户 D-Bus 会话，注销后存活还需 `loginctl enable-linger`） |
-| 端口     | **每次(重)连都重新查**（端口随 Core 启动变化）；桌面经 SSH `direct-tcpip` 通道连 `127.0.0.1:<port>`，鉴权用一次性 ticket（TTL 30s，不复用）                                                              |
-| 降级     | 未安装 / 起不来 / 协议版本不兼容 ⇒ **回退 stdio** 并给出原因码，界面提示"装上 zcode-server 可获得常驻会话"；已连上之后的中断不回退（那时切 stdio 会另起一个 server）                                     |
-| 重连     | 只保证 **daemon 存活期内**：`generation`/`pid` 未变 ⇒ 连接可重建（界面提示"重新加载工作区"）；变了 ⇒ daemon 重启过、会话已丢，需重开会话。**当前不会自动 re-attach**，必须由用户点横幅里的动作           |
-| 诊断     | Core 日志在 `<serverRoot>/run/core.log`（4 MiB × 2 轮转）；崩溃时 `status --json` 的 `lastExitReason` 会带该路径                                                                                         |
+| 项       | 事实                                                                                                                                                                                                                                                                                                                    |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 检测顺序 | `ZCODE_SERVER_BIN` → `~/.zcode/server/bin/zcode-server` → `PATH` 上的 `zcode-server`                                                                                                                                                                                                                                    |
+| 判据     | 远端执行 `zcode-server status --json`：`installed:false` 未安装 / `installed:true + state:stopped` 已安装未运行 / `state:ready` 运行中                                                                                                                                                                                  |
+| 现场拉起 | 已安装未运行时用 `ZCODE_SERVER_SKIP_SERVICE_REGISTRATION=1 zcode-server serve --daemon`（**不假设** systemd/launchd/schtasks 可用：裸 SSH 常缺用户 D-Bus 会话，注销后存活还需 `loginctl enable-linger`）                                                                                                                |
+| 端口     | **每次(重)连都重新查**（端口随 Core 启动变化）；桌面经 SSH `direct-tcpip` 通道连 `127.0.0.1:<port>`，鉴权用一次性 ticket（TTL 30s，不复用）                                                                                                                                                                             |
+| 降级     | 未安装 / 起不来 / 协议版本不兼容 ⇒ **回退 stdio** 并给出原因码，界面提示"装上 zcode-server 可获得常驻会话"；已连上之后的中断不回退（那时切 stdio 会另起一个 server）                                                                                                                                                    |
+| 重连     | 只保证 **daemon 存活期内**：`generation`/`pid` 未变 ⇒ **自动 re-attach**（host 换连接句柄 → main 重建 MessagePort → renderer 换代 services，先接新再断旧），界面短暂显示 reconnecting → reattaching → recovered；变了 ⇒ daemon 重启过、会话已丢，横幅提示重新加载工作区。re-attach 失败不谎报成功，降级为「需重新加载」 |
+| 诊断     | Core 日志在 `<serverRoot>/run/core.log`（4 MiB × 2 轮转）；崩溃时 `status --json` 的 `lastExitReason` 会带该路径                                                                                                                                                                                                        |
 
 **验证边界**：daemon 传输只覆盖 **SSH**（需要 direct-tcpip 通道）。WSL 与 Docker 目前直接按 `unsupported` 回退 stdio，未做真机验证。
 

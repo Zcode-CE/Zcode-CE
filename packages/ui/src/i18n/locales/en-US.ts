@@ -1631,9 +1631,9 @@ const enUS: Record<string, string> = {
   "remote.daemon.reconnecting.title": "Reconnecting to the remote workspace",
   "remote.daemon.reconnecting.description":
     "Attempt {attempt}/{maxAttempts}; retrying in about {seconds}s. Your sessions are still running on the remote daemon.",
-  "remote.daemon.recovered.title": "Connection re-established; reload the workspace",
-  "remote.daemon.recovered.description":
-    "The remote service is still running and your sessions are intact. Reload to reconnect to them.",
+  "remote.daemon.reattaching.title": "Re-attaching the remote workspace…",
+  "remote.daemon.recovered.title": "Remote workspace reconnected",
+
   "remote.daemon.needsRebuild.title": "The remote service restarted; sessions ended",
   "remote.daemon.needsRebuild.description":
     "Restarting the daemon clears session state. Please reopen the session.",
@@ -4335,6 +4335,47 @@ const enUS: Record<string, string> = {
   "settings.workspaceManagement.loadFailed":
     "Could not load the workspace list. Retry or check the connection.",
   "settings.workspaceManagement.empty": "No workspaces recorded on this machine yet.",
+  "settings.workspaceManagement.removeFromList": "Remove from list",
+  "settings.workspaceManagement.deleteWithData": "Delete and erase data",
+  "settings.workspaceManagement.removeTitle": "Remove workspace from list?",
+  "settings.workspaceManagement.removeDescription":
+    "“{name}” will disappear from this machine's workspace list. Its data is kept; reopening the folder brings it back.",
+  "settings.workspaceManagement.purgeTitle": "Delete workspace and erase its data?",
+  "settings.workspaceManagement.purgeDescription":
+    "This permanently deletes “{name}”'s tasks, groups, automations, checkpoints and related settings on this machine. It cannot be undone and nothing is backed up. Files inside the workspace folder are not touched.",
+  "settings.workspaceManagement.measuring": "Counting data to delete…",
+  "settings.workspaceManagement.confirmNameLabel": "Type “{name}” to confirm",
+  "settings.workspaceManagement.removeConfirm": "Remove",
+  "settings.workspaceManagement.purgeConfirm": "Delete permanently",
+  "settings.workspaceManagement.category.tasks": "Tasks",
+  "settings.workspaceManagement.category.taskGroups": "Task groups (owned by this workspace)",
+  "settings.workspaceManagement.category.automations": "Automations",
+  "settings.workspaceManagement.category.automationRuns": "Automation run records",
+  "settings.workspaceManagement.category.offPeakTasks": "Off-peak tasks",
+  "settings.workspaceManagement.category.legacySnapshots": "Legacy task snapshot files",
+  "settings.workspaceManagement.category.checkpoints": "Checkpoint files",
+  "settings.workspaceManagement.category.workspaceSettings":
+    "Workspace settings (display name, extra directories)",
+  "settings.workspaceManagement.category.hookTrust": "Workspace hook trust records",
+  "settings.workspaceManagement.category.workspaceRegistry": "Workspace registry rows",
+  "settings.workspaceManagement.skipped.cliSessions":
+    "Not deleted: the agent session store belongs to the CLI process.",
+  "settings.workspaceManagement.skipped.subagentTranscripts":
+    "Not deleted: subagent transcripts live under session directories with no reliable local mapping.",
+  "settings.workspaceManagement.skipped.memory":
+    "Not deleted: memory files live inside your project folder.",
+  "settings.workspaceManagement.skipped.mcpTrust":
+    "Not deleted: MCP trust records only hold declaration digests, so they cannot be matched per workspace.",
+  "settings.workspaceManagement.removed": "Removed from list",
+  "settings.workspaceManagement.purged": "Deleted and data erased",
+  "settings.workspaceManagement.purgeIncomplete": "Some data could not be deleted. You can retry.",
+  "settings.workspaceManagement.measureFailed":
+    "Could not count this workspace's data. Please try again.",
+  "settings.workspaceManagement.blockedRunning":
+    "This workspace has running tasks. Stop them before deleting.",
+  "settings.workspaceManagement.blockedConcurrent":
+    "Another deletion is in progress. Try again shortly.",
+  "settings.workspaceManagement.actionFailed": "The action failed. Please try again.",
 
   "settings.workspaceAdditionalDirectories.description":
     "Folders outside the workspace that belong to the same project: they are added to the environment info and used as discovery roots for skills, commands and subagents.",
