@@ -510,10 +510,11 @@ export default {
   // 默认全量语言会产生大量 locale.pak 签名调用，显著拉长打包时长。
   // 这里仅保留当前产品必需语言，减少签名文件数并缩短 CI 总耗时。
   electronLanguages: ["en-US", "zh-CN"],
-  // pnpm workspace + semver range（如 ^41.0.3）下，electron-builder
+  // pnpm workspace + semver range（如 ^42.11.18）下，electron-builder
   // 有时无法从依赖树里稳定推导出 Electron 版本，导致 bundle 直接中断。
-  // 显式写死当前桌面端使用的 Electron 版本，避免打包阶段再做不可靠的猜测。
-  electronVersion: "41.0.3",
+  // 从 package.json 的 devDependencies 取同一个值：写死会与开发态分叉，
+  // 升级 Electron 后安装包仍按旧版本打包（上游 3.17.2 同改）。
+  electronVersion: desktopElectronVersion,
   electronDownload: {
     // ELECTRON_MIRROR 是 @electron/get 的全局环境变量，会覆盖 dmg-builder 等
     // generic artifact 自己传入的 mirrorOptions，导致 builder 辅助包被错误拼到 Electron runtime 镜像目录。
@@ -741,6 +742,11 @@ export default {
     // 产物名中的平台 token 用 darwin（ZCode-CE-<版本>-darwin-<arch>.dmg/.zip），
     // 与 electron-updater / 更新渠道的 darwin 平台命名一致。
     artifactName: buildDesktopArtifactName("darwin"),
+    // 根因：builder 按语言包文件名精确匹配。顶层 electronLanguages 的 "en-US"/"zh-CN" 对应
+    // Windows/Linux 的 locales/en-US.pak，macOS 侧是 en.lproj / zh_CN.lproj，一个都匹配不上
+    // 会被全部删掉，Chromium 自带文案随之丢失（视频控件菜单只剩图标、播放速度子菜单空白）。
+    // 修法：macOS 单列它自己的语言包名。
+    electronLanguages: ["en", "zh_CN"],
     extendInfo: {
       NSAppleEventsUsageDescription: `${desktopProductIdentity.productName} needs Apple Events access to coordinate local automation workflows with user-approved desktop apps.`,
     },
