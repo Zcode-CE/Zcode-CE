@@ -98,7 +98,16 @@ export interface WebServiceControllerDeps {
   probe: () => Promise<WebServiceProbeResult>;
   /** 选一个空闲端口；`preferred` 可用时应当原样返回它。 */
   pickFreePort: (preferred: number) => Promise<number>;
-  waitUntilReady: (input: { url: string; token: string; timeoutMs: number }) => Promise<boolean>;
+  /**
+   * 等待服务就绪。传入 `child` 时，子进程提前退出应**立刻**失败 —— 否则缺文件/端口被占这类
+   * 立即崩溃要空等满超时（15s），用户只看到「启动中」然后莫名失败。
+   */
+  waitUntilReady: (input: {
+    url: string;
+    token: string;
+    timeoutMs: number;
+    child?: WebServiceChildHandle;
+  }) => Promise<boolean>;
   waitForExit: (child: WebServiceChildHandle, timeoutMs: number) => Promise<boolean>;
   /**
    * 停止状态文件里指名的 pid：SIGTERM → 宽限 → 必要时 SIGKILL → **确认端口已释放**。
@@ -282,7 +291,7 @@ export function createWebServiceController(deps: WebServiceControllerDeps): WebS
       };
     }
 
-    const ready = await deps.waitUntilReady({ url, token, timeoutMs: readyTimeoutMs });
+    const ready = await deps.waitUntilReady({ url, token, timeoutMs: readyTimeoutMs, child });
     if (!ready) {
       // 起不来就把子进程收干净再报错（否则会留下一个占着端口的孤儿）。
       if (child.pid !== undefined) {
@@ -328,6 +337,14 @@ export function createWebServiceController(deps: WebServiceControllerDeps): WebS
   const stop = async (): Promise<WebServiceStatus> => {
     const record = await readWebServiceState(deps.statePath);
     if (!record) return statusFromProbe(await deps.probe());
+    // 归属校验：状态文件在异常退出后会被保留（契约 §3 规则 2），其中的 pid 可能早已被
+    // 系统回收给无关进程。只有探活确认「这个 pid 仍在提供我们的服务」时才敢按 pid 动手；
+    // stale/stopped 一律只清状态文件，绝不发信号（否则可能误杀别人的进程）。
+    const probe = await deps.probe();
+    if (probe.state !== "running" && probe.state !== "running-untrusted") {
+      await removeWebServiceState(deps.statePath);
+      return statusFromProbe(probe);
+    }
     const stopped = await terminatePid(record.pid, record.host, record.port);
     if (!stopped) {
       return {

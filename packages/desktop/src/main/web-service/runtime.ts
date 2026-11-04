@@ -167,9 +167,15 @@ export function createWebServiceRuntime(options: WebServiceRuntimeOptions): {
         probeServerInfo,
       }),
     pickFreePort,
-    waitUntilReady: async ({ url, token, timeoutMs }) => {
+    waitUntilReady: async ({ url, token, timeoutMs, child }) => {
+      // 子进程早退时立即失败：缺文件/端口被占会在毫秒级崩溃，没有理由等满 15s。
+      let exited = false;
+      child?.onExit(() => {
+        exited = true;
+      });
       const deadline = (options.now ?? Date.now)() + timeoutMs;
       while ((options.now ?? Date.now)() < deadline) {
+        if (exited) return false;
         if ((await probeServerInfo({ url, token, timeoutMs: 1500 })) === 200) {
           return true;
         }

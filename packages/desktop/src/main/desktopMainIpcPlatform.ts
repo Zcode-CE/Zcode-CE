@@ -31,7 +31,6 @@ import { exportLogs } from "./exportLogs.js";
 import { resolveCommunityUrl } from "./desktopCommandHandlers.js";
 import { openInEditor } from "./openInEditor.js";
 import {
-  openResourceManager,
   getResourceUsageSnapshot,
   setResourceUsageSamplingActive,
 } from "./resourceManagerWindow.js";
@@ -202,9 +201,9 @@ export function registerPlatformIpcHandlers(options: {
   });
   registerResourceManagerStorageIpc();
   ipcMain.handle(PlatformChannels.GetZCodeStdioTapDevState, () => readZCodeStdioTapDevState());
-  ipcMain.on(PlatformChannels.OpenResourceManager, () => {
-    openResourceManager();
-  });
+  // PlatformChannels.OpenResourceManager 已删除：全仓没有任何发送方，
+  // 资源管理器实际走 platform.executeDesktopCommand(DesktopCommandIds.OpenResourceManager)。
+  // 留一个永不触发的 ipcMain.on 只会让后续接线者误以为通道是通的（审计 S3）。
 
   ipcMain.handle(
     PlatformChannels.LoadMcpFromUserDirectory,
