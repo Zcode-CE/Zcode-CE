@@ -144,6 +144,9 @@ export {
   type DesktopZoomState,
   type WindowControlsOverlayMetrics,
   type WindowControlsOverlayReadyPayload,
+  // 「打开方式」：系统关联应用的类型只走公开入口（preload / client / desktop main 都从这里取）。
+  type FileApplicationInfo,
+  type FileApplicationTarget,
 } from "./platform.js";
 // 遥测已全部移除（P1）：以下模块与其全部导出已删除 ——
 //   telemetry.ts（埋点载荷/脱敏上下文）、telemetryRedaction.ts（上报文本脱敏）、

@@ -22,8 +22,10 @@ import {
   type CreateTempTextAttachmentRequest,
   type UpdateStatePayload,
   type WindowControlsOverlayReadyPayload,
+  type FileApplicationTarget,
 } from "@zcode/shared";
-import { getInstalledEditors } from "./editors.js";
+import { getAppIconDataUrl, getInstalledEditors } from "./editors.js";
+import { createFileApplicationService } from "./file-open-apps/index.js";
 import { getApplicationIcon } from "./applicationIcons.js";
 import { exportLogs } from "./exportLogs.js";
 import { resolveCommunityUrl } from "./desktopCommandHandlers.js";
@@ -408,6 +410,20 @@ export function registerPlatformIpcHandlers(options: {
     return resolveDesktopWindowChromeState(senderWindow?.isMaximized() ?? false);
   });
   ipcMain.handle(PlatformChannels.GetInstalledEditors, () => getInstalledEditors());
+  // 「打开方式」：枚举系统关联应用。平台不支持或系统调用失败一律返回空数组（不抛错）——
+  // UI 据此降级为只剩默认打开，这是能力检测而不是错误路径。
+  const fileApplications = createFileApplicationService({
+    getIcon: (id, path) => getAppIconDataUrl(id, path),
+    logger: { warn: (message, detail) => options.logger.warn(message, detail) },
+  });
+  ipcMain.handle(PlatformChannels.GetFileApplications, (_event, target: FileApplicationTarget) =>
+    fileApplications.getFileApplications(target),
+  );
+  ipcMain.handle(
+    PlatformChannels.OpenFileWithApplication,
+    (_event, payload: { applicationId: string; target: FileApplicationTarget }) =>
+      fileApplications.openFileWithApplication(payload?.applicationId, payload?.target),
+  );
   ipcMain.handle(
     PlatformChannels.GetApplicationIcon,
     (_event, request: string | ApplicationIconRequest) => getApplicationIcon(request),

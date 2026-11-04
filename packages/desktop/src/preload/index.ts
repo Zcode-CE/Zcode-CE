@@ -47,6 +47,7 @@ import type {
   Locale,
   OAuthStateRegistration,
   OpenInEditorOptions,
+  FileApplicationTarget,
   RemoteTarget,
   TaskNotificationPayload,
   RendererHeapSample,
@@ -799,6 +800,12 @@ contextBridge.exposeInMainWorld("zcode", {
   quitAndInstallUpdate: () => ipcRenderer.invoke(PlatformChannels.QuitAndInstallUpdate),
   /** 获取已安装的编辑器/终端列表（含图标） */
   getInstalledEditors: () => ipcRenderer.invoke(PlatformChannels.GetInstalledEditors),
+  /** 枚举本机文件关联应用（「打开方式」）；平台不支持时返回空数组 */
+  getFileApplications: (target: FileApplicationTarget) =>
+    ipcRenderer.invoke(PlatformChannels.GetFileApplications, target),
+  /** 用指定系统关联应用打开本机文件 */
+  openFileWithApplication: (applicationId: string, target: FileApplicationTarget) =>
+    ipcRenderer.invoke(PlatformChannels.OpenFileWithApplication, { applicationId, target }),
   getApplicationIcon: (request: string | ApplicationIconRequest) =>
     ipcRenderer.invoke(PlatformChannels.GetApplicationIcon, request),
   /** 用指定编辑器打开路径 */

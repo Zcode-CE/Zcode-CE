@@ -51,6 +51,8 @@ import type {
   UpdateCheckResultPayload,
   UpdateStatePayload,
   OpenInEditorOptions,
+  FileApplicationInfo,
+  FileApplicationTarget,
   // window.zcode 镜像补齐：renderer 实际消费、此前漏声明的平台能力类型（类型全部取自 shared 协议）。
   BindRemoteWorkspaceSessionContextRequest,
   CreateTempTextAttachmentRequest,
@@ -389,6 +391,13 @@ declare global {
       getApplicationIcon?(
         request: string | ApplicationIconRequest,
       ): Promise<ApplicationIconInfo | null>;
+      /** 枚举本机文件关联应用（「打开方式」）；平台不支持时返回空数组 */
+      getFileApplications?(target: FileApplicationTarget): Promise<FileApplicationInfo[]>;
+      /** 用指定系统关联应用打开本机文件 */
+      openFileWithApplication?(
+        applicationId: string,
+        target: FileApplicationTarget,
+      ): Promise<{ success: boolean; error?: string }>;
       /** 用指定编辑器打开路径 */
       openInEditor(
         editorId: string,

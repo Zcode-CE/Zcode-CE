@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import enUS from "../src/i18n/locales/en-US.js";
+import zhCN from "../src/i18n/locales/zh-CN.js";
 import { getSystemFileLocatorEditorId } from "../src/workspace-file-tree/helpers.js";
 
 /**
@@ -73,4 +75,53 @@ test("文件树与预览面板都接到直达定位", () => {
   // 预览面板必须传能力与远端信息：否则 canReveal 恒 false，入口永远不出现。
   assert.match(previewSource, /canOpenLocalFileManager: isDesktop/u);
   assert.match(previewSource, /canRevealInFileManager\(\{/u);
+});
+
+/**
+ * 「打开方式」菜单（F16 批次 2）。
+ *
+ * 三条判定分开钉住，因为它们的失败形态不同：
+ * 1. 平台没有该能力却渲染入口 ⇒ 死入口（点了没反应）；
+ * 2. 能力存在但列表为空 ⇒ 必须给降级文案，不能只留一条空白分组；
+ * 3. 调用参数形状错 ⇒ 主进程校验直接拒绝，表现为"永远没有可选项"。
+ */
+test("能力缺失时菜单不出现；能力存在但为空时给降级文案", () => {
+  const source = readFileSync(resolve(here, "../src/OpenSplitButton.tsx"), "utf8");
+  // 整组渲染受 supported 约束：没有能力就没有这个分组。
+  assert.match(source, /\{fileApplications\.supported \? \(/u);
+  // 空列表走降级文案，而不是留空分组或崩溃。
+  assert.match(source, /fileApplications\.apps\.length > 0 \?/u);
+  assert.match(
+    source,
+    /id: fileApplications\.loading \? "common\.loading" : "fileActions\.noSystemApps"/u,
+  );
+  // 默认应用要标出来：同一扩展名常有多条关联，不标默认等于让用户猜。
+  assert.match(source, /application\.isDefault \?/u);
+});
+
+test("hook 以可选方法是否存在作为能力检测，不使用 platform 名称硬编码", () => {
+  const hook = readFileSync(resolve(here, "../src/hooks/useFileApplications.ts"), "utf8");
+  assert.match(hook, /platform\.getFileApplications && platform\.openFileWithApplication/u);
+  // 枚举失败按"没有可用应用"处理，不抛给 UI。
+  assert.match(hook, /setApps\(\[\]\);/u);
+});
+
+test("调用参数形状：pathKind=file、透传 workspaceIdentity、远端不发起", () => {
+  const source = readFileSync(resolve(here, "../src/OpenSplitButton.tsx"), "utf8");
+  assert.match(source, /target\.type === "file" && !isRemoteSource/u);
+  assert.match(source, /pathKind: "file"/u);
+  assert.match(source, /workspaceIdentity: target\.previewSource\.workspaceIdentity/u);
+});
+
+test("「打开方式」文案双语在位", () => {
+  const keys = [
+    "fileActions.openInApplication",
+    "fileActions.defaultApp",
+    "fileActions.noSystemApps",
+    "fileActions.openWithApplicationFailed",
+  ];
+  for (const key of keys) {
+    assert.equal(typeof zhCN[key], "string", "zh-CN 缺文案：" + key);
+    assert.equal(typeof enUS[key], "string", "en-US 缺文案：" + key);
+  }
 });

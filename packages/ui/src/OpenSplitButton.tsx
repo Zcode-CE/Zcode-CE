@@ -1,5 +1,5 @@
 import type { EditorInfo } from "@zcode/shared";
-import { ChevronDownIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
+import { AppWindowIcon, ChevronDownIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
 import { useCallback, useMemo, useState, type ReactElement, type ReactNode } from "react";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
+import { useFileApplications } from "@/hooks/useFileApplications.js";
 import { useFileContextActions } from "@/hooks/useFileContextActions.js";
 import { useWorkspaceOpenInEditorTarget } from "@/hooks/useWorkspaceOpenInEditorTarget.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -179,6 +180,36 @@ export function OpenSplitButton({
       });
   };
 
+  /**
+   * 「打开方式」的系统应用列表：只在平台真的提供能力、且目标是本机文件时才有入口。
+   * 远端工作区由对方 Host 处理，这里不提供（main 侧同样拒绝）。
+   */
+  const fileApplications = useFileApplications(
+    target.type === "file" && !isRemoteSource
+      ? {
+          path: target.path,
+          pathKind: "file",
+          ...(target.previewSource?.workspaceIdentity
+            ? { workspaceIdentity: target.previewSource.workspaceIdentity }
+            : {}),
+        }
+      : null,
+  );
+
+  const handleOpenWithApplication = (applicationId: string) => {
+    void fileApplications.open(applicationId).then((result) => {
+      if (result.success) {
+        return;
+      }
+      logger.warn("[OpenSplitButton] 用系统应用打开文件失败", {
+        applicationId,
+        path: target.type === "file" ? target.path : undefined,
+        error: result.error ?? "unknown-error",
+      });
+      toast(intl.formatMessage({ id: "fileActions.openWithApplicationFailed" }));
+    });
+  };
+
   const handleOpenExternal = () => {
     if (target.type !== "website" || !target.localPath || !platform.openExternalFile) {
       platform.openExternal(target.type === "website" ? target.url : target.path);
@@ -227,7 +258,13 @@ export function OpenSplitButton({
   }
 
   const composite = (
-    <DropdownMenu onOpenChange={(open) => open && void loadEditors()}>
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (!open) return;
+        void loadEditors();
+        void fileApplications.load();
+      }}
+    >
       <div
         className="flex h-7 shrink-0 items-center overflow-hidden rounded-lg border border-border bg-input transition-all hover:border-border-hover"
         onClick={stopEventPropagation}
@@ -286,6 +323,42 @@ export function OpenSplitButton({
                 })}
               </DropdownMenuItem>
             )}
+            {/* 系统关联应用：平台没有该能力时整组不渲染（不显示死入口）。 */}
+            {fileApplications.supported ? (
+              <>
+                <DropdownMenuSeparator />
+                {fileApplications.apps.length > 0 ? (
+                  fileApplications.apps.map((application) => (
+                    <DropdownMenuItem
+                      key={application.id}
+                      onSelect={() => handleOpenWithApplication(application.id)}
+                    >
+                      {application.iconDataUrl ? (
+                        <img
+                          src={application.iconDataUrl}
+                          alt={application.name}
+                          className="size-4 shrink-0"
+                        />
+                      ) : (
+                        <AppWindowIcon className="size-4 shrink-0" />
+                      )}
+                      <span className="min-w-0 truncate">{application.name}</span>
+                      {application.isDefault ? (
+                        <span className="ml-auto shrink-0 text-ui-sm text-foreground-subtlest">
+                          {intl.formatMessage({ id: "fileActions.defaultApp" })}
+                        </span>
+                      ) : null}
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>
+                    {intl.formatMessage({
+                      id: fileApplications.loading ? "common.loading" : "fileActions.noSystemApps",
+                    })}
+                  </DropdownMenuItem>
+                )}
+              </>
+            ) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={() => void fileActions.copyAbsolutePath({ path: target.path })}

@@ -465,6 +465,10 @@ export const PlatformChannels = {
   GetInstalledEditors: "zcode:get-installed-editors",
   /** Renderer → Main：按 bundle id 获取系统应用图标 */
   GetApplicationIcon: "zcode:get-application-icon",
+  /** Renderer → Main：枚举本机文件关联应用（「打开方式」） */
+  GetFileApplications: "zcode:get-file-applications",
+  /** Renderer → Main：用指定系统关联应用打开本机文件 */
+  OpenFileWithApplication: "zcode:open-file-with-application",
   /** Renderer → Main：用指定编辑器打开路径 */
   OpenInEditor: "zcode:open-in-editor",
   /** Renderer → Main：执行桌面窗口级命令 */
@@ -1213,6 +1217,17 @@ export interface PlatformChannelMap {
   [PlatformChannels.GetInstalledEditors]: {
     request: void;
     response: EditorInfo[];
+  };
+  [PlatformChannels.GetFileApplications]: {
+    request: import("./platform.js").FileApplicationTarget;
+    response: import("./platform.js").FileApplicationInfo[];
+  };
+  [PlatformChannels.OpenFileWithApplication]: {
+    request: {
+      applicationId: string;
+      target: import("./platform.js").FileApplicationTarget;
+    };
+    response: { success: boolean; error?: string };
   };
   [PlatformChannels.GetApplicationIcon]: {
     request: string | import("./platform.js").ApplicationIconRequest;
