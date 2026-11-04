@@ -1,5 +1,6 @@
 /* oxlint-disable eslint(max-lines) -- 附件采集、分 scope 上传调度和生命周期必须在同一 hook 中原子收口。 */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { registerImageComposerTarget } from "@/image-preview-editor/index.js";
 import { toast } from "@/components/ui/toast.js";
 import { nanoid } from "nanoid";
 import type { AttachmentRef } from "@zcode/shared/zcode-protocol-v4";
@@ -627,13 +628,13 @@ export function useComposerAttachments(
 
   const addPreparedAttachments = useCallback(
     (selectedAttachments: ChatComposerAttachment[]) => {
-      if (selectedAttachments.length === 0) return;
+      if (selectedAttachments.length === 0) return 0;
       const current = readComposerAttachmentScope(scopeKey);
       const remainingSlots = MAX_CHAT_ATTACHMENTS - current.length;
       if (remainingSlots <= 0) {
         selectedAttachments.forEach(revokeChatComposerAttachment);
         showAttachmentLimitWarning();
-        return;
+        return 0;
       }
       const accepted = selectedAttachments.slice(0, remainingSlots);
       selectedAttachments.slice(remainingSlots).forEach(revokeChatComposerAttachment);
@@ -673,13 +674,15 @@ export function useComposerAttachments(
       for (const item of items) {
         if (item.uploadStatus === "queued") enqueueUpload(scopeKey, item.id);
       }
+      // 接受数量是唯一判据：图片编辑器据此决定「已加入附件」还是提示没有接收方。
+      return items.length;
     },
     [commitScope, enqueueUpload, scopeKey, showAttachmentLimitWarning],
   );
 
   const addAttachmentFiles = useCallback(
-    (selectedFiles: File[]) => {
-      addPreparedAttachments(
+    (selectedFiles: File[]): number => {
+      return addPreparedAttachments(
         selectedFiles.map((file) => {
           let localPath: string | undefined;
           try {
@@ -695,6 +698,15 @@ export function useComposerAttachments(
     },
     [addPreparedAttachments, platform],
   );
+
+  useLayoutEffect(() => {
+    if (!listenAddToChatEvents || disabled) return;
+    // 图片标注导出的 PNG 要落进“当前”输入框：在 commit 阶段释放旧接收方，
+    // 避免 passive effect 之前的回调写进刚被切走的草稿。
+    return registerImageComposerTarget({
+      append: (file) => addAttachmentFiles([file]) === 1,
+    });
+  }, [addAttachmentFiles, disabled, listenAddToChatEvents, scopeKey]);
 
   const addAttachmentLocalPaths = useCallback(
     (selectedPaths: string[]) => {

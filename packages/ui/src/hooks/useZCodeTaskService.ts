@@ -3,6 +3,7 @@ import { useWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import type { IZCodeTaskService } from "@zcode/services";
 import type { ZCodeTaskSnapshot } from "@zcode/shared";
 import { uiMemoryDiagnosticsRegistry } from "@/lib/memoryDiagnostics.js";
+import { createBoundedLruCache, type BoundedLruCache } from "@/lib/boundedLruCache.js";
 
 type GetTaskSnapshotParams = Parameters<IZCodeTaskService["getTaskSnapshot"]>[0];
 type GetTaskSnapshotResult = Promise<ZCodeTaskSnapshot | null>;
@@ -13,14 +14,14 @@ const snapshotInflightRequestsByService = new WeakMap<
   IZCodeTaskService,
   Map<string, GetTaskSnapshotResult>
 >();
-const snapshotCacheByService = new WeakMap<
-  IZCodeTaskService,
-  Map<string, { etag: string; snapshot: ZCodeTaskSnapshot }>
->();
+type InMemorySnapshotCache = BoundedLruCache<string, { etag: string; snapshot: ZCodeTaskSnapshot }>;
+const snapshotCacheByService = new WeakMap<IZCodeTaskService, InMemorySnapshotCache>();
 const SNAPSHOT_CACHE_STORAGE_KEY = "zcode-task-snapshot-cache:v1";
 const SNAPSHOT_CACHE_MAX_ENTRY_BYTES = 256 * 1024;
 const SNAPSHOT_CACHE_MAX_TOTAL_BYTES = 2 * 1024 * 1024;
 const SNAPSHOT_CACHE_MAX_ENTRIES = 20;
+// 内存缓存与持久化侧同量级：键随「看过的任务」增长，不设上限时 renderer 堆只增不减。
+const SNAPSHOT_MEMORY_CACHE_MAX_ENTRIES = SNAPSHOT_CACHE_MAX_ENTRIES;
 type PersistedSnapshotCacheEntry = {
   key: string;
   etag: string;
@@ -32,7 +33,7 @@ let persistedSnapshotCacheLoaded = false;
 const persistedSnapshotCache = new Map<string, PersistedSnapshotCacheEntry>();
 // 内存诊断计数器：WeakMap 无法枚举，记住最近一个
 // service 的内存缓存（renderer 内实际只有一个 task service 实例）。
-let latestSnapshotCache: Map<string, { etag: string; snapshot: ZCodeTaskSnapshot }> | undefined;
+let latestSnapshotCache: InMemorySnapshotCache | undefined;
 uiMemoryDiagnosticsRegistry.register("taskSnapshotCache", () => ({
   entries: latestSnapshotCache?.size ?? 0,
   persisted: persistedSnapshotCache.size,
@@ -76,9 +77,7 @@ function getOrCreateSnapshotInflightMap(
   return created;
 }
 
-function getOrCreateSnapshotCacheMap(
-  service: IZCodeTaskService,
-): Map<string, { etag: string; snapshot: ZCodeTaskSnapshot }> {
+function getOrCreateSnapshotCacheMap(service: IZCodeTaskService): InMemorySnapshotCache {
   if (!service || typeof service !== "object") {
     return new Map();
   }
@@ -87,7 +86,9 @@ function getOrCreateSnapshotCacheMap(
     latestSnapshotCache = existing;
     return existing;
   }
-  const created = new Map<string, { etag: string; snapshot: ZCodeTaskSnapshot }>();
+  const created = createBoundedLruCache<string, { etag: string; snapshot: ZCodeTaskSnapshot }>(
+    SNAPSHOT_MEMORY_CACHE_MAX_ENTRIES,
+  );
   snapshotCacheByService.set(service, created);
   latestSnapshotCache = created;
   return created;

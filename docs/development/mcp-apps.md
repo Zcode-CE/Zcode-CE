@@ -6,14 +6,14 @@
 
 ## 范围（本任务 = 契约侧）
 
-| 层             | 文件                                                                                                                                       | 说明                                                                                                                                         |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| shared schema  | packages/shared/src/mcp-apps/（15 文件，含 CONTRACT.md）                                                                                   | MCP App 实例、app-provided 工具、sampling、资源 MIME 白名单等运行时校验 schema                                                               |
-| shared schema  | packages/shared/src/zcode-protocol/trace.ts                                                                                                | 协议 trace 摘要 schema（channel 回复 host 请求与采样共用）                                                                                   |
-| shared 导出    | packages/shared/src/zcode-protocol/index.ts 增量                                                                                           | zcodeMcpUi*（open/close instance、callTool/cancel、readResource、list/subscribe、sampling、app tools 注册/接纳/结算）、zcodePluginUiSurface* |
-| bootstrap 契约 | apps/zcode-cli/packages/bootstrap/src/zcode-protocol/mcp-ui/（19 文件）                                                                    | agent 侧处理器契约与实现：instances 凭证 owner、callRaces、samplingCalls 账本、notifications 路由、sessionAccess 收窄视图                    |
-| bootstrap 契约 | zcode-protocol/plugin-ui-surfaces.ts、topic-resource-port.ts、fork-model-selection.ts、saved-workflows-run.ts、workflow-settings-answer.ts | mcp-ui 依赖的相邻端口契约                                                                                                                    |
-| 宿主类型       | packages/client/src/globals.d.ts 增量                                                                                                      | 插件页面 window 侧类型声明                                                                                                                   |
+| 层             | 文件                                                                                                               | 说明                                                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| shared schema  | packages/shared/src/mcp-apps/（15 文件，含 CONTRACT.md）                                                           | MCP App 实例、app-provided 工具、sampling、资源 MIME 白名单等运行时校验 schema                                                               |
+| shared schema  | packages/shared/src/zcode-protocol/trace.ts                                                                        | 协议 trace 摘要 schema（channel 回复 host 请求与采样共用）                                                                                   |
+| shared 导出    | packages/shared/src/zcode-protocol/index.ts 增量                                                                   | zcodeMcpUi*（open/close instance、callTool/cancel、readResource、list/subscribe、sampling、app tools 注册/接纳/结算）、zcodePluginUiSurface* |
+| bootstrap 契约 | apps/zcode-cli/packages/bootstrap/src/zcode-protocol/mcp-ui/（19 文件）                                            | agent 侧处理器契约与实现：instances 凭证 owner、callRaces、samplingCalls 账本、notifications 路由、sessionAccess 收窄视图                    |
+| bootstrap 契约 | zcode-protocol/plugin-ui-surfaces.ts、fork-model-selection.ts、saved-workflows-run.ts、workflow-settings-answer.ts | mcp-ui 依赖的相邻端口契约                                                                                                                    |
+| 宿主类型       | packages/client/src/globals.d.ts 增量                                                                              | 插件页面 window 侧类型声明                                                                                                                   |
 
 ## 不在本任务（消费侧，cli-runtime-port 负责）
 

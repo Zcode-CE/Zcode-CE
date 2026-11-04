@@ -47,6 +47,7 @@ export function WorkspaceTimelineTasksSection({
   groupByDate = true,
   taskRowVariant = "timeline",
   emptyMessage,
+  onlyUnread = false,
   onSelectTask,
 }: {
   workspaceTabs: WorkspaceTabState[];
@@ -57,6 +58,8 @@ export function WorkspaceTimelineTasksSection({
   groupByDate?: boolean;
   taskRowVariant?: "default" | "timeline";
   emptyMessage?: string;
+  /** 只看未读（侧栏「未读」视图）：与蓝点/角标同一事实来源 task meta.unreadAt。 */
+  onlyUnread?: boolean;
   onSelectTask: (
     targetWorkspacePath: string,
     taskId: string,
@@ -173,11 +176,14 @@ export function WorkspaceTimelineTasksSection({
     );
   }, [remoteTimelineItemsByWorkspaceKey, remoteWorkspaceKeys]);
   const sortedItems = useMemo(() => {
-    return [...localItems, ...remoteItems].sort((left, right) =>
-      compareZCodeTaskListItems(left, right, taskSortBy),
-    );
-  }, [localItems, remoteItems, taskSortBy]);
-  const items = sortedItems.slice(0, visibleTaskLimit);
+    const merged = [...localItems, ...remoteItems];
+    // 未读视图只保留有 unreadAt 的行：与侧栏蓝点/角标读的是同一个字段，
+    // 不另外维护一份未读集合。
+    const filtered = onlyUnread ? merged.filter((item) => Boolean(item.unreadAt)) : merged;
+    return filtered.sort((left, right) => compareZCodeTaskListItems(left, right, taskSortBy));
+  }, [localItems, onlyUnread, remoteItems, taskSortBy]);
+  // 未读集合天然够小，不做分页截断：否则「有未读却看不到」比列表长更难解释。
+  const items = onlyUnread ? sortedItems : sortedItems.slice(0, visibleTaskLimit);
   const itemByKey = useMemo(() => {
     const nextItemByKey = new Map<string, ZCodeTaskMeta>();
     for (const item of items) {

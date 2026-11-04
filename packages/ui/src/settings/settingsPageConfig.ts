@@ -19,6 +19,7 @@ import {
   Keyboard,
   FileSearch,
   FolderPlus,
+  Folders,
   LifeBuoy,
   ShieldAlert,
   CloudDownload,
@@ -170,6 +171,14 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     icon: FolderPlus,
     titleId: "settings.workspaceAdditionalDirectories.title",
     groupId: "basics",
+  },
+  // 工作区管理（F7 前半）：列服务端工作区注册表 + 排序 + 编辑展示名。
+  // 放在「数据与统计」：这里的行是「本机记住过哪些工作区」这一事实，不是本会话的配置。
+  {
+    id: "workspaceManagement",
+    icon: Folders,
+    titleId: "settings.workspaceManagement.title",
+    groupId: "dataAndStats",
   },
   // 远程资产发布根（自定义 CDN 基址）：远程工作区取资产的位置，属基础设置里的"连通性"配置。
   // **只在桌面端出现** —— 这条链只有 desktop main 消费（desktopRuntimeEnv → remoteCdn 的

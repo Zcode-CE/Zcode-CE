@@ -1,7 +1,7 @@
 import type { BrowserStorageLike } from "@/lib/browserEnvironment.js";
 import { getSafeLocalStorage } from "@/lib/browserEnvironment.js";
 
-export type SidebarTaskOrganizeBy = "grouped" | "project" | "chronological";
+export type SidebarTaskOrganizeBy = "grouped" | "project" | "chronological" | "unread";
 export type SidebarTaskSortBy = "created" | "updated";
 
 interface SidebarTaskPreferences {
@@ -17,7 +17,9 @@ const DEFAULT_SIDEBAR_TASK_PREFERENCES: SidebarTaskPreferences = {
 };
 
 function isSidebarTaskOrganizeBy(value: unknown): value is SidebarTaskOrganizeBy {
-  return value === "grouped" || value === "project" || value === "chronological";
+  return (
+    value === "grouped" || value === "project" || value === "chronological" || value === "unread"
+  );
 }
 
 function isSidebarTaskSortBy(value: unknown): value is SidebarTaskSortBy {

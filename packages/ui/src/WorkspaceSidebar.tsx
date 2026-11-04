@@ -13,6 +13,7 @@ import {
 } from "react";
 import {
   Archive,
+  Bell,
   Blocks,
   CalendarClock,
   Clock3,
@@ -170,7 +171,7 @@ export { WorkspaceSidebarCollapsedRail } from "@/WorkspaceSidebar/WorkspaceSideb
 type TaskOrganizeBy = SidebarTaskOrganizeBy;
 type TaskSortBy = SidebarTaskSortBy;
 type PrimaryTaskMode = "workspace" | "grouped";
-type SidebarTaskViewMode = "grouped" | "workspace" | "timeline" | "archived";
+type SidebarTaskViewMode = "grouped" | "workspace" | "timeline" | "archived" | "unread";
 
 interface SidebarFileTreeTarget {
   workspacePath: string;
@@ -222,6 +223,9 @@ function resolveSidebarTaskViewMode(params: {
 }): SidebarTaskViewMode {
   if (params.showArchivedTasks) {
     return "archived";
+  }
+  if (params.taskOrganizeBy === "unread") {
+    return "unread";
   }
   if (params.taskOrganizeBy === "chronological") {
     return "timeline";
@@ -963,7 +967,13 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   });
   const activePrimaryTaskMode: PrimaryTaskMode =
     taskOrganizeBy === "grouped" ? "grouped" : "workspace";
-  const workspaceTaskViewValue = taskOrganizeBy === "chronological" ? "chronological" : "project";
+  // 未读是「视图」而非一级 tab：仍留在 workspace 一级模式下，只是把列表换成未读集合。
+  const workspaceTaskViewValue =
+    taskOrganizeBy === "chronological"
+      ? "chronological"
+      : taskOrganizeBy === "unread"
+        ? "unread"
+        : "project";
   const showTaskViewFilter = activePrimaryTaskMode === "workspace" || showArchivedTasks;
   const showWorkspaceViewOptions = activePrimaryTaskMode === "workspace" && !showArchivedTasks;
   const showTaskSortOptions = activePrimaryTaskMode === "workspace" || showArchivedTasks;
@@ -994,10 +1004,11 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
     ],
   );
   const handleWorkspaceTaskViewChange = useCallback((value: string) => {
-    if (value !== "project" && value !== "chronological") {
+    if (value !== "project" && value !== "chronological" && value !== "unread") {
       return;
     }
-    setWorkspaceTaskOrganizeBy(value);
+    // 未读视图不覆盖「记住的项目/时间线偏好」，退出未读即回到原视图。
+    if (value !== "unread") setWorkspaceTaskOrganizeBy(value);
     setTaskOrganizeBy(value);
   }, []);
   const handleToggleAllTaskGroups = useCallback(() => {
@@ -1258,6 +1269,10 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                             id: "workspaceSidebar.organizeChronologicalList",
                           })}
                         </DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="unread">
+                          <Bell className="size-4" />
+                          {intl.formatMessage({ id: "taskList.viewUnread" })}
+                        </DropdownMenuRadioItem>
                       </DropdownMenuRadioGroup>
                     </>
                   ) : null}
@@ -1500,6 +1515,19 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                     onCollapsedGroupIdsChange={handleCollapsedGroupedTaskGroupIdsChange}
                     onStickyGroupHeaderChange={setGroupedStickyHeader}
                     onOpenAutomations={handleOpenAutomationsMain}
+                  />
+                ) : taskViewMode === "unread" ? (
+                  // 未读集合与侧栏蓝点/角标同一事实来源（task meta.unreadAt），不另建计数。
+                  <WorkspaceTimelineTasksSection
+                    onlyUnread
+                    groupByDate={false}
+                    emptyMessage={intl.formatMessage({ id: "taskList.noUnreadTasks" })}
+                    workspaceTabs={workspaceTabs}
+                    activeWorkspacePath={workspacePath}
+                    activeWorkspaceIdentity={workspaceIdentity}
+                    activeTaskId={activeTaskId}
+                    taskSortBy={taskSortBy}
+                    onSelectTask={handleTaskRowSelect}
                   />
                 ) : taskViewMode === "timeline" ? (
                   <WorkspaceTimelineTasksSection

@@ -72,6 +72,7 @@ import { PluginsSection } from "@/settings/PluginsSection.js";
 import { HooksSection } from "@/settings/HooksSection.js";
 import { WorkspaceFileSearchSection } from "@/settings/WorkspaceFileSearchSection.js";
 import { WorkspaceAdditionalDirectoriesSection } from "@/settings/WorkspaceAdditionalDirectoriesSection.js";
+import { WorkspaceManagementSection } from "@/settings/WorkspaceManagementSection.js";
 import { MemorySettingsSection } from "@/settings/MemorySettingsSection.js";
 import { BrowserSettingsSection } from "@/settings/BrowserSettingsSection.js";
 import { ComputerUseSection } from "@/settings/ComputerUseSection.js";
@@ -1975,6 +1976,8 @@ export function SettingsPage({
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                           />
+                        ) : activeSection === "workspaceManagement" ? (
+                          <WorkspaceManagementSection />
                         ) : activeSection === "browser" ? (
                           <BrowserSettingsSection
                             isDesktop={Boolean(isDesktop)}

@@ -11,6 +11,7 @@ import {
   countHiddenRegistryRows,
 } from "../src/hooks/workspaceSidebarRows.js";
 import { buildDefaultPersistPatch } from "../src/hooks/useTabPersistence.js";
+import { sortWorkspaceRegistryEntries } from "../src/lib/workspaceManagementPreferences.js";
 import type { WorkspaceRegistryEntry } from "@zcode/shared";
 import type { TabStoreState, WorkspaceTabState } from "../src/store/tabStore.js";
 
@@ -553,4 +554,67 @@ test("新增文案在 zh-CN 与 en-US 都存在", () => {
     assert.equal(typeof zhCN[key], "string", "zh-CN 缺文案：" + key);
     assert.equal(typeof enUS[key], "string", "en-US 缺文案：" + key);
   }
+});
+
+/**
+ * 设置页「工作区」分区（F7 前半）。
+ *
+ * 列表只能来自服务端注册表（客户端不得自造枚举），展示名走 AppSettings 的按键补丁，
+ * 排序是本机展示偏好。回归后果都在观感上：自造枚举会让两个客户端列出不同工作区；
+ * 展示名写成整表覆盖会抹掉别的工作区的自定义名。
+ */
+test("设置页分区读注册表、展示名按键补丁写入、排序落在本机偏好", () => {
+  const section = readSource("src/settings/WorkspaceManagementSection.tsx");
+  const config = readSource("src/settings/settingsPageConfig.ts");
+  const prefs = readSource("src/lib/workspaceManagementPreferences.ts");
+
+  // 枚举来源唯一：只消费 useWorkspaceRegistry，不读 tab/settings 里的工作区集合。
+  assert.match(section, /useWorkspaceRegistry\(\)/u);
+  assert.doesNotMatch(section, /tabStore|activeWorkspacePath/u);
+  // 展示名只提交被改的那个键，并归一化输入。
+  assert.match(section, /buildWorkspaceDisplayNamePatch\(workspaceKey, nextName\)/u);
+  assert.match(section, /normalizeWorkspaceDisplayName\(draftName\)/u);
+  // 本轮不做删除：出现删除入口就说明越过了「清理边界 spec」这道门。
+  assert.doesNotMatch(section, /deleteWorkspace|removeWorkspace|Trash2/u);
+
+  // 分区在设置页可见，且排序偏好落在本机键上。
+  assert.match(config, /id: "workspaceManagement"/u);
+  assert.match(prefs, /zcode-workspace-management-preferences/u);
+  assert.match(prefs, /export function sortWorkspaceRegistryEntries/u);
+});
+
+test("工作区管理文案双语在位", () => {
+  const keys = [
+    "settings.workspaceManagement.title",
+    "settings.workspaceManagement.description",
+    "settings.workspaceManagement.sort.lastActivity",
+    "settings.workspaceManagement.sort.name",
+    "settings.workspaceManagement.sort.sessions",
+    "settings.workspaceManagement.sessionCount",
+    "settings.workspaceManagement.nameLabel",
+    "settings.workspaceManagement.editName",
+    "settings.workspaceManagement.nameSaved",
+    "settings.workspaceManagement.nameSaveFailed",
+    "settings.workspaceManagement.loading",
+    "settings.workspaceManagement.loadFailed",
+    "settings.workspaceManagement.empty",
+  ];
+  for (const key of keys) {
+    assert.equal(typeof zhCN[key], "string", "zh-CN 缺文案：" + key);
+    assert.equal(typeof enUS[key], "string", "en-US 缺文案：" + key);
+  }
+});
+
+test("工作区排序：最近使用 / 名称 / 会话数，并列有稳定兜底", () => {
+  const rows = [
+    { key: "a", label: "Beta", lastActivityAt: 100, sessionCount: 2 },
+    { key: "b", label: "Alpha", lastActivityAt: 300, sessionCount: 1 },
+    { key: "c", label: "Gamma", lastActivityAt: 300, sessionCount: 5 },
+  ];
+  const by = (sortBy: "lastActivity" | "name" | "sessions") =>
+    sortWorkspaceRegistryEntries(rows, sortBy, (row) => row).map((row) => row.key);
+
+  assert.deepEqual(by("lastActivity"), ["b", "c", "a"]);
+  assert.deepEqual(by("name"), ["b", "a", "c"]);
+  assert.deepEqual(by("sessions"), ["c", "a", "b"]);
 });

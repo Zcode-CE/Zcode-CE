@@ -502,7 +502,6 @@
       "packages/shared/src/zcode-task-types-core.ts",
       "packages/shared/src/zcode-agent-policy.ts",
       "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/plugin-ui-surfaces.ts",
-      "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/topic-resource-port.ts",
       "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/fork-model-selection.ts",
       "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/saved-workflows-run.ts",
       "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workflow-settings-answer.ts"

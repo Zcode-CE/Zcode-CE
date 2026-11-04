@@ -1,6 +1,6 @@
 import type { EditorInfo } from "@zcode/shared";
 import { ChevronDownIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactElement, type ReactNode } from "react";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
 import type { MessageFileLinkTarget } from "@/components/ai-elements/message.js";
@@ -43,6 +43,14 @@ interface OpenSplitButtonProps {
   onOpenCodeViewer?: (source: CodeViewerSource) => void;
   hideOpenWithMenu?: boolean;
   stopPropagation?: boolean;
+  /**
+   * 让调用方把控件放进自己的卡片里（预览卡整卡点击）：回调拿到控件节点与主按钮的动作，
+   * 由调用方决定控件放在哪、以及卡片主体的点击是否复用同一个预览动作。
+   */
+  renderCard?: (
+    button: ReactNode,
+    actions: { handlePreview: () => void; canPreview: boolean },
+  ) => ReactElement;
 }
 
 export function OpenSplitButton({
@@ -52,6 +60,7 @@ export function OpenSplitButton({
   onOpenCodeViewer,
   hideOpenWithMenu = false,
   stopPropagation = false,
+  renderCard,
 }: OpenSplitButtonProps) {
   const { intl } = useZCodeIntl();
   const platform = usePlatform();
@@ -193,7 +202,7 @@ export function OpenSplitButton({
   };
 
   if (hideOpenWithMenu) {
-    return (
+    const simple = (
       <div
         className="flex h-7 shrink-0 items-center overflow-hidden rounded-lg border border-border bg-input transition-all hover:border-border-hover"
         onClick={stopEventPropagation}
@@ -214,9 +223,10 @@ export function OpenSplitButton({
         </Button>
       </div>
     );
+    return renderCard ? renderCard(simple, { handlePreview, canPreview }) : simple;
   }
 
-  return (
+  const composite = (
     <DropdownMenu onOpenChange={(open) => open && void loadEditors()}>
       <div
         className="flex h-7 shrink-0 items-center overflow-hidden rounded-lg border border-border bg-input transition-all hover:border-border-hover"
@@ -301,4 +311,5 @@ export function OpenSplitButton({
       </DropdownMenuContent>
     </DropdownMenu>
   );
+  return renderCard ? renderCard(composite, { handlePreview, canPreview }) : composite;
 }

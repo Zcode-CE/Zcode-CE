@@ -19,6 +19,8 @@ export type SettingsSectionId =
   | "workspaceFileSearch"
   // 工作区附加目录（X16）：按工作区编辑，新建会话时随 createSession 下发给 CLI。
   | "workspaceAdditionalDirectories"
+  // 工作区管理（F7 前半）：列服务端注册表、排序、编辑展示名；本轮不含删除。
+  | "workspaceManagement"
   | "computerUse"
   | "automations"
   | "shortcuts"
