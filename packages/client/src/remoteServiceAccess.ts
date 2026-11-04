@@ -26,6 +26,7 @@ import {
   IClientScenesService,
   IOffPeakTaskService,
   IWorkspaceRegistryService,
+  IWorkspaceMaintenanceService,
   ISkillsService,
   ISkillSyncService,
   IMcpSyncService,
@@ -80,6 +81,8 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly clientScenesService: IClientScenesService;
   readonly offPeakTaskService: IOffPeakTaskService;
   readonly workspaceRegistryService: IWorkspaceRegistryService;
+  /** 工作区删除与数据清理（可选：旧 host 未注册时缺席）。 */
+  readonly workspaceMaintenanceService?: IWorkspaceMaintenanceService;
   readonly skillsService: ISkillsService;
   readonly skillSyncService: ISkillSyncService;
   readonly mcpSyncService: IMcpSyncService;
@@ -189,6 +192,10 @@ export class RemoteServiceAccess implements IServiceAccessor {
     // 不得把失败当成「没有任何工作区」。
     this.workspaceRegistryService = ProxyChannel.toService<IWorkspaceRegistryService>(
       channelClient.getChannel(IWorkspaceRegistryService.channelName),
+    );
+    // 工作区删除与数据清理：可选 channel，旧 host 未注册时消费方按「不提供」处理。
+    this.workspaceMaintenanceService = ProxyChannel.toService<IWorkspaceMaintenanceService>(
+      channelClient.getChannel(IWorkspaceMaintenanceService.channelName),
     );
     this.skillsService = ProxyChannel.toService<ISkillsService>(
       channelClient.getChannel(ISkillsService.channelName),

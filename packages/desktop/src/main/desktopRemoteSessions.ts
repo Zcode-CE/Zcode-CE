@@ -463,6 +463,37 @@ export function createRemoteWorkspaceSessionManager(options: {
         });
         return;
       }
+      if (parsed.data.type === HostResponseTypes.RemoteDaemonReattachRequest) {
+        // daemon 重连成功：把新连接重新挂到窗口。复用既有 attachRendererPort（新建 MessageChannel、
+        // renderer 换代 services 引用并 ack ready、之后才回收旧 attachment）——不另造协议。
+        const reattachSessionId = parsed.data.remoteSessionId;
+        const reattachRequestId = parsed.data.requestId;
+        const route = routesBySessionId.get(reattachSessionId);
+        const win = BrowserWindow.getAllWindows().find(
+          (candidate) => candidate.webContents.id === webContentsId,
+        );
+        const reply = (ok: boolean, error?: string) => {
+          try {
+            child.postMessage({
+              type: HostMessageTypes.RemoteDaemonReattachResult,
+              requestId: reattachRequestId,
+              ok,
+              ...(error ? { error: error.slice(0, 500) } : {}),
+            });
+          } catch {
+            // Host 已退出：无需回执，Host 侧会按超时处理。
+          }
+        };
+        if (!route || !win || win.isDestroyed() || win.webContents.isDestroyed()) {
+          reply(false, "remote session route unavailable");
+          return;
+        }
+        void attachRendererPort(win, route, "daemon-reattach").then(
+          () => reply(true),
+          (error: unknown) => reply(false, error instanceof Error ? error.message : String(error)),
+        );
+        return;
+      }
       if (parsed.data.type === HostResponseTypes.RemoteDaemonStatusChanged) {
         // 多窗口共享同一个 window Host：按 webContentsId 找到发起窗口再发（与连接日志同策略）。
         const win = BrowserWindow.getAllWindows().find(

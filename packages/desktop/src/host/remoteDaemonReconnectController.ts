@@ -31,6 +31,13 @@ export type DaemonReconnectAttempt =
 export interface RemoteDaemonReconnectDeps {
   /** 执行一次完整重连（probe → admission → ticket → ws）。失败要返回分类而不是抛错。 */
   reconnect: () => Promise<DaemonReconnectAttempt>;
+  /**
+   * 把重连后的新连接挂回窗口（registry 换 handle + renderer 端口换代）。
+   * 成功才算 recovered；失败必须降级为 needs-rebuild（不谎报）。未提供视为不支持 re-attach。
+   */
+  reattach?: (
+    identity: RemoteDaemonIdentity,
+  ) => Promise<{ ok: true } | { ok: false; reason: string }>;
   onStateChange?: (state: RemoteDaemonReconnectState) => void;
   /** 重试上限（Lead 定的 3–5 区间，默认 4）。 */
   maxAttempts?: number;
@@ -124,6 +131,34 @@ export function createRemoteDaemonReconnectController(
         const result = await deps.reconnect();
         if (result.ok) {
           if (sameIdentity(previous, result.identity)) {
+            // 同一 daemon：还要把新连接挂回窗口，渲染进程的 services 引用才会指向新连接。
+            if (deps.reattach) {
+              emit({ kind: "reattaching", reason: "re-attaching new connection to window" });
+              const reattached = await deps.reattach(result.identity);
+              if (!reattached.ok) {
+                // re-attach 失败：连接没回来，绝不能报 recovered。
+                return emit({
+                  kind: "needs-rebuild",
+                  reason: "重连成功但无法接回窗口：" + reattached.reason,
+                  previous: {
+                    ...(previous.generation !== undefined
+                      ? { generation: previous.generation }
+                      : {}),
+                    ...(previous.pid !== undefined ? { pid: previous.pid } : {}),
+                  },
+                  current: {
+                    ...(result.identity.generation !== undefined
+                      ? { generation: result.identity.generation }
+                      : {}),
+                    ...(result.identity.pid !== undefined ? { pid: result.identity.pid } : {}),
+                  },
+                  identity: result.identity,
+                  ...((result.identity.coreLogPath ?? previous.coreLogPath)
+                    ? { coreLogPath: result.identity.coreLogPath ?? previous.coreLogPath }
+                    : {}),
+                });
+              }
+            }
             return emit({
               kind: "recovered",
               identity: {

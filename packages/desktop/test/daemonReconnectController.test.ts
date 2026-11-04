@@ -133,6 +133,49 @@ test("cancel()：进行中的重连立即收口为 disconnected（不继续退�
   assert.equal(attempts, 1, "取消后不再尝试");
 });
 
+test("re-attach 成功 ⇒ recovered（recovered 只在真正接回窗口后发出）", async () => {
+  const seen = collect();
+  let reattachCalls = 0;
+  const controller = createRemoteDaemonReconnectController({
+    reconnect: async () => ({ ok: true, identity: identity(7, 4242) }),
+    reattach: async () => {
+      reattachCalls += 1;
+      return { ok: true };
+    },
+    onStateChange: seen.onStateChange,
+    sleep: async () => undefined,
+  });
+  const state = await controller.start(identity(7, 4242), "connection-closed");
+  assert.equal(reattachCalls, 1, "同一 daemon 必须尝试一次 re-attach");
+  assert.equal(state.kind, "recovered");
+  const kinds = seen.states.map((item) => item.kind);
+  assert.ok(kinds.includes("reattaching"), "接回过程要作为独立阶段上报");
+  assert.ok(
+    kinds.indexOf("reattaching") < kinds.indexOf("recovered"),
+    "必须先 reattaching 再 recovered",
+  );
+});
+
+test("re-attach 失败 ⇒ needs-rebuild，且绝不出现 recovered", async () => {
+  const seen = collect();
+  const controller = createRemoteDaemonReconnectController({
+    reconnect: async () => ({ ok: true, identity: identity(7, 4242) }),
+    reattach: async () => ({ ok: false, reason: "renderer port swap failed" }),
+    onStateChange: seen.onStateChange,
+    sleep: async () => undefined,
+  });
+  const state = await controller.start(identity(7, 4242), "connection-closed");
+  assert.equal(state.kind, "needs-rebuild");
+  if (state.kind === "needs-rebuild") {
+    assert.match(state.reason, /接回窗口/u);
+  }
+  assert.equal(
+    seen.states.some((item) => item.kind === "recovered"),
+    false,
+    "接不回来就不能报已恢复（否则 UI 会骗用户）",
+  );
+});
+
 test("reconnect 抛错不得被当成成功（未真正连上就不能报 recovered）", async () => {
   const seen = collect();
   const controller = createRemoteDaemonReconnectController({

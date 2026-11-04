@@ -28,6 +28,8 @@ export interface WindowRemoteConnectionHandle<TServices, TCapabilities = never> 
 }
 
 interface WindowRemoteConnectionConnectRequest {
+  /** 本条连接的 logical session id：daemon re-attach 用它定位 registry entry。 */
+  remoteSessionId: string;
   target: RemoteTarget;
   remoteAssets: WindowRemoteAssetDirs;
   signal: AbortSignal;
@@ -386,6 +388,7 @@ export function createWindowRemoteConnectionRegistry<TServices, TCapabilities = 
 
   function createEntry(params: {
     key: string;
+    remoteSessionId: string;
     target: RemoteTarget;
     remoteAssets: WindowRemoteAssetDirs;
   }): ConnectionEntry<TServices, TCapabilities> {
@@ -405,6 +408,7 @@ export function createWindowRemoteConnectionRegistry<TServices, TCapabilities = 
     };
     entry.ready = options
       .connect({
+        remoteSessionId: params.remoteSessionId,
         target: params.target,
         remoteAssets: params.remoteAssets,
         signal: abortController.signal,
@@ -455,6 +459,7 @@ export function createWindowRemoteConnectionRegistry<TServices, TCapabilities = 
 
   function resolveEntry(params: {
     key: string;
+    remoteSessionId: string;
     target: RemoteTarget;
     remoteAssets: WindowRemoteAssetDirs;
   }): ConnectionEntry<TServices, TCapabilities> {
@@ -489,6 +494,7 @@ export function createWindowRemoteConnectionRegistry<TServices, TCapabilities = 
     const key = buildConnectionKey(params.target, remoteSessionId);
     const entry = resolveEntry({
       key,
+      remoteSessionId,
       target: params.target,
       remoteAssets: params.remoteAssets,
     });
@@ -658,6 +664,50 @@ export function createWindowRemoteConnectionRegistry<TServices, TCapabilities = 
     return resolveScopedHandle(scope).capabilities;
   }
 
+  /**
+   * daemon 重连后把 logical session 的底层连接换成新连接（re-attach 的 host 侧一半）。
+   *
+   * 只换 handle：entry/session/workspace 关联全部保留，因此同一 remoteSessionId 下的
+   * 全部 attachment（renderer 端口、能力解析）都指向新连接。旧 handle 的 WS 已随断线关闭，
+   * 这里只解绑它的 close 监听并 dispose（幂等），不会连带 dispose entry。
+   *
+   * 返回 false 表示 session 已不存在（例如窗口已关），调用方必须按失败处理而不是当作成功。
+   */
+  function replaceConnectionHandle(
+    remoteSessionId: string,
+    next: WindowRemoteConnectionHandle<TServices, TCapabilities>,
+  ): boolean {
+    const session = sessionsById.get(remoteSessionId);
+    if (!session || session.cancelled) {
+      void Promise.resolve(next.dispose()).catch(() => undefined);
+      return false;
+    }
+    const entry = session.entry;
+    if (entry.disposed) {
+      void Promise.resolve(next.dispose()).catch(() => undefined);
+      return false;
+    }
+    const previous = entry.handle;
+    // 解绑旧 close 监听：否则旧连接迟到的 close 会把整条 entry 标成断线（新连接明明还在）。
+    entry.closeSubscription?.dispose();
+    entry.handle = next;
+    entry.ready = Promise.resolve(next);
+    entry.state = "online";
+    session.state = "online";
+    session.sourceAvailability = "online";
+    if (next.onDidClose) {
+      entry.closeSubscription = next.onDidClose((event) => {
+        // 迟到的旧连接 close 不该影响已经换上的新连接。
+        if (entry.handle !== next) return;
+        handleConnectionClosed(entry, event);
+      });
+    }
+    if (previous && previous !== next) {
+      void Promise.resolve(previous.dispose()).catch(() => undefined);
+    }
+    return true;
+  }
+
   async function disposeSession(remoteSessionId: string): Promise<void> {
     const session = sessionsById.get(remoteSessionId);
     if (!session) {
@@ -764,6 +814,7 @@ export function createWindowRemoteConnectionRegistry<TServices, TCapabilities = 
       await session.workspaceReady;
       return resolveScopedServices(scope);
     },
+    replaceConnectionHandle,
     disposeSession,
     async dispose(): Promise<void> {
       if (disposePromise) {

@@ -236,6 +236,14 @@ export const hostCancelRemoteWorkspaceConnectMessageSchema = z
   })
   .strict();
 
+export const hostRemoteDaemonReattachResultMessageSchema = z
+  .object({
+    type: z.literal("remote-daemon-reattach-result"),
+    requestId: nonEmptyStringSchema,
+    ok: z.boolean(),
+    error: nonEmptyStringSchema.optional(),
+  })
+  .strict();
 export const hostBindRemoteWorkspaceContextMessageSchema = z
   .object({
     type: z.literal("bind-remote-workspace-context"),
@@ -561,6 +569,7 @@ export const hostIncomingMessageSchema = z.discriminatedUnion("type", [
   hostConnectRemoteWorkspaceMessageSchema,
   hostCancelRemoteWorkspaceConnectMessageSchema,
   hostBindRemoteWorkspaceContextMessageSchema,
+  hostRemoteDaemonReattachResultMessageSchema,
   hostDisposeRemoteWorkspaceSessionMessageSchema,
   hostAttachServicePortMessageSchema,
   hostDetachServicePortMessageSchema,
@@ -1024,6 +1033,13 @@ export type HostResourceUsageSnapshotResultResponse = z.infer<
   typeof hostResourceUsageSnapshotResultResponseSchema
 >;
 
+export const hostRemoteDaemonReattachRequestResponseSchema = z
+  .object({
+    type: z.literal("remote-daemon-reattach-request"),
+    requestId: nonEmptyStringSchema,
+    remoteSessionId: nonEmptyStringSchema,
+  })
+  .strict();
 export const hostRemoteDaemonStatusChangedResponseSchema = z
   .object({
     type: z.literal("remote-daemon-status-changed"),
@@ -1050,6 +1066,7 @@ export const hostRemoteDaemonStatusChangedResponseSchema = z
           reason: nonEmptyStringSchema,
         })
         .strict(),
+      z.object({ kind: z.literal("reattaching"), reason: nonEmptyStringSchema }).strict(),
       z
         .object({
           kind: z.literal("recovered"),
@@ -1101,6 +1118,7 @@ export const hostResponseMessageSchema = z.discriminatedUnion("type", [
   hostResourceUsageSnapshotResultResponseSchema,
   hostRemoteWorkspaceConnectionLogResponseSchema,
   hostRemoteDaemonStatusChangedResponseSchema,
+  hostRemoteDaemonReattachRequestResponseSchema,
   hostRemoteWorkspaceConnectedResponseSchema,
   hostRemoteWorkspaceConnectFailedResponseSchema,
   hostRemoteWorkspaceClosedResponseSchema,

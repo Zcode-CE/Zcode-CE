@@ -450,7 +450,12 @@ export type RemoteDaemonReconnectState =
       nextDelayMs: number;
       reason: string;
     }
-  /** 重连成功且 generation/pid 未变 ⇒ 同一 daemon，会话仍在。 */
+  /**
+   * 传输已重连、正在把新连接挂回窗口（renderer 侧端口换代）。
+   * 这一步成功才算 recovered；失败必须降级为 needs-rebuild。
+   */
+  | { kind: "reattaching"; reason: string }
+  /** 重连成功、re-attach 完成且 generation/pid 未变 ⇒ 同一 daemon，会话仍在。 */
   | { kind: "recovered"; identity: RemoteDaemonIdentity }
   /** daemon 重启过：会话全丢，需要重开会话。 */
   | {

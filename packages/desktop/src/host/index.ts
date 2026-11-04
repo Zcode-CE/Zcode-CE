@@ -197,6 +197,43 @@ interface PendingLocalMediaPreviewPathAuthorization {
   reject: (error: Error) => void;
 }
 
+/** daemon re-attach：host 请求 main 重新挂 renderer 端口，等待回执。 */
+const pendingDaemonReattachRequests = new Map<
+  string,
+  (result: { ok: boolean; error?: string }) => void
+>();
+const DAEMON_REATTACH_TIMEOUT_MS = 20_000;
+
+function requestDaemonReattach(remoteSessionId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!parentPort) {
+    return Promise.resolve({ ok: false, error: "parentPort unavailable" });
+  }
+  const requestId = randomUUID();
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      if (pendingDaemonReattachRequests.delete(requestId)) {
+        resolve({ ok: false, error: "re-attach 超时" });
+      }
+    }, DAEMON_REATTACH_TIMEOUT_MS);
+    timer.unref?.();
+    pendingDaemonReattachRequests.set(requestId, (result) => {
+      clearTimeout(timer);
+      resolve(result);
+    });
+    try {
+      parentPort!.postMessage({
+        type: HostResponseTypes.RemoteDaemonReattachRequest,
+        requestId,
+        remoteSessionId,
+      });
+    } catch (error) {
+      pendingDaemonReattachRequests.delete(requestId);
+      clearTimeout(timer);
+      resolve({ ok: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+}
+
 const pendingFeedbackLogArchiveRequests = new Map<string, PendingFeedbackLogArchiveRequest>();
 let nextFeedbackLogArchiveRequestSeq = 0;
 const pendingLocalMediaPreviewPathAuthorizations = new Map<
@@ -1627,6 +1664,7 @@ async function disposeHostRemoteConnection(connection: HostRemoteConnection): Pr
 }
 
 async function createWindowRemoteConnectionHandle(params: {
+  remoteSessionId: string;
   target: RemoteTarget;
   remoteAssets: RemoteAssetDirs;
   signal: AbortSignal;
@@ -1650,6 +1688,13 @@ async function createWindowRemoteConnectionHandle(params: {
     (exitCode) => notifyClose({ exitCode, signal: null }),
     params.target.kind === "ssh" ? "caller-serialized" : "remote",
     params.target.kind === "ssh" ? params.signal : undefined,
+    params.remoteSessionId,
+    (nextConnection) => ({
+      // 新连接进 registry 前先建好它自己的 ServiceCollection：
+      // 旧 collection 绑定旧 connection，不能复用（否则 re-attach 后仍是死连接）。
+      services: buildServices(nextConnection.services),
+      dispose: () => nextConnection.dispose(),
+    }),
   );
 
   if (params.signal.aborted) {
@@ -1676,28 +1721,31 @@ async function createWindowRemoteConnectionHandle(params: {
         logger.warn("remote prompt attachment janitor failed", error),
     },
   );
-  const services = createRemoteWorkspaceServiceCollection({
-    clientConfigService,
-    connectionServices: backendConnection.services,
-    sourceServices: activeServices ?? undefined,
-    parentPort,
-    createRemotePromptAttachmentSessionService: (service) =>
-      createRemotePromptAttachmentSessionService(service, {
-        materializePromptAttachments,
-      }),
-    createRemotePromptAttachmentTaskService: (service) =>
-      createRemotePromptAttachmentTaskService(service, {
-        materializePromptAttachments,
-      }),
-    createReportingRemoteZCodeTaskService: (service) =>
-      createReportingRemoteZCodeTaskService(service, {
-        taskRealtimePort: activeSessionRealtimePort ?? undefined,
-      }),
-    promptAttachmentTransferService,
-    runtimePreferencesBridge: {
-      onError: (error: unknown) => logger.warn("remote runtime preferences bridge failed", error),
-    },
-  });
+  // 建 ServiceCollection 抽成函数：daemon 重连后要用新连接重建一份（re-attach 的核心）。
+  const buildServices = (connectionServices: RemoteConnection["services"]) =>
+    createRemoteWorkspaceServiceCollection({
+      clientConfigService,
+      connectionServices,
+      sourceServices: activeServices ?? undefined,
+      parentPort,
+      createRemotePromptAttachmentSessionService: (service) =>
+        createRemotePromptAttachmentSessionService(service, {
+          materializePromptAttachments,
+        }),
+      createRemotePromptAttachmentTaskService: (service) =>
+        createRemotePromptAttachmentTaskService(service, {
+          materializePromptAttachments,
+        }),
+      createReportingRemoteZCodeTaskService: (service) =>
+        createReportingRemoteZCodeTaskService(service, {
+          taskRealtimePort: activeSessionRealtimePort ?? undefined,
+        }),
+      promptAttachmentTransferService,
+      runtimePreferencesBridge: {
+        onError: (error: unknown) => logger.warn("remote runtime preferences bridge failed", error),
+      },
+    });
+  const services = buildServices(backendConnection.services);
 
   let disposed = false;
   const remoteMediaPreviewFactory = !remoteMediaRangePreviewEnabled
@@ -2646,6 +2694,14 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
     return;
   }
 
+  if (msg.type === HostMessageTypes.RemoteDaemonReattachResult) {
+    const settle = pendingDaemonReattachRequests.get(msg.requestId);
+    if (settle) {
+      pendingDaemonReattachRequests.delete(msg.requestId);
+      settle({ ok: msg.ok, ...(msg.error ? { error: msg.error } : {}) });
+    }
+    return;
+  }
   if (msg.type === HostMessageTypes.DisposeRemoteWorkspaceSession) {
     const disposedSession = windowRemoteConnectionRegistry.getSession(msg.remoteSessionId);
     windowHostAttachmentRegistry.detachRemoteSessionAttachments(msg.remoteSessionId);
@@ -2892,6 +2948,12 @@ async function setupRemoteConnection(
   onDidRemoteClose: (exitCode: number) => void,
   deployLockMode: DeployLockMode = "remote",
   signal?: AbortSignal,
+  remoteSessionId?: string,
+  /** 用重连后的新连接构造 registry handle（services 必须是跟着新连接重建的那一份）。 */
+  buildReattachedHandle?: (connection: RemoteConnection) => {
+    services: ServiceCollection;
+    dispose(): void | Promise<void>;
+  },
 ): Promise<HostRemoteConnection> {
   // 延迟加载 remote backend，避免 local 模式下因 ssh2 依赖链进入 asar 后崩溃
   const { createRemoteBackend, connectRemoteAuto, connectDaemonRemote, pickRemoteRuntimeEnv } =
@@ -2908,9 +2970,35 @@ async function setupRemoteConnection(
     ): Promise<unknown>;
     cancel(): void;
   } | null = null;
+  // daemon 关闭事件：初次连接与每一次 re-attach 后的新连接都必须挂同一个处理器，
+  // 否则第二次断线没有人监听（状态机会停在 recovered，用户看不到任何提示）。
+  const handleDaemonClose = (event: {
+    reason: "connection-closed" | "backend-disconnected" | "daemon-unavailable";
+    code: number;
+    message?: string;
+  }) => {
+    console.log(
+      "[remote-daemon] connection closed:",
+      event.reason,
+      event.code,
+      event.message ?? "",
+    );
+    // 只有「连接断开」类事件才进入重连状态机：daemon-unavailable 说明远端服务本身没了，
+    // 重连没有意义（且不能静默切 stdio —— 那会另起一个 server，语义混乱）。
+    if (
+      daemonReconnect &&
+      daemonIdentity &&
+      (event.reason === "connection-closed" || event.reason === "backend-disconnected")
+    ) {
+      void daemonReconnect.start(daemonIdentity, event.reason).catch((error) => {
+        console.warn("[remote-daemon] reconnect state machine failed:", error);
+      });
+      return;
+    }
+    onDidRemoteClose(event.code);
+  };
   // 传输分派：远端已装可用的 zcode-server 时走常驻 daemon（断开只断 WS、会话存活），
-  // 否则零变化地走 stdio。daemon 的关闭事件先并入既有 close 收口（code 语义不变），
-  // 第二阶段的「重连 vs 需重建」状态机消费 reason 并在日志里给出结论。
+  // 否则零变化地走 stdio。
   const connection = await connectRemoteAuto(backend, {
     ...remoteAssets,
     remoteAssetNetwork,
@@ -2928,27 +3016,7 @@ async function setupRemoteConnection(
     onDidRemoteClose: ({ code }) => {
       onDidRemoteClose(code);
     },
-    onDidDaemonClose: (event) => {
-      // daemon 侧关闭：reason 区分「连接断开（daemon 可能仍 ready）」与「daemon 消失」。
-      console.log(
-        "[remote-daemon] connection closed:",
-        event.reason,
-        event.code,
-        event.message ?? "",
-      );
-      // 只有「连接断开」类事件才进入重连状态机：daemon-unavailable 说明远端服务本身没了，
-      // 重连没有意义（且不能静默切 stdio —— 那会另起一个 server，语义混乱）。
-      if (
-        daemonReconnect &&
-        (event.reason === "connection-closed" || event.reason === "backend-disconnected")
-      ) {
-        void daemonReconnect.start(daemonIdentity!, event.reason).catch((error) => {
-          console.warn("[remote-daemon] reconnect state machine failed:", error);
-        });
-        return;
-      }
-      onDidRemoteClose(event.code);
-    },
+    onDidDaemonClose: handleDaemonClose,
   });
   if (connection.transport === "daemon" && connection.daemon && connection.serverId) {
     const identity = {
@@ -2960,11 +3028,14 @@ async function setupRemoteConnection(
       coreLogPath: connection.daemon.serverRoot + "/run/core.log",
     };
     // 重连只重跑 probe → admission → ticket → ws（端口可能已变），绝不回退 stdio。
+    let reattachCandidate: RemoteConnection | undefined;
     const controller = createRemoteDaemonReconnectController({
       reconnect: async () => {
         const result = await connectDaemonRemote(backend, {
           env: process.env,
           autoStart: true,
+          // 新连接必须继续被监听：daemon 存活期内可能反复断线。
+          onDidDaemonClose: handleDaemonClose,
         });
         if (!result.available) {
           return {
@@ -2974,10 +3045,24 @@ async function setupRemoteConnection(
             ...(result.coreLogPath ? { coreLogPath: result.coreLogPath } : {}),
           };
         }
-        // 第三阶段之前不做 re-attach：新连接只用来确认「daemon 还活着、身份没变」，
-        // 拿到身份后立即释放，否则会留下一条没人使用的 WS/ChannelClient（泄漏）。
-        // 用户侧的恢复路径是重新加载工作区（横幅动作），那条路径会重新建立并挂载连接。
-        await result.connection.disposeAndWait({ timeoutMs: 2_000 });
+        // 新连接先换进 registry（host 侧换成新 handle，旧连接随之释放），再由 main 触发
+        // renderer 端口换代。两步都成功，状态机才允许报 recovered。
+        if (!remoteSessionId || !buildReattachedHandle) {
+          await result.connection.disposeAndWait({ timeoutMs: 2_000 });
+          throw new Error("daemon re-attach 失败：缺少 session/handle 构造器");
+        }
+        // 先接新：把新连接换进 registry（旧 handle 随之 dispose，entry/session 保留），
+        // 再由 reattach 阶段让 main 触发 renderer 端口换代。两步都成功才算 recovered。
+        const nextHandle = buildReattachedHandle(result.connection);
+        const swapped = windowRemoteConnectionRegistry.replaceConnectionHandle(remoteSessionId, {
+          services: nextHandle.services,
+          dispose: nextHandle.dispose,
+        });
+        if (!swapped) {
+          await result.connection.disposeAndWait({ timeoutMs: 2_000 });
+          throw new Error("daemon re-attach 失败：remote session 已不存在");
+        }
+        reattachCandidate = result.connection;
         return {
           ok: true as const,
           identity: {
@@ -2991,6 +3076,18 @@ async function setupRemoteConnection(
             coreLogPath: identity.coreLogPath,
           },
         };
+      },
+      reattach: async () => {
+        // renderer 端口换代交给 main（复用既有 attachRendererPort：新建 MessageChannel、
+        // renderer 换代 services 并 ack ready、之后才回收旧 attachment）。
+        const ack = await requestDaemonReattach(remoteSessionId!);
+        if (!ack.ok) {
+          await reattachCandidate?.disposeAndWait({ timeoutMs: 2_000 });
+          reattachCandidate = undefined;
+          return { ok: false as const, reason: ack.error ?? "renderer re-attach failed" };
+        }
+        reattachCandidate = undefined;
+        return { ok: true as const };
       },
       onStateChange: (state) => {
         // 结构化通道是唯一真相：main 转发到对应窗口，renderer 横幅消费。

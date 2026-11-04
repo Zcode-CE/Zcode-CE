@@ -147,6 +147,8 @@ export const ServiceChannels = {
   OnboardingRecord: "onboarding-record",
   /** 工作区注册表（M1.3）：可见工作区集合的唯一真相源，只读面 */
   WorkspaceRegistry: "workspace-registry",
+  /** 工作区删除与数据清理（measure / purge / removeFromList） */
+  WorkspaceMaintenance: "workspace-maintenance",
   /** Bots 远程聊天控制服务（IM 机器人渠道） */
   Bots: "bots",
 } as const;
@@ -578,6 +580,8 @@ export const HostMessageTypes = {
   CancelRemoteWorkspaceConnect: "cancel-remote-workspace-connect",
   /** main → window Host：为 logical session 绑定 canonical workspace 身份 */
   BindRemoteWorkspaceContext: "bind-remote-workspace-context",
+  /** main → window Host：daemon re-attach 完成（成功/失败），Host 据此决定 recovered 还是 needs-rebuild */
+  RemoteDaemonReattachResult: "remote-daemon-reattach-result",
   /** main → window Host：释放一个远程 logical session */
   DisposeRemoteWorkspaceSession: "dispose-remote-workspace-session",
   /** main → host：复用现有服务，对新的 RPC MessagePort 暴露服务 */
@@ -640,6 +644,8 @@ export const HostResponseTypes = {
   RemoteWorkspaceConnectionLog: "remote-workspace-connection-log",
   /** window Host → main：远端常驻 daemon 连接状态变化（main 再转发到对应窗口） */
   RemoteDaemonStatusChanged: "remote-daemon-status-changed",
+  /** window Host → main：请求把 daemon 重连后的新连接重新挂到窗口（main 回复 ReattachResult） */
+  RemoteDaemonReattachRequest: "remote-daemon-reattach-request",
   /** window Host → main：远程 logical session 已建立 */
   RemoteWorkspaceConnected: "remote-workspace-connected",
   /** window Host → main：远程 logical session 建立失败 */
