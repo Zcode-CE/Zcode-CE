@@ -17,7 +17,7 @@ import { resolveRemoteCdnBaseUrls } from "../src/main/remoteCdn.js";
 
 const VERSION = "3.14.3-ce.2";
 const OFFICIAL_DEFAULT_BASE = `https://cdn-zcode.z.ai/zcode/electron/releases/${VERSION}`;
-const COMMUNITY_ROOT = "https://cdn.eidolonmachine.xyz";
+const COMMUNITY_ROOT = "https://cdn.wsdaxl.tech";
 const SELF_HOSTED_ROOT = "https://assets.example.internal/zcode-remote";
 
 const DEFINE_KEY = "__ZCODE_CDN_BASE_URL__";

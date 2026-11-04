@@ -13,7 +13,7 @@ import { appSettingsPatchSchema, appSettingsSchema } from "../src/validationAppS
  * 运行：cd packages/shared && node --import tsx --test test/remoteAssetCdnSettings.test.ts
  */
 
-const VALID = "https://cdn.eidolonmachine.xyz";
+const VALID = "https://cdn.wsdaxl.tech";
 
 test("保存往返：合法值经 patch 校验后原样落盘，再读回来仍在", () => {
   const patched = appSettingsPatchSchema.parse({ remoteAssetCdnBaseUrl: VALID });

@@ -52,7 +52,7 @@ node scripts/build-zcode.mjs --allow-placeholder-base-url   # 未配 ZCODE_DIST_
 一段 stderr 告警（提示设置 `ZCODE_DIST_BASE_URL`），且运行期仍可用该变量覆盖。
 这条不变式由 `scripts/test/installScriptBaseUrl.test.mjs` 钉住。
 
-**本项目的实际托管点（2026-09-25 决定）**：基址为 `https://cdn.eidolonmachine.xyz/zcode`（社区 CDN，Cloudflare R2）。
+**本项目的实际托管点（2026-09-25 决定）**：基址为 `https://cdn.wsdaxl.tech/zcode`（社区 CDN，Cloudflare R2）。
 放在 `/zcode` 子路径而不是根，是为了与同域下**已有的远程工作区资产**（`/components/**`、`/<版本>/manifest-*.json`）隔离。
 对应仓库变量 `ZCODE_DIST_BASE_URL` 与 `pnpm build:zcode` 的 `--base-url` 必须用同一个值。
 

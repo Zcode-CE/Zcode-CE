@@ -28,9 +28,9 @@ test("留空 / 只有空白 / 未设置 ⇒ empty（= 用默认），不是错�
 
 test("合格的发布根按字面值保留，只去掉尾部斜杠", () => {
   const cases: Array<[string, string]> = [
-    ["https://cdn.eidolonmachine.xyz", "https://cdn.eidolonmachine.xyz"],
-    ["https://cdn.eidolonmachine.xyz/", "https://cdn.eidolonmachine.xyz"],
-    ["https://cdn.eidolonmachine.xyz///", "https://cdn.eidolonmachine.xyz"],
+    ["https://cdn.wsdaxl.tech", "https://cdn.wsdaxl.tech"],
+    ["https://cdn.wsdaxl.tech/", "https://cdn.wsdaxl.tech"],
+    ["https://cdn.wsdaxl.tech///", "https://cdn.wsdaxl.tech"],
     // 子路径必须保留：自建发布点常挂在 `/assets` 下。
     ["https://my-host/assets", "https://my-host/assets"],
     ["https://my-host/assets/", "https://my-host/assets"],
@@ -49,7 +49,7 @@ test("非法值给稳定错误码，绝不静默降级成 empty", () => {
   const cases: Array<[unknown, string]> = [
     ["ftp://my-host", REMOTE_ASSET_CDN_BASE_URL_ERROR_CODES.protocol],
     ["my-host/assets", REMOTE_ASSET_CDN_BASE_URL_ERROR_CODES.protocol],
-    ["cdn.eidolonmachine.xyz", REMOTE_ASSET_CDN_BASE_URL_ERROR_CODES.protocol],
+    ["cdn.wsdaxl.tech", REMOTE_ASSET_CDN_BASE_URL_ERROR_CODES.protocol],
     ["https://", REMOTE_ASSET_CDN_BASE_URL_ERROR_CODES.unparsable],
     ["https://my-host/assets?token=1", REMOTE_ASSET_CDN_BASE_URL_ERROR_CODES.queryOrFragment],
     ["https://my-host/assets#top", REMOTE_ASSET_CDN_BASE_URL_ERROR_CODES.queryOrFragment],
