@@ -2,7 +2,7 @@
 // ============================================================
 // 确认窗里可调的两项 run 设置（CreateWorkflow / AmendWorkflow 共用）
 // ============================================================
-// docs/dynamic-workflow/launch.md「Adjusting the settings in the window」。
+// dynamic-workflow 启动规约「Adjusting the settings in the window」。
 //
 // 两个 schema，一去一回：
 //   - `WorkflowAdjustableSettingsSchema`：`resolveInput` 回填进入参的事实，告诉确认窗「这个 agent 会应用
@@ -43,7 +43,7 @@ export const WORKFLOW_MODEL_BINDINGS_MAX_ENTRIES = 64;
 const WORKFLOW_MODEL_NAME_MAX_CHARS = 512;
 
 /**
- * 脚本点名的模型 → 规范形（docs/dynamic-workflow/launch.md「Models the script names」）：键是脚本
+ * 脚本点名的模型 → 规范形（dynamic-workflow 启动规约「Models the script names」）：键是脚本
  * 逐字写下的名字（不 trim：运行期 persona 里带的就是这个串），值是 `providerId/modelId[$level]`。
  *
  * 与 {@link WorkflowAdjustableSettingsSchema} 同一个姿态、同一条通道：`resolveInput` 回填进入参，

@@ -5,7 +5,7 @@
 // 从 workflow-runs-eviction.ts 拆出（主文件的 max-lines 门），也同一条纪律：纯函数、无时钟、
 // 无 I/O。淘汰说的是「谁离开表」，这里说的是「离开之后它还怎么被数出来」。
 //
-// 读面是按站画的（docs/dynamic-workflow/presentation.md「Past six participants」）：一个站点
+// 读面是按站画的（dynamic-workflow 展示规约「Past six participants」）：一个站点
 // 的花名册、计数环和「N more」都得把自己那一格的表外条目加回去。run 级的两个计数器
 // （workflow-runs-caps.ts）说得出一条 run 总共少列了多少，说不出少在哪一站——这张格子表就是
 // 那个缺口。

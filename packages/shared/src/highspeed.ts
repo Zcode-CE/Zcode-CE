@@ -8,7 +8,7 @@ import { BUILTIN_MODEL_PROVIDER_IDS } from "./model-provider-types.js";
 
 /**
  * 卡在 Turn 中过期时加速网关返回的业务错误码（HTTP 400 / provider_code=3402）。
- * 见 docs/highspeed/highspeed-card-spec.md：命中它要保留上下文并退回原模型跑完本轮。
+ * 见 Highspeed 卡片规约：命中它要保留上下文并退回原模型跑完本轮。
  */
 export const HIGHSPEED_CARD_EXPIRED_PROVIDER_ERROR_CODE = "3402";
 

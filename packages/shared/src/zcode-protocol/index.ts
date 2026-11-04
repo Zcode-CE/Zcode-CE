@@ -14,7 +14,6 @@ import { mcpAppInstanceSchema } from "../mcp-apps/instance.js";
 import { appToolSearchModeSchema } from "../toolSearch.js";
 export { conversationQuoteSchema, conversationQuotesSchema } from "../conversationSelection.js";
 export { attachmentSourceKindSchema, type AttachmentSourceKind } from "../attachment-source.js";
-import { PROTOCOL_V4_LIMITS } from "../zcode-protocol-v4/core.js";
 import { DYNAMIC_WORKFLOW_MODES } from "../dynamic-workflow-feature.js";
 import {
   databaseStartupErrorCodeSchema,
@@ -96,8 +95,6 @@ export {
 
 export const ZCODE_PROTOCOL_NAME = "ZCode Protocol" as const;
 export const ZCODE_PROTOCOL_VERSION = 1 as const;
-// V4 wire 与 legacy 主协议并存；禁止为了 V4 physical framing 改写 legacy 版本。
-export const ZCODE_PROTOCOL_V4_WIRE_VERSION = 3 as const;
 export const zcodeRuntimeCapabilitiesSchema = z.object({
   independentPlanState: z.boolean().optional(),
 });
@@ -296,68 +293,6 @@ const zcodeToolResultObjectSchema = jsonObjectSchema.superRefine((result, contex
 
 export const zcodeProtocolRequestIdSchema = z.union([z.string(), z.number().int()]);
 export type ZCodeProtocolRequestId = z.infer<typeof zcodeProtocolRequestIdSchema>;
-
-// 远程历史附件仅通过现有连接的私有反向频道传输，单块保持在 RPC 帧预算内。
-export const TOPIC_RESOURCE_RELAY_CHUNK_BYTES = 384 * 1024;
-export const TOPIC_RESOURCE_RELAY_CHANNEL = "host-topic-resource";
-// 话题资源读取/取消：Host 回放历史附件给 UI 的窄端口（F8 独立话题协作的协议面）。
-export const zcodeTopicResourceReadParamsSchema = z
-  .object({
-    requestId: z.string().min(1).max(256),
-    taskId: z.string().min(1).max(256),
-    inputId: z.string().min(1).max(256),
-    authorizationId: z.string().min(1).max(256),
-    messageId: z.string().min(1).max(256),
-    resourceIndex: z.number().int().nonnegative(),
-  })
-  .strict();
-export const zcodeTopicResourceReadResultSchema = z
-  .object({
-    ref: z.string().min(1),
-    fileName: z.string().min(1).max(1024),
-    mime: z.string().min(1).max(256),
-    bytes: z.number().int().min(0).max(PROTOCOL_V4_LIMITS.attachmentMaxBytes),
-  })
-  .strict();
-export const zcodeTopicResourceCancelParamsSchema = z
-  .object({ requestId: z.string().min(1).max(256), taskId: z.string().min(1).max(256) })
-  .strict();
-export const zcodeTopicResourceCancelResultSchema = z.object({ cancelled: z.boolean() }).strict();
-export type ZCodeTopicResourceReadParams = z.infer<typeof zcodeTopicResourceReadParamsSchema>;
-export type ZCodeTopicResourceReadResult = z.infer<typeof zcodeTopicResourceReadResultSchema>;
-export const zcodeTopicResourceRelayRequestSchema = zcodeTopicResourceReadParamsSchema
-  .extend({
-    workspacePath: z.string().min(1).max(4096),
-    workspaceIdentity: z.string().min(1).max(4096),
-    remoteSessionId: z.string().min(1).max(256),
-    trace: zcodeProtocolTraceSchema.optional(),
-  })
-  .strict();
-export type ZCodeTopicResourceRelayRequest = z.infer<typeof zcodeTopicResourceRelayRequestSchema>;
-export const zcodeTopicResourceRelayKeySchema = zcodeTopicResourceCancelParamsSchema;
-export const zcodeTopicResourceRelayChunkRequestSchema = zcodeTopicResourceRelayKeySchema
-  .extend({
-    index: z.number().int().nonnegative(),
-  })
-  .strict();
-export const zcodeTopicResourceRelayMetadataSchema = z
-  .object({
-    fileName: z.string().min(1).max(1024),
-    mime: z.string().min(1).max(256),
-    bytes: z.number().int().min(0).max(PROTOCOL_V4_LIMITS.attachmentMaxBytes),
-    totalChunks: z
-      .number()
-      .int()
-      .min(0)
-      .max(Math.ceil(PROTOCOL_V4_LIMITS.attachmentMaxBytes / TOPIC_RESOURCE_RELAY_CHUNK_BYTES)),
-    checksum: z.string().regex(/^sha256:[a-f0-9]{64}$/),
-  })
-  .strict();
-export const zcodeTopicResourceRelayChunkSchema = z
-  .object({
-    dataBase64: z.string().max((TOPIC_RESOURCE_RELAY_CHUNK_BYTES / 3) * 4),
-  })
-  .strict();
 
 // trace 摘要 schema 已抽到 ./trace.js（channel-mention 与采样共用）；此处只再导出。
 
@@ -708,7 +643,11 @@ export const zcodeProtocolMcpServerSchema = z.union([
   z
     .object({
       name: nonEmptyString,
+      // 声明归属：用户级还是工作区。缺省视为「Host 没说明」，工作区同名声明因此仍按未信任处理。
+      scope: z.enum(["user", "workspace"]).optional(),
       command: nonEmptyString,
+      /** stdio 子进程的工作目录；相对路径按会话工作目录解析。 */
+      cwd: nonEmptyString.optional(),
       args: z.array(z.string()),
       env: z.array(zcodeProtocolMcpEntrySchema),
       // 工具搜索的常驻加载开关：strict schema 漏声明会让 host 配置在 session/create 被判非法。
@@ -725,6 +664,7 @@ export const zcodeProtocolMcpServerSchema = z.union([
   z
     .object({
       name: nonEmptyString,
+      scope: z.enum(["user", "workspace"]).optional(),
       type: z.enum(["http", "sse"]),
       url: nonEmptyString,
       headers: z.array(zcodeProtocolMcpEntrySchema),
@@ -2036,15 +1976,6 @@ export const zcodeSessionRuntimePreferencesScopeSchema = z.enum([
 export type ZCodeSessionRuntimePreferencesScope = z.infer<
   typeof zcodeSessionRuntimePreferencesScopeSchema
 >;
-
-// subagents/readRuntimeConfig 返回 Host 已解析的完整快照或显式内置回退，不再传 Markdown。
-export {
-  subagentRuntimeConfigSchema,
-  type SubagentRuntimeConfig,
-} from "../subagent-runtime-config.js";
-export const zcodeSubagentsReadRuntimeConfigParamsSchema = z
-  .object({ sessionId: nonEmptyString })
-  .strict();
 
 export const ZCODE_SESSION_RUNTIME_PREFERENCES_REQUEST_TIMEOUT_MS = 15_000;
 
@@ -3359,7 +3290,7 @@ export const zcodeWorkflowsMoveResultSchema = z.union([
 ]);
 export type ZCodeWorkflowsMoveResult = z.infer<typeof zcodeWorkflowsMoveResultSchema>;
 
-// ── 从一次 run 保存工作流（docs/dynamic-workflow/transcript-and-notifications.md「Saving the
+// ── 从一次 run 保存工作流（dynamic-workflow 转录与通知规约「Saving the
 // run, and running it again」）──
 // 完成卡的「直接保存」走这条：不收脚本，只收 runId——要写的那份正文是这次 run 实际执行的
 // 脚本，agent 从 journal 记录（`scriptText`）里读。脚本不经 GUI 走一圈有两个后果值得写下来：
@@ -4088,7 +4019,6 @@ export const zcodeProtocolMethods = {
   sessionList: "session/list",
   sessionSubagents: "session/subagents",
   sessionRequestRuntimePreferences: "session/requestRuntimePreferences",
-  subagentsReadRuntimeConfig: "subagents/readRuntimeConfig",
   sessionRead: "session/read",
   sessionMessages: "session/messages",
   sessionEvents: "session/events",
@@ -4167,7 +4097,7 @@ export const zcodeProtocolMethods = {
   workflowsRuns: "workflows/runs",
   // 在项目档 / 全局档之间移动同名文件。
   workflowsMove: "workflows/move",
-  // 完成卡的「直接保存」与「已保存」判定（docs/dynamic-workflow/transcript-and-notifications.md）：
+  // 完成卡的「直接保存」与「已保存」判定（dynamic-workflow 转录与通知规约）：
   // 前者按 runId 从 journal 取脚本落盘，后者回答「这次 run 对应哪个已保存工作流」。
   workflowsSave: "workflows/save",
   workflowsForRun: "workflows/forRun",
@@ -4187,9 +4117,7 @@ export const zcodeProtocolMethods = {
   pluginsValidate: "plugins/validate",
   pluginsDescribe: "plugins/describe",
   automationCreate: "automation/create",
-  topicResourceRead: "topic/resource/read",
   channelReply: "bot/channel/reply",
-  topicResourceCancel: "topic/resource/cancel",
   automationUpdate: "automation/update",
   automationCheckTaskBinding: "automation/checkTaskBinding",
   automationList: "automation/list",
@@ -4205,7 +4133,6 @@ export const zcodeProtocolMethods = {
   sessionUsage: "session/usage",
   // 资源管理器：CLI 回报其 MCP 子进程 pid 与插件归属（纯内存，无 I/O），采样在 Host 侧完成。
   processChildProcesses: "process/childProcesses",
-  processNetworkCapture: "process/networkCapture",
   interactionRequestPermission: "interaction/requestPermission",
   interactionRequestUserInput: "interaction/requestUserInput",
   interactionRequestProviderRuntimeHeaders: "interaction/requestProviderRuntimeHeaders",

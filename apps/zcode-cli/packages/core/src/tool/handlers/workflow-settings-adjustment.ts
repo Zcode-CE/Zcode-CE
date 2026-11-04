@@ -2,7 +2,7 @@
 // ============================================================
 // 确认窗里调整的两项 run 设置（CreateWorkflow / AmendWorkflow 共用）
 // ============================================================
-// docs/dynamic-workflow/launch.md「Adjusting the settings in the window」。
+// dynamic-workflow 启动规约「Adjusting the settings in the window」。
 //
 // 三件事，一处实现：
 //   1. `resolveInput` 回填的 `adjustable_settings` 块（告诉确认窗这个 agent 会应用窗里改的值）；
@@ -145,7 +145,7 @@ export function readAppliedWorkflowSettings(
 }
 
 /**
- * 结果文案里的那句话（docs/dynamic-workflow/launch.md「Adjusting the settings in the window」）。模型的
+ * 结果文案里的那句话（dynamic-workflow 启动规约「Adjusting the settings in the window」）。模型的
  * `tool_use` 块留着它自己传的参数，不说的话它会以为自己要的值在生效，甚至去「纠正」一个正按用户
  * 意思在跑的 run。只说改了的那一半；两个 `null` 各有一句话。以空格开头，直接接在前一句后面。
  */

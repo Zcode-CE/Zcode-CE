@@ -119,7 +119,7 @@ export const commandPayloadSchemas = {
       modelExecution: modelExecutionSchema.optional(),
       // Highspeed 卡快照随输入事实进入 message.data；不包含 runtime 凭据或 header。
       // 加速本轮的模型与凭据走上面的 modelSelection + modelExecution，见
-      // docs/highspeed/highspeed-access-mode-migration.md。
+      // Highspeed 接入模式迁移规约。
       highspeedMeta: highspeedMessageMetaSchema.optional(),
       automationId: z.string().min(1).optional(),
       offPeakTaskId: z.string().min(1).optional(),

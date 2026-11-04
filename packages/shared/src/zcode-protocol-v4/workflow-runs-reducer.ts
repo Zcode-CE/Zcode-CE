@@ -22,7 +22,7 @@
 //      releaseCachedAsk / tryImportedSettle，world-read 在 engine-world.ts 的重放与导入命中）。
 //      ask 的那一条重发出生事实（kind / actor / actorSeq / instructionsHead），world-read 的不带，
 //      更早的 journal 里的也不带——所以 node.kind 与 actor ref 是可缺省的，不是漏填。
-//   3. run 级用量（docs/dynamic-workflow/authoring.md）：`usage-updated` 直接携带已花 token 总量；
+//   3. run 级用量（dynamic-workflow 编写规约）：`usage-updated` 直接携带已花 token 总量；
 //      `nodesUsed` 由 `node-dispatched` 的首次相位跃迁计数（同一实例重放不重复计数），
 //      没有任何上限可供反算，也不需要。
 
@@ -242,7 +242,7 @@ function applyWorkflowRunEvent(
       const born =
         eventType === "node-queued" || (eventType === "node-settled" && payload.cached === true);
       const actorRef = workflowInstanceRef(payload.actor);
-      // 带出生事实的 `node-dispatched`（docs/dynamic-workflow/presentation.md「Reduction」的
+      // 带出生事实的 `node-dispatched`（dynamic-workflow 展示规约「Reduction」的
       // activation）：引擎在派发那一刻重发这条实例的 `node-queued` 与它子代理的 `actor-created`
       // 携带过的同一份事实，于是表外的实例可以在被派活的那一刻连人带活回到表上。
       // 缺 actor ref 即老 journal 或 world-read 的裸派发，照旧处理。
@@ -525,7 +525,7 @@ function applyWorkflowRunEvent(
 
     /**
      * run-caps-changed：run 在飞时它自己的那条并发界被改了（只改 `max_concurrency` 的修订
-     * 就地生效，不停这次 run、不另起一次；docs/dynamic-workflow/concurrency.md）。载荷与
+     * 就地生效，不停这次 run、不另起一次；dynamic-workflow 并发规约）。载荷与
      * `run-started` 同形，规则也是同一条，所以与它同住 workflow-runs-concurrency.ts。
      * 同样不碰 `nodes[]` 与 actor 状态：界是闸门，不是任何节点的事。
      */
@@ -539,7 +539,7 @@ function applyWorkflowRunEvent(
       return reduceRunLaunched(run, payload);
 
     /**
-     * hole-reached / hole-filled：留白的停驻与补全（docs/dynamic-workflow/presentation.md「Holes on the
+     * hole-reached / hole-filled：留白的停驻与补全（dynamic-workflow 展示规约「Holes on the
      * timeline」）。不碰 nodes / actors——留白没有节点行；规则在同族的 workflow-runs-holes.ts。
      */
     case "hole-reached":

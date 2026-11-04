@@ -21,7 +21,7 @@ function actorKey(siteId: string, ordinal: number): string {
 }
 
 /**
- * 三态推导（docs/dynamic-workflow/concurrency.md「Protocol state」）：
+ * 三态推导（dynamic-workflow 并发规约「Protocol state」）：
  *   running   有节点在 executing / repairing / nudged（模型请求已发出、正在跑）
  *   waiting   有 live 节点（queued / dispatched / waiting），或尚无任何节点且 run 未终态
  *   completed 其余：全部节点已结算，或 run 已终态（终态压过一切：一个终态 run 里没有任何人

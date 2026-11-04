@@ -159,8 +159,8 @@ export type ToolResultDisplay = z.infer<typeof toolResultDisplaySchema>;
 // ⚠ display 在信封层不设门（`.optional().catch(undefined)`）：解析不过就退化成「这张卡没有
 // 载荷」，而不是让整条 row、整帧、整条订阅失败。四个嵌入点共用这条规则——本文件的
 // toolOutputSchema、rows.ts 的 toolCallRow、snapshot.ts 的确认预览、workflow-row-meta.ts 的
-// 启动行图；spec 见 docs/v4-refactor/10-protocol-spec.md §4.4.5 与
-// docs/v4-refactor/04-sync-and-recovery.md 封闭规则 11。
+// 启动行图；spec 见 V4 协议规约 §4.4.5 与
+// V4 同步与恢复规约 封闭规则 11。
 //
 // 根因（2026-09-21，sess_4142de31）：display 是装饰载荷，却长在 liveness 关键的信封里。CLI 给
 // `list_workflow_runs` 的 run 行加了两个 lineage 键，本侧镜像没跟上 → 整帧被

@@ -28,9 +28,6 @@ export * from "./interfaces/model-catalog.port.js";
 export * from "./interfaces/automation.port.js";
 export * from "./interfaces/off-peak.port.js";
 export * from "./interfaces/mcp.port.js";
-// Modified by ZCode:F5 mcp-ui 消费侧端口（话题附件读取 / 同渠道回复）。
-export * from "./interfaces/topic-resource.port.js";
-
 export * from "./interfaces/runtime-input-presentation.js";
 
 // Events

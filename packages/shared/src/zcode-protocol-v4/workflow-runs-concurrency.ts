@@ -18,7 +18,7 @@ const CONCURRENCY_IDLE_RESET_REASON = "idle_reset";
 /**
  * `concurrency-changed` → `run.concurrency`。
  *
- * `ceiling` 是默认并发 D（docs/dynamic-workflow/concurrency.md「Protocol state」）：`run-started` 已把它
+ * `ceiling` 是默认并发 D（dynamic-workflow 并发规约「Protocol state」）：`run-started` 已把它
  * 记在 `run.concurrencyCeiling` 上时一律取那一个。共享桶的自动增长可以到 2D、被抬高的 run 还能更高，
  * 所以「见过的最大 previous / next」早已不是 D——它只是老 CLI（不发 `concurrencyCeiling`）时的
  * 退路：那时桶从天花板起步、只降不升，最大值恰好就是天花板。`cooldownMs` 只在带 Retry-After 的
@@ -56,7 +56,7 @@ export function reduceConcurrencyChanged(
 
 /**
  * `run-started` → `run.concurrency.limit`：本 run 自己的那条界
- * （docs/dynamic-workflow/concurrency.md「Two bounds on a run」）。载荷带引擎的
+ * （dynamic-workflow 并发规约「Two bounds on a run」）。载荷带引擎的
  * `caps.maxConcurrency` 与 CLI 在铸载荷那一刻算出的 `concurrencyCeiling`——默认并发 D（线上键名
  * 早于「默认并发」这个概念，为兼容旧端保留）。D 是进程事实，不是引擎事实，所以它由 CLI 拼进
  * 载荷，与 `resumedFrom` 同一先例。
@@ -99,7 +99,7 @@ export function reduceRunStartedConcurrency(
 
 /**
  * `run-caps-changed` → `run.concurrency.limit`：run 在飞时它自己的那条界被改了
- * （docs/dynamic-workflow/concurrency.md）。只改 `max_concurrency` 的修订就地生效——不停这次 run、
+ * （dynamic-workflow 并发规约）。只改 `max_concurrency` 的修订就地生效——不停这次 run、
  * 不另起一次——引擎改完 caps 发这条事件，载荷与 `run-started` 同形（引擎的 `caps.maxConcurrency`
  * 加 CLI 拼进来的 `concurrencyCeiling`，即默认并发 D）。所以这里与 `reduceRunStartedConcurrency`
  * 读同两个字段、守同一条「只在 ≠ D 时记」：同一个数经两条路进来不能得出两份读数。

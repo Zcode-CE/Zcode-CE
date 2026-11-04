@@ -177,12 +177,20 @@ export interface McpTestResult {
   response_time?: number;
 }
 
-export type ZCodeAgentMcpServer =
+export type ZCodeAgentMcpServer = {
+  /**
+   * 声明归属：用户级还是工作区。缺省 = Host 没说明（协议按「未信任的工作区声明」处理），
+   * 因此各下发路径都必须显式给出自己读到该 server 的 scope。
+   */
+  scope?: "user" | "workspace";
+} & (
   | {
       name: string;
       command: string;
       args: string[];
       env: Array<{ name: string; value: string }>;
+      /** stdio 子进程的工作目录；相对路径按会话工作目录解析。 */
+      cwd?: string;
       /** 工具搜索开启时仍常驻加载该 server 的工具（上游 3.16.2 X17）。 */
       alwaysLoad?: boolean;
       isolation?: "session" | "workspace";
@@ -204,7 +212,8 @@ export type ZCodeAgentMcpServer =
       headers: Array<{ name: string; value: string }>;
       oauth?: McpOAuthConfig;
       timeoutMs?: number;
-    };
+    }
+);
 
 export interface McpClientCredentialsOAuthConfig {
   type: "client_credentials";
@@ -320,9 +329,15 @@ export interface WorkspaceMcpTrustDecision {
   trusted: boolean;
 }
 
+/**
+ * 配置 → 下发 DTO。`scope` 是调用方读到这个配置的归属（用户级 / 工作区声明）：
+ * 协议用它区分「用户自建」与「工作区声明」，缺省会被当成后者并按未信任处理，
+ * 所以每条下发路径都要显式传。`config.cwd` 是 stdio 的工作目录，原样透传。
+ */
 export function convertToZCodeAgentMcpServer(
   name: string,
   config: McpServerConfig,
+  scope?: "user" | "workspace",
 ): ZCodeAgentMcpServer | null {
   let inferredType = config.type;
   if (!inferredType) {
@@ -338,8 +353,10 @@ export function convertToZCodeAgentMcpServer(
     const { command, args } = normalizeMcpStdioCommand(config.command, config.args);
     return {
       name,
+      ...(scope ? { scope } : {}),
       command,
       args,
+      ...(typeof config.cwd === "string" ? { cwd: config.cwd } : {}),
       env: config.env
         ? Object.entries(config.env).map(([key, value]) => ({
             name: key,
@@ -362,6 +379,7 @@ export function convertToZCodeAgentMcpServer(
     const headers = getMcpServerRequestHeaders(config);
     return {
       name,
+      ...(scope ? { scope } : {}),
       type: normalizedType,
       url: config.url,
       headers: headers

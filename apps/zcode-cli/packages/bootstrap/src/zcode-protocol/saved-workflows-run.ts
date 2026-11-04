@@ -1,5 +1,5 @@
 // Modified by ZCode: 搬自上游 zai-org/ZCode aac47556 (Apache-2.0)；按本仓 docs/development/copy-and-format.md §3 去掉注释里的 markdown 强调，其余与上游一致。
-// 从一次 run 出发的两个方法（docs/dynamic-workflow/transcript-and-notifications.md
+// 从一次 run 出发的两个方法（dynamic-workflow 转录与通知规约
 // 「Saving the run, and running it again」）：把这次 run 跑过的脚本存成定义，以及回答
 // 「这次 run 对应哪个已保存工作流」。
 //

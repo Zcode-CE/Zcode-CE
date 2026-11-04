@@ -2,7 +2,7 @@
 // ============================================================
 // 确认窗里的入参调整：授权之后、handler 之前的那一步
 // ============================================================
-// docs/dynamic-workflow/launch.md「Adjusting the settings in the window」。
+// dynamic-workflow 启动规约「Adjusting the settings in the window」。
 //
 // broker 把用户在确认窗里改过的字段放在结果的 `inputAdjustments` 上；这里把它交给工具自己的
 // `applyInputAdjustments`，换回调整后的入参。放在 permission flow 的尾部而不是 handler 里，是因为

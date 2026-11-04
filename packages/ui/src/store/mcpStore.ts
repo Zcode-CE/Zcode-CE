@@ -619,7 +619,13 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
 
       const result: ZCodeAgentMcpServer[] = [];
       for (const server of candidates.values()) {
-        const zcodeAgentServer = convertToZCodeAgentMcpServer(server.name, server.config);
+        // scope 必须带上：协议按「缺省 = 未说明」处理工作区声明（未信任），
+        // 这里给出该 server 实际被发现时的归属（common 归到 user）。
+        const zcodeAgentServer = convertToZCodeAgentMcpServer(
+          server.name,
+          server.config,
+          server.scope === "workspace" ? "workspace" : "user",
+        );
         if (zcodeAgentServer) result.push(zcodeAgentServer);
       }
       return result;

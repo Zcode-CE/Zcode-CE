@@ -2,7 +2,7 @@
 // ============================================================
 // 工作流确认窗应答里的设置调整 → broker 结果的 inputAdjustments
 // ============================================================
-// docs/dynamic-workflow/launch.md「Adjusting the settings in the window」。
+// dynamic-workflow 启动规约「Adjusting the settings in the window」。
 //
 // 从 interaction-broker.ts 拆出（max-lines 门）：只做一件事——在 CreateWorkflow / AmendWorkflow 的
 // 放行应答上读 v4 answer 的 `content`，按契约 schema 收成那两个字段，交给 executor 去应用。

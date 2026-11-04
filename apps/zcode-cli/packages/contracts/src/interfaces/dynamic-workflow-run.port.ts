@@ -623,7 +623,7 @@ export interface DynamicWorkflowRunPort {
    */
   concurrencyCeiling?(): number;
   /**
-   * Modified by ZCode:F6。默认并发 D（docs/dynamic-workflow/concurrency.md「Two bounds on a run」：
+   * Modified by ZCode:F6。默认并发 D（dynamic-workflow 并发规约「Two bounds on a run」：
    * 上游 F6 把 D 从「天花板」改为「起点」——没设 max_concurrency 的 run 跑在它上面，设了的高于低于都行）。
    * 工具层的读者：确认窗与回话（「（默认）」「默认 N」）以及 AmendWorkflow 的同值判定（null
    * 要折算成数才比得了）。可选成员（消费方 typeof 探测）：端口 stub 不必为它陪跑，

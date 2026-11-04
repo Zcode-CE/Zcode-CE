@@ -241,7 +241,7 @@ async function execGitNoThrow(
 }
 
 // 自动 git 的加固：git 按 PATH 找绝对路径执行，每条命令带同一组配置覆盖与环境。
-// 规则见 docs/design/v2/loop/meta-user-context.md 的 Git snapshot 一节。
+// 规则见「会话上下文注入」规约的 Git snapshot 一节。
 
 const GIT_HOOK_NAMES = [
   "applypatch-msg",

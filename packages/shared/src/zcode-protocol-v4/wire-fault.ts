@@ -1,7 +1,7 @@
 // Modified by ZCode: 搬自上游 zai-org/ZCode aac47556 (Apache-2.0)；按本仓 docs/development/copy-and-format.md §3 去掉注释里的 markdown 强调，其余与上游一致。
 // V4 physical assembly fault 的分类：内容确定性失败 vs 瞬态失败。
-// spec：docs/v4-refactor/04-sync-and-recovery.md 封闭规则 11、
-// docs/v4-refactor/05-transport-and-backpressure.md「客户端规则」。
+// spec：V4 同步与恢复规约 封闭规则 11、
+// V4 传输与背压规约「客户端规则」。
 //
 // 恢复阶梯默认把 fault 当瞬态处理：先 same-sub resync（服务端可能回 resume），再断档则升级
 // forceSnapshot，仍不成则 fail closed。这套升级对丢片、超时、校验和不符是对的——重投一次很可能

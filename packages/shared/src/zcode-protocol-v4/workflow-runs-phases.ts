@@ -39,7 +39,7 @@ export function reduceRunLaunched(
   }
   if (phaseNames.length === 0) return run;
   const phaseAlongside = readPhaseAlongside(payload.phaseAlongside, phaseNames.length);
-  // 留白下标表（docs/dynamic-workflow/presentation.md「Holes on the timeline」）与「同时在跑」表同一姿态：
+  // 留白下标表（dynamic-workflow 展示规约「Holes on the timeline」）与「同时在跑」表同一姿态：
   // 搭声明表的车，下标按被接受的那张表裁。
   const phaseHoles = readPhaseHoles(payload.holes, phaseNames.length);
   return {

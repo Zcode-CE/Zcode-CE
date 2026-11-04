@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { ZCodeConfigFileSchema } from "@zcode/adapters/config";
+import { protocolMcpServersToRuntimeMcpConfig } from "../src/zcode-protocol/protocol-mcp-config.js";
 import { createWorkspaceMcpTrust } from "../src/workspace-mcp-trust/index.js";
 
 /**
@@ -213,4 +214,48 @@ test("信任存储损坏时默认拒绝：既不显示为可信，也不放行�
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+/** 构造一条 session/create 的 MCP DTO（协议 schema 的形状）。 */
+function protocolServer(overrides: Record<string, unknown>) {
+  return {
+    name: SERVER_NAME,
+    command: "node",
+    args: ["-e", "process.exit(0)"],
+    env: [],
+    ...overrides,
+  };
+}
+
+test("F15：DTO 的 scope/cwd 映射成 runtime 的 source.kind 与 cwd", () => {
+  const mapped = protocolMcpServersToRuntimeMcpConfig([
+    protocolServer({ scope: "workspace", cwd: "/tmp/somewhere" }),
+    { name: "user-http", type: "http", url: "https://example.com/mcp", headers: [], scope: "user" },
+  ])!;
+  assert.equal(mapped.servers[SERVER_NAME]!.source?.kind, "workspace");
+  assert.equal(
+    (mapped.servers[SERVER_NAME] as { cwd?: string }).cwd,
+    "/tmp/somewhere",
+    "stdio 的 cwd 必须随 DTO 还原，否则审核摘要与实际执行 cwd 不一致",
+  );
+  assert.equal(mapped.servers["user-http"]!.source?.kind, "user");
+  // 缺省 scope：不带 source，gate 对同名工作区声明保持 fail-closed。
+  const noScope = protocolMcpServersToRuntimeMcpConfig([protocolServer({})])!;
+  assert.equal(noScope.servers[SERVER_NAME]!.source, undefined);
+});
+
+test("F15：session 注入的 server 不再被误判为工作区声明", async () => {
+  await withWorkspace(async ({ authority }) => {
+    // 逐个场景单独映射：mapping 按 server 名建索引，同数组里同名会互相覆盖。
+    const mapOne = (overrides: Record<string, unknown>) =>
+      protocolMcpServersToRuntimeMcpConfig([protocolServer(overrides)])!.servers[SERVER_NAME]!;
+
+    // user 来源不在审核范围：即便同名于工作区声明也直接放行（这就是修复前会误拒的那条）。
+    assert.equal(await authority.allows(SERVER_NAME, mapOne({ scope: "user" })), true);
+
+    // workspace 来源仍要过闸门：未授权时拒绝。
+    assert.equal(await authority.allows(SERVER_NAME, mapOne({ scope: "workspace" })), false);
+
+    // 缺省 scope：不能证明是用户意图，保持 fail-closed。
+    assert.equal(await authority.allows(SERVER_NAME, mapOne({})), false);
+  });
 });

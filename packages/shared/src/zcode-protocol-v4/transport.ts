@@ -605,7 +605,7 @@ export type V4ConversationFileChangesResult = z.infer<typeof v4ConversationFileC
 // 判别联合，把一页只读事件塞进去等于把读放进写的词汇表，还要白背 baseRevision/幂等那套机制。
 
 /**
- * 事件日志一页的两道界，网关按它们取数（apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md
+ * 事件日志一页的两道界，网关按它们取数（dynamic-workflow 执行引擎规约
  * 「Reading the journal」）。字节按存储里的序列化字节计、取协议单帧上限的四分之一：条数单独
  * 管不住字节，500 条带着大 report item 的事件足以顶到单帧上限。
  */

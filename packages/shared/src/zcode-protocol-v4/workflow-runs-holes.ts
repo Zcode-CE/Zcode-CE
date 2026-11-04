@@ -3,8 +3,8 @@
 // workflowRuns 归约的留白分支：`hole-reached` / `hole-filled`，以及阶段表上的留白下标
 // ============================================================
 // 从 workflow-runs-reducer.ts 拆出（max-lines 门，与 phases / started 同一先例）。
-// 契约见 docs/dynamic-workflow/presentation.md「Holes on the timeline」的「The model」一段与
-// apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md「Holes」。
+// 契约见 dynamic-workflow 展示规约「Holes on the timeline」的「The model」一段与
+// dynamic-workflow 执行引擎规约「Holes」。
 
 import {
   WORKFLOW_RUNS_LIMITS,
@@ -15,7 +15,7 @@ import { boundedPhaseName, nonEmptyString } from "./workflow-runs-entries.js";
 
 /**
  * 留白的站点 id：`hole#` 加 8 位十六进制，键是留白的名字，与嵌套深度无关（CLI 的
- * analysis/hole-id.ts 铸造；apps/zcode-cli/packages/dynamic-workflow/docs/analysis.md「Sites」）。
+ * analysis/hole-id.ts 铸造；dynamic-workflow 分析规约「Sites」）。
  * id 里不再写嵌套关系：一个留白在哪个留白里面，看它自己的阶段 / 站上的 `fill`。
  */
 export const WORKFLOW_HOLE_SITE_ID_PATTERN = /^hole#[0-9a-f]{8}$/u;

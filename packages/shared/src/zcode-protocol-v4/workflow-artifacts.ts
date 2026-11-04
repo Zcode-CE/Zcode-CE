@@ -69,7 +69,7 @@ export const WORKFLOW_ARTIFACT_LIMITS = {
 } as const;
 
 /**
- * 按点路径从一条 report item 里取值："timing.after"、"rounds.0.ms"（docs/execution-engine.md
+ * 按点路径从一条 report item 里取值："timing.after"、"rounds.0.ms"（dynamic-workflow 执行引擎规约
  * 「Reading the journal」）。
  *
  * 这是协议上的契约，不只是渲染器的工具函数：看板取数时 CLI 在 SQLite 里按同一套规则把

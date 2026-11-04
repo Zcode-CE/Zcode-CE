@@ -43,7 +43,7 @@ export const sessionWorkflowPhaseSummarySchema = z.object({
    */
   alongside: z.array(z.number().int().nonnegative()).max(WORKFLOW_RUNS_LIMITS.maxPhases).optional(),
   /**
-   * 这一站是一处还开着的留白（docs/dynamic-workflow/presentation.md「Holes on the timeline」）：
+   * 这一站是一处还开着的留白（dynamic-workflow 展示规约「Holes on the timeline」）：
    * `open` = 还没走到，`waiting` = run 停在这里等主代理补全。侧栏据此把灯画成虚线（等待时警示色）。
    * 补全之后它就是一个普通的站，键缺席。只有声明表那条路有这个事实（`run.phaseHoles`）。
    */
@@ -71,7 +71,7 @@ export const sessionWorkflowRunSummarySchema = z.object({
   agentsWorking: z.number().int().nonnegative(),
   /**
    * 正在等主代理补全的留白名（`run.holes` 里第一条 waiting 的 `name`）：侧栏运行行写
-   * 「{name} · 等待补全」（docs/dynamic-workflow/presentation.md「Holes on the timeline」的「The sidebar」）。
+   * 「{name} · 等待补全」（dynamic-workflow 展示规约「Holes on the timeline」的「The sidebar」）。
    * 没有停驻的留白时缺席。
    */
   waitingHole: z.string().min(1).max(WORKFLOW_RUNS_LIMITS.maxPhaseNameLength).optional(),

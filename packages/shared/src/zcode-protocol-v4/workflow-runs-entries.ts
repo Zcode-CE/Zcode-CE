@@ -56,7 +56,7 @@ export function boundedActorName(name: string | undefined): string | undefined {
 }
 
 /**
- * 实例出生阶段名的线上界（docs/dynamic-workflow/presentation.md）。与 {@link boundedActorName}
+ * 实例出生阶段名的线上界（dynamic-workflow 展示规约）。与 {@link boundedActorName}
  * 同族、同理由，但直接截断、不加省略号——这个字段不是给人读的文本而是一个关联键，
  * UI 的 `phaseNameMatches` 正是按前缀把截断的名字关联回 display 阶段。
  */

@@ -286,7 +286,7 @@ export type WorkflowNotificationMeta =
       askedAt?: number;
     }
   /**
-   * 脚本到达一处留白（docs/dynamic-workflow/transcript-and-notifications.md 的 `hole` 载荷）：
+   * 脚本到达一处留白（dynamic-workflow 转录与通知规约的 `hole` 载荷）：
    * 主代理欠这个 run 一段代码。`prompt` ≤4000（与升级问题同界）；`before` / `after` 是留白前后
    * 的阶段名，`draftPath` / `line` 指向 run 草稿里的那一行。每个 `hole-reached` 恰好一条。
    */

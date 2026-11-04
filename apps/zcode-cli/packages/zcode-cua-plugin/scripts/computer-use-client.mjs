@@ -1,8 +1,8 @@
 /**
  * Computer Use SDK —— 模型可见面与 Codex 的 `cua` 逐字同构（去掉 browser 半边）。
  *
- * 设计文档：zcode-cua/docs/refactor-port-specs/2026-09-10-cua-sdk-v3-api.md
- * 逆向基线：@oai/cua@0.2.4 的 tinysky_alt/types.d.ts 与 docs/tinysky-alt-core-node-repl.md
+ * 设计文档：CUA SDK v3 API 设计文档
+ * 逆向基线：@oai/cua@0.2.4 的 tinysky_alt/types.d.ts 与 tinysky_alt 类型基线说明
  *
  * 三条原则（文档 §1）：
  *   R1 同名同签 —— Codex 有的方法，名字、位置参数顺序、选项键名、返回类型逐字一致。
@@ -1065,7 +1065,7 @@ export async function setupComputerUseRuntime({ globals }) {
     // 结构化元素视图。Codex 的 Target 只给字符串，但模型写的是代码，单 cell 内
     // 「观察 → 找元素 → 动作」能省一次往返；树被按优先级裁剪（targeting/format.ts 的
     // `indices are sparse` 注记）时，它还是模型拿到隐藏元素索引的唯一途径。因此它已被
-    // 提为**文档化成员**（SKILL 的 Keyboard 段 + docs/computer-use.md 的 API 段），
+    // 提为**文档化成员**（SKILL 的 Keyboard 段 + 插件包内 computer-use 文档的 API 段），
     // 保持 enumerable:false 只是为了不进 Object.keys —— R2 的「Target 附加成员为 0」
     // 说的是与 Codex 逐字对齐的**可枚举**面，不是禁止具名逃逸口。
     Object.defineProperty(app, "elements", {
