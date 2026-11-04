@@ -22,7 +22,8 @@ on:
       - "v*"
   workflow_dispatch:
 
-# electron-builder 需要写权限把产物发到 Release；使用自带 GITHUB_TOKEN，无需 PAT。
+# 发布资产（publish-release job 的 gh release create/upload）需要写权限；
+# 使用自带 GITHUB_TOKEN，无需 PAT。构建矩阵本身不再持有上传权限用途。
 permissions:
   contents: write
 
@@ -107,13 +108,12 @@ jobs:
       # 一个平台失败不应阻止另一个平台产出（Windows 与 macOS 包只能在这里产出，
       # 尤其不能被其它平台失败连坐）。
       fail-fast: false
-      # ⚠️ 必须串行：本流水线依赖 electron-builder 的 GitHub publisher 上传产物，
-      # 而它在多个矩阵项并行时会各自尝试创建同一个 tag 的 Release。electron-publish 的
-      # getOrCreateRelease() 是「先列 Release 再 POST 创建」，创建失败没有重试
-      # （只有资产上传失败才重试），并发创建会以 422 already_exists 直接让整个构建失败。
-      # 代价是总时长约为所有矩阵项之和（linux / windows / macos-x64 / macos-arm64）
-      # 而非取最大值；发布频率低，换取可靠性。
-      max-parallel: 1
+      # 允许并行：构建期一律 --publish never，矩阵项不再创建/上传 Release。
+      # 过去必须 max-parallel: 1 是因为 electron-builder 的 GitHub publisher 在
+      # 每个矩阵项里各自「先列 Release 再 POST 创建」，并发创建会 422 already_exists
+      # 直接打断构建。发布移出 build 后（见 publish-release job），Release 只由一个
+      # job 创建一次，该竞态不再存在；总时长从「各平台之和」回到「最慢的那个」。
+      # 各平台的安装包仍各自上传为 workflow artifact，由 publish-release 合并下载。
       matrix:
         include:
           - os: ubuntu-latest
@@ -176,12 +176,6 @@ jobs:
       - name: Build installers
         env:
           ZCODE_ENV: production
-          # electron-builder 的 GitHub publisher 读取 GH_TOKEN / GITHUB_TOKEN。
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # 重新运行一个已发布超过 2 小时的 tag 时，electron-publish 默认会认为
-          # "existing release published more than 2 hours ago" 而**静默跳过上传**
-          # （只打 warn，构建仍然成功）。打开此开关让重跑真正覆盖上传。
-          EP_GH_IGNORE_TIME: "true"
           # ⚠️ 必须显式指向官方源。scripts/bundle.mjs:114-117 的默认值是 npmmirror
           # （国内 CDN，为本地开发优化）：ELECTRON_MIRROR → npmmirror.com/mirrors/electron/，
           # electron-builder-binaries → registry.npmmirror.com。
@@ -199,12 +193,16 @@ jobs:
           # 2026-09-23 修正：此前构建期旋钮会被当父目录并追加 /zcode/electron/releases/<版本>，与"发布根"契约矛盾；
           # 已按契约修正代码并加契约测试（packages/desktop/test/remoteCdnBaseUrl.test.ts）。
           ZCODE_CDN_BASE_URL: ${{ vars.ZCODE_CDN_BASE_URL }}
-        # 发布策略必须显式：electron-builder 在 CI 下把未指定的策略推断成 onTagOrDraft，
-        # 而 GitHub provider 在 onTagOrDraft 下的判据只有「不是 PR」——**不是 tag 也会发布**。
-        # 3.16.3-ce.1.fix.1 为复核 Windows 打包手动触发的 workflow_dispatch 构建因此重传了
-        # 同版本的 Linux / Windows 资产（AUR 的 sha256 随之失效）。这里 tag 构建传 onTag
-        # （与原有行为一致），其余运行传 never（只产出 workflow artifact）。
-        run: pnpm bundle:desktop --os ${{ matrix.platform }} --arch ${{ matrix.arch }} --publish ${{ startsWith(github.ref, 'refs/tags/') && 'onTag' || 'never' }}
+        # 发布策略必须是 never，且与 tag 无关：构建阶段**永不**上传 Release。
+        # 原因有两层：
+        #   1. electron-builder 在 CI 下把未指定的策略推断成 onTagOrDraft，而 GitHub
+        #      provider 在 onTagOrDraft 下的判据只有「不是 PR」—— 不是 tag 也会发布。
+        #      3.16.3-ce.1.fix.1 的演练构建就因此重传了同版本资产（AUR sha256 失效）。
+        #   2. 即便传 onTag，发布也发生在**冒烟之前**：Linux 冒烟红时资产已经躺在
+        #      Release 上，只能人工撤下（3.16.3-ce.1.fix.1 就是这么红的）。
+        # 于是改成本形态：构建只产出 workflow artifact，冒烟通过后由 publish-release
+        # job 统一发布。发布点因此集中在唯一一处（可审计、可重跑、不会漏 gate）。
+        run: pnpm bundle:desktop --os ${{ matrix.platform }} --arch ${{ matrix.arch }} --publish never
 
       # 打包版启动冒烟（仅 Linux）：整条流水线里第一次「真的把产物跑起来」。
       #
@@ -212,12 +210,14 @@ jobs:
       # 能防：主进程启动崩溃、preload 加载失败（打包时漏了运行时依赖）、renderer 未挂载（白屏）。
       # 不防：DWM/GPU 合成类问题（Windows 的 acrylic 透明窗、显卡驱动），那只能在真机上看 ——
       # 不要因为这一步是绿的就认为「装完一定能正常显示」。
-      # 失败必须让 job 变红：它是交付终点的一部分，禁止 continue-on-error。
+      # 失败必须让 job 变红：它是发布前的最后一道门，禁止 continue-on-error。
       #
-      # ⚠️ 它拦不住已经发出去的产物：桌面安装包在上一步 Build installers 里已由 electron-builder 的
-      # GitHub publisher 直接上传到 Release（releaseType: "release"），而下面的 Upload installers 是
-      # `if: always()`。冒烟失败只会让 job 变红并跳过 `needs: build` 的后续 job，Release 上的资产与
-      # workflow artifact 仍然存在，需要人工撤下。详见 docs/operations/ci.md「打包版启动冒烟」。
+      # 它现在是**真正的发布闸门**：Build installers 一律 --publish never，Release 上的
+      # 资产由后面的 publish-release job 在 `needs: build` 全部通过后才上传。因此本步红
+      # ⇒ publish-release 不执行 ⇒ 该 tag 的 Release 上没有这一版资产（不会重演
+      # 3.16.3-ce.1.fix.1「冒烟红、资产已发」）。下面的 Upload installers 仍是
+      # `if: always()`，但那是排障用的 workflow artifact，不是交付终点。
+      # 详见 docs/operations/ci.md「打包版启动冒烟」与「发布两段式」。
       - name: Smoke test desktop package (startup)
         if: matrix.platform == 'linux'
         timeout-minutes: 5
@@ -243,18 +243,76 @@ jobs:
             packages/desktop/dist/*.yml
             packages/desktop/dist/*.blockmap
 
-  # 单独一个 job 设置 Release 描述，必须在两个平台都构建完之后。
+  # 发布两段式的第二段：**只有 build 矩阵（含 Linux 启动冒烟）全绿之后**，才把安装包
+  # 上传到该 tag 的 Release。
   #
-  # 为什么需要它：electron-builder 创建 Release 时**不传 body**（electron-publish 里
-  # 没有 releaseNotes 的处理），GitHub 会用 tag 的 annotation 作为兜底。而 tag
-  # annotation 是纯文本、不是 Markdown，渲染出来是一整块引用样式 —— 字体小、颜色淡、
-  # 没有结构。这里显式写入 release-notes.md，得到正常的 Markdown 渲染。
+  # 为什么必须是独立 job 而不是 build 里的一个步骤：矩阵项并行执行，冒烟只在 Linux 项里；
+  # 若各平台各自上传，Windows/macOS 会在 Linux 冒烟之前就把资产挂上去 —— 回到「坏包已发」。
+  # 放在 `needs: build` 的独立 job 里，语义是「所有平台构建 + 冒烟都过了，才发布」。
   #
-  # 为什么不能放在 build job 里：矩阵是串行的（max-parallel: 1，避免并发创建
-  # Release），先完成的平台执行时另一个平台的产物还没上传，描述会写到一半状态。
+  # 为什么用 gh 而不是 electron-builder 的 publisher：
+  #   · 发布点唯一（一个 job、一个步骤），可审计、可重跑；
+  #   · gh release upload --clobber 与 Release 的发布时间无关，不存在 electron-publish
+  #     那条「发布超过 2 小时就静默跳过上传」的时间保护；
+  #   · 构建矩阵因此不再需要持有上传凭据。
+  #
+  # Release 不存在时先创建（首次发版）；仓库维护的正文只由后面的 release-notes job 写入
+  # （创建时用 --generate-notes 生成的临时正文会被它覆盖），避免两处维护同一份文案。
+  publish-release:
+    name: publish assets to release
+    needs: build
+    # 只有 tag 构建才发布；workflow_dispatch 演练不新建、不修改任何 Release。
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # 合并下载各平台的 workflow artifact（linux / windows / macos-x64 / macos-arm64）。
+      # merge-multiple: true 让四个 artifact 解开到同一目录，便于一次 gh release upload。
+      - name: Download installers
+        uses: actions/download-artifact@v6
+        with:
+          pattern: zcode-ce-*
+          path: dist-assets
+          merge-multiple: true
+
+      - name: Publish assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          assets=(dist-assets/*)
+          # 一个包都没有时不能安静地发一个只有正文的空 Release：那是「发布成功」的假象。
+          if [ ${#assets[@]} -eq 0 ]; then
+            echo "::error::没有下载到任何安装包资产，拒绝发布空 Release"
+            exit 1
+          fi
+          if ! gh release view "${{ github.ref_name }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            # 首次发版：Release 由本步骤创建。
+            # 必须给 --generate-notes：gh release create 在「没给任何 notes」时会去开 $EDITOR，
+            # 而 CI 里没有 TTY，那会把这一步卡成失败。这里生成的是临时正文，紧接着的
+            # release-notes job 会用 release-notes.md 覆盖它 —— 正文仍只有一个事实源，
+            # 发布步骤不重复维护文案。
+            gh release create "${{ github.ref_name }}" \
+              --repo "${{ github.repository }}" \
+              --title "ZCode-CE ${{ github.ref_name }}" \
+              --generate-notes
+          fi
+          # --clobber：重跑同一 tag 时覆盖旧资产（与 Release 发布时间无关）。
+          gh release upload "${{ github.ref_name }}" "${assets[@]}" \
+            --clobber --repo "${{ github.repository }}"
+
+  # 单独一个 job 设置 Release 描述，必须在资产发布完成之后（Release 由 publish-release 创建）。
+  #
+  # 为什么需要它：Release 的正文若只在创建时给一次，后续补发/重跑就会与 release-notes.md
+  # 分叉。这里每次 tag 构建都把仓库根的 release-notes.md 写进 Release 正文，保证正文只有
+  # 一个事实源（发布步骤刻意不写 body）。
+  #
+  # 为什么不能在 build job 里：矩阵项并行，先完成的平台写正文时其他平台的资产还没上传。
+  # 依赖 publish-release 而不是 build，是因为它同时保证「资产已经发布完」。
   release-notes:
     name: set release description
-    needs: build
+    needs: publish-release
     # 只有 tag 构建才需要（workflow_dispatch 不创建 Release）。
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
@@ -406,12 +464,12 @@ jobs:
   # 见下方 Build headless server package 的 if 条件与 docs/operations/headless-server.md §7.1。
   headless-server-package:
     name: headless server package
-    # 必须等 build：Release 本身由 build 里的 electron-builder 创建（见上方 build job 的
-    # 串行注释）。本 job 末尾要把无头发行包挂到该 Release 上，若与 build 并行执行，
-    # gh release upload 会抢在 Release 创建之前跑，报 "release not found" 而整个 job 变红。
-    # 实测于 v3.14.3-ce.3.fix.1：build linux / build windows / release-notes 全绿，
-    # 只有本 job 因这一竞态失败。
-    needs: build
+    # 必须等 publish-release：Release 由它创建（构建期 --publish never，不再由
+    # electron-builder 建 Release）。本 job 末尾要把无头发行包挂到该 Release 上；
+    # 若抢在 Release 创建之前跑，gh release upload 报 "release not found" 让整个 job 变红
+    # （实测于 v3.14.3-ce.3.fix.1：build linux / build windows / release-notes 全绿，
+    # 只有本 job 因这一竞态失败）。依赖它同时也继承了「冒烟通过」这一前提。
+    needs: publish-release
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:

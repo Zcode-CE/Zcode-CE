@@ -119,10 +119,10 @@ node -e "for (const p of ['node-repl-host','core','adapters']) {
 
 ### 触发
 
-| 触发方式            | 行为                                              |
-| ------------------- | ------------------------------------------------- |
-| push tag `v*`       | 构建两个平台并发布到 GitHub Release               |
-| `workflow_dispatch` | 只构建并上传 artifact，不新建 Release（用于演练） |
+| 触发方式            | 行为                                                               |
+| ------------------- | ------------------------------------------------------------------ |
+| push tag `v*`       | 构建 4 个平台 → 冒烟通过 → 发布资产到该 tag 的 Release             |
+| `workflow_dispatch` | 只构建并上传 workflow artifact，不新建、不修改任何 Release（演练） |
 
 Tag 采用 `v` 前缀（如 `v3.14.1-ce.1`），与 electron-builder 默认的 `vPrefixedTagName` 一致。
 
@@ -132,10 +132,16 @@ Tag 采用 `v` 前缀（如 `v3.14.1-ce.1`），与 electron-builder 默认的 `
 | ---------------- | ----------------------- | ---------------------------------------------- |
 | `ubuntu-latest`  | `--os linux --arch x64` | `.AppImage` / `.deb` / `.rpm` / `.pkg.tar.zst` |
 | `windows-latest` | `--os win --arch x64`   | `.exe`（nsis）                                 |
+| `macos-15-intel` | `--os mac --arch x64`   | `.dmg` / `.zip`（ad-hoc 签名）                 |
+| `macos-15`       | `--os mac --arch arm64` | `.dmg` / `.zip`（ad-hoc 签名）                 |
 
-矩阵**串行执行**（`max-parallel: 1`）。原因是两个平台都会调用 electron-builder 的 GitHub
-publisher，而它「先列 Release 再创建」，创建失败没有重试；并行时两边可能同时创建同一个 tag 的
-Release，后者以 422 失败并中断构建。代价是总时长约为两平台之和。
+矩阵**并行执行**（`fail-fast: false`，不设 `max-parallel`）。四个平台互不依赖，任一平台失败
+不影响其它平台继续构建（Windows / macOS 包只能在这里产出）。
+
+历史约束已解除：过去必须 `max-parallel: 1`，因为每个矩阵项都调用 electron-builder 的 GitHub
+publisher，它「先列 Release 再 POST 创建」且创建失败不重试，并发创建会以 422 `already_exists`
+打断构建。发布移出构建阶段后（见「发布两段式」），Release 只由 `publish-release` 创建一次，
+该竞态不存在。
 
 ### Linux 额外依赖
 
@@ -155,8 +161,13 @@ Windows runner 无额外系统依赖。
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm bundle:desktop --os <linux|win> --arch x64
+pnpm bundle:desktop --os <linux|win|mac> --arch <x64|arm64> --publish never
 ```
+
+`--publish never` 是**硬要求**，与是否 tag 无关：构建阶段永不产出 Release 资产。不传时
+electron-builder 在 CI 下把策略推断成 `onTagOrDraft`，而 GitHub provider 在 `onTagOrDraft`
+下的判据只有「不是 PR」—— 不是 tag 也会发布；而即便只在 tag 发布，发布也会发生在冒烟之前，
+坏包就撤不回来了（3.16.3-ce.1.fix.1 即此形态）。发布统一由 `publish-release` 承担。
 
 两点容易踩：
 
@@ -183,15 +194,12 @@ pnpm bundle:desktop --os <linux|win> --arch x64
 2. `#root` 有子节点 —— renderer 真的挂载了 React，不是白屏；
 3. 主进程日志出现 `dom-ready fired` —— 启动链走到了窗口创建。
 
-失败语义：**job 红，且 `needs: build` 的后续 job（`release-notes`、`headless server package`）不再运行**。
+失败语义：**它是发布闸门**。job 红 ⇒ `needs: build` 的 `publish-release` 不执行 ⇒ 该 tag 的
+Release 上没有这一版资产；`release-notes` 与 `headless server package` 也一并跳过（它们依赖
+`publish-release`）。所以「冒烟红、资产已发」不会发生。
 
-但它**拦不住已经发出去的产物**：桌面安装包在上一 `Build installers` 步骤里就已由 electron-builder 的
-GitHub publisher 直接上传到 Release（`releaseType: "release"`，tag 构建下 publish 默认开启），
-而 `Upload installers` 是 `if: always()`。所以冒烟红时 Release 上已经有该版本的资产、
-workflow artifact 也照常上传 —— 需要人工撤下（或先把这一版的 Release 改成 draft）。
-
-真要让「坏包不进 Release」，得把发布拆成两段（构建时 `EP_DRAFT=true` 或 publish=never，
-冒烟通过后再发布）；这一项未做，登记在 `.local/BACKLOG.md` 的工程欠账。
+`Upload installers` 仍是 `if: always()`，但它只上传 workflow artifact（排障用），不构成发布，
+因此构建失败时也保留现场。
 
 边界（如实说明，不要把绿读成「对等真机验证」）：
 
@@ -209,15 +217,13 @@ PR 流水线不执行 `bundle:desktop`，所以打包脚本的跨平台回归只
 gh workflow run release.yml --ref <分支>
 ```
 
-演练**不会改写已发布版本**靠的是显式发布策略：`Build installers` 给非 tag 运行传
-`--publish never`，只产出 workflow artifact；tag 构建传 `--publish onTag`。
-这条不能省 —— 不传时 electron-builder 在 CI 下把策略推断成 `onTagOrDraft`，而 GitHub
-provider 在 `onTagOrDraft` 下的判据只有「不是 PR」，**不是 tag 也会发布**（3.16.3-ce.1.fix.1
-的演练构建因此重传了同版本 Linux / Windows 资产，AUR 的 sha256 随之失效）。
+演练**不会改动任何 Release**：`Build installers` 一律 `--publish never`，演练运行只产出
+workflow artifact；且 `publish-release` 带 `if: startsWith(github.ref, 'refs/tags/')`，
+workflow_dispatch 根本不会走到发布步骤。
 
-3.16.3-ce.1.fix.1 的教训（两次）：新增的 preload 校验在 Windows 上用 POSIX 路径查询 asar，
-tag 构建才第一次跑到，`build windows` 直接变红（产物本身没问题）；随后的演练构建又在
-非 tag 下发布了资产。跨平台打包脚本的改动必须走一次演练构建。
+3.16.3-ce.1.fix.1 的教训：新增的 preload 校验在 Windows 上用 POSIX 路径查询 asar，
+tag 构建才第一次跑到，`build windows` 直接变红（产物本身没问题）。跨平台打包脚本的改动
+必须走一次演练构建（`workflow_dispatch`）再打 tag。
 
 本地复现同一条检查（无显示会话时用 `xvfb-run`）：
 
@@ -231,6 +237,32 @@ xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" \
 脚本参数（`--timeout` / `--port` / `--data-dir` / `--executable`）见文件头部注释；
 失败时会打印 stdout/stderr 尾部、应用日志尾部与 CDP 捕获的页面异常，退出码 1。
 
+### 发布两段式
+
+发布**不在构建步骤里发生**。整条链是：
+
+| 阶段 | 作业                      | 行为                                                                                                                          |
+| ---- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 1    | `verify`                  | 与 `ci.yml` 同口径的前置校验                                                                                                  |
+| 2    | `build`（4 平台并行）     | `bundle:desktop --publish never` → 产物校验/体积审计 → Linux 启动冒烟 → 上传 workflow artifact（`if: always()`）              |
+| 3    | `publish-release`         | `needs: build`、仅 tag：合并下载 `zcode-ce-*` artifact → Release 不存在则 `gh release create` → `gh release upload --clobber` |
+| 4    | `release-notes`           | `needs: publish-release`：把 `release-notes.md` 写入 Release 正文                                                             |
+| 5    | `headless-server-package` | `needs: publish-release`：无头发行包 + npm 发布，并 `gh release upload` 挂到同一 Release                                      |
+
+四条不变式：
+
+1. **构建期一律 `--publish never`**（tag 与非 tag 都一样），构建矩阵不持有上传凭据；
+2. **发布点唯一**：只有 `publish-release` 写安装包资产，它 `needs: build`，因此冒烟红就不会发；
+3. **Release 由 `publish-release` 创建**（首次发版，`--generate-notes` 只产出临时占位正文），
+   仓库维护的正文只由 `release-notes` 写入一次，发布步骤不重复维护文案；
+4. **失败必须红**：发布链上没有 `continue-on-error`，发不出去就是红，不伪装成功。
+
+`publish-release` 上传后不会再有「发布超过 2 小时就静默跳过」的行为：`gh release upload --clobber`
+只按名字覆盖资产，与 Release 发布时间无关。
+
+对应护栏：`scripts/test/releaseWorkflowPublishGate.test.mjs`（构建期禁止发布、发布点唯一、
+依赖关系正确、矩阵并行、不残留 `EP_GH_IGNORE_TIME`）。
+
 ### 产物与更新清单
 
 electron-builder 为每个平台生成更新清单，必须与安装包上传到**同一个** Release：
@@ -241,20 +273,27 @@ electron-builder 为每个平台生成更新清单，必须与安装包上传到
 | Windows | `latest.yml`       | `nsis`                                |
 
 差分块 `.blockmap` 必须一并上传，否则 electron-updater 的差分下载退化为全量包。
-工作流把安装包与清单同时上传为 artifact，便于 Release 需要人工补发时取用。
+每个平台的安装包与清单先作为 workflow artifact 上传（`zcode-ce-<platform>`），
+`publish-release` 用 `actions/download-artifact` 合并取回后一次 `gh release upload --clobber`。
+因此这些 artifact 既是发布输入，也是 Release 需要人工补发时的取用来源。
 
 ### 发布状态
 
-`electron-builder.config.js` 里 `releaseType: "release"`，产物直接进正式 Release。
-**不能改成 draft**：draft 对 electron-updater 完全不可见（`releases.atom` 与
+交付形态是**正式 Release**（非 draft）：`gh release create` 创建的就是已发布的 Release。
+不要把它改成 draft —— draft 对 electron-updater 完全不可见（`releases.atom` 与
 `/releases/latest` 都不返回），会让更新链路静默失效。
 
-需要临时改成 draft 或预发布时用 `EP_DRAFT` / `EP_PRE_RELEASE` 环境变量覆盖。
+`electron-builder.config.js` 里的 `publish.releaseType` / `EP_DRAFT` / `EP_PRE_RELEASE` 属于
+electron-publish 的上传路径；本流水线构建期 `--publish never`，这些开关**不参与**实际交付，
+改它们不会改变 Release 的形态。要调整形态请改 `publish-release` 步骤的 `gh` 参数。
 
 ### 重跑已发布超过 2 小时的 tag
 
-electron-publish 对已存在的 Release 有一条时间保护：发布时间超过 2 小时就**只打 warn 并跳过上传**，
-构建仍然显示成功。工作流设置了 `EP_GH_IGNORE_TIME: "true"` 让重跑真正覆盖上传。
+直接重跑该 tag 的 workflow 即可。`publish-release` 用 `gh release upload --clobber`，
+按资产名覆盖，与 Release 的发布时间无关，也不会出现「只打 warn 但显示成功」。
+
+electron-publish 那条「发布超过 2 小时就静默跳过上传」的时间保护只影响它自己的 publisher，
+本流水线已不使用该路径（`--publish never`），因此不再需要 `EP_GH_IGNORE_TIME`。
 
 ### 权限
 
@@ -263,8 +302,9 @@ permissions:
   contents: write
 ```
 
-使用 Actions 自带的 `secrets.GITHUB_TOKEN`，不需要额外 PAT。构建步骤显式注入
-`GH_TOKEN`，因为 electron-builder 的 GitHub publisher 读的是这个变量名。
+使用 Actions 自带的 `secrets.GITHUB_TOKEN`，不需要额外 PAT。只有会写 Release 的步骤注入
+`GH_TOKEN`：`publish-release`（create/upload）、`release-notes`（edit）、
+`headless-server-package`（upload 无头包）。构建矩阵（`build`）不注入任何上传凭据。
 
 ## `cross-platform.yml` — 跨平台实测（三 OS 构建 + smoke）
 
@@ -298,9 +338,12 @@ permissions:
 不再存在「Windows 必然红」。若某平台回归，仍保持红。
 
 **本地无法验证的部分**：GitHub Actions 只能在 GitHub 的 runner 上执行，**本地无法运行工作流本身**。
-本工作流已做的本地核对只有：YAML 可解析（`yaml.parse`）、步骤/矩阵形状断言、以及
-`scripts/test/releaseWorkflowReleasePaths.test.mjs`（它会扫描**所有** workflow，确认
-`dist/zcode/releases/` 引用都带版本目录）。真实结果已由 2026-10-29 的运行观测到：
+本工作流已做的本地核对只有：YAML 可解析（`yaml.parse`）、步骤/矩阵形状断言、
+`scripts/test/releaseWorkflowReleasePaths.test.mjs`（扫描**所有** workflow，确认
+`dist/zcode/releases/` 引用都带版本目录），以及新增的
+`scripts/test/releaseWorkflowPublishGate.test.mjs`（构建期禁止发布、发布点唯一、
+`publish-release` 的依赖与 tag 条件、矩阵并行、不残留 `EP_GH_IGNORE_TIME`）。
+真实结果已由 2026-10-29 的运行观测到：
 Ubuntu smoke 因 `TUI did not exit after SIGTERM` 失败，Windows / macOS 通过；这类真实失败
 必须保留在工作流里，而不是用 `continue-on-error` 隐藏。
 
