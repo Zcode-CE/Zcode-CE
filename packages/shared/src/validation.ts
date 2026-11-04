@@ -1024,12 +1024,83 @@ export type HostResourceUsageSnapshotResultResponse = z.infer<
   typeof hostResourceUsageSnapshotResultResponseSchema
 >;
 
+export const hostRemoteDaemonStatusChangedResponseSchema = z
+  .object({
+    type: z.literal("remote-daemon-status-changed"),
+    state: z.discriminatedUnion("kind", [
+      z
+        .object({
+          kind: z.literal("connected"),
+          identity: z
+            .object({
+              serverId: nonEmptyStringSchema,
+              generation: z.number().optional(),
+              pid: z.number().optional(),
+              coreLogPath: nonEmptyStringSchema.optional(),
+            })
+            .strict(),
+        })
+        .strict(),
+      z
+        .object({
+          kind: z.literal("reconnecting"),
+          attempt: z.number(),
+          maxAttempts: z.number(),
+          nextDelayMs: z.number(),
+          reason: nonEmptyStringSchema,
+        })
+        .strict(),
+      z
+        .object({
+          kind: z.literal("recovered"),
+          identity: z
+            .object({
+              serverId: nonEmptyStringSchema,
+              generation: z.number().optional(),
+              pid: z.number().optional(),
+              coreLogPath: nonEmptyStringSchema.optional(),
+            })
+            .strict(),
+        })
+        .strict(),
+      z
+        .object({
+          kind: z.literal("needs-rebuild"),
+          reason: nonEmptyStringSchema,
+          previous: z
+            .object({ generation: z.number().optional(), pid: z.number().optional() })
+            .strict(),
+          current: z
+            .object({ generation: z.number().optional(), pid: z.number().optional() })
+            .strict(),
+          identity: z
+            .object({
+              serverId: nonEmptyStringSchema,
+              generation: z.number().optional(),
+              pid: z.number().optional(),
+              coreLogPath: nonEmptyStringSchema.optional(),
+            })
+            .strict(),
+          coreLogPath: nonEmptyStringSchema.optional(),
+        })
+        .strict(),
+      z
+        .object({
+          kind: z.literal("disconnected"),
+          reason: nonEmptyStringSchema,
+          coreLogPath: nonEmptyStringSchema.optional(),
+        })
+        .strict(),
+    ]),
+  })
+  .strict();
 export const hostResponseMessageSchema = z.discriminatedUnion("type", [
   z
     .object({ type: z.literal("database-startup-state"), state: databaseStartupStateSchema })
     .strict(),
   hostResourceUsageSnapshotResultResponseSchema,
   hostRemoteWorkspaceConnectionLogResponseSchema,
+  hostRemoteDaemonStatusChangedResponseSchema,
   hostRemoteWorkspaceConnectedResponseSchema,
   hostRemoteWorkspaceConnectFailedResponseSchema,
   hostRemoteWorkspaceClosedResponseSchema,

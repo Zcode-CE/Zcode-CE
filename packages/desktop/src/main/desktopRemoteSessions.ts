@@ -463,6 +463,17 @@ export function createRemoteWorkspaceSessionManager(options: {
         });
         return;
       }
+      if (parsed.data.type === HostResponseTypes.RemoteDaemonStatusChanged) {
+        // 多窗口共享同一个 window Host：按 webContentsId 找到发起窗口再发（与连接日志同策略）。
+        const win = BrowserWindow.getAllWindows().find(
+          (candidate) => candidate.webContents.id === webContentsId,
+        );
+        if (!win || win.isDestroyed() || win.webContents.isDestroyed()) return;
+        win.webContents.send(PlatformChannels.RemoteDaemonStatusChanged, {
+          state: parsed.data.state,
+        });
+        return;
+      }
       if (parsed.data.type === HostResponseTypes.ProviderProvisioningSourceChanged) {
         void providerProvisioningCoordinator.requestAll(parsed.data.trigger);
         return;

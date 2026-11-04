@@ -35,6 +35,11 @@ export const serverStatusSchema = z
     host: z.string().min(1).nullable(),
     version: z.string().min(1),
     generation: z.number().int().nonnegative(),
+    /**
+     * 是否已安装发布包（`install.json` 在场）。桌面用它把「未安装 / 已安装未运行 / 运行中」
+     * 三态分开；旧快照没有该字段时按 false 解析，CLI 输出前会用文件系统事实覆盖它。
+     */
+    installed: z.boolean().default(false),
     startedAt: z.number().int().nonnegative().nullable().default(null),
     lastExitReason: z.string().max(500).nullable().default(null),
     serviceRegistered: z.boolean(),
@@ -58,7 +63,7 @@ export type UpdatePreparationResult = z.infer<typeof updatePreparationResultSche
 
 export function createStoppedServerStatus(
   version: string,
-  options: { serviceRegistered?: boolean; now?: number } = {},
+  options: { serviceRegistered?: boolean; installed?: boolean; now?: number } = {},
 ): ServerStatus {
   return serverStatusSchema.parse({
     protocolVersion: SERVER_CLI_PROTOCOL_VERSION,
@@ -68,6 +73,7 @@ export function createStoppedServerStatus(
     host: null,
     version,
     generation: 0,
+    installed: options.installed ?? false,
     startedAt: null,
     lastExitReason: null,
     serviceRegistered: options.serviceRegistered ?? false,

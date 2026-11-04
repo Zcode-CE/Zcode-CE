@@ -1628,6 +1628,19 @@ const enUS: Record<string, string> = {
     "Enter the details needed for your {method} connection so we can prepare the remote session.",
   "remote.history.empty": "No matching saved connections",
   "remote.connectingStepTitle": "Connecting",
+  "remote.daemon.reconnecting.title": "Reconnecting to the remote workspace",
+  "remote.daemon.reconnecting.description":
+    "Attempt {attempt}/{maxAttempts}; retrying in about {seconds}s. Your sessions are still running on the remote daemon.",
+  "remote.daemon.recovered.title": "Connection re-established; reload the workspace",
+  "remote.daemon.recovered.description":
+    "The remote service is still running and your sessions are intact. Reload to reconnect to them.",
+  "remote.daemon.needsRebuild.title": "The remote service restarted; sessions ended",
+  "remote.daemon.needsRebuild.description":
+    "Restarting the daemon clears session state. Please reopen the session.",
+  "remote.daemon.disconnected.title": "Remote workspace disconnected",
+  "remote.daemon.disconnected.description": "Reconnect failed: {reason}",
+  "remote.daemon.action.openLog": "View log",
+  "remote.daemon.action.reopenSession": "Reopen session",
   "remote.connectingStepDescription":
     "We are establishing the {method} connection. You can follow the live setup progress here.",
   "remote.title": "Connect remote environment",

@@ -20,6 +20,7 @@ import type {
   BrowserViewRestoredTabShell,
   BrowserViewRestoreTabsRequest,
   BrowserViewportSize,
+  RemoteDaemonStatusChangedEvent,
   ChromeBrowserDataImportResult,
   DockerContainerInfo,
   EmbeddedBrowserOpenUrlRequest,
@@ -160,6 +161,10 @@ declare global {
       onRemoteConnectionLog(handler: (entry: RemoteConnectionRuntimeLog) => void): () => void;
       /** 订阅远程 workspace session 关闭事件，返回 disposer */
       onRemoteSessionClosed(handler: (event: RemoteSessionClosedEvent) => void): () => void;
+      /** 订阅远端 daemon 连接状态变化，返回 disposer（与 IPlatformService 同名方法一致） */
+      onRemoteDaemonStatusChanged(
+        handler: (event: RemoteDaemonStatusChangedEvent) => void,
+      ): () => void;
       /** 检查目录是否已在其他窗口打开 */
       activateOrSetWorkspace?(path: string): Promise<{ activated: boolean }>;
       /** 同步当前窗口所有 tab 的 workspace 路径到 main 进程 */

@@ -1,3 +1,4 @@
+import type { Duplex } from "node:stream";
 import type { IDisposable, Event } from "@zcode/rpc";
 
 export interface RemoteEnvironment {
@@ -46,4 +47,10 @@ export interface IRemoteBackend extends IDisposable {
   exists(remotePath: string): Promise<boolean>;
   /** Read a small remote file (e.g. version string) */
   readFile(remotePath: string): Promise<string>;
+  /**
+   * 打开一条到远端回环地址的字节通道（SSH direct-tcpip）。
+   * 只有 SSH 实现它：常驻 daemon 只监听远端 127.0.0.1，必须经隧道到达。
+   * 不实现的 transport（WSL/Docker）在 daemon 探测阶段直接按「不可用」回退 stdio。
+   */
+  openTcpipChannel?(destination: { host: string; port: number }): Promise<Duplex>;
 }

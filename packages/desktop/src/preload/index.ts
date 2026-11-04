@@ -63,6 +63,7 @@ import type {
   PrintPageToPdfResult,
   SSHConfigAliasOption,
   RemoteConnectionRuntimeLog,
+  RemoteDaemonStatusChangedEvent,
   WindowControlsOverlayMetrics,
   WindowControlsOverlayReadyPayload,
   CreateTempTextAttachmentRequest,
@@ -337,6 +338,13 @@ contextBridge.exposeInMainWorld("zcode", {
       callback(payload as RemoteConnectionRuntimeLog);
     ipcRenderer.on(PlatformChannels.RemoteConnectionLog, handler);
     return () => ipcRenderer.removeListener(PlatformChannels.RemoteConnectionLog, handler);
+  },
+  /** 订阅远端 daemon 连接状态变化，返回 disposer */
+  onRemoteDaemonStatusChanged: (callback: (event: RemoteDaemonStatusChangedEvent) => void) => {
+    const handler = (_event: unknown, payload: unknown) =>
+      callback(payload as RemoteDaemonStatusChangedEvent);
+    ipcRenderer.on(PlatformChannels.RemoteDaemonStatusChanged, handler);
+    return () => ipcRenderer.removeListener(PlatformChannels.RemoteDaemonStatusChanged, handler);
   },
   /** 订阅当前窗口内远程 session 关闭事件，返回 disposer */
   onRemoteSessionClosed: (callback: (event: RemoteSessionClosedEvent) => void) => {

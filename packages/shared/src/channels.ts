@@ -183,6 +183,8 @@ export const PlatformChannels = {
   PrintToPdf: "zcode:print-to-pdf",
   /** Main → Renderer：转发远程连接过程日志 */
   RemoteConnectionLog: "zcode:remote-connection-log",
+  /** Main → Renderer：远端常驻 daemon 的连接状态变化（重连中/已恢复/需重建/已断开） */
+  RemoteDaemonStatusChanged: "zcode:remote-daemon-status-changed",
   /** Main → Renderer：远程 workspace session 已关闭 */
   RemoteSessionClosed: "zcode:remote-session-closed",
   /** 检查目录是否已在其他窗口打开，如果是则激活该窗口 */
@@ -636,6 +638,8 @@ export const HostResponseTypes = {
   DatabaseStartupState: "database-startup-state",
   /** window Host → main：按 requestId 上报远程连接过程日志 */
   RemoteWorkspaceConnectionLog: "remote-workspace-connection-log",
+  /** window Host → main：远端常驻 daemon 连接状态变化（main 再转发到对应窗口） */
+  RemoteDaemonStatusChanged: "remote-daemon-status-changed",
   /** window Host → main：远程 logical session 已建立 */
   RemoteWorkspaceConnected: "remote-workspace-connected",
   /** window Host → main：远程 logical session 建立失败 */

@@ -20,14 +20,24 @@ import { createStatusPersister } from "../runtime/statusSnapshot.js";
 import { recoverSupervisorStartup } from "../runtime/startupRecovery.js";
 import { waitForUpdateReady } from "../runtime/updateReadiness.js";
 import { createRollbackFailure, updateErrorMessage } from "../runtime/updateErrors.js";
+import { isServerInstalled } from "../runtime/installState.js";
 import { CrashBudget } from "./crashBudget.js";
+import { withCoreLogHint, type CoreLogSink } from "./coreLog.js";
 
 // 生命周期事件按运维排障判据用 info/warn/error（出问题时运维要能在日志里看到）；
 // 高频 heartbeat/task-activity 明细走 debug，避免生产日志膨胀。
 const log = createServiceLogger("server-supervisor");
 
 interface CoreLauncher {
-  launch(generation: number, release?: ReleaseManifest | null): ChildProcess;
+  /**
+   * `captureOutput` 为真时 Core 的 stdout/stderr 走 pipe，由 Supervisor 写到 run/core.log；
+   * 为假时保持 `ignore`（与补日志前行为一致）。
+   */
+  launch(
+    generation: number,
+    release: ReleaseManifest | null | undefined,
+    captureOutput: boolean,
+  ): ChildProcess;
 }
 
 interface SupervisorOptions {
@@ -35,6 +45,8 @@ interface SupervisorOptions {
   launcher: CoreLauncher;
   version: string;
   serviceRegistered?: boolean;
+  /** Core 输出落盘；缺席时保持补日志前行为（stdio ignore），CLI 生产路径总会传。 */
+  coreLog?: CoreLogSink;
   /** 测试和诊断可缩短 ready 等待；生产默认保持 15 秒。 */
   coreReadyTimeoutMs?: number;
   /** 测试可缩短 Core 优雅退出和强杀后的终态等待；生产分别默认 5 秒和 2 秒。 */
@@ -106,7 +118,7 @@ export class Supervisor {
         serverRoot: this.layout.serverRoot,
         version: this.options.version,
       });
-      this.launchCore();
+      await this.launchCore();
       await this.persistStatusSnapshot();
       return this.status();
     } catch (error) {
@@ -278,7 +290,7 @@ export class Supervisor {
       await this.releaseManager.applyPendingWithTransaction(previous);
       this.activeRelease = pending;
       this.state = "starting";
-      this.launchCore();
+      await this.launchCore();
       await waitForUpdateReady(() => this.state, this.options.coreReadyTimeoutMs ?? 15_000);
       await this.releaseManager.completeUpdate();
       log.info("release applied", { version: pending.version });
@@ -313,7 +325,7 @@ export class Supervisor {
       this.state = "stopped";
       if (previous) {
         this.state = "starting";
-        this.launchCore();
+        await this.launchCore();
         try {
           await waitForUpdateReady(() => this.state, this.options.coreReadyTimeoutMs ?? 15_000);
         } catch (rollbackError) {
@@ -337,6 +349,8 @@ export class Supervisor {
       host: this.host,
       version: this.options.version,
       generation: this.generation,
+      // 以文件系统事实为准：持久化快照可能来自旧版本（无该字段）或卸载后的残留。
+      installed: isServerInstalled(this.layout),
       startedAt: this.startedAt,
       lastExitReason: this.lastExitReason,
       serviceRegistered: this.options.serviceRegistered ?? false,
@@ -346,9 +360,33 @@ export class Supervisor {
     };
   }
 
-  private launchCore(): void {
+  /** 把 Core 的 stdout/stderr 接到有界日志；backpressure 由写入队列的串行 await 承担。 */
+  private captureCoreOutput(child: ChildProcess): void {
+    const sink = this.options.coreLog;
+    if (!sink) return;
+    child.stdout?.on("data", (chunk: Buffer) => sink.write(chunk));
+    child.stderr?.on("data", (chunk: Buffer) => sink.write(chunk));
+  }
+
+  private decorateExitReason(reason: string): string {
+    return withCoreLogHint(reason, this.options.coreLog?.path);
+  }
+
+  private async launchCore(): Promise<void> {
     const generation = ++this.generation;
-    const child = this.options.launcher.launch(generation, this.activeRelease);
+    // 上一代的写流在这里收口：入队的 close 与写入串行，随后的 open 不会误关新流。
+    await this.options.coreLog?.close().catch(() => undefined);
+    const captureOutput = await this.options.coreLog?.open(generation).catch((error: unknown) => {
+      // 日志目录不可写不能挡住 Core 启动：退回 ignore，只记一条告警。
+      log.warn("failed to open core log, falling back to ignore", error);
+      return false;
+    });
+    const child = this.options.launcher.launch(
+      generation,
+      this.activeRelease,
+      captureOutput === true,
+    );
+    if (captureOutput === true) this.captureCoreOutput(child);
     this.core = child;
     this.clearCoreScopedStatus();
     log.info("launching server core", { generation, pid: child.pid });
@@ -358,20 +396,24 @@ export class Supervisor {
     const handleTerminal = (reason: string): void => {
       if (terminalObserved) return;
       terminalObserved = true;
+      // 崩溃原因进日志，状态里的 lastExitReason 带上日志路径：`status --json` 一眼就能拿到线索，
+      // 不必再去猜 run 目录在哪。
+      this.options.coreLog?.appendLine(`--- core terminal: ${reason} ---`);
+      const decorated = this.decorateExitReason(reason);
       if (this.core !== child || this.state === "stopping" || this.state === "stopped") return;
       if (this.state === "stop-failed") {
         // stop 已失败时继续保留锁；迟到的终态只清除已死亡 child，不得计入 crash budget
         // 或启动替代 Core。用户重试 stop 后再释放 control socket 与 data-root lock。
         this.core = undefined;
         this.clearCoreScopedStatus();
-        this.lastExitReason = reason;
+        this.lastExitReason = decorated;
         void this.persistStatusSnapshot();
         return;
       }
       this.core = undefined;
       this.clearCoreScopedStatus();
       this.state = "crashed";
-      this.lastExitReason = reason;
+      this.lastExitReason = decorated;
       const decision = this.crashBudget.recordCrash();
       if (!decision.shouldRestart) {
         this.state = "crash-loop-stopped";
@@ -389,7 +431,7 @@ export class Supervisor {
       setTimeout(() => {
         if (this.state !== "crashed") return;
         this.state = "starting";
-        this.launchCore();
+        void this.launchCore();
       }, decision.delayMs).unref();
     };
     // fork 的 execPath 不存在/不可执行时 Node 只发 error + close，不发 exit。

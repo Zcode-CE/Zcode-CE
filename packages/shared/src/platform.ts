@@ -426,6 +426,47 @@ export interface RemoteServiceSession {
   sessionId: string;
 }
 
+/**
+ * 远端常驻 daemon 的身份。generation/pid 变化即代表 daemon 重启过（会话全丢）。
+ * 放在 shared 是因为它是 host（产生）、main（转发）、renderer（展示）三方共用的结构，
+ * 各自复制一份会让「状态到底是什么」出现多个真相。
+ */
+export interface RemoteDaemonIdentity {
+  serverId: string;
+  generation?: number;
+  pid?: number;
+  /** <serverRoot>/run/core.log；排障入口。 */
+  coreLogPath?: string;
+}
+
+/** 远端 daemon 连接状态机对外的一手状态（UI 按 kind 出文案与动作）。 */
+export type RemoteDaemonReconnectState =
+  | { kind: "connected"; identity: RemoteDaemonIdentity }
+  /** 重连中：第 attempt 次（1-based），本次尝试前等待了 nextDelayMs。 */
+  | {
+      kind: "reconnecting";
+      attempt: number;
+      maxAttempts: number;
+      nextDelayMs: number;
+      reason: string;
+    }
+  /** 重连成功且 generation/pid 未变 ⇒ 同一 daemon，会话仍在。 */
+  | { kind: "recovered"; identity: RemoteDaemonIdentity }
+  /** daemon 重启过：会话全丢，需要重开会话。 */
+  | {
+      kind: "needs-rebuild";
+      reason: string;
+      previous: { generation?: number; pid?: number };
+      current: { generation?: number; pid?: number };
+      identity: RemoteDaemonIdentity;
+      coreLogPath?: string;
+    }
+  /** 重试耗尽或不可重试：已断开。 */
+  | { kind: "disconnected"; reason: string; coreLogPath?: string };
+
+export interface RemoteDaemonStatusChangedEvent {
+  state: RemoteDaemonReconnectState;
+}
 export interface RemoteConnectionRuntimeLog {
   label: string;
   requestId?: string;
@@ -823,6 +864,14 @@ export interface IPlatformService {
 
   /** 订阅远程 workspace session 关闭事件，返回 disposer */
   onRemoteSessionClosed(handler: (event: RemoteSessionClosedEvent) => void): () => void;
+
+  /**
+   * 订阅远端常驻 daemon 的连接状态变化，返回 disposer。
+   * 可选：没有 daemon 传输能力的平台（Web）不实现，UI 用可选链探测。
+   */
+  onRemoteDaemonStatusChanged?(
+    handler: (event: RemoteDaemonStatusChangedEvent) => void,
+  ): () => void;
 
   /** 检查目录是否已在其他窗口打开；如果是则激活该窗口并切到对应 tab */
   activateOrSetWorkspace(path: string): Promise<{ activated: boolean }>;

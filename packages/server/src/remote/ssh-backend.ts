@@ -3,6 +3,7 @@ import { Client as SSHClient } from "ssh2";
 import type { ConnectConfig } from "ssh2";
 import { createReadStream } from "node:fs";
 import { posix } from "node:path";
+import type { Duplex } from "node:stream";
 import { Emitter } from "@zcode/rpc";
 import { resolveZCodeRuntimeEnv } from "@zcode/shared";
 import type {
@@ -331,6 +332,42 @@ export class SSHBackend implements IRemoteBackend {
   async readFile(remotePath: string): Promise<string> {
     const resolvedRemotePath = await this.resolveRemotePath(remotePath);
     return this.execSimple(`cat ${quotePosixShellArg(resolvedRemotePath)}`);
+  }
+
+  /**
+   * 打开一条到远端回环端口的字节通道（direct-tcpip）。
+   *
+   * 常驻 daemon 只监听远端 127.0.0.1（server-core/http.ts 硬编码回环），桌面唯一能到达它的
+   * 方式就是复用这条 SSH 连接做端口转发；本方法每次调用开一条新通道（调用方按请求粒度使用）。
+   */
+  async openTcpipChannel(destination: { host: string; port: number }): Promise<Duplex> {
+    await this.ensureConnected();
+    this.assertNotDisposed();
+    return await new Promise((resolve, reject) => {
+      // srcIP/srcPort 只是 direct-tcpip 的发起方标记，对端不做校验；用回环占位即可。
+      this.client.forwardOut(
+        "127.0.0.1",
+        0,
+        destination.host,
+        destination.port,
+        (error, channel) => {
+          if (error) {
+            reject(
+              new Error(
+                "SSH direct-tcpip to " +
+                  destination.host +
+                  ":" +
+                  destination.port +
+                  " failed: " +
+                  (error instanceof Error ? error.message : String(error)),
+              ),
+            );
+            return;
+          }
+          resolve(channel as unknown as Duplex);
+        },
+      );
+    });
   }
 
   /** Execute a simple command and return stdout as string */

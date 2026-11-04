@@ -27,6 +27,8 @@ import {
   removeRunContentsExceptLock,
 } from "./runtime/uninstallGuard.js";
 import { readPersistedStatus, readPersistedStatusDetailed } from "./runtime/statusSnapshot.js";
+import { isServerInstalled } from "./runtime/installState.js";
+import { CoreLogSink } from "./supervisor/coreLog.js";
 import { waitForServerStopped } from "./runtime/shutdownWait.js";
 export { readPersistedStatus } from "./runtime/statusSnapshot.js";
 import {
@@ -241,10 +243,14 @@ async function runServe(
   const { Supervisor } = await import("./supervisor/supervisor.js");
   const serviceRegistered = supervisorProcess && isRegisteredServiceEntry(args);
   let foregroundStopped: (() => void) | undefined;
+  // Core 的 stdout/stderr 落 <serverRoot>/run/core.log：daemon 化后崩溃只剩 lastExitReason，
+  // 没有 Core 自己的输出就无法定位。轮转与上限见 supervisor/coreLog.ts。
+  const coreLog = new CoreLogSink({ runDir: layout.runDir });
   const supervisor = new Supervisor({
+    coreLog,
     layout,
     launcher: {
-      launch: (generation, release) => {
+      launch: (generation, release, captureOutput) => {
         const runtimeRoot = release?.releaseDir ? join(release.releaseDir, "runtime") : null;
         const corePath = runtimeRoot
           ? join(runtimeRoot, "server-core.js")
@@ -267,7 +273,13 @@ async function runServe(
             ...releaseWiring,
             ...(runtimeRoot ? { ZCODE_SERVER_RUNTIME_ROOT: runtimeRoot } : {}),
           },
-          stdio: ["ignore", "ignore", "ignore", "ipc"],
+          // Core 输出由 Supervisor 经 pipe 收走（有界落盘）；不捕获时保持 ignore。
+          stdio: [
+            "ignore",
+            captureOutput ? "pipe" : "ignore",
+            captureOutput ? "pipe" : "ignore",
+            "ipc",
+          ],
         });
       },
     },
@@ -350,9 +362,20 @@ async function runControl(
       throw error;
     }
   }
-  if (json) stdout(io, result);
-  else stdout(io, result ?? "ok");
+  // `installed` 一律以文件系统事实为准：控制面不可用时读到的是旧快照（旧版本没有该字段），
+  // 而桌面正是拿它区分「未安装 / 已安装未运行 / 运行中」，不能依赖快照里的陈旧值。
+  const emitted = command === "status" ? withInstalledFlag(result, layout) : result;
+  if (json) stdout(io, emitted);
+  else stdout(io, emitted ?? "ok");
   return 0;
+}
+
+function withInstalledFlag(
+  result: unknown,
+  layout: ReturnType<typeof resolveServerLayout>,
+): unknown {
+  if (typeof result !== "object" || result === null) return result;
+  return { ...(result as Record<string, unknown>), installed: isServerInstalled(layout) };
 }
 
 function isControlEndpointUnavailable(error: unknown): boolean {

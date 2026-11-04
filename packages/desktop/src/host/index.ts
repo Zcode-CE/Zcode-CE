@@ -144,8 +144,11 @@ import { createWindowHostControllerRuntime } from "./windowHostControllerService
 import { resolveAutomationSubmissionModelSelection } from "./automationModelSelection.js";
 import { createRemoteConnectionProgressContext } from "@zcode/server/remote/remoteConnectionProgressContext.js";
 import { startHostMemoryDiagnosticsLog } from "./hostMemoryDiagnosticsLog.js";
+import { createRemoteDaemonReconnectController } from "./remoteDaemonReconnectController.js";
 type RemoteBackendHostConnection = RemoteConnection & {
   backend: IRemoteBackend;
+  /** daemon 传输的身份快照：重连状态机用它判断「同一 daemon」还是「重启过」。 */
+  daemonIdentity?: { serverId: string; generation?: number; pid?: number; coreLogPath?: string };
 };
 type HostRemoteConnection = RemoteBackendHostConnection;
 interface HostRemoteConnectionCapabilities {
@@ -2891,10 +2894,24 @@ async function setupRemoteConnection(
   signal?: AbortSignal,
 ): Promise<HostRemoteConnection> {
   // 延迟加载 remote backend，避免 local 模式下因 ssh2 依赖链进入 asar 后崩溃
-  const { createRemoteBackend, connectRemote, pickRemoteRuntimeEnv } =
+  const { createRemoteBackend, connectRemoteAuto, connectDaemonRemote, pickRemoteRuntimeEnv } =
     await import("@zcode/server/remote");
   const backend = await createRemoteBackend(target);
-  const connection = await connectRemote(backend, {
+  // daemon 身份在连接建立后才确定；关闭回调闭包通过这个变量拿到它（不要读 connection 字段，
+  // 那个类型是 RemoteConnection，daemonIdentity 是 host 侧附加的语义）。
+  let daemonIdentity: HostRemoteConnection["daemonIdentity"];
+  // 重连状态机在连接建立后才知道 daemon 身份，这里先占位，onDidDaemonClose 时驱动它。
+  let daemonReconnect: {
+    start(
+      previous: { serverId: string; generation?: number; pid?: number; coreLogPath?: string },
+      reason: string,
+    ): Promise<unknown>;
+    cancel(): void;
+  } | null = null;
+  // 传输分派：远端已装可用的 zcode-server 时走常驻 daemon（断开只断 WS、会话存活），
+  // 否则零变化地走 stdio。daemon 的关闭事件先并入既有 close 收口（code 语义不变），
+  // 第二阶段的「重连 vs 需重建」状态机消费 reason 并在日志里给出结论。
+  const connection = await connectRemoteAuto(backend, {
     ...remoteAssets,
     remoteAssetNetwork,
     remoteRuntimeNetwork,
@@ -2911,6 +2928,85 @@ async function setupRemoteConnection(
     onDidRemoteClose: ({ code }) => {
       onDidRemoteClose(code);
     },
+    onDidDaemonClose: (event) => {
+      // daemon 侧关闭：reason 区分「连接断开（daemon 可能仍 ready）」与「daemon 消失」。
+      console.log(
+        "[remote-daemon] connection closed:",
+        event.reason,
+        event.code,
+        event.message ?? "",
+      );
+      // 只有「连接断开」类事件才进入重连状态机：daemon-unavailable 说明远端服务本身没了，
+      // 重连没有意义（且不能静默切 stdio —— 那会另起一个 server，语义混乱）。
+      if (
+        daemonReconnect &&
+        (event.reason === "connection-closed" || event.reason === "backend-disconnected")
+      ) {
+        void daemonReconnect.start(daemonIdentity!, event.reason).catch((error) => {
+          console.warn("[remote-daemon] reconnect state machine failed:", error);
+        });
+        return;
+      }
+      onDidRemoteClose(event.code);
+    },
   });
-  return { ...connection, backend };
+  if (connection.transport === "daemon" && connection.daemon && connection.serverId) {
+    const identity = {
+      serverId: connection.serverId,
+      ...(connection.daemon.generation !== undefined
+        ? { generation: connection.daemon.generation }
+        : {}),
+      ...(connection.daemon.pid !== undefined ? { pid: connection.daemon.pid } : {}),
+      coreLogPath: connection.daemon.serverRoot + "/run/core.log",
+    };
+    // 重连只重跑 probe → admission → ticket → ws（端口可能已变），绝不回退 stdio。
+    const controller = createRemoteDaemonReconnectController({
+      reconnect: async () => {
+        const result = await connectDaemonRemote(backend, {
+          env: process.env,
+          autoStart: true,
+        });
+        if (!result.available) {
+          return {
+            ok: false as const,
+            kind: result.kind,
+            reason: result.reason,
+            ...(result.coreLogPath ? { coreLogPath: result.coreLogPath } : {}),
+          };
+        }
+        // 第三阶段之前不做 re-attach：新连接只用来确认「daemon 还活着、身份没变」，
+        // 拿到身份后立即释放，否则会留下一条没人使用的 WS/ChannelClient（泄漏）。
+        // 用户侧的恢复路径是重新加载工作区（横幅动作），那条路径会重新建立并挂载连接。
+        await result.connection.disposeAndWait({ timeoutMs: 2_000 });
+        return {
+          ok: true as const,
+          identity: {
+            serverId: result.connection.serverId ?? identity.serverId,
+            ...(result.connection.daemon?.generation !== undefined
+              ? { generation: result.connection.daemon.generation }
+              : {}),
+            ...(result.connection.daemon?.pid !== undefined
+              ? { pid: result.connection.daemon.pid }
+              : {}),
+            coreLogPath: identity.coreLogPath,
+          },
+        };
+      },
+      onStateChange: (state) => {
+        // 结构化通道是唯一真相：main 转发到对应窗口，renderer 横幅消费。
+        // host 日志只作诊断留痕，不参与状态传递（避免日志字符串成为第二条真相）。
+        try {
+          parentPort?.postMessage({
+            type: HostResponseTypes.RemoteDaemonStatusChanged,
+            state,
+          });
+        } catch (error) {
+          console.warn("[remote-daemon] failed to publish state:", error);
+        }
+      },
+    });
+    daemonReconnect = controller;
+    daemonIdentity = identity;
+  }
+  return { ...connection, backend, ...(daemonIdentity ? { daemonIdentity } : {}) };
 }

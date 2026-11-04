@@ -1503,6 +1503,17 @@ const zhCN: Record<string, string> = {
   "remote.settingsStepDescription": "填写建立 {method} 连接所需的信息，我们会据此准备远程会话。",
   "remote.history.empty": "没有匹配的历史连接",
   "remote.connectingStepTitle": "正在建立连接",
+  "remote.daemon.reconnecting.title": "正在重连远程工作区",
+  "remote.daemon.reconnecting.description":
+    "第 {attempt}/{maxAttempts} 次尝试，约 {seconds} 秒后重试；会话仍在远端常驻进程里。",
+  "remote.daemon.recovered.title": "连接已重建，需要重新加载工作区",
+  "remote.daemon.recovered.description": "远端服务没有重启，会话仍在；重新加载后会接回原来的会话。",
+  "remote.daemon.needsRebuild.title": "远端服务已重启，会话已结束",
+  "remote.daemon.needsRebuild.description": "常驻服务重启会清空会话状态，请重新打开该会话。",
+  "remote.daemon.disconnected.title": "远程工作区已断开",
+  "remote.daemon.disconnected.description": "重连失败：{reason}",
+  "remote.daemon.action.openLog": "查看日志",
+  "remote.daemon.action.reopenSession": "重新打开会话",
   "remote.connectingStepDescription": "正在建立 {method} 连接，你可以在这里查看实时的连接进度。",
   "remote.title": "连接远程环境",
   "remote.description":

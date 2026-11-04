@@ -43,6 +43,7 @@ export function createDesktopPlatform(options: {
       ? () => window.zcode.rotateWebServiceToken()
       : undefined,
     onRemoteConnectionLog: (handler) => window.zcode.onRemoteConnectionLog(handler),
+    onRemoteDaemonStatusChanged: (handler) => window.zcode.onRemoteDaemonStatusChanged(handler),
     onRemoteSessionClosed: (handler) => window.zcode.onRemoteSessionClosed(handler),
     activateOrSetWorkspace: (path) =>
       window.zcode.activateOrSetWorkspace?.(path) ?? Promise.resolve({ activated: false }),

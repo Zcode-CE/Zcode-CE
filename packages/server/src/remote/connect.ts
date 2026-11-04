@@ -50,6 +50,44 @@ export interface RemoteRuntimeNetworkOptions {
 export interface RemoteConnection {
   services: IServiceAccessor;
   client: ChannelClient;
+  /**
+   * 传输形态。stdio：断开 = 结束远端进程（现有链路）；daemon：断开 = 只断 WS，daemon 与
+   * 会话继续存活，重连可继续操作同一 terminal（SPIKE §4.4）。
+   * 缺省视为 stdio，保持既有调用方语义不变。
+   */
+  transport?: "stdio" | "daemon";
+  /** daemon 传输：安装级稳定的 serverId（会话归属；daemon 重启后端口变而 serverId 不变）。 */
+  serverId?: string;
+  /** daemon 传输：本次连接的 daemon 状态快照，供第二阶段重连/重建状态机使用。 */
+  daemon?: {
+    host: string;
+    port: number;
+    /** Core 世代号：变化即代表 daemon 重启，旧会话已不存在。 */
+    generation?: number;
+    pid?: number;
+    /** 探测到的可执行文件（诊断/UI 提示用）。 */
+    bin: string;
+    /** daemon 的 server-root（core 日志在 <serverRoot>/run/core.log）。 */
+    serverRoot: string;
+  };
+  /** 回退到 stdio 的原因（仅 stdio 且曾探测 daemon 时存在）；用于能力提示与排障。 */
+  daemonFallbackReason?: string;
+  /**
+   * 回退原因码（UI 按码出文案，不解析字符串）：
+   * - `daemon-disabled` 调用方显式关闭；`transport-unsupported` 该 transport 无 direct-tcpip；
+   * - `daemon-not-installed` 远端没装；`daemon-start-failed` 装了但起不来；
+   * - `daemon-incompatible` 协议版本不一致/缺 serverId（回退而不是硬错：远端旧版 daemon
+   *   不该让本来可用 stdio 的工作区不可用）；
+   * - `daemon-unusable` 装了但当前状态不可用（crashed 等）；`daemon-connect-failed` 其它失败。
+   */
+  daemonFallbackCode?:
+    | "daemon-disabled"
+    | "transport-unsupported"
+    | "daemon-not-installed"
+    | "daemon-start-failed"
+    | "daemon-incompatible"
+    | "daemon-unusable"
+    | "daemon-connect-failed";
   dispose(): void;
   disposeAndWait(options?: { timeoutMs?: number }): Promise<void>;
 }
@@ -174,7 +212,7 @@ async function connectRemoteUnchecked(
   throwIfRemoteConnectAborted(options?.signal);
   log("detected:", env);
   assertSupportedRemoteEnvironment(env);
-  // libc 能力边界：musl 上的失败是**不可捕获的段错误**（建终端时原生 fork），
+  // libc 能力边界：musl 上的失败是不可捕获的段错误（建终端时原生 fork），
   // 所以必须在部署资产之前 fail-closed，避免「部署成功 → 建终端 → 远端 server 进程被杀」。
   await assertSupportedRemoteLibc(backend, env, log);
 
