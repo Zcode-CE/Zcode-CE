@@ -22,7 +22,8 @@ macOS 客户端**不检查更新**：未签名包不具备自动更新链路所�
 
 ```bash
 node -p "require('./package.json').version"
-git tag --sort=-v:refname | head -1
+# 只看本项目的 tag：工作区里还有上游 tag（v3.18.2 / v4.0.0 …），不加过滤器会取到它们
+git tag -l 'v*-ce.*' --sort=-v:refname | head -1
 ```
 
 ### 命名结构
@@ -266,6 +267,12 @@ CI 的 `release.yml` 由 **push `v*` tag** 触发。tag 采用 `v` 前缀，与 
 git tag -a v3.14.1-ce.1 -m "ZCode-CE v3.14.1-ce.1"
 git push origin v3.14.1-ce.1
 ```
+
+**只推当前这一个 tag，禁止 `git push --tags`**：本机为了跟上游做 diff 会 fetch 上游 tag
+（`v3.14.3` / `v3.15.1` / `v3.17.1` / `v3.17.2` / `v3.18.2` / `v4.0.0`），它们指向**上游仓库的提交**、
+不在我们的 `main` 上。`--tags` 会把它们一并推到 origin，而 `release.yml` 由 `push v*` tag 触发 ⇒
+每个上游 tag 都会跑一次构建并试图建 Release。upstream remote 的 push URL 已改成不可达值，
+避免误推到上游仓库本身。
 
 推送后 GitHub Actions 会构建 Linux x64 与 Windows x64 两个平台，并把安装包与更新清单
 发布到同一个 Release。**矩阵是串行执行的**（原因见 [持续集成](./ci.md)），

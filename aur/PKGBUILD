@@ -12,8 +12,8 @@
 pkgname=zcode-ce-bin
 _pkgname=ZCode-CE
 pkgver=3.17.2.ce.1
-# 上游版本号形如 3.14.1-ce.1；pacman 的 pkgver 不允许连字符，改用点号。
-# 与包内 .PKGINFO 的 3.14.1_ce.1 对应，语义相同。
+# 上游版本号形如 3.17.2-ce.1；pacman 的 pkgver 不允许连字符，改用点号。
+# 与包内 .PKGINFO 的 3.17.2_ce.1 对应，语义相同。
 pkgrel=1
 pkgdesc="ZCode 的开源社区版：移除遥测、保留官方服务权益、开源文档与桌面自动化能力"
 arch=('x86_64')
@@ -36,8 +36,8 @@ install=zcode-ce-bin.install
 # 产物已由上游构建与体积审计，不需要本地 strip。
 options=('!strip')
 
-# 上游的版本号与 tag 形如 3.14.1-ce.1（含连字符），而 pacman 的 pkgver 不允许连字符，
-# 所以 pkgver 用点号形式 3.14.1.ce.1，下载地址仍按上游原样拼接。
+# 上游的版本号与 tag 形如 3.17.2-ce.1（含连字符），而 pacman 的 pkgver 不允许连字符，
+# 所以 pkgver 用点号形式 3.17.2.ce.1，下载地址仍按上游原样拼接。
 _upstream_ver=3.17.2-ce.1
 _upstream_tag=v3.17.2-ce.1
 

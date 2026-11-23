@@ -20,16 +20,19 @@
 
 ## 基线（会漂移的值，标快照时刻）
 
-| 项                           | 值                                                                                                                                                                                                                                                         | 快照时刻        |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| 我们的 fork 点（merge-base） | `872ad960`（`feat: open source`）                                                                                                                                                                                                                          | 2026-09-24      |
-| 上游开源仓库 main            | `a9fe401e`（version **3.17.2**，commit「chore: sync ZCode source v3.17.2」；2026-11-04 拉取）                                                                                                                                                              | 2026-11-04      |
-| 上游开源仓库最新 tag         | `v3.17.1` = `a60ba6a7`（开源仓库 tag：`v3.14.3` / `v3.15.1` / `v3.17.1`；3.16.2 与 3.17.2 未打 tag）                                                                                                                                                       | 2026-11-04      |
-| 上游 feature 分支            | `feat/ui-plugin` = `662c30b`（2026-09-29，UI plugins + Gen UI）—— **内容已随 `aac47556` 并入主线**（mcp-ui 契约 20 文件在 `662c30b` 与 `aac47556` 之间 `git diff --stat` 零差异，内容级复核 2026-10-13）；分支本身的 `@open-pencil/core` 未随包，CE 未引入 | 2026-10-13 复核 |
-| 上游闭源发行包               | 最新 `ZCode-3.17.2`（2026-11-03）；解包见 `.local/artifacts/107-v3172`，逐项分析见 `.local/reports/upstream/version-3.17.2/CLOSED-SOURCE.md`（闭源独有机制与 3.16.3 相同，未新增）                                                                         |
-| 我们领先 / 落后              | 以 `git rev-list --count origin/main..HEAD` 为准（2026-10-30 快照 69）；对上游开源 main 的差异按 3.16.2 移植矩阵逐条管理（不整树 merge）                                                                                                                   |
+| 项                           | 值                                                                                                                                                                                                                                                                                              | 快照时刻        |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| 我们的 fork 点（merge-base） | `872ad960`（`feat: open source`）                                                                                                                                                                                                                                                               | 2026-09-24      |
+| 上游开源仓库 main            | `a4b44451`（version **4.0.0**，commit「chore: sync ZCode source v4.0.0」；2026-11-23 拉取）                                                                                                                                                                                                     | 2026-11-23      |
+| 上游开源仓库最新 tag         | `v4.0.0` = `a4b44451`（tag 序列：`v3.14.3` / `v3.15.1` / `v3.17.1` / `v3.17.2` / `v3.18.2` / `v4.0.0`；3.16.2、3.18.0、3.18.1、3.19.x 无 tag —— 3.18.0/3.18.1 是主线上的 squash 提交）                                                                                                          | 2026-11-23      |
+| 上游 feature 分支            | `feat/ui-plugin` = `662c30b`（2026-09-29，UI plugins + Gen UI）—— **内容已随 `aac47556` 并入主线**（mcp-ui 契约 20 文件在 `662c30b` 与 `aac47556` 之间 `git diff --stat` 零差异，内容级复核 2026-10-13）；分支本身的 `@open-pencil/core` 未随包，CE 未引入                                      | 2026-10-13 复核 |
+| 上游闭源发行包               | 最新 `ZCode-4.0.0`（CDN `latest.yml` releaseDate 2026-11-22）；解包见 `.local/artifacts/108-v400`，逐项分析见 `.local/reports/upstream/version-4.0.0/CLOSED-SOURCE.md`（闭源独有机制与 3.17.2 相同：签名器 V4 / captcha 链 / agent-configs 路由 / ARMS+OTLP 逐 token 零差异；新增项均开源同有） | 2026-11-23      |
+| 官方闭源发行序列 vs 开源 tag | 官方闭源已发 `3.19.0` / `3.19.1` / `4.0.0`（CDN latest.yml：11-19 / 11-20 / 11-22），开源仓库**没有 3.19.x tag** ⇒ 3.19.x 的增量只存在于闭源包，被折叠进 v4.0.0 的一次 squash 同步                                                                                                              | 2026-11-23      |
+| 我们领先 / 落后              | 对 `origin/main` 用 `git rev-list --count origin/main..HEAD`；对上游用 `git rev-list --left-right --count HEAD...upstream/main`（2026-11-23 快照：ahead 455 / behind 10）。差异按版本矩阵逐条管理，**不整树 merge**                                                                             | 2026-11-23      |
 
 > 复算方式：`git fetch upstream --tags && git merge-base HEAD upstream/main && git rev-list --left-right --count HEAD...upstream/main`。
+> **`--tags` 只用于 fetch**：它会带入上游 tag（指向上游提交），用于 `git show <tag>:<path>` 对比；
+> 推出时只能 `git push origin <自己的 tag>`，**禁 `git push --tags`**（见 [发布](../operations/release.md) 的打 tag 一节）。
 > **注意**：上游 `v3.14.3` 的**唯一父提交**就是开源提交 `872ad96`，因此"v3.14.3 新增"与"开源基线就有"可以精确切分 —— 比只看一棵树可靠。
 
 ## v3.14.3（来源：开源仓库）
@@ -167,6 +170,10 @@
 | **C-10 git 快照加固**                                                | `adapters/context/git-snapshot.ts` + `exec/windows-executable.ts` + `exec/output-collector.ts` + `node-execution-adapter-base.ts` 整文件取上游（PATH 绝对路径、命令配置覆盖、并行探针、Windows 盘符/引号、超时取消语义）                                                                                                                                                                                                                                                                 | 源码比对 + 3 条真实 git 用例                                                         |
 | **打包：`electronVersion` 从 package.json 读**（CE 自研缺陷）        | CE 写死 `41.0.3` 而实际安装 42.11.18 ⇒ 安装包与开发态分叉；改为 `desktopElectronVersion`                                                                                                                                                                                                                                                                                                                                                                                                 | CE 审计 + 上游同改                                                                   |
 | **依赖：`@ai-sdk/openai-compatible` 钉版**                           | `^2.0.58` → `2.0.60`，与 `pnpm.patchedDependencies` 的精确键对齐（否则一次 `pnpm update` 会让 video patch 静默失效）                                                                                                                                                                                                                                                                                                                                                                     | 依赖核查                                                                             |
+| **F5 图片预览标注编辑**                                              | `image-preview-editor/` 移入 CE 自研 `components/ai-elements/image-preview-dialog.tsx` 视口 + `useComposerAttachments` 注册 receiver；17 键                                                                                                                                                                                                                                                                                                                                              | 源码比对 + `c3e1eebf`                                                                |
+| **F14 预览卡片整卡点击**                                             | `OpenSplitButton` 重建 `renderCard(button, {handlePreview, canPreview})` 契约：整卡可点、右侧按钮独立                                                                                                                                                                                                                                                                                                                                                                                    | 源码比对 + `c3e1eebf`                                                                |
+| **F16 Finder / 资源管理器定位**                                      | `getFileApplications` / `openFileWithApplication`（shared + desktop IPC）+ 文件树右键与预览面板入口（macOS Finder / Windows 资源管理器 / WSL 分支）                                                                                                                                                                                                                                                                                                                                      | 源码比对 + `1d37057a` / `eeaab157`                                                   |
+| **F6 未读任务筛选 / F7 设置页工作区管理**（CE 形态）                 | 侧栏「按未读」视图（退出即回原偏好）；设置 →「工作区」统一列表（只读服务端注册表；排序 / 改名 / 从列表移除 / 删除并清理数据）。**上游 F7 的 project 语义未跟**：CE 无 project 实体，落地形态是 workspace                                                                                                                                                                                                                                                                                 | 源码比对 + `c3e1eebf` / `871c720b`                                                   |
 
 ### 未跟进（有意）/ 需决策
 
@@ -174,13 +181,53 @@
 | ------------------------------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | F1 ZCode Sites 官方插件                                       | 未跟进（需决策）              | 客户端载荷开源（MIT），但部署目标 `/api/v1/sites` 是官方服务端，CE 无该服务；与 Source Server 同类的整链决策                            |
 | F4 文档查看器共用进程                                         | 未跟进（有意）                | 与 CE「Office 零外部依赖 Node 载荷」的既定决策冲突                                                                                      |
-| F5 图片预览标注编辑                                           | 未跟进（P1 剩余）             | 843 行新模块可独立搬，但需替换 CE 自研 dialog 的视口并注册 composer receiver；本轮未排                                                  |
-| F6 未读任务筛选 / F7 设置页批量管理项目                       | 未跟进（需决策）              | CE 的项目模型是 workspace（无 `project-sidebar/`、无 project 实体）；F7 代价 XL                                                         |
 | F8 远程数据同步 / F9-F10 远程设备                             | 不适用（CE 无 Source Server） | 整链挂在 `source-settings attachment`（`useSourceSettingsServices` CE 0 命中）；CE 现有 per-page 同步是唯一可行形态，**不跟随上游删除** |
-| F14 预览卡片整卡点击                                          | 未跟进                        | CE 已删 `OpenSplitButton` 的 `renderCard` prop，需先重建契约                                                                            |
-| F16 Finder/资源管理器定位                                     | 未跟进                        | 需 `platform.getFileApplications`（shared + desktop IPC 新增）                                                                          |
 | X5 远程兼容四后端                                             | 未跟进                        | CE 的 ssh/wsl/docker/sshAuth 四个 backend 全部偏离上游，需逐 hunk 合并                                                                  |
 | X7 模型内置工具完整显示                                       | 未跟进                        | 与 X4 投影改造耦合，单做会让冷恢复与实时不一致                                                                                          |
 | 遥测（`conversation-telemetry` / `local-ttft` / ARMS / OTLP） | 不适用（CE 无遥测）           | 政策；见 [telemetry.md](telemetry.md)                                                                                                   |
 | 云 relay 客户端 / Android 壳 / Source Server                  | 不适用（CE 不引入）           | CE 远控是自托管 `?token`                                                                                                                |
 | 上游测试体系重排（删 205 个单测 / 加 119 个）                 | 不适用                        | 上游自己的「App 业务单测退役」政策；CE 测试体系独立                                                                                     |
+
+## v3.18.x（开源仓库：唯一 tag 是 `v3.18.2` = `fec97590`；3.18.0 / 3.18.1 是主线 squash 提交 `b95ebaff` / `c5904686`，无独立 tag；快照 2026-11-23）
+
+官方闭源同版本：3.18.0（2026-11-10）/ 3.18.1（11-11）/ 3.18.2（11-12）。发版说明原文见
+[官方 releaseNotes 抓取](../../.local/reports/upstream/official-release-notes-2026-11-23.md) —— 站点 changelog 把三版合并成一条（25 功能 / 31 修复），
+逐版原文在 CDN 各版 `linux-x64/latest.yml`。移植矩阵见 [MATRIX-318](../../.local/reports/upstream/version-4.0.0/MATRIX-318.md)。
+
+**状态：未跟进（在研）** —— 本轮只完成状态核对与矩阵，未搬代码。按我们的优先级，矩阵里最该先做的：
+
+| 优先          | 条目                                                                                                         | CE 现状（证据）                                                                                                                                                                                                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P0 安全       | 工作流脚本 vm 逃逸修复                                                                                       | **CE 仍是修复前形态**：`dynamic-workflow-runtime/src/child-source.ts:271` 把 `__send` 直接注入 sandbox 全局，脚本可经 `__send.constructor.constructor("return process")()` 取到宿主 `process`；上游 3.18 改为闭包 `__emitLine` + `delete globalThis.__send`（`git show v3.18.2:…/child-source.ts:107-129`） |
+| P0 数据完整性 | 会话永久删除迁移 `0025_session_permanent_deletion`（`session_purge` + 4 类触发器）                           | CE 会话库迁移只到 `0022`，且**缺上游 `0023_session_soft_delete_outcome`** ⇒ 不能跳号直接接 0025                                                                                                                                                                                                             |
+| P1 数据完整性 | 归档/会话永久删除前的检查按批进行                                                                            | CE 删除链路仍是旧行为                                                                                                                                                                                                                                                                                       |
+| P2 用户可见   | 语音输入、Worktree、Design 插件、日语/俄语/韩语界面、会话管理 Tool、分享有效期、崩溃后一键重启、MCP 异步启动 | 均缺失，逐条落点见矩阵                                                                                                                                                                                                                                                                                      |
+
+## v4.0.0（开源仓库 `main` = `a4b44451`；覆盖官方闭源 `3.19.0` / `3.19.1` / `4.0.0` 三个发行版的并集；快照 2026-11-23）
+
+官方发版说明：3.19.0（16 功能 / 33 修复）、3.19.1（+4 / +10）、4.0.0（3 / 7），原文见
+[官方 releaseNotes 抓取](../../.local/reports/upstream/official-release-notes-2026-11-23.md)；站点 changelog 只到 3.19.1 且按补丁系列合并展示，
+不能当逐版清单用。矩阵见 [MATRIX-400](../../.local/reports/upstream/version-4.0.0/MATRIX-400.md)，
+闭源机制核对见 [CLOSED-SOURCE](../../.local/reports/upstream/version-4.0.0/CLOSED-SOURCE.md)（相对 3.17.2 闭源独有机制未变）。
+
+**状态：未跟进（在研）**。破坏性判别（矩阵 §3，逐项证据）：协议 wire 版本 **3 → 3 未升**（CE 自维护 `ZCODE_PROTOCOL_VERSION = 1`，
+不含该常量，故不存在「上游升 wire 导致 CE 断连」）；持久化有两层变化（会话库 `0026_dwf_run_parent_session_index` + Host 侧新建
+project-storage 库）；打包/分发无格式破坏，但新增 `tar` 依赖与「预装工具从官方 CDN 按需下载」；许可新增 Blue Oak（`tar` 链）；
+Node / Electron 要求未变（CE 的 Electron 42 偏差自 3.17.2 起既有）。
+
+按我们优先级最该先做的三项（矩阵 §5）：
+
+| 优先    | 条目                                                                            | CE 现状（证据）                                                                                                                                                                                                                                                |
+| ------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P0 安全 | 主窗口导航守卫 `guardWindowNavigation`（上游 `desktopWindowChrome.ts`）         | **CE 没有主窗口守卫**：`grep -rn guardWindowNavigation\|isAppOriginMainWindowUrl packages/desktop/src` 只命中 guest 级两处；`mermaid-block.tsx:320` 仍 `dangerouslySetInnerHTML` 注入 SVG ⇒ 与上游修复前相同的「Markdown 诱导顶层导航 → preload 特权 IPC」链路 |
+| P0 安全 | `mergeConfigs` 嵌套字段被高层整体替换                                           | CE 与 `a9fe401e` 同 blob（`1307c904`），且 `server-operations.ts:1061` 同样传 `permission: { mode }` ⇒ Desktop 新建会话时用户 `permission.disallowedTools` 等被整体替换回默认值                                                                                |
+| P1 安全 | 项目配置信任边界（剥离项目 `plugins.options`、Host 私有 `plugin-secrets.json`） | CE 无 `plugin-secrets`（全仓 0 命中）                                                                                                                                                                                                                          |
+
+**明确不跟 / 需决策**：
+
+| 项                                                                                           | 结论                 | 原因                                                                                                                                      |
+| -------------------------------------------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Host 侧 project-storage（`hosts` / `projects` / `project_roots` / `remote_project_entries`） | 需决策（不整搬）     | 项目身份变 `(host_id, project_id, roots)`，与 CE 的 `workspaceIdentity ?? workspacePath` 是两套体系，会打断 workspaceKey 项目模型         |
+| `conversation-telemetry` + `local-ttft`                                                      | 不适用（CE 无遥测）  | 政策；见 [telemetry.md](telemetry.md)                                                                                                     |
+| 预装工具（LibreOffice / Python / Poppler / Pandoc / qpdf，官方 CDN 按需下载）                | 不适用               | 与「Office 零外部依赖」边界冲突；GPL 组件随二进制源码义务上游自己仍 `needs-info`（`docs/issues/preinstalled-tools/01-license-review.md`） |
+| Windows preinstalled-entry-shim / macOS 语言包断言                                           | 不适用（平台打包项） | CE 的打包矩阵没有对应产物，按平台裁剪                                                                                                     |
