@@ -39,8 +39,8 @@ Foundation；它的含义是「SignPath Foundation 验证过这个二进制由�
 | 发布流程说明 | [`docs/operations/release.md`](release.md)                             |
 | CI 说明      | [`docs/operations/ci.md`](ci.md)                                       |
 
-构建在 GitHub Actions 上执行（`ubuntu-latest` 与 `windows-latest`），产物上传到本仓库的
-GitHub Release。签名的二进制来自这些 Release 产物，不来自开发者本机。
+构建在 GitHub Actions 上执行（平台矩阵定义在 `release.yml`），产物上传到本仓库的 GitHub Release。
+签名的二进制来自这些 Release 产物，不来自开发者本机。
 
 ## 隐私政策
 

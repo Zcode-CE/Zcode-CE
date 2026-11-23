@@ -110,8 +110,8 @@ sqlite3 ~/.zcode/v2/tasks-index.sqlite "VACUUM INTO '/path/to/tasks-index.backup
 
 ### 不要备份的内容
 
-`checkpoints/` 与 `logs/` 通常占目录总体积的绝大部分（本机 143 MB 里约 140 MB），
-且都是可重建的中间产物。如果只关心配置与凭据，跳过这两个目录即可。
+`checkpoints/` 与 `logs/` 通常占目录总体积的绝大部分（见上表的实测体积），且都是可重建的中间产物。
+如果只关心配置与凭据，跳过这两个目录即可。
 
 > 应用内置了「资源管理器」的存储视图，按类别列出占用并标注可清理性
 > （`packages/services/src/storage/domain/storageCatalog.ts`）。`setting.json`、

@@ -241,13 +241,13 @@ xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" \
 
 发布**不在构建步骤里发生**。整条链是：
 
-| 阶段 | 作业                      | 行为                                                                                                                          |
-| ---- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| 1    | `verify`                  | 与 `ci.yml` 同口径的前置校验                                                                                                  |
-| 2    | `build`（4 平台并行）     | `bundle:desktop --publish never` → 产物校验/体积审计 → Linux 启动冒烟 → 上传 workflow artifact（`if: always()`）              |
-| 3    | `publish-release`         | `needs: build`、仅 tag：合并下载 `zcode-ce-*` artifact → Release 不存在则 `gh release create` → `gh release upload --clobber` |
-| 4    | `release-notes`           | `needs: publish-release`：把 `release-notes.md` 写入 Release 正文                                                             |
-| 5    | `headless-server-package` | `needs: publish-release`：无头发行包 + npm 发布，并 `gh release upload` 挂到同一 Release                                      |
+| 阶段 | 作业                               | 行为                                                                                                                                                                                                                                            |
+| ---- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | `verify`                           | 与 `ci.yml` 同口径的前置校验                                                                                                                                                                                                                    |
+| 2    | `build`（4 平台）+ `remote-assets` | build：`bundle:desktop --publish never` → 产物校验/体积审计 → Linux 启动冒烟 → 上传 workflow artifact（`if: always()`）；remote-assets 与它并行，装配远程运行时资产并上传 workflow artifact（写桶的 `upload-remote-assets` 只在手动触发时运行） |
+| 3    | `publish-release`                  | `needs: build`、仅 tag：合并下载 `zcode-ce-*` artifact → Release 不存在则 `gh release create` → `gh release upload --clobber`                                                                                                                   |
+| 4    | `release-notes`                    | `needs: publish-release`：把 `release-notes.md` 写入 Release 正文                                                                                                                                                                               |
+| 5    | `headless-server-package`          | `needs: publish-release`：无头发行包 + npm 发布，并 `gh release upload` 挂到同一 Release                                                                                                                                                        |
 
 四条不变式：
 
@@ -265,23 +265,16 @@ xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" \
 
 ### 产物与更新清单
 
-electron-builder 为每个平台生成更新清单，必须与安装包上传到**同一个** Release：
-
-| 平台    | 更新清单           | 安装包                                |
-| ------- | ------------------ | ------------------------------------- |
-| Linux   | `latest-linux.yml` | `AppImage` / `deb` / `rpm` / `pacman` |
-| Windows | `latest.yml`       | `nsis`                                |
-
-差分块 `.blockmap` 必须一并上传，否则 electron-updater 的差分下载退化为全量包。
-每个平台的安装包与清单先作为 workflow artifact 上传（`zcode-ce-<platform>`），
+各平台的更新清单、安装包与差分块清单见 [发布流程](./release.md) 的「发布一个版本需要哪些产物」；
+它们必须上传到**同一个** Release。每个平台的产物先作为 workflow artifact 上传（`zcode-ce-<platform>`），
 `publish-release` 用 `actions/download-artifact` 合并取回后一次 `gh release upload --clobber`。
 因此这些 artifact 既是发布输入，也是 Release 需要人工补发时的取用来源。
 
 ### 发布状态
 
 交付形态是**正式 Release**（非 draft）：`gh release create` 创建的就是已发布的 Release。
-不要把它改成 draft —— draft 对 electron-updater 完全不可见（`releases.atom` 与
-`/releases/latest` 都不返回），会让更新链路静默失效。
+不要改成 draft —— 它对 electron-updater 完全不可见（`releases.atom` 与 `/releases/latest`
+都不返回），会让更新链路静默失效。
 
 `electron-builder.config.js` 里的 `publish.releaseType` / `EP_DRAFT` / `EP_PRE_RELEASE` 属于
 electron-publish 的上传路径；本流水线构建期 `--publish never`，这些开关**不参与**实际交付，
@@ -346,9 +339,3 @@ permissions:
 真实结果已由 2026-10-29 的运行观测到：
 Ubuntu smoke 因 `TUI did not exit after SIGTERM` 失败，Windows / macOS 通过；这类真实失败
 必须保留在工作流里，而不是用 `continue-on-error` 隐藏。
-
-## 本地无法验证的部分
-
-GitHub Actions 只能在 GitHub 的 runner 上执行，**本地无法运行**。因此工作流文件的改动
-只能做 YAML 语法校验与命令级核对，真实运行结果需要在第一次打 tag 时确认
-（`cross-platform.yml` 则是第一次 `workflow_dispatch` / nightly）。

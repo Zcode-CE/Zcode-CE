@@ -92,4 +92,5 @@
 
 ## 七、与字体下载的关系
 
-CJK 字体供给方案（见 [font-provisioning.md](./font-provisioning.md)）尚未实施。字体实现时应复用本节的 `applyGithubMirrorPrefix`：若字体从 GitHub Release 托管，前缀即可直接生效；从其它上游下载则不受影响。
+本项目不下载字体（系统字体优先，见 [font-provisioning.md](./font-provisioning.md)），因此字体与国内加速没有交集。
+若将来引入从 GitHub 下载的字体源，复用 `applyGithubMirrorPrefix` 即可。

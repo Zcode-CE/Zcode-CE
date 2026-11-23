@@ -6,8 +6,6 @@
 
 ### `development/` — 开发
 
-> 文档按主题命名并原地更新；一次性任务记录、取证与判决不进本目录（在维护者私有工作区）。新增能力先改这里对应的主题文档，再改代码。
-
 | 文档                                                                     | 内容                                                          |
 | ------------------------------------------------------------------------ | ------------------------------------------------------------- |
 | [架构与模块边界](development/architecture.md)                            | 仓库结构、包职责、依赖方向、跨包导入规则                      |
@@ -51,19 +49,19 @@
 
 ### `operations/` — 运维与发布
 
-| 文档                                                              | 内容                                                   |
-| ----------------------------------------------------------------- | ------------------------------------------------------ |
-| [发布流程](operations/release.md)                                 | 版本号、构建产物、更新渠道、平台支持                   |
-| [持续集成](operations/ci.md)                                      | CI 校验项、发布矩阵、打包命令与常见失败原因            |
-| [数据与配置](operations/data-layout.md)                           | 数据目录布局、身份变更的数据影响、备份                 |
-| [无头服务器发行包](operations/headless-server.md)                 | 自包含 `zcode` 包：运行、旋钮、安全边界、平台支持      |
-| [无头服务器：Docker](operations/headless-server-docker.md)        | 本地构建容器形态：卷与备份、令牌与轮换、局域网访问     |
-| [无头服务器反代部署](operations/headless-server-reverse-proxy.md) | 反代/TLS 之后的三件事：Host 白名单、挂域名根、可信代理 |
-| [CJK 字体供给](operations/font-provisioning.md)                   | 字体策略：用系统已装字体、不下载不打包                 |
-| [GitHub 加速配置](operations/github-mirror.md)                    | 国内网络下的镜像/加速配置与验证方式                    |
-| [发布设计](operations/release-design.md)                          | 包名、构建产物与更新渠道的设计与决策记录               |
-| [远程资产 CDN](operations/remote-assets-cdn.md)                   | R2 发布点运维：认证、发布、排障、红线                  |
-| [Code signing policy](operations/code-signing-policy.md)          | 代码签名政策、团队角色、隐私政策                       |
+| 文档                                                              | 内容                                                                                   |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [发布流程](operations/release.md)                                 | 版本号、构建产物、更新渠道、平台支持                                                   |
+| [持续集成](operations/ci.md)                                      | CI 校验项、发布矩阵、打包命令与常见失败原因                                            |
+| [数据与配置](operations/data-layout.md)                           | 数据目录布局、身份变更的数据影响、备份                                                 |
+| [无头服务器发行包](operations/headless-server.md)                 | 自包含 `zcode` 包：运行、旋钮、安全边界、平台支持                                      |
+| [无头服务器：Docker](operations/headless-server-docker.md)        | 本地构建容器形态：卷与备份、令牌与轮换、局域网访问                                     |
+| [无头服务器反代部署](operations/headless-server-reverse-proxy.md) | 反代/TLS 之后的四件事：Host 白名单、只挂域名根、可信代理语义、回环端口放到反代后的后果 |
+| [CJK 字体供给](operations/font-provisioning.md)                   | 字体策略：用系统已装字体、不下载不打包                                                 |
+| [GitHub 加速配置](operations/github-mirror.md)                    | 国内网络下的镜像/加速配置与验证方式                                                    |
+| [发布设计](operations/release-design.md)                          | 包名、构建产物与更新渠道的设计与决策记录                                               |
+| [远程资产 CDN](operations/remote-assets-cdn.md)                   | R2 发布点运维：认证、发布、排障、红线                                                  |
+| [Code signing policy](operations/code-signing-policy.md)          | 代码签名政策、团队角色、隐私政策                                                       |
 
 ## 文档边界
 
@@ -81,6 +79,7 @@
 - 结论若源自私有调研，应**整理成自洽的说明**写进本目录，而不是只给一个链接
 - 过程性、临时性、未定论的内容留在私有记录里，不进本目录
 - 允许把 `.local/` 当作**取证出处**标注（维护者本机可见，外部读者可忽略）；但**当前行为、契约与操作步骤必须自洽**，不能只说"见 `.local/`"
+- 新增能力先改本目录对应的主题文档，再改代码
 
 ## 与仓库根文档的分工
 

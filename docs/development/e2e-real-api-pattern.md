@@ -3,17 +3,6 @@
 > 专题：把 DSH（deepseek-harness，MIT）的两项测试工程实践搬进 CE —— **LLM-in-the-loop e2e**（真模型 + 故障注入 + 反撒谎断言）与 **real-API e2e 的 CI 双流门禁**（keyless 恒绿 + with-key fail-loud）。试点场景选在 office-xlsx 的「空白渲染」；推广留给后续版本。
 > 方法学来源：`.local/reports/office-pdf-cua/dsh/version-0.2.1/REPORT.md` §2.4/§4.1（三项可搬物的判别）与 `.local/reports/audit/ce4-candidate-pool/DSH-OFFICE-DELTA.md`（DSH e2e 的 6 项技术要点）。本文件是这两份分析结论的落地 spec。
 
-## 0. 读了什么 + 一致性
-
-| 文档                                                                                                | 结论                                                                                                                                                            |
-| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DSH `packages/skill/skill-office/tests/xlsx-validation.e2e.ts`（MIT，236 行全文）                   | 技术要点逐条对照 §2；CE 不能逐字节搬（依赖 `dsh-loader-smoke`/`dsh-llm-replay`/`dsh-attachment-local` 与 kit CLI），按 100-dsh-021 §3.2 #1 的判别自建最小等价物 |
-| DSH `.github/workflows/e2e.yml` + `.agents/notes/implemented/testing/2026-06-19-real-api-e2e-ci.md` | 双流设计的原始依据；CE 按任务约束改为挂在 `.github/workflows/ci.yml`（见 §4 的差异说明）                                                                        |
-| `docs/development/office-plugins.md`、`docs/development/pdf-plugins.md`                             | 插件来源标注、许可门禁、视觉检查链（§6bis）；本模式的夹具落在插件目录内，改动须走 `licenses:notices` 重报（§7）                                                 |
-| 根 `AGENTS.md`、`docs/development/delegation-discipline.md`                                         | 「静默降级是唯一不被允许的」「验证必须打到最终消费点」「交付终点失败必须让流水线变红」——这三条正是本模式要落实的规则                                            |
-
-一致性结论：**与既有判别一致，无推翻**。唯一的新事实是落地实测得到的（§5）：CE 的 personal provider 配置文件必须同时写 `manualProviderModelRules`（缺它会让整个文件被判无效、默认模型选择静默丢失——实测过的失败链，已在夹具注释里记下）。
-
 ## 1. 为什么需要它
 
 CE 的办公链在工程层已经很强：自包含 bundle 断言、零依赖校验器、契约差分、峰值内存回归、三份逐字节一致。但**没有任何测试触及模型回合**。后果是三条最难验证的产品规则只有静态grep护栏（`skillVisualChain.test.mjs` 断言技能文本含/不含某些字符串）：
@@ -39,12 +28,12 @@ FIX-DOCX 的教训（13 个夹具 0 个含 `mc:Ignorable`，静态全绿但真�
 对照 DSH `xlsx-validation.e2e.ts` 的 6 项技术要点：
 
 | DSH 要点                                                     | CE 试点实现                                                                                                                                                                                                                                                                                                                       |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 真模型 + 真技能回路（起 CLI、任务直接写给模型）              | spawn 打包后的 `apps/zcode-cli/packages/cli/dist/zcode.cjs`，`--prompt <任务> --output-format stream-json --mode yolo`；构建入口 `node scripts/build-desktop-agent-cli.mjs`（它同时 stage 插件载荷到 `cli/dist/packages/`，正是 seed 的候选基目录第一顺位）                                                                       |
 | fixture 注入确定性失败（把偶发的「渲染空白」变成可复现故障） | 工作区 `bin/soffice` + `bin/pdftoppm` 前置进 PATH：假 soffice 写「无内容流的一页 PDF」，假 pdftoppm 写全透明 PNG（`-png`，800x600，与技能判据同源）或 1x1 白底 JPEG（`-jpeg`，Read 直读 PDF 时适配器的调用形态）；两者每次调用追加 JSON 到 `calls.jsonl`                                                                          |
 | 对模型行为的断言（技能必须加载、校验器必须跑、不搜索渲染器） | 解析 stream-json：`tool.updated/payload.kind==="scheduled"` 取 toolName+input（Bash 命令、Skill 调用、Read 路径）；断言含 `check_office.mjs`、加载过含 "xlsx" 的技能；首次空白后不重试渲染（硬，DSH 核心契约）                                                                                                                    |
-| 对实时模型的计数类断言                                       | 本质非确定：同代码两跑一过一红（37194042617 全绿 vs 37299204597 红在「图片 Read 3 次」，两跑代码零差异）。图片 Read 次数降级为观测+复合门禁——只在「反复读图且回答从未诚实声明」时判失败；硬不变式始终是反撒谎（不得声称空白渲染为成功），两跑均通过。deepseek-chat 无图像输入能力，反复读图更像无法处理的感知输入重试，非产品缺陷 |     |
-| 最终回答的读取                                               | headless stream-json 里 `message.upserted` 可能一条都没有（CI 首次真跑与本地假 key 回合同一症状）；回答的权威来源是 `turn.completed.payload.response`（prompt-command 的 observer 与 TUI 的 fallback 同款）。collector 先取 message.upserted、再回退 turn.completed.response；失败断言挂事件计数与尾部事件的诊断摘要              |     |
+| 对实时模型的计数类断言                                       | 本质非确定：同代码两跑一过一红（37194042617 全绿 vs 37299204597 红在「图片 Read 3 次」，两跑代码零差异）。图片 Read 次数降级为观测+复合门禁——只在「反复读图且回答从未诚实声明」时判失败；硬不变式始终是反撒谎（不得声称空白渲染为成功），两跑均通过。deepseek-chat 无图像输入能力，反复读图更像无法处理的感知输入重试，非产品缺陷 |
+| 最终回答的读取                                               | headless stream-json 里 `message.upserted` 可能一条都没有（CI 首次真跑与本地假 key 回合同一症状）；回答的权威来源是 `turn.completed.payload.response`（prompt-command 的 observer 与 TUI 的 fallback 同款）。collector 先取 message.upserted、再回退 turn.completed.response；失败断言挂事件计数与尾部事件的诊断摘要              |
 | 反「模型撒谎」断言                                           | 最终回答（最后一条非 system 的 `message.upserted`）必须匹配诚实面正则（blank/unable/failed/未…）、不得匹配撒谎面正则（visually verified/视觉检查已通过…）                                                                                                                                                                         |
 | 渲染失败后不重试                                             | `calls.jsonl` 序列断言：首次 pdftoppm 渲染之后不再有任何 soffice/pdftoppm 渲染调用；直接读图 ≤ 1 次                                                                                                                                                                                                                               |
 | 产物完整性                                                   | `input.xlsx` 逐字节不变；`result.xlsx` 用 exceljs 复核表顺序、Notes 保留、数据未改、列宽按请求加宽、打印设置指纹（pageSetup/pageMargins/printArea）不变                                                                                                                                                                           |
@@ -97,11 +86,12 @@ with-key 流（`e2e-real-api` job）：
 
 - `deepseek-chat` 无图像输入能力：模型会按技能规则走「先判定模型图片能力 → 不可用 → 如实声明视觉检查不可用」的诚实分支。要打满「空白渲染被识别 + 不重试」的路径，需供应支持图像的模型并设 `ZCODE_E2E_MODEL_SUPPORTS_IMAGES=1`。
 - Windows 不支持：假渲染器是无扩展名文件 + POSIX shebang 的 PATH 解析（测试以 `{ skip: ... }` 显式跳过并写明原因）。
+- personal provider 配置文件必须同时写 `manualProviderModelRules`：缺它会让整个文件被判无效、默认模型选择静默丢失（已在夹具注释里记下这条失败链）。
 - `spreadsheets:visual-judge` 子代理的内部行为未断言（子代理事件不进父会话 stream-json）；只断言父会话的读图次数与最终回答。
 - 打印设置指纹依赖 exceljs 能表达的 `pageSetup/pageMargins/printArea`；exceljs 不表示的打印项不在断言内。
 - 本场景只覆盖 blank；DSH 还有 data/formula/layout 三场景（formula 依赖 recalculate 引擎，CE 的缺口见 §6）。
 
-## 6. 与 recalculate 缺口的关系（item 1）
+## 6. 与 recalculate 缺口的关系
 
 同一批 DSH 0.2.x 分析认定的 CE 唯一书面的办公能力缺口：xlsx 公式缓存重算。CE 的处理（S 档）：**不搬引擎整包**（145–182 MiB/平台 + MPL-2.0 + Linux 仅 WASM），只搬「能力探测 + 如实声明」的语义骨架：
 
@@ -116,7 +106,7 @@ with-key 流（`e2e-real-api` job）：
 
 `test/` 不进 seed（bundled-plugins 的顶层白名单不含它），因此夹具不会进入用户缓存；`scripts/office-capabilities.mjs` 会进 seed（白名单含 `scripts`），已实测确认它随 `cli/dist/packages/spreadsheets-plugin/` staging 与运行时 seed 缓存落地。
 
-新文件全部标注为 `self`（设计参考 DSH 对应实践，未逐字节搬运），不往 DSH 上游回写；office-plugins.md §6 的文件清单需补这些行——见交付报告的「需同步的既有文档」一节。
+新文件全部标注为 `self`（设计参考 DSH 对应实践，未逐字节搬运），不往 DSH 上游回写；office-plugins.md §7 的逐文件清单已包含这些行。
 
 ## 8. 如何加新场景
 
@@ -130,6 +120,6 @@ with-key 流（`e2e-real-api` job）：
 
 - 推广到 docx/pptx/pdf 插件与 data/formula/layout 场景；
 - 子代理内部行为断言（需要子会话事件可观测面）；
-- 夜间 schedule 触发（捕捉外部 API 漂移；DSH 有，CE 本轮不新增触发器类型）；
+- 夜间 schedule 触发（捕捉外部 API 漂移；DSH 有，CE 不新增触发器类型）；
 - Windows 支持（需要 .cmd 形态的假渲染器与 PATHEXT 处理）；
 - 覆盖率门、性能基准门（`.local/reports/office-pdf-cua/dsh/version-0.2.1` §3.2 #3 的分层测试政策，单独的 M 档任务）。

@@ -118,7 +118,7 @@ X11 会话下窗口枚举与输入注入走 XTEST/XSendEvent，不需要 Wayland
 只 stage 目标平台 —— 驱动与 `@ubjs` 的平台包都是 optionalDependencies 全集，
 全拷会把六个平台的二进制一起打进安装包。
 
-**落点必须同时在 seed 白名单里（第二约束，2026-09-23 修）**：stage 到磁盘**不等于**
+**落点必须同时在 seed 白名单里（第二约束）**：stage 到磁盘**不等于**
 运行时可加载 —— 官方插件在 seed 到用户 cache 时还会再走一遍顶层白名单
 （`bootstrap/src/app/bundled-plugins.ts` 的 `includedTopLevelPaths`）。`node_modules`
 不在白名单里时会被**整棵静默丢弃**（无任何告警），正式包表现为「Computer Use 装好了但

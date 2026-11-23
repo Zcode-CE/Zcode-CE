@@ -9,6 +9,9 @@
 （`codesign -f -s -`，无需 Apple 账号）、**不公证**；首次打开需用户允许 Gatekeeper
 （右键打开或 `xattr -dr com.apple.quarantine`，见 README「安装」一节）。
 
+**签名状态**：Linux 不需要签名；**Windows 安装包无证书**，安装时会触发 SmartScreen 警告（用户需点「仍要运行」）；
+macOS 未签名（见上）。签名政策与签名者身份见 [code-signing-policy.md](./code-signing-policy.md)。
+
 macOS 客户端**不检查更新**：未签名包不具备自动更新链路所需的签名校验基础，electron-updater
 在 darwin 保持关闭。客户端在 darwin 打包态显式跳过更新检查（不发起请求、不报错），菜单
 「检查更新」会给出确定性提示并引导从 GitHub Releases 下载新版本；开发态调试与配置了更新源
@@ -103,7 +106,7 @@ git tag -l 'v*-ce.*' --sort=-v:refname | head -1
 - **更新检查**：`electron-updater` 按当前版本是否含预发布标识计算 `allowPrerelease`。含标识时更新渠道名取自该标识，会先找 `ce-linux.yml`。本项目的处理见 [持续集成与发布构建](./ci.md)。
 - **强制更新比对**：`packages/shared/src/forceUpdate.ts` 的 `compareSemverVersions` 按 semver 规则比较，**预发布版本低于同号正式版本**（`3.14.1-ce.1 < 3.14.1`）。社区版**不执行远端强制升级检查**，因此不受此影响；该函数仍用于其它需要版本序的场景。
 
-构建在 CI 上完成，流程、矩阵与常见失败点见 [持续集成与发布构建](./ci.md)。本地打包的入口是：
+本地打包的入口是（CI 上的构建见 [持续集成与发布构建](./ci.md)）：
 
 ```bash
 pnpm bundle:desktop --os <linux|win> --arch x64
@@ -132,26 +135,22 @@ publish: { provider: "github", owner: "zcode-ce", repo: "zcode-ce", releaseType:
 
 ### 发布一个版本需要哪些产物
 
-electron-builder 会为每个平台生成更新清单与差分块，**必须一并上传到同一个 Release**：
+electron-builder 会为每个平台生成更新清单，**必须与安装包、差分块一起上传到同一个 Release**：
 
-| 平台    | 更新清单           | 安装包                                |
-| ------- | ------------------ | ------------------------------------- |
-| Linux   | `latest-linux.yml` | `AppImage` / `deb` / `rpm` / `pacman` |
-| Windows | `latest.yml`       | `nsis`                                |
-| macOS   | `latest-mac.yml`   | `dmg` / `zip`                         |
+| 平台    | 更新清单           | 安装包                                | 差分块      |
+| ------- | ------------------ | ------------------------------------- | ----------- |
+| Linux   | `latest-linux.yml` | `AppImage` / `deb` / `rpm` / `pacman` | `.blockmap` |
+| Windows | `latest.yml`       | `nsis`                                | `.blockmap` |
+| macOS   | `latest-mac.yml`   | `dmg` / `zip`                         | `.blockmap` |
 
-同时要上传对应的 `.blockmap`，否则差分下载退化为全量包。macOS 的清单虽会随 mac job 上传，
-但**客户端不消费**：darwin 打包态直接跳过更新检查（见「平台支持」），自动更新只面向
-win/linux 正式包；两个 arch 的 mac job 顺序上传各自的 `latest-mac.yml`，后跑者覆盖先跑者。
-自建 feed 部署形态如自行提供 macOS 产物，则不受此限制（见下「更新源覆盖」）。
+`.blockmap` 缺失时差分下载退化为全量包。macOS 的清单虽会随 mac job 上传，但**客户端不消费**：
+darwin 打包态直接跳过更新检查（见「平台支持」），自动更新只面向 win/linux 正式包；两个 arch 的
+mac job 顺序上传各自的 `latest-mac.yml`，后跑者覆盖先跑者。自建 feed 部署形态如自行提供 macOS 产物，
+则不受此限制（见下「更新源覆盖」）。
 
-Tag 采用 `v` 前缀（如
-`v3.14.1-ce.1`），与 electron-builder 的默认 `vPrefixedTagName` 一致。
-
-**Release 必须是已发布状态，不能是 draft。** draft 对更新检查完全不可见
-（`releases.atom` 与 `/releases/latest` 都不返回），会让更新链路静默失效，因此
-`releaseType` 显式设为 `release`。需要临时改成 draft 或预发布时用 `EP_DRAFT` /
-`EP_PRE_RELEASE` 环境变量覆盖。
+**Release 必须是已发布状态，不能是 draft。** draft 对更新检查完全不可见（`releases.atom` 与
+`/releases/latest` 都不返回），会让更新链路静默失效。形态由 `publish-release` 的 `gh` 参数决定
+（`gh release create` 建的就是正式 Release，见 [ci.md](ci.md) 的「发布状态」）。
 
 ### 远程运行时资产（先发资产，再发版）
 
@@ -188,8 +187,8 @@ Tag 采用 `v` 前缀（如
 
 ### 1. 确认版本号
 
-版本号只有一个权威来源 —— 根 `package.json` 的 `version`。其余位置在构建期自动同步
-（见上文「版本号的来源与传播」），但有**一处例外必须同批提交**：根 `package.json` 同时是
+版本号只有根 `package.json` 的 `version` 一个权威来源，其余位置在构建期自动同步
+（见上文「版本号的来源与传播」）。**但有一处必须同批提交**：根 `package.json` 同时是
 随包许可声明（`THIRD-PARTY-NOTICES.md` 与 `third-party/inventory.json`）的**注册输入**之一，
 改版本号会让许可门禁立刻失败：
 
@@ -238,9 +237,9 @@ xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" \
   node scripts/desktop-startup-smoke.mjs --app-dir packages/desktop/dist/linux-unpacked
 ```
 
-它断言打包版 `window.zcode`（preload 桥）、`#root`（renderer 挂载）与主进程 `dom-ready`
-三条；失败退出码 1 并打印 stdout/stderr 与应用日志尾部。**这条冒烟代替不了人工** ——
-GUI 交互（登录、弹窗、拖拽）仍需目视与点击，DWM/GPU 合成类问题也只能在真机上看。
+失败退出码 1 并打印 stdout/stderr 与应用日志尾部；三条硬门与它覆盖不到的范围见
+[ci.md](ci.md) 的「打包版启动冒烟」。**它代替不了人工** —— GUI 交互（登录、弹窗、拖拽）仍需
+目视与点击，DWM/GPU 合成类问题也只能在真机上看。
 
 > **为什么 `licenses:check` 不进 CI**：它比对的平台包集合与 runner 平台相关，在 CI 环境会因平台差异
 > 产生与改动无关的失败（`.github/workflows/ci.yml` 里那行注释写的就是这个理由；`release.yml` 同样没有它）。
@@ -274,9 +273,9 @@ git push origin v3.14.1-ce.1
 每个上游 tag 都会跑一次构建并试图建 Release。upstream remote 的 push URL 已改成不可达值，
 避免误推到上游仓库本身。
 
-推送后 GitHub Actions 会构建 Linux x64 与 Windows x64 两个平台，并把安装包与更新清单
-发布到同一个 Release。**矩阵是串行执行的**（原因见 [持续集成](./ci.md)），
-总时长约为两平台之和（约 40 分钟）。
+推送后 GitHub Actions 会并行构建 Linux x64、Windows x64、macOS x64 与 macOS arm64 四个平台；
+启动冒烟通过后，`publish-release` 把安装包、更新清单与差分块发布到同一 Release
+（流程与失败点见 [持续集成](./ci.md) 的「发布两段式」）。
 
 ### 4. 演练（不发布）
 
@@ -291,24 +290,14 @@ Linux / Windows 资产，把 Curl 下载到的字节换掉、让 AUR 的 `sha256
 
 ### 5. 核对 Release 内容
 
-Release 必须包含**安装包 + 更新清单 + 差分块**，三者缺一会让更新链路降级或失效：
-
-| 平台    | 更新清单           | 安装包                                | 差分块      |
-| ------- | ------------------ | ------------------------------------- | ----------- |
-| Linux   | `latest-linux.yml` | `AppImage` / `deb` / `rpm` / `pacman` | `.blockmap` |
-| Windows | `latest.yml`       | `nsis`（`.exe`）                      | `.blockmap` |
-
-**Release 必须是已发布状态，不能是 draft。** draft 对 `electron-updater` 完全不可见
-（`releases.atom` 与 `/releases/latest` 都不返回），会让更新链路**静默失效**。
-`electron-builder.config.js` 已显式设 `releaseType: "release"`。
+按「发布一个版本需要哪些产物」的表格逐平台核对：**安装包 + 更新清单 + 差分块**都要在同一个
+Release 上，三者缺一会让更新链路降级或失效。Release 必须是已发布状态（draft 的后果见上文
+「发布一个版本需要哪些产物」）。
 
 ### 6. 验证更新链路
 
 发布后用一个旧版本安装包实测升级：应能检测到新版本、下载差分块并完成安装。
 这一步不能省 —— 更新配置的错误（provider、清单缺失、draft 状态）在构建阶段都不会报错。
-
-> **CI 尚未在真实 runner 上验证过**。`.github/workflows/` 只能在 GitHub 的 runner 上执行，
-> 本地无法运行，因此工作流本身只做过 YAML 语法与命令级核对。首次打 tag 时需确认实际结果。
 
 ### 7. 同步到 AUR
 
@@ -319,7 +308,7 @@ Release 必须包含**安装包 + 更新清单 + 差分块**，三者缺一会�
 | 本仓库的 `aur/`                                | **存档副本**（它的 remote 是本项目的 GitHub，不是 AUR） |
 | `ssh://aur@aur.archlinux.org/zcode-ce-bin.git` | **AUR 上的正式包** —— 只有 push 到这里才算发布          |
 
-**只改 `aur/` 并提交本仓库，AUR 上的版本不会变。**（`release.md` 此前没有这一步，导致 3.14.3-ce.2 首次发布时漏推。）
+**只改 `aur/` 并提交本仓库，AUR 上的版本不会变。**
 
 **顺序**（sha256 只能在产物出来后算，所以必然排在 tag 构建之后）：
 
@@ -353,8 +342,9 @@ Release 必须包含**安装包 + 更新清单 + 差分块**，三者缺一会�
 
 ### 重跑已发布超过 2 小时的 tag
 
-`electron-publish` 对已存在的 Release 有一条时间保护：发布时间超过 2 小时就**只打 warn 并跳过上传**，
-构建仍然显示成功（是个静默失效点）。`release.yml` 已设 `EP_GH_IGNORE_TIME: "true"` 让重跑真正覆盖上传。
+直接重跑该 tag 的 workflow 即可：发布走 `publish-release` 的 `gh release upload --clobber`，按资产名覆盖，
+与 Release 的发布时间无关 —— 不存在 electron-publish 那条「发布超过 2 小时就只打 warn 并跳过上传」的静默失效路径
+（见 [ci.md](ci.md) 的「重跑已发布超过 2 小时的 tag」）。
 
 ## 发版说明（release-notes.md）
 
@@ -419,10 +409,8 @@ Release 必须包含**安装包 + 更新清单 + 差分块**，三者缺一会�
 
 ### 「本版尚未验证」—— 单独一节，不允许省略
 
-这一节的意义是**不让「没验证」被读成「已验证」**。有未验证项就必须写，且要写到用户能据此
-做出正确决定（例如「不要依赖跨设备同时操作同一会话」）。
-
-**若本版确实有需要用户知情的验证边界，如实写** —— 宁可让用户预期低一点，也不要让声明超过证据。
+这一节的意义是**不让「没验证」被读成「已验证」**。有未验证项就如实写，并写到用户能据此做出
+正确决定（例如「不要依赖跨设备同时操作同一会话」）。宁可让预期低一点，也不要让声明超过证据。
 
 ### 发布前对照的硬检查
 
@@ -447,9 +435,9 @@ Release 必须包含**安装包 + 更新清单 + 差分块**，三者缺一会�
 
 ### 不写什么
 
-以下内容**曾经出现在发版说明里，现已移除**，因为它们不属于「本次更新」：
+以下内容不属于「本次更新」，不写进发版说明：
 
-| 移除的内容                     | 现在在哪                                                                                             |
+| 内容                           | 现在在哪                                                                                             |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------- |
 | 平台支持矩阵                   | `README.md` 的「安装」一节（桌面端）+ [无头服务器发行包](./headless-server.md) §10（CLI/Web 发行包） |
 | 与官方发行版的关系             | `README.md` 的「关于本项目」+ `docs/development/official-diff.md`                                    |
@@ -498,8 +486,8 @@ Release 必须包含**安装包 + 更新清单 + 差分块**，三者缺一会�
 完整记录（含内部项、依据、以及"确认过上游也不提供"的结论）写在 `docs/development/upstream-sync.md`：
 一行一个上游版本，并记录 **fork 点 / 上游最新 tag / 领先落后提交数**（会漂移的值，标快照时刻）。
 
-> **不要**把台账内容复制进 README：README 的「与官方开源版的差异」一节已表达"除差异外一致"，重复会稀释重点。
-> **不要**把台账整段搬进 release notes：前者是维护者视图，后者是用户视图。
+> **不要**把台账内容复制进 README（「与官方开源版的差异」一节已表达"除差异外一致"），也**不要**整段搬进
+> release notes —— 前者是维护者视图，后者是用户视图。
 
 ### 每次上游发布后的动作
 
@@ -507,11 +495,3 @@ Release 必须包含**安装包 + 更新清单 + 差分块**，三者缺一会�
 2. 按区域做差异分析（协议族 → 能力 → 口吻），**结论先落 `.local/` 报告再改代码**；
 3. 把本版要跟的项写进 release notes 的「同步上游」，把全部项写进台账；
 4. **逆向时代的结论要回头复核**：有源码后逐条确认（当前结论形态见上游同步台账的「源码复核后确认的形态」一节）。
-
-## 签名
-
-| 平台    | 状态                                                                             |
-| ------- | -------------------------------------------------------------------------------- |
-| Linux   | 不需要签名                                                                       |
-| Windows | **无证书**，安装时会触发 SmartScreen 警告，需在文档中说明                        |
-| macOS   | **无证书**，ad-hoc 签名（`codesign -f -s -`）、不公证；首次打开需允许 Gatekeeper |

@@ -157,14 +157,10 @@ bash scripts/desktop-typecheck-baseline.sh current   # 结果写在 .local/archi
 bash scripts/desktop-typecheck-baseline.sh diff      # 只报相对 HEAD 的新增（改动 desktop 后跑这条）
 ```
 
-**2026-09-27 复核**：`tsc -p packages/desktop/tsconfig.main.json --noEmit` 与
-`tsc -p packages/desktop/tsconfig.renderer.json --noEmit` **均 exit 0、0 个 error TS**。
-（复核方式：先确认 tsc 真的在检查这些文件 —— 往 `src/main/` 与 `src/renderer/src/` 各放一个
-故意的类型错误，两边都如期报 `TS2322`，再删掉。）
-⚠️ **当前状态**：main 与 renderer 的类型错误均已清零（`ce03e36` main 77→0、`5cbe4cd` renderer 114→0）。
-`.local/archive/16-typecheck-baseline/current.*.counts` 中若见 09-22 的旧值，那是**修复前**的快照
-（已于 2026-10-03 归档到 `.local/archive/16-typecheck-baseline/`）——**别拿它当当前值**；
-脚本下次运行会在 `.local/archive/16-typecheck-baseline/` 重新生成。
+`tsc -p packages/desktop/tsconfig.main.json --noEmit` 与 `tsc -p packages/desktop/tsconfig.renderer.json --noEmit`
+**均 exit 0、0 个 error TS**（main `ce03e36` 77→0、renderer `5cbe4cd` 114→0）。
+口径自检：先确认 tsc 真的在检查这些文件 —— 往 `src/main/` 与 `src/renderer/src/` 各放一个故意的类型错误，
+两边都如期报 `TS2322`，再删掉。`.local/archive/16-typecheck-baseline/` 下只存历史快照，不是当前值。
 
 技术债 #5 的两级判定：
 
@@ -173,7 +169,7 @@ node scripts/licenses.mjs check           # 基础检查（新鲜度 + 材料档
 node scripts/licenses.mjs check --strict  # 发布前必须通过
 ```
 
-⚠️ **基础检查今天就是红的**（2026-09-27 实测，exit 1）：
+⚠️ **输入变更后未重报时它会红**（实测 exit 1）：
 
 ```text
 Error: Third-party input changed: package.json. Run node scripts/licenses.mjs notices

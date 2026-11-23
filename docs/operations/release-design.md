@@ -1,6 +1,7 @@
 # 发布设计：包名、构建产物与更新渠道
 
-> 状态：**已实施**（2026-09-21 设计，当日落地）· 平台范围 **Linux + Windows**（macOS 暂不发，无签名证书）
+> 状态：**已实施**（2026-09-21 设计，当日落地）· 平台范围 **Linux + Windows + macOS**
+> （macOS 发未签名包：ad-hoc 签名、不公证，见 [发布流程](./release.md) 的「平台支持」）
 >
 > 决策依据：「包名改 ZCode-CE 作区别，构建安装包发布到 release，更新渠道从官方接到我们的仓库」。
 >
@@ -90,14 +91,16 @@ getAppConfigDir() = {homedir}/.zcode/v2     ← 硬编码 ".zcode"，与 appId/p
 
 **保留 `ManifestUpdateProvider` 文件本身**（不删）—— 它是官方 manifest 协议的实现，未来若要支持自建更新服务可复用。
 
-### 2.4 更新源覆盖（已定）
+### 2.4 更新源覆盖
 
-打包态忽略 `ZCODE_UPDATE_FEED_URL` 的行为**已放开**，改为「仅忽略非 https」：
-打包态接受 https 覆盖，非 https 取值被忽略并记一条 `warn`。理由与安全约束见第五节第 1 条。
+打包态接受 https 覆盖，仅忽略非 https（取值被忽略并记一条 `warn`）。原因：GitHub provider 只接受
+`{owner, repo, host}` 三元组、会丢弃 URL 的路径部分，因此路径前缀镜像（`ghfast.top` 这类）**无法**作用于
+更新链路；用户与企业内网需要靠 feed URL 覆盖指向镜像或自建源。安全约束由「只接受 https」承担 ——
+更新产物要下载并执行，允许 http 等于让链路可被中间人替换。
 
 ### 2.5 macOS 客户端：跳过更新检查（方案 a，已实施）
 
-Release 不产 macOS 产物 ⇒ 不存在 `latest-mac.yml` ⇒ macOS 打包客户端走 GitHub provider 必然 404。
+macOS 产物未签名，不具备自动更新链路所需的签名校验基础，打包态客户端因此不消费 `latest-mac.yml`。
 落地的是**客户端侧跳过**而非裸 404：
 
 - 判定：`shouldSkipAutoUpdateCheckOnDarwinRelease`（`packages/desktop/src/main/autoUpdateAvailability.ts`），
@@ -138,11 +141,9 @@ pnpm bundle:desktop --os <mac|win|linux> --arch <x64|arm64>
 | 4   | `verify-runtime-dependencies` | 机械校验必需运行时模块已进包         |
 | 5   | `audit-bundle-size`           | 体积审计，超限则**构建失败**         |
 
-两个易踩点：
-
-1. **`--os` 必须显式传**。`DEFAULT_TARGET_OS` 是 `"mac"`、`DEFAULT_TARGET_ARCH` 是 `"arm64"`；
-   不传会静默产出 macOS 包。也可用 `ZCODE_TARGET_OS` / `ZCODE_TARGET_ARCH` 环境变量。
-2. **不要再补 `--`**。`bundle:desktop` 的定义末尾已有 `--`，再加一个会让参数变成位置参数被丢掉。
+两个易踩点（`--os` 必须显式传、不要再补 `--`）的现行说明见 [ci.md](./ci.md) 的「构建命令」。
+`DEFAULT_TARGET_OS` / `DEFAULT_TARGET_ARCH` 默认是 `mac` / `arm64`，可用 `ZCODE_TARGET_OS` /
+`ZCODE_TARGET_ARCH` 覆盖。
 
 体积审计的上限（`scripts/audit-bundle-size.mjs`）：`AppImage`/`deb`/`dmg`/`zip`/`exe` 均为
 **500 MiB**，其它扩展名走 `default` 同样是 500 MiB。超限即退出码 1。
@@ -192,16 +193,16 @@ ripgrep 等）按平台分目录准备，Linux 机器上拿不到 Windows 的原
 
 #### CI 上的构建
 
-发布构建由 GitHub Actions 承担（Linux x64 + Windows x64 矩阵），流程、额外系统依赖与常见失败点
-见 [持续集成](./ci.md)。
+发布构建由 GitHub Actions 承担（Linux x64 / Windows x64 / macOS x64 / macOS arm64 四平台矩阵），
+流程、额外系统依赖与常见失败点见 [持续集成](./ci.md)。
 
 ### 3.2 签名
 
-| 平台    | 状态                                                                       |
-| ------- | -------------------------------------------------------------------------- |
-| Linux   | 不需要                                                                     |
-| Windows | **无证书** → 触发 SmartScreen 警告。**需在文档中说明**，用户点「仍要运行」 |
-| macOS   | 不发布                                                                     |
+| 平台    | 状态                                                                                                       |
+| ------- | ---------------------------------------------------------------------------------------------------------- |
+| Linux   | 不需要                                                                                                     |
+| Windows | **无证书** → 触发 SmartScreen 警告。**需在文档中说明**，用户点「仍要运行」                                 |
+| macOS   | **未签名**：ad-hoc 签名（`codesign -f -s -`）、不公证，首次打开需允许 Gatekeeper（见发布流程「平台支持」） |
 
 ## 四、已定事项
 
@@ -211,15 +212,7 @@ ripgrep 等）按平台分目录准备，Linux 机器上拿不到 Windows 的原
      先去取 `ce-linux.yml`（404 后回退 `latest-linux.yml`，功能正常但多一次请求）。实测若同时存在 `v3.15.0`
      与 `v3.14.2-ce.1`，会选中后者（**channel 匹配优先于版本高低**）。
 2. **发布仓库**：`Zcode-CE/Zcode-CE`（组织仓库）。
-3. **CI**：GitHub Actions 自动构建（Linux x64 + Windows x64）。
+3. **CI**：GitHub Actions 自动构建（Linux x64 / Windows x64 / macOS x64 / macOS arm64 四平台矩阵）。
 4. **数据目录**：与官方版共存可行，但**不建议同时运行**（两者共享 `~/.zcode/v2` 业务数据）。
 5. **强更门**：**社区版禁用**远端强制升级检查（见 `packages/desktop/src/main/index.ts` 的说明）——
    官方下发的 `minimalVersion` 面向官方发行版，命中后会阻止创建主窗口，失败模式是"应用完全打不开"。
-
-## 五、待确认
-
-1. 打包态忽略 `ZCODE_UPDATE_FEED_URL` 的行为是否保留？
-   - **已定**：改为"仅忽略非 https"，即打包态**接受 https 覆盖**。原因：GitHub provider 只接受
-     `{owner, repo, host}` 三元组、会丢弃 URL 的路径部分，因此路径前缀镜像（`ghfast.top` 这类）
-     **无法**作用于更新链路；用户与企业内网需要靠 feed URL 覆盖指向镜像或自建源。
-     安全约束由"只接受 https"承担（更新产物要下载并执行，允许 http 等于让链路可被中间人替换）。

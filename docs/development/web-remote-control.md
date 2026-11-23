@@ -24,7 +24,7 @@
 - `scripts/zcode-distribution/runner.mjs` 解析参数（`:34-104`），启动 `<安装目录>/server/entry-http.js`，并把 `<安装目录>/web` 作为静态根传给它（`:12-14`、`:180-190`）。
 - 静态资产来自一次构建的 stage：`scripts/build-zcode.mjs:158-181` 分别构建 `@zcode/server` 与 `@zcode/web`，然后把 `packages/web/dist` 复制到 `<包根>/web`、`packages/server/dist` 复制到 `<包根>/server`。**web 资产随包分发**是既有机制，不是本轮新增。
 - 服务进程是 **`packages/server` 的 http 入口**（`packages/server/src/entry-http.ts` + `src/http.ts`）。**不是** `packages/zcode-server-cli`：后者是远端工作区运行时（server-core），它的源码里**没有任何静态托管能力**（`grep -rn 'staticRoot|webRoot|spaFallback' packages/zcode-server-cli/src` → 0 命中），且对非回环监听 fail-closed（`src/server-core/http.ts:136-142`）。
-- **两者的安全默认值差异**：server-core 只允许回环；`packages/server` 在 3.14.3-ce.2 这轮之前是 fail-open（不设 host 绑所有网卡、无 token 全开放），现已修为**默认回环**、**非回环 + 无 token 拒绝启动**（`packages/server/src/http.ts` 的 `DEFAULT_HTTP_LISTEN_HOST`/`assertListenSecurity`；回归用例见 `packages/server/test/` 下的监听与鉴权用例）。**本能力的暴露方式必须建立在这条默认值之上，不得为了「好连」放松。**
+- **两者的安全默认值差异**：server-core 只允许回环；`packages/server` **默认回环**（不设 host 时不再绑所有网卡）、**非回环 + 无 token 拒绝启动**（`packages/server/src/http.ts` 的 `DEFAULT_HTTP_LISTEN_HOST`/`assertListenSecurity`；回归用例见 `packages/server/test/` 下的监听与鉴权用例）。**本能力的暴露方式必须建立在这条默认值之上，不得为了「好连」放松。**
 
 **起服务（安装后）**：
 
@@ -36,7 +36,7 @@ zcode --web                         # 只在 127.0.0.1（默认；不对外）
 
 `--host` 为 `0.0.0.0`/`::` 时 runner 会逐个打印网卡可达地址，并带上令牌（`runner.mjs:213-217` 的 `networkUrls`）；`--no-token` 只允许与回环 host 组合（组合校验在 `runner.mjs` 的参数解析阶段，见 §3）。
 
-**实测状态（本轮）**：源码态起 `packages/server/dist/entry-http.js` + `ZCODE_WEB_STATIC_ROOT=<仓库>/packages/web/dist` + 令牌，浏览器可打开并可用（§13 有命令与原始观测）；**完整安装包链路**（`scripts/build-zcode.mjs` → `zcode --web`）本轮未实跑（需要整包构建），其分解见 §9。
+**实测状态**：源码态起 `packages/server/dist/entry-http.js` + `ZCODE_WEB_STATIC_ROOT=<仓库>/packages/web/dist` + 令牌，浏览器可打开并可用（§13 有命令与原始观测）；**完整安装包链路**（`scripts/build-zcode.mjs` → `zcode --web`）**未实跑**（需要整包构建），其分解见 §9。
 
 ---
 
@@ -57,8 +57,8 @@ zcode --web                         # 只在 127.0.0.1（默认；不对外）
 - 输入串行：已接受的 busy/running 输入由 CLI/runtime 的 `CommandInbox` 做串行 admission（`apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/command-inbox.ts`；约定见根 `AGENTS.md` 的「进程、协议与远程控制」）。
 - 恢复语义：`web-remote-replayable` 走**可重放快照**（`packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts:3420` 的投递形态映射、`:2223-2290` 的 replayable 分支；客户端侧 `packages/ui/src/hooks/useZCodeTaskService.ts:238-260` 用 `getTaskSnapshotWithEtag` 做快照 + etag 恢复）。
 
-**手机与桌面同时连会发生什么 —— 未测**（本轮只验证了「两个客户端都能建立连接」，见 §13；
-这一限制现在有一处**集中的、如实写明的**声明，见 **§9.4**）。能确定的是：两者各自拿到独立的连接作用域，订阅 ownership 互不共享；**业务层并发**（同一会话被两个客户端同时输入、owner/lease 如何裁决、是否出现双写）本轮**没有测**，不要在文档或产品文案里承诺行为。桌面端自己的 owner/lease 机制（`packages/desktop/src/host/...`）属于 desktop 内部拓扑，**不是**本条链路的状态所有者。
+**手机与桌面同时连会发生什么 —— 未测**（只验证了「两个客户端都能建立连接」，见 §13；
+这一限制现在有一处**集中的、如实写明的**声明，见 **§9.4**）。能确定的是：两者各自拿到独立的连接作用域，订阅 ownership 互不共享；**业务层并发**（同一会话被两个客户端同时输入、owner/lease 如何裁决、是否出现双写）**没有测**，不要在文档或产品文案里承诺行为。桌面端自己的 owner/lease 机制（`packages/desktop/src/host/...`）属于 desktop 内部拓扑，**不是**本条链路的状态所有者。
 
 ---
 

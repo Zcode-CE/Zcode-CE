@@ -194,22 +194,12 @@ curl -sS -o /dev/null -w "%{http_code}\n" "https://<域名>/no-such-file.json"
 **决定（2026-09-23）**：走路线 A —— 在发布流水线里注入构建期默认基址，
 **本仓库发布的安装包默认指向本社区 CDN、开箱可用**；源码里的常量默认值仍是官方 CDN，自建者行为不变。
 
-语义已修正为「**值就是发布根**」：`ZCODE_CDN_BASE_URL`（构建期 define）与
-`ZCODE_REMOTE_ASSET_CDN_BASE_URL`（运行期）都**按字面值**使用（`<值>/<版本>/manifest-*.json` +
-`<值>/components/…`）；只有官方默认值保留它自己的 `/zcode/electron/releases/<版本>` 前缀。
-（修正前构建期旋钮会被当父目录并追加前缀，与"发布根"契约矛盾；契约测试见
-`packages/desktop/test/remoteCdnBaseUrl.test.ts`。）
+「**值就是发布根**」：`ZCODE_CDN_BASE_URL`（构建期 define）与 `ZCODE_REMOTE_ASSET_CDN_BASE_URL`（运行期）都
+**按字面值**使用（`<值>/<版本>/manifest-*.json` + `<值>/components/…`）；只有官方默认值保留它自己的
+`/zcode/electron/releases/<版本>` 前缀。契约测试见 `packages/desktop/test/remoteCdnBaseUrl.test.ts`。
 
 配好方式：仓库 variable `ZCODE_CDN_BASE_URL` = 发布根（见 §12 的 CI 自动发布）。
-
-历史备选（保留供参考）：
-
-| 路线                        | 做法                                                                        | 代价                                                                             |
-| --------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| **A. 只在发布产物里设默认** | 在 release workflow 里设 `ZCODE_CDN_BASE_URL`（构建期注入），源码默认值不动 | 使用我们发布包的人开箱可用；自建者仍是官方默认。**域名会随产物公开**（不可避免） |
-| **B. 用户自行指向**         | 文档教用户设 `ZCODE_REMOTE_ASSET_CDN_BASE_URL=https://<域名>`               | 零公开承诺、零可用性责任；但用户要自己动手，等于「功能存在但默认不可用」         |
-
-选择 A 时同时接受：① 域名长期可用（红线 1）；② 资产必须先于版本发布；③ 上传失败不阻塞发版（§4）。
+采用这条路线时同时接受：① 域名长期可用（红线 1）；② 资产必须先于版本发布；③ 上传失败不阻塞发版（§4）。
 **不要把域名写死进源码**：源码里的默认值应当是「官方 CDN」，具体部署点在构建/运行期注入。
 
 ---
@@ -234,9 +224,7 @@ curl -sS -o /dev/null -w "%{http_code}\n" "https://<域名>/no-such-file.json"
 **为什么账号/桶名走 secret、发布根走 variable**：域名是公开信息（客户端要访问它）；
 账户 ID 与桶名是**部署方私有标识**，写进仓库等于随公开仓库分发。本仓库任何文件都不出现它们。
 
-**触发**：Actions → Release → **Run workflow**（只手动触发）。本地更快的方式（不跑 CI 构建矩阵）：
-`pnpm prepare:remote-assets` → `node scripts/assemble-remote-assets.mjs --out <目录>` →
-`node scripts/upload-remote-assets-r2.mjs --root <目录> --bucket <桶名> --public-base-url <发布根>`
+**触发**：Actions → Release → **Run workflow**（只手动触发）。不跑 CI 构建矩阵时按 §4 的三条命令在本机发布
 （本机需先 `wrangler login`）。
 
 **失败后果：不阻塞发版。** 该 job 只在手动触发时运行，tag 发版完全跳过它；资产也可随时补传

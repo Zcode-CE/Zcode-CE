@@ -121,13 +121,13 @@ wave-1 提交后另一次构建里，`packages/ui` 工程**一次性冒出 51 �
 
     git worktree add --detach /tmp/<名> <基线 commit>
     cd /tmp/<名> && pnpm install --frozen-lockfile --prefer-offline
-    pnpm typecheck; echo EXIT:$?     # 不要接管道——管道退出码恒 0,会掩盖真实结果
+    pnpm typecheck; echo EXIT:$?     # 不要接管道——管道退出码恒 0，会掩盖真实结果
     git worktree remove --force /tmp/<名>   # 用后即清
 
 成员在**自己范围内的 tsc --noEmit** 是可信的（单工程无跨工程缓存问题）；**根门禁**必须 fresh。
 另一个同源陷阱：`pnpm typecheck 2>&1 | tail -40` 的退出码是 `tail` 的（恒 0），不是 typecheck 的。
 
-### 案例 3：共享工作树 ⇒ 共享 git 索引，`git commit` 会收走他人暂存（2026-10-13 v3.15.1 轮实测）
+### 案例 2：共享工作树 ⇒ 共享 git 索引，`git commit` 会收走他人暂存
 
 **事实**：agent team 共用同一个工作树 ⇒ **共用同一个 git index**。desktop-host 把自己的 70+ 文件 `git add` 暂存后（作用域无误、显式路径），ui-features 的 `git commit` 把**整个索引**（含 desktop 的全部暂存）一并收进自己的提交；该提交的消息只描述 ui 自己的内容。内容无损失（逐项 `git show --name-only` 核实），但归属错位。裁定：不 amend/重写中部历史（并行期间禁止，风险与收益不成比例），以证据链（消息回传 + 搬运清单）留证。
 
@@ -137,7 +137,7 @@ wave-1 提交后另一次构建里，`packages/ui` 工程**一次性冒出 51 �
 2. 即使 `git add` 用了显式路径，**暂存之后的提交动作仍是全索引的**——多成员并行时默认假设索引里有别人的东西，提交前 `git status --short` 核一眼；
 3. 发现自己的内容进了他人提交：先 `git show <commit> --name-only` 逐项核实完整性；归属让位于内容，历史中部提交的 amend/rebase 在并行期间禁止（同 §4.1）。
 
-### 案例 2："HEAD 既存"的复现实验可能被自己的提交污染
+### 案例 3："HEAD 既存"的复现实验可能被自己的提交污染
 
 **事实**：wave-1 提交后 botsService 出现两处类型失配。成员回传"已做过 HEAD 全量回退实验，同一报错，
 HEAD 既存"。Lead 用 fresh worktree 对 HEAD（`003870d`）全新安装后跑 `pnpm typecheck` 得 **EXIT 0** ⇒

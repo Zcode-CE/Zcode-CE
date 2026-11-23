@@ -190,16 +190,15 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
 
 ---
 
-## 7. 「ce.3 发版时的发布清单」（已批准，本轮不执行）
+## 7. 渠道发布清单（npm 已落地，Docker 未发布）
 
-> 前提：真正打 tag 发 release 时才做；**失败不得阻塞 tag 发版**（job 独立、仅 tag/dispatch 触发）。
-> **将来真做时也不得用 `continue-on-error`** —— 理由与 §7.1 第 5 条相同：
-> 交付终点（推 registry）失败被吞掉后，CI 全绿而产物根本不存在，**误报成功比误报失败更危险**。
-> 下面每一步都写成照着做即可的动作。
+> 两个渠道状态不同：npm 已随 `release.yml` 的 `headless-server-package` job 落地，Docker 未发布（§7.2）。
+> job 与 tag 发版解耦，但**解耦不等于吞失败** —— 不得用 `continue-on-error`：交付终点（推 registry）失败被吞掉后，
+> CI 全绿而产物根本不存在，**误报成功比误报失败更危险**。下面每一步都写成照着做即可的动作。
 
 ### 7.1 npm
 
-1. **包名固定用 `zcode-ce`**（**已于 2026-09-25T22:44:50Z 发布 `3.14.3-ce.3`**；只读核对：`npm view zcode-ce version` 现返回该版本号，`dist-tags` 的 `latest` 与 `next` 都指向它）。不得用 `@zcode/*`（官方 scope）。
+1. **包名固定用 `zcode-ce`**（首个版本 `3.14.3-ce.3` 发布于 2026-09-25；当前版本与 tag 用 `npm view zcode-ce dist-tags` 核对 —— `latest` 与 `next` 可能指向不同版本）。不得用 `@zcode/*`（官方 scope）。
 2. **打包来源 = 发行包内的 `zcode/` 目录，不是 `dist/zcode/`**：`pnpm build:zcode` 产出的 `dist/zcode/` 是**发布站点根**（`install.sh` + `latest.json` + `releases/<版本>/*.tar.gz`），包根在 tarball 内的 `zcode/` 一层。
    构建脚本把包体 stage 到 `dist/zcode/.work/zcode`、打完 tar 后**删掉 `.work`**，所以 `dist/zcode/` 下**不存在可直接 publish 的目录** —— 必须先解包：`tar xzf dist/zcode/releases/<版本>/zcode-<版本>.tar.gz -C <staging>`，再对 `<staging>/zcode/` 生成 `package.json`。
    `bin` 必须映射到 `bin/zcode.mjs`（与 `install.sh` 用的同一个入口），不要指向任何 `packages/**/dist/*.js`。
@@ -261,7 +260,7 @@ Host 白名单（挡 rebinding）· 来源校验（挡跨站）· 鉴权失败�
    **判据要打到进程存活，不能只看横幅**：缺依赖时服务会先打印 `ZCode Web is running` 再崩，因此必须同时确认进程仍在 + `curl` 真的拿到 200（本页 §7.1 末的实测就是这么做的）。
 7. 回滚：72 小时内可 `npm unpublish <名字>@<版本>`；之后只能 `npm deprecate <名字>@<版本> "原因"` 并发布修复版本。
 
-**实测结论（3.14.3-ce.3，Linux x64，Node v24.21.0，npm 12.0.2 —— 发布预演，未真发）**：
+**本地预演实测结论（3.14.3-ce.3，Linux x64，Node v24.21.0，npm 12.0.2；真发前的预演）**：
 按上面第 2、3 条生成的包，`npm pack` 实测 **65.9 MB / 11 822 文件**（解包 293 MB），随后**真装真跑**通过：
 
 | 检查项                               | 实测结果                                                                                 |
@@ -328,18 +327,8 @@ VERSION="$(node -p "require('./package.json').version")"
 node scripts/zcode-distribution-smoke.mjs "dist/zcode/releases/$VERSION/zcode-$VERSION.tar.gz"
 ```
 
-发布到 CDN（让 `install.sh` 的布局成立；机制与缓存头口径见
-[remote-assets-cdn.md §14](./remote-assets-cdn.md)）：
-
-```bash
-# 2) 先看要传什么、要删什么（不写桶；--dry-run 下 --public-base-url 可省）
-node scripts/upload-headless-release-r2.mjs --dist dist/zcode \
-  --bucket <bucket> --public-base-url https://<域名> --keep-versions 10 --dry-run
-
-# 3) 真上传（上传后逐个自检 sha256 / latest.json 内容；清理需 --yes）
-node scripts/upload-headless-release-r2.mjs --dist dist/zcode \
-  --bucket <bucket> --public-base-url https://<域名> --keep-versions 10 --yes
-```
+发布到 CDN（让 `install.sh` 的布局成立）：上传脚本、`--dry-run` / `--yes` / `--keep-versions`
+的用法与缓存头口径见 [remote-assets-cdn.md §14.3](./remote-assets-cdn.md)。
 
 顺序仍是「**先发载荷、再发版**」：`install.sh` 从 `<BASE>/latest.json` 取版本，
 载荷没传完就发版会让用户装到一半失败。
@@ -379,10 +368,10 @@ smoke-exit=0
 ## 9. 已知限制与未验证项
 
 - **npm 已发布，Docker 镜像未发布**（两个渠道状态不同，不要合并读）：
-  - **npm**：`zcode-ce@3.14.3-ce.3` **已于 2026-09-25T22:44:50Z 真发**（核对：`npm view zcode-ce version` ⇒ `3.14.3-ce.3`），
-    发布流水线 `release.yml` 的 `headless-server-package` job 内含 `Stage npm package` / `Publish to npm` / `Verify npm package` 三步，
-    tag 推送即执行（**不再有 `continue-on-error`**，见 §7.1 第 5 条）。包描述、体积与全部实测数据见 §7.1 末「实测结论」——
-    注意那张表的标题写的是「发布预演」，那是**真发之前**那次本地预演的记录，标题保留原样作为历史。
+  - **npm**：`zcode-ce` 已发布，首个版本是 2026-09-25 的 `3.14.3-ce.3`；当前版本与 tag 用
+    `npm view zcode-ce dist-tags` / `npm view zcode-ce versions` 核对。发布链在 `release.yml` 的
+    `headless-server-package` job（`Stage npm package` → `Publish to npm` → `Verify npm package`，
+    tag 推送即执行，无 `continue-on-error`，见 §7.1 第 5 条）。包描述、体积与实测数据见 §7.1 的「本地预演实测结论」。
   - **Docker 镜像**：**不发布**。`release.yml` 里**没有**任何 docker job（`grep -n docker .github/workflows/release.yml` 0 命中），
     §7.2 的 registry 发布步骤仍未执行。**本地 Docker 资产已提供**（仓库根 `Dockerfile` + `compose.yaml`，
     由用户自行 `docker build`，见 [headless-server-docker.md](./headless-server-docker.md)），Docker 侧只到「本地 `docker build`」。
@@ -399,25 +388,22 @@ smoke-exit=0
 
 ## 10. 平台支持矩阵（未实测的不要当已验证）
 
-**本表的「未实测」现在有了一条可执行的路径**：`.github/workflows/cross-platform.yml` 在
-`ubuntu-latest` / `macos-latest` / `windows-latest` 上各跑一次
-`node scripts/build-zcode.mjs --allow-placeholder-base-url` + 既有 smoke
-（构建 → 解包 → 真跑 TUI 与 `--web` 面板）。它**不进每个 PR**（`workflow_dispatch` + 每日 `schedule`），
-理由见 [ci.md](./ci.md) 的「跨平台实测」。**它不设 `continue-on-error`**：某个 OS 跑不通就让它红，
-那是本工作流要产出的信息本身。
+`.github/workflows/cross-platform.yml` 在 `ubuntu-latest` / `macos-latest` / `windows-latest` 上各跑一次
+`node scripts/build-zcode.mjs --allow-placeholder-base-url` + 既有 smoke（构建 → 解包 → 真跑 TUI 与
+`--web` 面板）。它**不进每个 PR**（`workflow_dispatch` + 每日 `schedule`），理由见 [ci.md](./ci.md) 的
+「跨平台实测」；**不设 `continue-on-error`**：某个 OS 跑不通就让它红，那是本工作流要产出的信息本身。
+三 OS 的实测结果见 §10.1，后续 nightly 结果看 Actions 运行记录。
 
-⚠️ **该工作流在真实 runner 上的首次结果尚未观测**（Actions 只能在 GitHub runner 上执行，本地无法跑工作流）。
-因此下表的 macOS / Windows 两行**在拿到那次的运行结论之前，仍必须读作「未实测」**——
-工作流存在只说明「可测」，不等于「测过了」。
-
-| 平台                                          | 能构建                                                                                   | 能启动 `--web`            | 能连面板  | 终端功能                                                              | 令牌轮换（`SIGHUP`）                                                        |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------- | --------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| **Linux-x64（glibc）**                        | ✅ 已实测                                                                                | ✅ 已实测                 | ✅ 已实测 | ✅ 已实测                                                             | ✅ 已实测                                                                   |
-| **Alpine / musl**                             | ❌ 本版不发布 musl 平台类                                                                | ✅ **已实测**（Node ≥24） | ✅ 已实测 | ❌ **不可用**（拦断 + 可操作错误，实测无段错误）                      | ✅ 已实测                                                                   |
-| **Docker（`node:24-slim` 内，本版本地构建）** | ✅ 已实测（`docker build -f Dockerfile dist/zcode`）                                     | ✅ 已实测                 | ✅ 已实测 | ✅ 已实测（容器内 pty 可开）                                          | ✅ 已实测（送给 server 进程；`docker kill -s HUP` 到不了，见 docker 页 §6） |
-| Linux-arm64                                   | 推断                                                                                     | 推断                      | 推断      | 推断                                                                  | 推断                                                                        |
-| macOS-x64 / arm64                             | **未知**（未在 mac 上构建过；跨平台工作流已可测，结果未观测）                            | 推断（`node-pty` 懒加载） | 推断      | 推断（**darwin 原生载荷在包内**，见下）                               | 推断可用（mac 有 SIGHUP）                                                   |
-| **Windows-x64 / arm64**                       | **未知**（`install.sh` 是 POSIX 脚本 ⇒ 只能走 npm 形态；跨平台工作流已可测，结果未观测） | 推断                      | 推断      | 推断（**win32 原生载荷在包内**，但服务端终端与信号另有 Windows 分支） | ❌ **不成立**（见 §10.3）                                                   |
+| 平台                                | 能构建                                               | 能启动 `--web`            | 能连面板  | 终端功能                                                              | 令牌轮换（`SIGHUP`）                                                        |
+| ----------------------------------- | ---------------------------------------------------- | ------------------------- | --------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **Linux-x64（glibc）**              | ✅ 已实测                                            | ✅ 已实测                 | ✅ 已实测 | ✅ 已实测                                                             | ✅ 已实测                                                                   |
+| **Alpine / musl**                   | ❌ 不发布 musl 平台类                                | ✅ **已实测**（Node ≥24） | ✅ 已实测 | ❌ **不可用**（拦断 + 可操作错误，实测无段错误）                      | ✅ 已实测                                                                   |
+| **Docker（`node:24-slim` 内）**     | ✅ 已实测（`docker build -f Dockerfile dist/zcode`） | ✅ 已实测                 | ✅ 已实测 | ✅ 已实测（容器内 pty 可开）                                          | ✅ 已实测（送给 server 进程；`docker kill -s HUP` 到不了，见 docker 页 §6） |
+| Linux-arm64                         | 推断                                                 | 推断                      | 推断      | 推断                                                                  | 推断                                                                        |
+| **macOS-arm64（`macos-latest`）**   | ✅ 已实测（cross-platform）                          | ✅ 已实测（smoke）        | ✅ 已实测 | 推断（**darwin 原生载荷在包内**，见下）                               | 推断可用（mac 有 SIGHUP）                                                   |
+| macOS-x64（`macos-15-intel`）       | ✅ 已实测（release job）                             | 推断（`node-pty` 懒加载） | 推断      | 推断（**darwin 原生载荷在包内**，见下）                               | 推断可用（mac 有 SIGHUP）                                                   |
+| **Windows-x64（`windows-latest`）** | ✅ 已实测（cross-platform）                          | ✅ 已实测（smoke）        | ✅ 已实测 | 推断（**win32 原生载荷在包内**，但服务端终端与信号另有 Windows 分支） | ❌ **不成立**（见 §10.3）                                                   |
+| Windows-arm64                       | 推断                                                 | 推断                      | 推断      | 推断                                                                  | ❌ **不成立**（见 §10.3）                                                   |
 
 **⚠️ 原生载荷以包内实测为准（2026-09-27 解包产物）**：实测 `dist/zcode/releases/3.14.3-ce.3/zcode-3.14.3-ce.3.tar.gz`（`tar -tzf` 列目录），**6 个平台的载荷全在**：
 
@@ -481,8 +467,8 @@ POSIX 假设（见 §10.1），那些必须由 `.github/workflows/cross-platform
 | `macos-latest`   | ✅ **success** | 5m18s |
 | `windows-latest` | ✅ **success** | 5m10s |
 
-⇒ **「能构建 / 能启动 / 能连面板」三列在三个平台上全部从「推断」变成「实测通过」。**
-macOS 此前整列是「未实测」；Windows 经五轮修复后转绿（见下表）。
+⇒ **「能构建 / 能启动 / 能连面板」三列在三个平台上全部从「推断」变成「实测通过」**
+（`macos-latest` 是 arm64，macOS x64 没有跑 smoke）；Windows 经五轮修复后转绿（见下表）。
 
 **Windows 的五轮修复轨迹**（每一轮都由**真实 runner 的结果**定位，不是推测）：
 
@@ -498,28 +484,25 @@ macOS 此前整列是「未实测」；Windows 经五轮修复后转绿（见下
 第 4、5 轮则是**预测之外的新发现**（Windows 文件锁与句柄回收语义）。
 ⇒ 这份「已知会红的点」清单**方向正确但不完整** —— 实跑才能补全。
 
-**下面两组「已知会红的点」保留为历史记录**：(A) 已修，(B) 已按平台分叉。
+**下面两组「已知会红的点」保留为历史记录**：两组都已处理 —— (A) 已由 `199ac9b` 修复，(B) 已按平台分叉。
 它们记录了**为什么**这三处判据在 Windows 上不成立 —— 改动这段代码前先读它。
 
-**已知会红的点**。按执行顺序有两组 —— **(A) 已由 `199ac9b` 修复并首次实测确认，
-(B) 仍待 Windows 跑到那一步才能观测**：
-
-**(A) 构建步骤本身（在 smoke 之前）** —— `scripts/build-zcode.mjs` 用裸 `spawnSync("pnpm", …)`
-（`build-zcode.mjs:126` 的 `run()`，无 `shell: true`）调 `pnpm` 四次（`:171` `pnpm --filter @zcode/cli... build`、
-`:180` `pnpm exec tsc -b`、`:186` `pnpm --filter @zcode/server build`、`:187` `pnpm --filter @zcode/web build`）。
+**(A) 构建步骤本身（在 smoke 之前）** —— `scripts/build-zcode.mjs` 的 `run()` 会调 `pnpm` 四次；
+裸 `spawnSync("pnpm", …)`（无 `shell: true`）在 Windows 上找不到 `pnpm`（机理见下），
+现已复用 `resolveSpawnRuntimeOptions`（`199ac9b`）。
 
 - 机理：Windows 上 libuv 的 `path_search_walk_ext` 对**不带扩展名**的命令名**只试 `.com` 与 `.exe`**
   （[libuv `src/win/process.c`](https://github.com/libuv/libuv/blob/v1.x/src/win/process.c) 原文注释
   _"Try .com extension" / "Try .exe extension"_），而 `pnpm` 在 Windows 上由 npm 以 `pnpm.cmd` 形式提供。
-- **本仓已经知道这件事**：`scripts/spawn-command.mjs:6-21` 的 `resolveSpawnRuntimeOptions()` 注释写着
+- **本仓已经知道这件事**：`scripts/spawn-command.mjs` 的 `resolveSpawnRuntimeOptions()` 注释写着
   「Windows runner 上 bare `pnpm` / `npm` 实际也是通过 cmd shim 提供」并因此返回 `{ shell: true }`。
   它被 `packages/desktop/scripts/bundle.mjs`、`scripts/third-party-npm.mjs`、
-  `apps/zcode-cli/packages/cli/scripts/build-sea.mjs` 复用 —— **但 `scripts/build-zcode.mjs` 没有复用**。
-- **诚实标注**：这条**未在 Windows 上实测**（本地只有 Linux），属**高置信度推断**；但 `pnpm install` 那一步
-  不受影响 —— 它是 workflow 的 `run:` 步骤，由 pwsh 解析，pwsh 会走 `PATHEXT`。差异只出在 Node 的 `spawnSync`。
-- 修法（**不属本单元**）：让 `build-zcode.mjs` 的 `run()` 复用 `resolveSpawnRuntimeOptions`。
-  另外 `build-zcode.mjs:281` 的 `tar` 在 Windows 上把 `D:\…` 当**远程归档**（GNU tar 报
-  `Cannot connect to D:`；bsdtar 不支持远程归档、按字面量处理）—— 是否出问题取决于 runner 上哪个 `tar` 先命中 PATH，**未验证**。
+  `apps/zcode-cli/packages/cli/scripts/build-sea.mjs` 复用，`scripts/build-zcode.mjs` 的 `run()` 现已一并复用
+  （`199ac9b`）。
+- **实证**：Windows runner 的第一轮就报 `spawnSync pnpm ENOENT`（见上表第 1 轮），与机理一致；
+  `pnpm install` 那一步不受影响 —— 它是 workflow 的 `run:` 步骤，由 pwsh 解析，pwsh 会走 `PATHEXT`。
+- **另一半**：打包阶段用外部 `tar` 在 Windows 上会把 `D:\…` 当成**远程归档**（GNU tar 报 `Cannot connect to D:`），
+  已改为 Node 原生解包（`9378191`，见上表第 2 轮）。
 
 **(B) smoke 步骤** —— 两处**只在 POSIX 成立**的断言现已按平台分叉（2026-10-30 三 OS 全绿）：
 

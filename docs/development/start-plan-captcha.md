@@ -1,110 +1,9 @@
 # Spec：start-plan 验证码挑战链路（captcha challenge）+ 切渠道队列授权位复位
 
-- 状态：**已实现（3.14.3-ce.4 至 ce.5 逐步落地，2026-10-03 修复 issue #3 的 webview 时序 bug）**
+- 状态：**已实现**。
 - 背景与证据：[126 根因报告](../../.local/reports/account/start-plan-3007-root-cause.md)、[127 粘滞机制](../../.local/reports/account/session-scoped-sticky-provider-failure.md)、[128 参考项目对照](../../.local/reports/account/reference-proxy-parity.md)、[129 缺陷扫描](../../.local/reports/audit/ce-defect-scan.md)
 - 影响范围：协议契约（shared）、host 服务（services）、agent 运行时（zcode-cli）、UI（ui）
 - 与闭源 3.16.3 的边界：官方闭源构建另有**服务端 `captcha` 配置门**（`enabled` / `skip_model_request`）与新业务码 `coding_plan_security_verification_required`；CE 未接入，仍按 **3007 失败码**判定（无 emission 证据，见 `.local/reports/upstream/version-3.16.3/REPORT.md` §2）。
-
-## 落地状态（2026-10-03 核对，按本 spec 章节逐条）
-
-| spec 章节                | 内容                                                 | 落地证据                                                                                                                                                                                 |
-| ------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| §4.1                     | 协议枚举放宽 + 可选 `runtimeProviderHeaders`         | `packages/shared/src/zcode-protocol/index.ts` 的 `captcha-retry` 与响应分支；agent 侧 reason 类型见下                                                                                    |
-| §4.2                     | host 转发守卫（非 start-plan 才短路）                | `packages/services/src/zcode-agent/zcodeAgentService.ts`（`accountAccess.mode !== "start-plan"`，附官方偏移注释）                                                                        |
-| §4.3                     | 渲染层应答入口 + 白名单头合并 + 幂等                 | `respondProviderRuntimeHeaders` + `mergeProviderRuntimeHeaders`（host 侧）；UI 侧 `respondToHost`                                                                                        |
-| §4.4                     | 无渲染层场景（订阅者/能力声明双判据快速失败）        | host 两道判据（无订阅者 / 无能力声明）；UI 侧 `onDynamicSessionCaptchaCapability` 声明 + `canSolveCaptchaInCurrentHost` 守卫                                                             |
-| §4.5                     | agent 单次 3007 重试（拦截点在分类器之前，不改码表） | `apps/zcode-cli/packages/adapters/src/model/captcha-retry.ts`、`runner-runtime-headers.ts`（reason 放宽）、`runner-generate.ts` / `runner-stream.ts` 接入                                |
-| §4.6                     | 切渠道复位会话队列授权位（三条路径共判据）           | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/queue-held-reset.ts` + `turn-model.ts`/`model-config.ts`/`session-flow.ts` 三处接入                                             |
-| 渲染层求解（§4.1 第①段） | 桌面 webview + Web/手机远控主世界                    | `packages/ui/src/v4/providerRuntimeCaptchaSolver.ts`、`ProviderRuntimeHeadersCaptchaAttachment.tsx`、`providerRuntimeHeadersSolver.ts`；**2026-10-03 修复桌面 webview 时序 bug（见下）** |
-
-## 已修复的真实缺陷：桌面 webview 时序（issue #3，2026-10-03）
-
-用户报告（Arch + 3.14.3-ce.4）：`verify: The WebView must be attached to the DOM and the dom-ready
-event emitted before this method can be called.`，同时 `Turn execution failed ... reason=unknown
-retryable=false`。两个报错是同一条链路的两端，归因链：
-
-1. v4 桌面求解路径的 `<webview>` **没有 src**，`solveCaptchaInWebview` 在 React 挂载拿到 ref 后
-   **立即** `webview.loadURL(url)`。Electron 守卫（官方 docs/api/webview-tag.md「The webview
-   element must be loaded before using the methods」；官方 spec 的「throws a custom error when an
-   API method is called before the event is emitted」）在 attach 与首次 dom-ready 之前调用
-   webview 方法会**同步抛**该错误。
-2. 错误经编排器收敛为 `{ ok:false, failureStage:"verify", reason:<Electron 原文> }`，UI 侧应答
-   `errorMessage = "verify: The WebView must be attached..." `（与用户报错逐字吻合）。
-3. host 收到 `headersApplied:false` 原样回 agent；agent 侧 `runner-runtime-headers.ts` 的
-   `headersApplied:false` 分支抛 `RuntimeHeadersRefreshError`（既非业务码也非鉴权码）⇒
-   分类为 `reason=unknown retryable=false`（用户报错的第二段）。
-
-修复形态与 claim 平面（`ManualClaimCaptchaDialog`）逐字一致：
-
-- 宿主页由 `<webview src={hostUrl}>` 在 attach 时自动加载（data: URL 宿主页含 SDK script 标签）；
-- `solveCaptchaInWebview` 只等待「webview 方法可用」（探测式 + 超时），**从不调用 loadURL**；
-- 等待与 SDK 就绪轮询都用 try/catch 容忍守卫的同步抛错（`promise.catch` 接不住同步 throw）。
-
-回归测试：`packages/ui/test/providerRuntimeCaptchaWebviewTiming.test.ts`（守卫错误吸收、
-ensureHostPageReady 注入、超时快速失败、源码防回退断言）。
-
-> 注意：claim 平面（`ManualClaimCaptchaDialog`）从一开始就是 src + dom-ready + executeJavaScript
-> 的形态，**没有**这个 bug；修复只落在 v4 模型请求平面。
-
----
-
-## 移植官方 3.14.4：初始化阶段的显式超时与失败分类（3.14.4-ce.1）
-
-来源：官方 3.14.4 闭源 deb 的验证码健壮性补丁（`.local/reports/upstream/version-3.14.4/UPDATE-ANALYSIS.md §2.3 C1/C2`）。
-官方新增：初始化期间排队的请求排空（initialization_drain）、
-`Captcha initialization timed out. Please restart the app or reload the page and try again.`
-显式超时、`initialization_timeout` 错误分类、20 分钟新鲜度守卫。
-
-### 产品规则
-
-1. 验证码初始化阶段（宿主页方法就绪 / SDK 加载 / SDK 入口就绪）**卡死时必须有独立的失败分类**，
-   不得归入通用 `timeout`（那是「挑战过程中超时」，动作是重试），也不得裸抛错误被收敛成
-   `verify`（那是「挑战被拒」，动作是重新验证）。初始化卡死的可操作动作是**重启应用或刷新页面**。
-2. 分类 token 逐字对齐官方（`initialization_timeout`），可操作文案逐字采用官方英文原句。
-3. 成功路径不变：初始化正常完成时行为与之前完全一致，现有超时上限（30s）保持不变。
-
-### 状态所有者与事件顺序
-
-| 状态                          | 所有者                                                                        |
-| ----------------------------- | ----------------------------------------------------------------------------- |
-| 初始化等待（宿主页/SDK/入口） | 求解器（`solveCaptchaInWebview` / `solveCaptchaInBrowser`），一次性、不跨请求 |
-| 初始化期间排队的请求          | host 的 pending map + 渲染层编排器串行队列（既有，见下）                      |
-
-官方 `initialization_drain` 的 CE 对应物是**已有的**串行队列（`providerRuntimeHeadersSolver.ts`）：
-后到的请求排队逐个处理、每个 requestId 都必须被应答（不丢弃、不悬挂到 180s）。
-CE 不为 drain 新造机制 —— 排空语义由「串行 + 逐请求应答」天然覆盖。
-同理，官方 20 分钟新鲜度守卫（`initStartedAt`）依赖其单例初始化状态；CE 每次
-求解按 Document 重新加载 SDK（`sdkLoadPromises` WeakMap，失败不缓存），无持久 init 状态可守。
-
-### 失败语义
-
-| 场景                                                   | 行为                                                                           |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| 宿主页方法一直不可用（webview 未 attach/未 dom-ready） | 30s 后 `{stage:"initialization", reason:"initialization_timeout: <官方文案>"}` |
-| SDK 入口在宿主页内一直未就绪（桌面 webview 轮询）      | 同上                                                                           |
-| Web 主世界 SDK 加载超时                                | 同上（`CaptchaSdkLoadTimeoutError`）                                           |
-| Web 主世界 SDK 加载失败/入口缺失（快速失败）           | `{stage:"sdk_load", reason:<原始错误消息>}`（查网络/CDN，不是卡死）            |
-| guest 内 `initAliyunCaptcha` 启动后不回调              | 既有兜底：单次求解的 180s timer → `timeout` 阶段（不变）                       |
-
-### 不变量
-
-- 初始化失败**必须**带可操作文案回传 host（`headersApplied:false` +原因），不得静默。
-- 初始化分类不得改变成功路径的时序（不加新的更短截止时间，只给既有 30s 上限分类）。
-
-### 验收场景
-
-- G1. 桌面：webview 方法永远不可用 → 30s 内得到 `initialization` 分类 + 官方文案（不是 `verify` + 裸错误）。
-- G2. 桌面：SDK 入口永远不就绪 → 同上。
-- G3. Web：SDK script 加载超时 → 同上；script 加载失败 → `sdk_load` + 原始原因。
-- G4. claim 平面 SDK 就绪轮询超时 → 与 v4 平面同分类（两平面共用 stage 枚举，同现象同分类）。
-- G5. 正常求解路径行为与回归测试全绿（时序回归不得因为分类改动而变化）。
-
-回归测试：`packages/ui/test/providerRuntimeCaptchaInitialization.test.ts`（三段初始化等待的
-分类 + 卡死/失败分类分离 + 成功路径回归）、`packages/ui/test/providerRuntimeCaptchaWebviewTiming.test.ts`
-（既有时序回归保持不变：守卫错误吸收、ensureHostPageReady 注入、超时快速失败、源码防回退）、
-`packages/ui/test/manualClaimCaptcha.test.ts`（stage 归一化接受 `initialization`）。
-
----
 
 ## 1. 问题陈述
 
@@ -307,3 +206,87 @@ host 把 `runtimeProviderHeaders` 中**大小写不敏感**匹配
 - 不新增持久化格式。
 - 实现顺序：**先 §4.5（agent 重试骨架，可独立单测）→ 再 §4.2+4.3+4.1+渲染层 作为一个原子提交
   （守卫/应答入口/头合并/接线缺一不可）→ 最后 §4.6（独立小改动）**。
+
+## 8. 桌面 webview 时序约束
+
+用户报告的报错（Arch + 3.14.3-ce.4）：`verify: The WebView must be attached to the DOM and the dom-ready
+event emitted before this method can be called.`，同时 `Turn execution failed ... reason=unknown
+retryable=false`。两个报错是同一条链路的两端，归因链：
+
+1. v4 桌面求解路径的 `<webview>` **没有 src**，`solveCaptchaInWebview` 在 React 挂载拿到 ref 后
+   **立即** `webview.loadURL(url)`。Electron 守卫（官方 docs/api/webview-tag.md「The webview
+   element must be loaded before using the methods」；官方 spec 的「throws a custom error when an
+   API method is called before the event is emitted」）在 attach 与首次 dom-ready 之前调用
+   webview 方法会**同步抛**该错误。
+2. 错误经编排器收敛为 `{ ok:false, failureStage:"verify", reason:<Electron 原文> }`，UI 侧应答
+   `errorMessage = "verify: The WebView must be attached..." `（与用户报错逐字吻合）。
+3. host 收到 `headersApplied:false` 原样回 agent；agent 侧 `runner-runtime-headers.ts` 的
+   `headersApplied:false` 分支抛 `RuntimeHeadersRefreshError`（既非业务码也非鉴权码）⇒
+   分类为 `reason=unknown retryable=false`（用户报错的第二段）。
+
+修复形态与 claim 平面（`ManualClaimCaptchaDialog`）逐字一致：
+
+- 宿主页由 `<webview src={hostUrl}>` 在 attach 时自动加载（data: URL 宿主页含 SDK script 标签）；
+- `solveCaptchaInWebview` 只等待「webview 方法可用」（探测式 + 超时），**从不调用 loadURL**；
+- 等待与 SDK 就绪轮询都用 try/catch 容忍守卫的同步抛错（`promise.catch` 接不住同步 throw）。
+
+回归测试：`packages/ui/test/providerRuntimeCaptchaWebviewTiming.test.ts`（守卫错误吸收、
+ensureHostPageReady 注入、超时快速失败、源码防回退断言）。
+
+> 注意：claim 平面（`ManualClaimCaptchaDialog`）从一开始就是 src + dom-ready + executeJavaScript
+> 的形态，**没有**这个 bug；修复只落在 v4 模型请求平面。
+
+## 9. 初始化阶段的显式超时与失败分类
+
+来源：官方 3.14.4 闭源 deb 的验证码健壮性补丁（`.local/reports/upstream/version-3.14.4/UPDATE-ANALYSIS.md §2.3 C1/C2`）。官方在这些点上做的是：初始化期间排队的请求排空（initialization_drain）、
+`Captcha initialization timed out. Please restart the app or reload the page and try again.`
+显式超时、`initialization_timeout` 错误分类、20 分钟新鲜度守卫。
+
+### 9.1 产品规则
+
+1. 验证码初始化阶段（宿主页方法就绪 / SDK 加载 / SDK 入口就绪）**卡死时必须有独立的失败分类**，
+   不得归入通用 `timeout`（那是「挑战过程中超时」，动作是重试），也不得裸抛错误被收敛成
+   `verify`（那是「挑战被拒」，动作是重新验证）。初始化卡死的可操作动作是**重启应用或刷新页面**。
+2. 分类 token 逐字对齐官方（`initialization_timeout`），可操作文案逐字采用官方英文原句。
+3. 成功路径不变：初始化正常完成时行为与之前完全一致，现有超时上限（30s）保持不变。
+
+### 9.2 状态所有者与事件顺序
+
+| 状态                          | 所有者                                                                        |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| 初始化等待（宿主页/SDK/入口） | 求解器（`solveCaptchaInWebview` / `solveCaptchaInBrowser`），一次性、不跨请求 |
+| 初始化期间排队的请求          | host 的 pending map + 渲染层编排器串行队列（既有，见下）                      |
+
+官方 `initialization_drain` 的 CE 对应物是**已有的**串行队列（`providerRuntimeHeadersSolver.ts`）：
+后到的请求排队逐个处理、每个 requestId 都必须被应答（不丢弃、不悬挂到 180s）。
+CE 不为 drain 新造机制 —— 排空语义由「串行 + 逐请求应答」天然覆盖。
+同理，官方 20 分钟新鲜度守卫（`initStartedAt`）依赖其单例初始化状态；CE 每次
+求解按 Document 重新加载 SDK（`sdkLoadPromises` WeakMap，失败不缓存），无持久 init 状态可守。
+
+### 9.3 失败语义
+
+| 场景                                                   | 行为                                                                           |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| 宿主页方法一直不可用（webview 未 attach/未 dom-ready） | 30s 后 `{stage:"initialization", reason:"initialization_timeout: <官方文案>"}` |
+| SDK 入口在宿主页内一直未就绪（桌面 webview 轮询）      | 同上                                                                           |
+| Web 主世界 SDK 加载超时                                | 同上（`CaptchaSdkLoadTimeoutError`）                                           |
+| Web 主世界 SDK 加载失败/入口缺失（快速失败）           | `{stage:"sdk_load", reason:<原始错误消息>}`（查网络/CDN，不是卡死）            |
+| guest 内 `initAliyunCaptcha` 启动后不回调              | 既有兜底：单次求解的 180s timer → `timeout` 阶段（不变）                       |
+
+### 9.4 不变量
+
+- 初始化失败**必须**带可操作文案回传 host（`headersApplied:false` +原因），不得静默。
+- 初始化分类不得改变成功路径的时序（不加新的更短截止时间，只给既有 30s 上限分类）。
+
+### 9.5 验收场景
+
+- G1. 桌面：webview 方法永远不可用 → 30s 内得到 `initialization` 分类 + 官方文案（不是 `verify` + 裸错误）。
+- G2. 桌面：SDK 入口永远不就绪 → 同上。
+- G3. Web：SDK script 加载超时 → 同上；script 加载失败 → `sdk_load` + 原始原因。
+- G4. claim 平面 SDK 就绪轮询超时 → 与 v4 平面同分类（两平面共用 stage 枚举，同现象同分类）。
+- G5. 正常求解路径行为与回归测试全绿（时序回归不得因为分类改动而变化）。
+
+回归测试：`packages/ui/test/providerRuntimeCaptchaInitialization.test.ts`（三段初始化等待的
+分类 + 卡死/失败分类分离 + 成功路径回归）、`packages/ui/test/providerRuntimeCaptchaWebviewTiming.test.ts`
+（既有时序回归保持不变：守卫错误吸收、ensureHostPageReady 注入、超时快速失败、源码防回退）、
+`packages/ui/test/manualClaimCaptcha.test.ts`（stage 归一化接受 `initialization`）。

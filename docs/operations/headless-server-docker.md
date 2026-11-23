@@ -56,7 +56,7 @@ docker run -d --name zcode \
 
 ### 3.1 镜像体积（本机实测）
 
-本版镜像**不发布到任何 registry**，需要你自己 `docker build`。构建前先知道它有多大：
+构建前先知道它有多大：
 
 | 项                                                       | 实测值                                      |
 | -------------------------------------------------------- | ------------------------------------------- |
@@ -128,7 +128,7 @@ docker compose up -d
 
 ### 4.2 ⚠️ 备份不可移植到另一台机器（真实的坑）
 
-会话与工作区记录里存的是绝对路径。 任务索引库的 `tasks` / `workspace_registry` 表都有 `workspace_path` 列
+会话与工作区记录里存的是绝对路径。任务索引库的 `tasks` / `workspace_registry` 表都有 `workspace_path` 列
 （`packages/services/src/session/tasksDatabase/schema-v1.ts`），存的是**当时那台机器上的绝对路径**，例如：
 
 ```text
@@ -244,14 +244,10 @@ docker inspect -f "{{.State.Health.Status}}" zcode-ce-zcode-1   # healthy
 
 ## 9. 为什么基础镜像必须是 glibc（不能用 Alpine）
 
-本版内置的原生载荷（`node-pty`）是 **glibc 构建**。在 musl（Alpine）上：
-
-- 服务与面板**能起来**（需自带满足 `engines` 的 Node，见 [headless-server.md](./headless-server.md) §10）；
-- 但**终端功能不可用**：`pty.node` 在 musl 上能被装载，创建终端时原生 `fork()` 会**段错误（exit 139）**并杀掉整个进程；
-  我们已在"创建终端之前"加了 libc 拦断并给出可操作错误（不会段错误），但这意味着**终端功能在这一形态下没有**。
-
-所以 `Dockerfile` 默认 `node:24-slim`（Debian/glibc）。若你坚持用 Alpine：需要自装 Node ≥24、接受终端不可用，
-并且该组合**不是本版承诺的形态**（详见 §10 的矩阵）。
+内置的 `node-pty` 原生载荷是 **glibc 构建**：musl（Alpine）上服务与面板能起来（需自带满足 `engines` 的 Node），
+但**终端功能不可用** —— 创建终端时原生 `fork()` 会段错误（exit 139）；本版已改为在"创建终端之前"拦断并给出可操作错误。
+所以 `Dockerfile` 默认 `node:24-slim`（Debian/glibc）。若坚持用 Alpine：需自装 Node ≥24、接受终端不可用，
+且该组合**不是本版承诺的形态**（矩阵见 [headless-server.md](./headless-server.md) §10）。
 
 ## 10. 本页结论的实测证据（2026-09-24，Linux x64，Docker 29.8.0 rootless）
 

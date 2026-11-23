@@ -59,10 +59,9 @@
 | **设置页「远程资产 → 自定义远程资产 CDN 地址」** | 当前安装           | 图形界面填写**发布根**；适合不想动环境变量的用户。**只在桌面端生效**（见下）               |
 | **构建期 `ZCODE_CDN_BASE_URL`**                  | 你构建出来的安装包 | `ZCODE_CDN_BASE_URL=https://your-host/assets pnpm dev:desktop`；打包发行版时设它作为默认值 |
 
-> 补充（文档此前没写全，不是行为变化）：`ZCODE_CDN_BASE_URL` **也能作为运行期环境变量**使用，
-> 只是它的优先级在 `ZCODE_REMOTE_ASSET_CDN_BASE_URL` **之下**、在内置默认值**之上**
-> （`packages/desktop/src/main/remoteCdn.ts:47` 读 `process.env.ZCODE_CDN_BASE_URL`，随后才回落到内置官方默认）。
-> 若只想临时覆盖，用第一行的 `ZCODE_REMOTE_ASSET_CDN_BASE_URL`，别用这个。
+> `ZCODE_CDN_BASE_URL` **也能作为运行期环境变量**使用，优先级在 `ZCODE_REMOTE_ASSET_CDN_BASE_URL` **之下**、
+> 在内置默认值**之上**（`packages/desktop/src/main/remoteCdn.ts:47` 读 `process.env.ZCODE_CDN_BASE_URL`，
+> 随后才回落到内置官方默认）。只想临时覆盖时用 `ZCODE_REMOTE_ASSET_CDN_BASE_URL`。
 
 > 顺序是**实现级事实**，不要凭直觉换：`desktopRuntimeEnv.ts` 把环境变量的值放进
 > `remoteCdn.ts` 的 `override` 槽位，而那是**最先**判定的分支 ⇒ 环境变量永远压过设置页。
@@ -80,9 +79,9 @@
 **按字面值使用**，不要带版本号。唯一的例外是**内置的官方默认值**，它自带
 `/zcode/electron/releases/<版本>` 前缀（官方 CDN 的资源确实挂在那个前缀下）。
 
-> 2026-09-23 修正：此前构建期旋钮会把值当**父目录**并追加 `/zcode/electron/releases/<版本>`，
-> 与本文档"值就是发布根"的契约矛盾（自建发布点会 404）。代码已按本文档修正，并有契约测试钉住
-> （`packages/desktop/test/remoteCdnBaseUrl.test.ts`，把实现改回旧行为会红）。
+> **构建期旋钮同样按字面值使用**：不能再把值当**父目录**并追加 `/zcode/electron/releases/<版本>` ——
+> 那与「值就是发布根」的契约矛盾，自建发布点会 404。这条契约由
+> `packages/desktop/test/remoteCdnBaseUrl.test.ts` 钉住，把实现改回父目录语义会红。
 
 ---
 

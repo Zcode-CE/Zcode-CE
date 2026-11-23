@@ -1,6 +1,6 @@
 # 贡献指南
 
-> 面向提交 PR 或反馈问题的贡献者：这里给出改动前要跑的命令、必须达到的标准，以及评审会关注什么。
+面向提交 PR 或反馈问题的贡献者：改动前要跑的命令、必须达到的标准，以及评审会关注什么。
 
 ## 提交前
 
@@ -12,11 +12,7 @@ pnpm fmt:check
 pnpm architecture:check --changed
 ```
 
-涉及 desktop main/renderer 改动时，额外跑 `bash scripts/desktop-typecheck-baseline.sh diff`。
-
-> `pnpm typecheck` 的工程列表**不含** desktop 的 main / renderer 子工程（见
-> [与上游的差异](../development/upstream-diff.md) 的技术债 #2）。这两个子工程有既有的类型错误，
-> 因此用上面的基线脚本做**增量**判断：只关心「有没有新增」，不要求清零存量。
+涉及 desktop main/renderer 改动时，额外跑 `bash scripts/desktop-typecheck-baseline.sh diff`。`pnpm typecheck` 的工程列表**不含**这两个子工程（见[与上游的差异](../development/upstream-diff.md) 的技术债 #2）；它们有既有的类型错误，所以用基线脚本做**增量**判断：只关心「有没有新增」，不要求清零存量。
 
 ## 代码规范
 
