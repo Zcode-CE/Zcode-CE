@@ -46,6 +46,10 @@ const TEST_PACKAGES = [
   // （首生次序、修复后 resume 完成、修复前以 InputHashMismatch 失败）不进 CI。这条链路的
   // 回归现象是**静默的**——确定性脚本在 resume 后随机失败，只在真实使用里偶发。
   "apps/zcode-cli/packages/dynamic-workflow",
+  // 工作流脚本沙箱的逃逸回归（security.test.ts）：**必须在这里登记**，否则「模型生成的脚本
+  // 能不能拿到宿主 process」这条断言不进 CI。它的回归形态是**安全缺口而不是报错**——
+  // 沙箱一旦退回「把 __send 挂在全局」，所有用例照样绿，只有真被利用时才看得见。
+  "apps/zcode-cli/packages/dynamic-workflow-runtime",
   // office 三插件的校验器测试：**必须在这里登记**，否则 4 条有牙齿的断言
   // （峰值内存受预算约束、命名空间密集 O(N²)、三份逐字节一致、staging 护栏）不进 CI。
   // 审计实测：未登记前 `pnpm test` 只跑 20 个文件，完全覆盖不到这些断言。

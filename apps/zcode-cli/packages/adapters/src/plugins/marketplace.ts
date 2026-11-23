@@ -1610,6 +1610,18 @@ async function loadMarketplaceFromSource(
       throw new UnsupportedMarketplaceSourceError("hostPattern");
     case "pathPattern":
       throw new UnsupportedMarketplaceSourceError("pathPattern");
+    default: {
+      // 类型层已穷尽全部 kind，未知值只能来自 known_marketplaces.json 等外部状态（含其它机器
+      // 同步/导入的分享状态）。旧实现从 switch 落空返回 undefined，调用方随后在
+      // loaded.manifest 上抛 "Cannot read properties of undefined"，既看不出是来源配置问题，
+      // 也定位不到那个 kind；这里给出可操作的显式错误。
+      const unknownKind = (source as { source?: unknown }).source;
+      throw new Error(
+        `Marketplace source kind is invalid or unsupported: ${
+          typeof unknownKind === "string" ? unknownKind : "<missing>"
+        }`,
+      );
+    }
   }
 }
 

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "fb90f9ad70bcba426a76ea9662bd990e3f1c31ab310b40194a8f321242d11e28",
+  "noticesSha256": "f8fdffdf17d2ce6867a68cfbc0c132b5da04c5c114cb21bf292e119025402962",
   "inputs": {
     ".agents/skills/agent-browser/references/authentication.md": "e2c3b0f4a1dc1368dee821f03c000d818a48421d09f3872525dddffe73f2112b",
     ".agents/skills/agent-browser/references/commands.md": "17522fc56d742663f47231ff06c4811abc87e12c7f78e11f94d253ddd540a909",
@@ -226,6 +226,9 @@
     ".agents/skills/react-best-practices/SKILL.md": "b7d246acb440bee224ab33614979a5b8debe5fdb13d0304967aa19358eb69d9f",
     "apps/zcode-cli/package.json": "6c48017b05d8a7215c5bf7dea12f50edd1487bf5b8b22e11c21703d32e8f7742",
     "apps/zcode-cli/packages/adapters/package.json": "9aee09c4b4b5292c8ae21f4a34ca3dedeccc02f03d00d9e078bb07447f576a01",
+    "apps/zcode-cli/packages/adapters/src/config/config-merger.ts": "3d522750966eef3ab3a36b7948ebc054b5ed86498afd3b7fdcf03e4dac5ec852",
+    "apps/zcode-cli/packages/adapters/src/mcp/index.ts": "a7c880099f29ba2e772fcf5c758dcbac719c49bf231b7859b4019ce031adfef0",
+    "apps/zcode-cli/packages/adapters/src/mcp/stdio-stderr.ts": "00d607329e677c03b78b48e88659a498e8e720817dd0b2f0446d986e429a7cdc",
     "apps/zcode-cli/packages/adapters/src/model/tool-search.ts": "f79f2dc24922a7fe890d9ed73aba36c1758cab8885435f4d26e2c94faf5e70d1",
     "apps/zcode-cli/packages/bootstrap/package.json": "0e175ac8b64cd5b478c15e6bf71fb3940c17ddb7f95fb7cbcdd426bb61ce5bef",
     "apps/zcode-cli/packages/bootstrap/src/app/types.ts": "dfab2777335f291d4e1c7b6be137aadec2fc770f2c9f7cf82a4caf6f23ad5275",
@@ -280,7 +283,8 @@
     "apps/zcode-cli/packages/core/src/tool/executor/permission-flow.ts": "e3ca0f578bec58eabfe2672c64aed4e0f3148062c397cb8c433df4e02f11ed11",
     "apps/zcode-cli/packages/core/src/tool/executor/permission-input-adjustments.ts": "51ca4ccaa85377ff8408c762d6e5e46d3df89263fd0e7c4f39dac89fb01713d6",
     "apps/zcode-cli/packages/core/src/tool/handlers/bash-command-parser.ts": "3b902ba16313b10b0091023f6a93d96b1b307ee38b1abeee5e1b491031ed8184",
-    "apps/zcode-cli/packages/core/src/tool/handlers/bash.ts": "d1a4020ab22ff6ef1e25bbf8431e0c6b89c0c93e87c9a3c3363213e27cab1b47",
+    "apps/zcode-cli/packages/core/src/tool/handlers/bash-command-permission-policy.ts": "1047bdaecc90b9aab708b66d9c48269f115fd1174e8f2eafdd467d86f45337f9",
+    "apps/zcode-cli/packages/core/src/tool/handlers/bash.ts": "d18718d553d9d3aff054bfe24f79db90581ebfe7b656ea255ceab5f652bc40cf",
     "apps/zcode-cli/packages/core/src/tool/handlers/deferred-tool-call.ts": "cfc4a053fdc9dfc969ecd6926be407b1d20df63d363bb1166f7249c036663713",
     "apps/zcode-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts": "60fa5acd9f5c357f4e51b1d1e944ee39da92680e4bc5e98dd708f1457fcf612b",
     "apps/zcode-cli/packages/core/src/tool/handlers/guarded/cmd.ts": "978dde92fd72a610b9d5fd8e24bbc1846a8ea83530b19c786bca7bcbc150a2eb",
@@ -319,7 +323,8 @@
     "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "6197dfe9c2481378c3de489a8566b3840ae4941aa334ef83e6ace50b8bd7bded",
     "apps/zcode-cli/packages/documents-plugin/test/checkOfficePrefix.test.mjs": "de63355f4bfe5a897706bb044c16e419c289b38b2e8b5ef2b731f43900258b98",
     "apps/zcode-cli/packages/documents-plugin/test/skillVisualChain.test.mjs": "ec427af9d28fb398603c781fb0fb7cbac7b65ed323113e4799473a15cd2d9938",
-    "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "f8dab813c3b9f236b593d4d04f1b78e511e15d586cb7dcdd74147e7d1c22ec5c",
+    "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "6b7c62b7b68da2ba6dfb67ab0782f4f5e9d78921dc28407aeb98e852de602224",
+    "apps/zcode-cli/packages/dynamic-workflow-runtime/src/child-source.ts": "794dcdd6f20b0b8261886a0a84cde65d002b84f2790969259ce2dade39c3cf50",
     "apps/zcode-cli/packages/dynamic-workflow/package.json": "aac5891463ddeb419ff6f73fc95b7c407964b06f8aeff66b6a9ba4d999164f99",
     "apps/zcode-cli/packages/i18n/package.json": "025e4620d80f39cac3df06249866fcaed531615b6b8a4c4a727c4557066f7b1b",
     "apps/zcode-cli/packages/node-repl-host/package.json": "2b3345887058d65588b20c90341a2d9e1258d4c19c464efb2775e4713e3854d7",
@@ -407,6 +412,7 @@
     "packages/desktop/src/main/desktopOAuthDeepLink.ts": "d37eee3fc71564e8e12aa8f61dfb1feb479e1f6be693d4347c1fd8b7d36eae57",
     "packages/desktop/src/main/desktopTray.ts": "ab7eeafe890f37f7a9cbc26ccd261c2fea9e413138cdd190aa326304b92bc9dc",
     "packages/desktop/src/main/desktopTraySupport.ts": "e7c489c5d98be673ceb6ea8216ded61248d79287d145ae38cc09d243db3aa694",
+    "packages/desktop/src/main/desktopWindowChrome.ts": "3f81546ec22ff3f35326c829ee03d326b139b97db5157f281a30d12609f32f1c",
     "packages/desktop/src/main/desktopWindowLifecycle.ts": "72f2d9ee1143a336ebbd35b31283705e2ffc412285b75281d7f18ff31399544d",
     "packages/desktop/src/main/embeddedBrowserBluetoothGuard.ts": "09bc0674fc65ebd8aa5ca742ee88a2117340e6fcc65897ba7de738ae89a841e9",
     "packages/desktop/src/main/embeddedBrowserDeviceOptions.ts": "e75152aacec8c19f6acffee13034e10565d758222cb915c22e669eacb6192910",
@@ -414,7 +420,7 @@
     "packages/desktop/src/main/embeddedBrowserPermissionUiBridge.ts": "6aa2ebd0558ffd9ad14d03c8baf65a3aaac2c4f582c48224ea474bc5741c1619",
     "packages/desktop/src/main/embeddedBrowserSitePermissions.ts": "6b5f7a128a51907f18ca13cc1acb34bb2df824aa58e17448a13d56d5b1d114e3",
     "packages/desktop/src/main/embeddedBrowserSitePermissionStore.ts": "6d140e08bda375251d581bbbfdd4032f4ebbd8fda8fa5cb76171a9df32d447a4",
-    "packages/desktop/src/main/index.ts": "9fe92c884423d5fe3ad159fd8e41dbdd14641c886f8e0d25dd1634464137082c",
+    "packages/desktop/src/main/index.ts": "067b1d1de8cbe9d09852e3d13d1b34b1b683911c21d351fa9306b770adbba8f8",
     "packages/desktop/src/main/pluginSandbox/capture.ts": "8989d8c4f14c3eb0d98ca0d3715ebe65910fbd2593cdf016bf90427831ffe9e2",
     "packages/desktop/src/main/pluginSandbox/contract.example.ts": "9c0e2cc08b145778c3fb0a43400fc6a2e5c841ebf08cf21770098f80ef7a98a4",
     "packages/desktop/src/main/pluginSandbox/CONTRACT.md": "4ce17f85500f7376121da6f121b70526b0b149da0ba644e994a557ec83e55e1a",
@@ -1896,7 +1902,7 @@
     "packages/ui/src/components/ai-elements/markdown-image.tsx": "aedf797b19d4f5d37fc7e8833b2824a9d1a1a4fca440b69519b43a43eb122e90",
     "packages/ui/src/components/ai-elements/markdown-list.tsx": "ecf50ad4f48cd460ddcf90db7b463671f915d8c22c7cb8e7760ff3b02282c7f1",
     "packages/ui/src/components/ai-elements/markdown-table.tsx": "612d78092eaeb950931070fff2a194a244e84c5c2d63c6df645e6b91391953da",
-    "packages/ui/src/components/ai-elements/mermaid-block.tsx": "4cc6783097a6ecbb1896ee1f3dd1d89115ca81f3efb15d9fbabcf448063818ae",
+    "packages/ui/src/components/ai-elements/mermaid-block.tsx": "b84955c50d5e7635f2ac1ac5066a69476d7e467d2088b528e9a6e0d97268326d",
     "packages/ui/src/components/ai-elements/message.tsx": "6c35829ed11321e850cd59e20c1c88fdd452e8e2d9b5da45f808371021aabf99",
     "packages/ui/src/components/ai-elements/node.tsx": "d7b68c41717a509bd9063f0a9fc0c4525ceb2b23bae4028bcd49ec949fc6268f",
     "packages/ui/src/components/ai-elements/panel.tsx": "9c345ecb217fbb6a3a2b49b93ca81b746f249d18b9223470fbf511c0a9a37bb7",
@@ -3320,7 +3326,7 @@
     "scripts/license-texts/MPL-2.0.txt": "5eba353fe5076ac3432177f8ab1cf75e3afcd0584251e37c3bfead5f447d040e",
     "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
     "scripts/remote-native-search-tools-config.mjs": "472322a66f84c7452f96aa9e16e9c4e0600f7c2588a03dc6bc869229161b1cb2",
-    "third-party/copied-components.json": "f574fbad6faea750163f2ac90c0974e35893d4bd249e43e74b8fbc444a6aab0c",
+    "third-party/copied-components.json": "4f74d89f3003bbd2b8ce06c35c797dbb53b18666a087a3645041292339663432",
     "third-party/embedded-components.json": "1160d4b37e297584099e640998b75599a9ac237dc39dc29d49f2a538e514bb4e",
     "third-party/native-search/licenses/00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce.txt": "00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce",
     "third-party/native-search/licenses/01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f.txt": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
@@ -20699,7 +20705,7 @@
         },
         {
           "file": "packages/ui/src/components/ai-elements/mermaid-block.tsx",
-          "sha256": "4cc6783097a6ecbb1896ee1f3dd1d89115ca81f3efb15d9fbabcf448063818ae"
+          "sha256": "b84955c50d5e7635f2ac1ac5066a69476d7e467d2088b528e9a6e0d97268326d"
         },
         {
           "file": "packages/ui/src/components/ai-elements/message.tsx",
@@ -32482,7 +32488,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/core/src/tool/handlers/bash.ts",
-          "sha256": "d1a4020ab22ff6ef1e25bbf8431e0c6b89c0c93e87c9a3c3363213e27cab1b47"
+          "sha256": "d18718d553d9d3aff054bfe24f79db90581ebfe7b656ea255ceab5f652bc40cf"
         },
         {
           "file": "apps/zcode-cli/packages/core/src/tool/types.ts",
@@ -32787,7 +32793,7 @@
         },
         {
           "file": "packages/desktop/src/main/index.ts",
-          "sha256": "9fe92c884423d5fe3ad159fd8e41dbdd14641c886f8e0d25dd1634464137082c"
+          "sha256": "067b1d1de8cbe9d09852e3d13d1b34b1b683911c21d351fa9306b770adbba8f8"
         },
         {
           "file": "packages/desktop/src/main/autoUpdater.ts",
@@ -34872,6 +34878,88 @@
         {
           "file": "apps/zcode-cli/packages/cli/src/tool-search-flag.ts",
           "sha256": "c981c33e82565f1c19d3891c0c80a1e79f7573e9046790b71899e3a40d4bc878"
+        }
+      ]
+    },
+    {
+      "id": "ZCode workflow sandbox & bash permission port v3.18.2 (Z.ai)",
+      "referenceRevision": "fec975905a2abd4c07e35c40d51fa097a2258ec9",
+      "source": "https://raw.githubusercontent.com/zai-org/ZCode/fec975905a2abd4c07e35c40d51fa097a2258ec9/LICENSE",
+      "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
+      "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
+      "importRevision": "fec975905a2abd4c07e35c40d51fa097a2258ec9",
+      "provenance": "Ported from the official open-source checkout zai-org/ZCode at revision fec97590 (tag v3.18.2, 'chore: sync ZCode source v3.18.2') during the 4.0.0 sync wave. The upstream LICENSE is byte-identical to the earlier ZCode entries (sha256 606c36ba...), so the existing snapshot is reused; no distribution package was downloaded or re-extracted.",
+      "roots": [
+        "apps/zcode-cli/packages/dynamic-workflow-runtime/src/child-source.ts",
+        "apps/zcode-cli/packages/core/src/tool/handlers/bash-command-permission-policy.ts",
+        "apps/zcode-cli/packages/core/src/tool/handlers/bash.ts"
+      ],
+      "scope": "Security fixes shipped upstream in 3.18.0: workflow script sandbox escape (null-prototype sandbox, __send/__finish captured in a closure and deleted from globalThis, string-only boundary, no .then on cell promises) and the CMD/legacy-shell read-only tightening (allowParsedRules only for parsed dialects; deny/ask paths untouched). CE adaptation keeps CE's entry rendering and registry structure; the new regression suites live in dynamic-workflow-runtime/test/security.test.ts and core/test/bashPermissionDialect.test.ts.",
+      "license": "Apache-2.0",
+      "modifiedFiles": [
+        "apps/zcode-cli/packages/dynamic-workflow-runtime/src/child-source.ts",
+        "apps/zcode-cli/packages/core/src/tool/handlers/bash-command-permission-policy.ts",
+        "apps/zcode-cli/packages/core/src/tool/handlers/bash.ts"
+      ],
+      "files": [
+        {
+          "file": "apps/zcode-cli/packages/dynamic-workflow-runtime/src/child-source.ts",
+          "sha256": "794dcdd6f20b0b8261886a0a84cde65d002b84f2790969259ce2dade39c3cf50"
+        },
+        {
+          "file": "apps/zcode-cli/packages/core/src/tool/handlers/bash-command-permission-policy.ts",
+          "sha256": "1047bdaecc90b9aab708b66d9c48269f115fd1174e8f2eafdd467d86f45337f9"
+        },
+        {
+          "file": "apps/zcode-cli/packages/core/src/tool/handlers/bash.ts",
+          "sha256": "d18718d553d9d3aff054bfe24f79db90581ebfe7b656ea255ceab5f652bc40cf"
+        }
+      ]
+    },
+    {
+      "id": "ZCode main-window boundary & MCP stderr port v4.0.0 (Z.ai)",
+      "referenceRevision": "a4b4445141eb7d3b3e99eada9292775383bfc44e",
+      "source": "https://raw.githubusercontent.com/zai-org/ZCode/a4b4445141eb7d3b3e99eada9292775383bfc44e/LICENSE",
+      "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
+      "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
+      "importRevision": "a4b4445141eb7d3b3e99eada9292775383bfc44e",
+      "provenance": "Ported from the official open-source checkout zai-org/ZCode at revision a4b44451 (tag v4.0.0, 'chore: sync ZCode source v4.0.0') during the 4.0.0 sync wave. Same LICENSE snapshot as the other ZCode entries (sha256 606c36ba...).",
+      "roots": [
+        "packages/desktop/src/main/desktopWindowChrome.ts",
+        "packages/desktop/src/main/index.ts",
+        "apps/zcode-cli/packages/adapters/src/mcp/stdio-stderr.ts",
+        "apps/zcode-cli/packages/adapters/src/mcp/index.ts",
+        "apps/zcode-cli/packages/adapters/src/config/config-merger.ts"
+      ],
+      "scope": "Main-window trust boundary: guardWindowNavigation / isAppOriginMainWindowUrl mounted for the main window and the update-status window (packaged renderer-dir prefix vs dev-server origin, other navigations prevented and logged without the URL), and the main-window setWindowOpenHandler that forwards allowed http(s) popups through PlatformChannels.OpenBrowserUrl and denies the rest. Plus the MCP bounded stderr trace: after truncation the partial first line is dropped, and an over-long single line without a newline is dropped entirely. CE adaptation: the guard environment is injected so the predicate is unit-testable, index.ts only adds the mount, and config-merger.ts carries CE's generalization of the nested-field merge (upstream fixed only skillOverrides/commandOverrides). Not copied: upstream's project-level plugins.options stripping (depends on plugin-secrets option layers CE does not have).",
+      "license": "Apache-2.0",
+      "modifiedFiles": [
+        "packages/desktop/src/main/desktopWindowChrome.ts",
+        "packages/desktop/src/main/index.ts",
+        "apps/zcode-cli/packages/adapters/src/mcp/stdio-stderr.ts",
+        "apps/zcode-cli/packages/adapters/src/mcp/index.ts",
+        "apps/zcode-cli/packages/adapters/src/config/config-merger.ts"
+      ],
+      "files": [
+        {
+          "file": "packages/desktop/src/main/desktopWindowChrome.ts",
+          "sha256": "3f81546ec22ff3f35326c829ee03d326b139b97db5157f281a30d12609f32f1c"
+        },
+        {
+          "file": "packages/desktop/src/main/index.ts",
+          "sha256": "067b1d1de8cbe9d09852e3d13d1b34b1b683911c21d351fa9306b770adbba8f8"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/mcp/stdio-stderr.ts",
+          "sha256": "00d607329e677c03b78b48e88659a498e8e720817dd0b2f0446d986e429a7cdc"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/mcp/index.ts",
+          "sha256": "a7c880099f29ba2e772fcf5c758dcbac719c49bf231b7859b4019ce031adfef0"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/config/config-merger.ts",
+          "sha256": "3d522750966eef3ab3a36b7948ebc054b5ed86498afd3b7fdcf03e4dac5ec852"
         }
       ]
     }

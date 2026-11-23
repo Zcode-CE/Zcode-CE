@@ -2612,6 +2612,10 @@ The original import revisions of copied components are not recorded in the curre
 
 - ZCode tool search contract & core v3.16.2 (Z.ai) (Apache-2.0): apps/zcode-cli/packages/contracts/src/tools/tool-search.ts, apps/zcode-cli/packages/contracts/src/tools/deferred-tool-call.ts, apps/zcode-cli/packages/core/src/tool/search/search.ts, apps/zcode-cli/packages/core/src/tool/search/description.ts, apps/zcode-cli/packages/core/src/tool/search/history.ts, apps/zcode-cli/packages/core/src/tool/search/local-projection.ts, apps/zcode-cli/packages/core/src/tool/search/exposure.ts, apps/zcode-cli/packages/core/src/tool/deferred-call.ts, apps/zcode-cli/packages/core/src/tool/handlers/tool-search.ts, apps/zcode-cli/packages/core/src/tool/handlers/deferred-tool-call.ts, apps/zcode-cli/packages/core/src/agent/tool-search-hydration.ts, apps/zcode-cli/packages/adapters/src/model/tool-search.ts, apps/zcode-cli/packages/cli/src/tool-search-flag.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/3c5b227649371507ddc4eb46ac5133afe6db1cab/LICENSE. Original import revision: 3c5b227649371507ddc4eb46ac5133afe6db1cab.
 
+- ZCode workflow sandbox & bash permission port v3.18.2 (Z.ai) (Apache-2.0): apps/zcode-cli/packages/dynamic-workflow-runtime/src/child-source.ts, apps/zcode-cli/packages/core/src/tool/handlers/bash-command-permission-policy.ts, apps/zcode-cli/packages/core/src/tool/handlers/bash.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/fec975905a2abd4c07e35c40d51fa097a2258ec9/LICENSE. Original import revision: fec975905a2abd4c07e35c40d51fa097a2258ec9.
+
+- ZCode main-window boundary & MCP stderr port v4.0.0 (Z.ai) (Apache-2.0): packages/desktop/src/main/desktopWindowChrome.ts, packages/desktop/src/main/index.ts, apps/zcode-cli/packages/adapters/src/mcp/stdio-stderr.ts, apps/zcode-cli/packages/adapters/src/mcp/index.ts, apps/zcode-cli/packages/adapters/src/config/config-merger.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/a4b4445141eb7d3b3e99eada9292775383bfc44e/LICENSE. Original import revision: a4b4445141eb7d3b3e99eada9292775383bfc44e.
+
 Fig autocomplete source carries the repository's MIT license; the generated registry records npm @withfig/autocomplete@2.692.3 metadata as ISC. The original source MIT notice is retained below.
 
 ## Embedded native and WASM components
@@ -40949,6 +40953,10 @@ SOFTWARE.
 - ZCode bot group/topic conversation UI v3.16.2 (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/3c5b227649371507ddc4eb46ac5133afe6db1cab/LICENSE
 
 - ZCode tool search contract & core v3.16.2 (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/3c5b227649371507ddc4eb46ac5133afe6db1cab/LICENSE
+
+- ZCode workflow sandbox & bash permission port v3.18.2 (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/fec975905a2abd4c07e35c40d51fa097a2258ec9/LICENSE
+
+- ZCode main-window boundary & MCP stderr port v4.0.0 (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/a4b4445141eb7d3b3e99eada9292775383bfc44e/LICENSE
 
 
 

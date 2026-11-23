@@ -1242,5 +1242,51 @@
     ],
     "scope": "F14 tool search, waves 1-2. Wave 1: ToolSearch/DeferredToolCall contracts, the five core search/exposure modules, adapters capability + anthropic-beta header + deferLoading/tool_reference encoding, and the CLI --toolsearch-mode switch (four states, invalid-value and scope errors). Wave 2 wires the runtime: the two control-tool entries (core/tool/handlers/tool-search.ts, deferred-tool-call.ts), the shared admission boundary (core/tool/deferred-call.ts), cold-recovery hydration (core/agent/tool-search-hydration.ts), the request assembly that turns buildToolExposure into the provider tools/messages (prepareRuntimeProviderRequest, per-turn announcement persistence via a system reminder, executor admission with wrapper unwrapping, tool-part metadata carrying modelContent/tool_reference plus the modelCallWrapper marker, and compact discovery checkpoints). CE-pre-existing files received upstream-derived fragments for the same feature in both waves (contract/model unions + request flag + capability, tool metadata deferral fields + shouldDefer/searchHint on the deferred builtins, runtime message metadata + wrapper plumbing, reminder source, runtime config, model execution/runner/tool-transform/transform, media block switches, CLI argument/routing, executor call-runner/batch-runner, runtime methods config/model/tools/turn-loop/turn-model-step/turn-tools/streaming-tool-coordinator/compact-active/tool-part-metadata, session-history-hydrator, message-persistence/synthetic-notice-metadata). Still not wired in this repo (wave 3): shared protocol field, App settings switch, and desktop/TUI surfaces.",
     "license": "Apache-2.0"
+  },
+  {
+    "id": "ZCode workflow sandbox & bash permission port v3.18.2 (Z.ai)",
+    "referenceRevision": "fec975905a2abd4c07e35c40d51fa097a2258ec9",
+    "source": "https://raw.githubusercontent.com/zai-org/ZCode/fec975905a2abd4c07e35c40d51fa097a2258ec9/LICENSE",
+    "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
+    "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
+    "importRevision": "fec975905a2abd4c07e35c40d51fa097a2258ec9",
+    "provenance": "Ported from the official open-source checkout zai-org/ZCode at revision fec97590 (tag v3.18.2, 'chore: sync ZCode source v3.18.2') during the 4.0.0 sync wave. The upstream LICENSE is byte-identical to the earlier ZCode entries (sha256 606c36ba...), so the existing snapshot is reused; no distribution package was downloaded or re-extracted.",
+    "roots": [
+      "apps/zcode-cli/packages/dynamic-workflow-runtime/src/child-source.ts",
+      "apps/zcode-cli/packages/core/src/tool/handlers/bash-command-permission-policy.ts",
+      "apps/zcode-cli/packages/core/src/tool/handlers/bash.ts"
+    ],
+    "scope": "Security fixes shipped upstream in 3.18.0: workflow script sandbox escape (null-prototype sandbox, __send/__finish captured in a closure and deleted from globalThis, string-only boundary, no .then on cell promises) and the CMD/legacy-shell read-only tightening (allowParsedRules only for parsed dialects; deny/ask paths untouched). CE adaptation keeps CE's entry rendering and registry structure; the new regression suites live in dynamic-workflow-runtime/test/security.test.ts and core/test/bashPermissionDialect.test.ts.",
+    "license": "Apache-2.0",
+    "modifiedFiles": [
+      "apps/zcode-cli/packages/dynamic-workflow-runtime/src/child-source.ts",
+      "apps/zcode-cli/packages/core/src/tool/handlers/bash-command-permission-policy.ts",
+      "apps/zcode-cli/packages/core/src/tool/handlers/bash.ts"
+    ]
+  },
+  {
+    "id": "ZCode main-window boundary & MCP stderr port v4.0.0 (Z.ai)",
+    "referenceRevision": "a4b4445141eb7d3b3e99eada9292775383bfc44e",
+    "source": "https://raw.githubusercontent.com/zai-org/ZCode/a4b4445141eb7d3b3e99eada9292775383bfc44e/LICENSE",
+    "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
+    "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
+    "importRevision": "a4b4445141eb7d3b3e99eada9292775383bfc44e",
+    "provenance": "Ported from the official open-source checkout zai-org/ZCode at revision a4b44451 (tag v4.0.0, 'chore: sync ZCode source v4.0.0') during the 4.0.0 sync wave. Same LICENSE snapshot as the other ZCode entries (sha256 606c36ba...).",
+    "roots": [
+      "packages/desktop/src/main/desktopWindowChrome.ts",
+      "packages/desktop/src/main/index.ts",
+      "apps/zcode-cli/packages/adapters/src/mcp/stdio-stderr.ts",
+      "apps/zcode-cli/packages/adapters/src/mcp/index.ts",
+      "apps/zcode-cli/packages/adapters/src/config/config-merger.ts"
+    ],
+    "scope": "Main-window trust boundary: guardWindowNavigation / isAppOriginMainWindowUrl mounted for the main window and the update-status window (packaged renderer-dir prefix vs dev-server origin, other navigations prevented and logged without the URL), and the main-window setWindowOpenHandler that forwards allowed http(s) popups through PlatformChannels.OpenBrowserUrl and denies the rest. Plus the MCP bounded stderr trace: after truncation the partial first line is dropped, and an over-long single line without a newline is dropped entirely. CE adaptation: the guard environment is injected so the predicate is unit-testable, index.ts only adds the mount, and config-merger.ts carries CE's generalization of the nested-field merge (upstream fixed only skillOverrides/commandOverrides). Not copied: upstream's project-level plugins.options stripping (depends on plugin-secrets option layers CE does not have).",
+    "license": "Apache-2.0",
+    "modifiedFiles": [
+      "packages/desktop/src/main/desktopWindowChrome.ts",
+      "packages/desktop/src/main/index.ts",
+      "apps/zcode-cli/packages/adapters/src/mcp/stdio-stderr.ts",
+      "apps/zcode-cli/packages/adapters/src/mcp/index.ts",
+      "apps/zcode-cli/packages/adapters/src/config/config-merger.ts"
+    ]
   }
 ]

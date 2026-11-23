@@ -112,7 +112,7 @@ import {
   resolveSystemApplicationLocale,
   updateZCodeStdioTapDevMenuState,
 } from "./desktopApplicationMenu.js";
-import { applyAppIcon } from "./desktopWindowChrome.js";
+import { applyAppIcon, guardWindowNavigation } from "./desktopWindowChrome.js";
 // 以下 import 在遥测移除（P1）时被连带删除，但符号在别处仍被使用，必须保留：
 //   - resolveWindowsAppUserModelIdForFlavor：Windows AUMID（:1770），快捷方式/开始菜单身份
 //   - DesktopWindowSize：窗口尺寸类型（:467）
@@ -1549,6 +1549,8 @@ function openUpdateStatusWindow() {
       `[auto-update] update status window shown visible=${win.isVisible()} focused=${win.isFocused()} bounds=${JSON.stringify(win.getBounds())}`,
     );
   };
+  // 更新状态窗口同样挂载了 window.zcode preload（preloadPath），导航守卫与主窗口共用同一判定。
+  guardWindowNavigation(win.webContents, logger);
   win.webContents.on("dom-ready", () => {
     logger.info("[auto-update] update status window dom-ready");
     syncAutoUpdaterStateToWindow(win);

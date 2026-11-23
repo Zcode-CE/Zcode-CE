@@ -60,6 +60,14 @@ function createBashPermissionRulePolicy(
   const exactCommands = command === rawCommand ? [rawCommand] : [command, rawCommand];
   const analysis = analyzeBashCommand(command);
   const safe = isAnalysisSafeForPrefix(analysis);
+  // CMD / 未知 shell 的 Bash AST 可能漏掉实际执行的后续命令（`#` 在 CMD 里不是注释，
+  // `dir # & del x` 会被解析成一条只读的 `dir`），所以这两种文法的整条命令只保留**完整命令的
+  // 明确授权**：既不给 :* 前缀建议，也不让前缀/通配规则命中 allow。此限制只收紧 allow ——
+  // deny / ask 继续用完整规则集，不能让已有拦截规则失效。
+  const dialect = context?.bashShellSelection?.dialect;
+  // Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入 3.18.0 的收紧 ——
+  // CMD 里 '#' 不是注释、AST 会漏掉真实执行的后续命令，所以这两类方言只认整条命令的显式授权。
+  const allowParsedRules = dialect !== "cmd" && dialect !== "legacy-shell";
   // 危险命令策略（工具与权限页）。**缺席即严格** —— 不要在这里加「宽松」默认分支。
   // 必须在算 subject group 之前拿到：subject group 里的稳定前缀要经过危险门控。
   const dangerous = resolveDangerousCommandPolicy(context?.dangerousCommandPolicy);
@@ -80,7 +88,7 @@ function createBashPermissionRulePolicy(
   );
   const suggestedPermissionUpdates = buildSuggestedUpdates(
     rawCommand,
-    safe,
+    safe && allowParsedRules,
     requiredCommands,
     dangerous,
   );
@@ -99,7 +107,8 @@ function createBashPermissionRulePolicy(
         exactCommands,
         requiredSubjectGroups,
         rules: effectiveRules,
-        safe,
+        // 异构文法的 allow 只认完整命令（见上方 allowParsedRules）；deny/ask 不缩这一层。
+        safe: safe && (behavior !== "allow" || allowParsedRules),
       });
     },
     suggestedPermissionUpdates,

@@ -92,6 +92,11 @@ function resolveBashPermissionCapability(
     );
     if (match.status === "matched") return { userApprovalRule: match.ruleId };
   }
+  // Bash 会把 # 后的 CMD 命令当注释；异构 shell 不能用 Bash AST 证明整条命令只读。
+  // readOnly 结论会直接换成免审批放行，所以 CMD / legacy-shell 一律不认只读 —— 宁可变慢，
+  // 也不让 `dir # & del x` 这类命令借 Bash 文法混过审批门。
+  const dialect = context?.bashShellSelection?.dialect;
+  if (dialect === "cmd" || dialect === "legacy-shell") return undefined;
   if (!command || !isRuntimeReadOnlyBashCommand(command, context)) return undefined;
   return {
     destructive: false,

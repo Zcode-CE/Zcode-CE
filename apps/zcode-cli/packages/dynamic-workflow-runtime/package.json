@@ -16,6 +16,8 @@
     "clean": "node ../../scripts/clean-dist.mjs",
     "pretypecheck": "pnpm --filter @zcode/dynamic-workflow build",
     "typecheck": "tsc --noEmit",
+    "pretest": "pnpm --filter @zcode/dynamic-workflow build",
+    "test": "node --import tsx --test test/*.test.ts",
     "lint": "oxlint src",
     "lint:fix": "oxlint --write src"
   },

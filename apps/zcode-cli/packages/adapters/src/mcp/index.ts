@@ -79,6 +79,9 @@ import {
 import { loadCredentialPair } from "./oauth-credentials.js";
 import { createMcpOAuthTokenProvider } from "./oauth-provider.js";
 import { terminateMcpStdioProcessTree } from "./process-tree.js";
+// Modified by ZCode: 有界缓冲与脱敏自上游 v4.0.0 (a4b44451, Apache-2.0) 抽出到 ./stdio-stderr.js，
+// 行为对齐（截断丢弃首行残片、无换行的超长行整段不输出），便于单测直接覆盖。
+import { createBoundedTextBuffer, sanitizeMcpStdioStderr } from "./stdio-stderr.js";
 import { ProcessTreeStdioClientTransport } from "./stdio-transport.js";
 import type { McpTelemetryTracker } from "./telemetry.js";
 import {
@@ -1877,45 +1880,6 @@ function isOfficialAuthConfig(config: McpServerConfig): boolean {
 function hasAuthorizationHeader(headers: Record<string, string> | undefined): boolean {
   if (!headers) return false;
   return Object.keys(headers).some((name) => name.toLowerCase() === "authorization");
-}
-
-function createBoundedTextBuffer(maxChars: number): {
-  append(text: string): void;
-  read(): string;
-} {
-  let value = "";
-  return {
-    append(text: string) {
-      if (!text) return;
-      value = `${value}${text}`;
-      if (value.length > maxChars) {
-        value = value.slice(-maxChars);
-      }
-    },
-    read() {
-      return value;
-    },
-  };
-}
-
-function sanitizeMcpStdioStderr(text: string): string {
-  const sensitiveKey = String.raw`(?:api[_-]?key|access[_-]?key|secret(?:[_-]?key)?|private[_-]?key|token|password|passwd|pass|mysql_pass|mysql_password)`;
-  let result = text.replace(/(bearer\s+)[^\s"']+/gi, "$1[Redacted]");
-  result = result.replace(
-    /(\bauthorization\b\s*[:=]\s*)(bearer\s+)?[^\r\n]+/gi,
-    (_match, prefix: string, bearer: string | undefined) =>
-      `${prefix}${bearer ? "Bearer " : ""}[Redacted]`,
-  );
-  result = result.replace(new RegExp(`([?&]${sensitiveKey}=)[^&\\s]+`, "gi"), "$1[Redacted]");
-  result = result.replace(
-    new RegExp(`(["']${sensitiveKey}["']\\s*:\\s*)(["'])(?:(?!\\2).)*\\2`, "gi"),
-    "$1$2[Redacted]$2",
-  );
-  result = result.replace(
-    new RegExp(`(\\b${sensitiveKey}\\b\\s*[:=]\\s*)(["']?)[^\\s"',;)}]+`, "gi"),
-    "$1$2[Redacted]",
-  );
-  return result.replace(/([a-z][a-z0-9+.-]*:\/\/)[^:\s/@]+:[^@\s/]+@/gi, "$1[Redacted]@");
 }
 
 function getStdioTransportPid(transport?: McpTransport): number | undefined {

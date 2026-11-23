@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- 桌面窗口 chrome、webview 安全策略和 popup 路由共享同一 BrowserWindow 生命周期上下文。 */
 import { app, BrowserWindow, Menu, nativeImage, nativeTheme, screen, shell } from "electron";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import type {
   ContextMenuParams,
   DownloadItem,
@@ -10,7 +11,7 @@ import type {
   WebContents,
   WindowOpenHandlerResponse,
 } from "electron";
-import type { DesktopTitleBarTheme, Locale } from "@zcode/shared";
+import type { DesktopTitleBarTheme, EmbeddedBrowserOpenUrlRequest, Locale } from "@zcode/shared";
 import {
   DEFAULT_LOCALE,
   desktopMenuMessageIds,
@@ -286,9 +287,108 @@ function isAllowedEmbeddedBrowserUrl(url: string): boolean {
   }
 }
 
-function isAllowedEmbeddedBrowserNewWindowUrl(url: string): boolean {
+/** 主窗口 `window.open` 可转交给内嵌浏览器路由的协议判定（纯函数，见同名测试）。 */
+export function isAllowedEmbeddedBrowserNewWindowUrl(url: string): boolean {
   try {
     return ALLOWED_EMBEDDED_BROWSER_NEW_WINDOW_PROTOCOLS.has(new URL(url).protocol);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 主窗口 `window.open` / `target=_blank` 的边界（上游 v4.0.0 `createBrowserWindow:681-694` 移植）。
+ *
+ * 为什么需要：文档渲染库（Mermaid、第三方 Markdown 组件）可能直接 `window.open` 绕过 DOM 链接检查。
+ * 不装 handler 时 Electron 会用继承的 webPreferences 造一个不经管控的原生窗口 —— 它同样挂着
+ * `window.zcode` preload，导航到远程页面即等于把整窗特权 IPC 交给那个页面。
+ *
+ * 为什么合法外链不直开系统浏览器：内置浏览器 tab 的路由（`OpenBrowserUrl` → renderer Browser 面板）
+ * 是本仓库既有的唯一出口，直开 `shell.openExternal` 会绕开用户期望面板与工作区归属。
+ * 因此这里只做「拒绝建原生窗口 + 转交通道」，打开方式由 UI 决定。
+ */
+export function createMainWindowWindowOpenHandler(options: {
+  sendOpenBrowserUrl: (request: EmbeddedBrowserOpenUrlRequest) => void;
+  logger: { warn: (...args: unknown[]) => void };
+}): (details: {
+  url: string;
+  disposition: EmbeddedBrowserOpenUrlRequest["disposition"];
+}) => WindowOpenHandlerResponse {
+  return ({ url, disposition }) => {
+    if (isAllowedEmbeddedBrowserNewWindowUrl(url)) {
+      options.sendOpenBrowserUrl({ url, disposition });
+    } else {
+      // 与导航守卫一致：只记事件、不写 URL（可能带凭据）。
+      options.logger.warn("[desktop-window] blocked unsupported popup protocol");
+    }
+    // 无论 URL 是否合法都不能让 Electron 自己造窗口：路由由 renderer 的 Browser 面板决定。
+    return { action: "deny" };
+  };
+}
+
+/**
+ * 应用入口判定所需的环境事实。抽成显式入参而不是直接读模块级状态，让判定保持纯函数：
+ * 「打包态忽略 dev 地址」「目录前缀边界」这些分支可以单测覆盖，不必启动 Electron。
+ */
+export interface WindowNavigationGuardEnv {
+  /** 进程是否以打包产物运行（`app.isPackaged`）。 */
+  isPackaged: boolean;
+  /** 开发态 renderer dev server 地址（`ELECTRON_RENDERER_URL`）；打包态必须忽略。 */
+  rendererDevUrl: string | undefined;
+  /** renderer 入口目录的绝对路径（产物里的 `out/renderer`）。 */
+  rendererDir: string;
+}
+
+/**
+ * 挂载 `window.zcode` preload 的窗口（主窗口、更新状态窗口）顶层导航只能停留在应用自身的渲染入口。
+ *
+ * 为什么放在主进程导航边界：这两个窗口的渲染进程持有全套特权 IPC。Mermaid 渲染出的 SVG 里
+ * `<a xlink:href>` 不经过应用的链接组件，点击即触发窗口内顶层导航，而链接内容由模型输出
+ * （Markdown）决定 ⇒ 不拦就是「模型输出 → 顶层导航 → preload 特权」的跨信任边界链路。
+ * 守卫只负责拦截，链接该由界面打开还是系统浏览器打开，仍由 UI 层决定。
+ *
+ * 子 frame 不注入 preload（未开 nodeIntegrationInSubFrames），不在此范围内。
+ */
+export function guardWindowNavigation(
+  webContents: WebContents,
+  logger: { warn: (...args: unknown[]) => void },
+  env: WindowNavigationGuardEnv = resolveWindowNavigationGuardEnv(),
+): void {
+  webContents.on("will-navigate", (event, url) => {
+    if (isAppOriginMainWindowUrl(url, env)) return;
+    event.preventDefault();
+    // 只记录「发生过拦截」、不写 URL：被拦的地址可能带凭据（OAuth 回调等）。
+    logger.warn("[desktop-window] blocked window top-level navigation");
+  });
+}
+
+/** 读取当前进程的守卫环境；renderer 目录与 `loadWindow` 的打包态入口保持同一基准。 */
+export function resolveWindowNavigationGuardEnv(
+  rendererDir = join(import.meta.dirname, "../renderer"),
+): WindowNavigationGuardEnv {
+  return {
+    isPackaged: app.isPackaged,
+    rendererDevUrl: process.env["ELECTRON_RENDERER_URL"],
+    rendererDir,
+  };
+}
+
+/**
+ * 顶层导航是否仍停留在应用自身的渲染入口（纯函数，见同名单测）。
+ *
+ * 判定与 `desktopHostProcess.loadWindow` 的加载路径保持一致：
+ * 开发态比对 dev server 同源；打包态比对 renderer 目录前缀。
+ */
+export function isAppOriginMainWindowUrl(url: string, env: WindowNavigationGuardEnv): boolean {
+  try {
+    const target = new URL(url);
+    // 生产包不能信任继承环境里的 dev server 地址，否则本机开发会话就能把自己变成可信来源。
+    if (!env.isPackaged && env.rendererDevUrl) {
+      return target.origin === new URL(env.rendererDevUrl).origin;
+    }
+    // 前缀带尾部 "/"，避免同名前缀的兄弟目录（out/renderer-evil）被误判为应用目录。
+    const rendererPrefix = `${pathToFileURL(env.rendererDir).href}/`;
+    return target.href.startsWith(rendererPrefix);
   } catch {
     return false;
   }
@@ -623,6 +723,23 @@ export function createBrowserWindow(options: {
       additionalArguments: [`--device-id=${options.deviceMid ?? ""}`],
     },
   });
+
+  // 文档渲染库曾直接 window.open 绕过 DOM 链接检查；主窗口不创建未经管控的原生子窗口。
+  // 合法外链复用现有 Browser 路由（OpenBrowserUrl → renderer Browser 面板），guest 仍由各自的策略管理。
+  win.webContents.setWindowOpenHandler(
+    createMainWindowWindowOpenHandler({
+      sendOpenBrowserUrl: (request) => {
+        win.webContents.send(PlatformChannels.OpenBrowserUrl, request);
+      },
+      logger: options.logger,
+    }),
+  );
+
+  // Modified by ZCode: 自上游 v4.0.0 (a4b44451) 增量并入 guardWindowNavigation。
+  // ZP-20261105-19 / ZP-20261110-03：主窗口挂了 window.zcode preload，导航到远程页面后该页面会获得
+  // 全部特权 IPC。CE 过去只有 webview guest 级 will-navigate，主窗口零守卫。
+  // 守卫只负责拦截，远程链接如何打开仍由 UI 层决定（Mermaid 链路由 mermaid-block 的点击处理器外开）。
+  guardWindowNavigation(win.webContents, options.logger);
 
   // 缩放命令原本只改当前运行窗口，没有在重启后恢复。
   // 创建窗口时由 main 进程先应用 setting.json 中的桌面缩放档位，同时覆盖 Chromium 可能残留的 per-host zoom。

@@ -2,9 +2,10 @@
 
 import { createMermaidPlugin, type MermaidConfig } from "@streamdown/mermaid";
 import { Loader2Icon } from "lucide-react";
-import type { HTMLAttributes } from "react";
-import { useEffect, useId, useMemo, useState } from "react";
+import type { HTMLAttributes, MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { cn } from "@/components/lib/utils.js";
+import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import type { Theme } from "@/useTheme.js";
@@ -60,6 +61,31 @@ const mermaidColorNormalizeCtx: CanvasRenderingContext2D | null = (() => {
   }
   return ctx;
 })();
+
+/**
+ * Mermaid 渲染出的 SVG 里，`click A href "…"` 会变成 `<a xlink:href>`，不经过应用的链接组件。
+ * 点击这类锚点默认在窗口内做顶层导航：挂 `window.zcode` preload 的窗口一旦被远程页面接管，
+ * 该页面就继承了整窗特权 IPC，而链接内容由模型输出（Markdown）决定。
+ * 因此只把绝对 HTTP(S) 链接当作可外开的候选，其余协议（javascript: / data: / file: / mailto:
+ * / 应用自定义协议）一律不交给宿主打开。
+ */
+const MERMAID_EXTERNAL_LINK_PROTOCOLS = new Set(["http:", "https:"]);
+
+/** 把 SVG 锚点的 href 规整成可交给系统浏览器打开的 URL；不安全或不可解析时返回 null。 */
+export function resolveMermaidExternalLinkUrl(href: string | null | undefined): string | null {
+  const trimmedHref = href?.trim();
+  if (!trimmedHref) {
+    return null;
+  }
+
+  try {
+    const url = new URL(trimmedHref);
+    return MERMAID_EXTERNAL_LINK_PROTOCOLS.has(url.protocol) ? url.href : null;
+  } catch {
+    // 相对地址没有可信基准（文档 URL 本身可能就是 file:/dev server），按不可外开处理。
+    return null;
+  }
+}
 
 function enqueueMermaidRender<T>(task: () => Promise<T>): Promise<T> {
   const run = mermaidRenderQueue.then(task, task);
@@ -233,6 +259,7 @@ export function MermaidBlock({
   ...props
 }: MermaidBlockProps) {
   const { intl } = useZCodeIntl();
+  const platform = useOptionalPlatform();
   const systemThemeRevision = useSystemThemeRevision(theme);
   const renderIdPrefix = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const trimmedCode = code.trim();
@@ -249,6 +276,40 @@ export function MermaidBlock({
   const [renderState, setRenderState] = useState<MermaidRenderState>({
     status: "loading",
   });
+
+  /**
+   * SVG 内部的锚点点击先在这里截住：无论链接是否安全都阻止窗口内顶层导航，
+   * 安全链接改走宿主的 platform/openExternal 通道（与 Markdown 外链同一出口）。
+   */
+  const handleSvgClick = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      const target = event.target;
+      const anchor =
+        typeof Element === "undefined" || !(target instanceof Element) ? null : target.closest("a");
+      if (!anchor) {
+        return;
+      }
+
+      event.preventDefault();
+      const url = resolveMermaidExternalLinkUrl(
+        anchor.getAttribute("href") ?? anchor.getAttribute("xlink:href"),
+      );
+      if (!url) {
+        logger.debug("[MermaidBlock] 已拦截非 HTTP(S) 的 SVG 链接点击", {
+          hasHref: anchor.hasAttribute("href") || anchor.hasAttribute("xlink:href"),
+        });
+        return;
+      }
+
+      if (platform) {
+        platform.openExternal(url);
+        return;
+      }
+      // 普通 Web / 只读分享页没有 PlatformProvider：新开标签页并拒绝交出 opener。
+      globalThis.open?.(url, "_blank", "noopener,noreferrer");
+    },
+    [platform],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -318,6 +379,7 @@ export function MermaidBlock({
             aria-label={intl.formatMessage({ id: "codeBlock.mermaid.ariaLabel" })}
             className="flex min-h-28 min-w-max items-center justify-center [&_svg]:h-auto [&_svg]:max-w-none"
             dangerouslySetInnerHTML={{ __html: renderState.svg }}
+            onClick={handleSvgClick}
             onDoubleClick={onOpenPreview}
             role="img"
           />
