@@ -17,6 +17,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { inspectWebE2eLoginState } from "./webE2eLoginState.js";
 
 /**
  * M1 验收判据 3 / 4 的真浏览器证据（task-30）。
@@ -34,6 +35,13 @@ import { fileURLToPath } from "node:url";
  * 结束时整目录删除）：`credentials.json` / `provider_config.json` / `config.json` /
  * `model-providers.json` / `agents-state.json` / `onboarding-record.json` / `setting.json` /
  * `tasks-index.sqlite`（含 -wal/-shm）。拷贝的凭据只存在于 0700 临时目录内，不打印内容。
+ *
+ * ## 挂载前提（task-11）
+ * 两条用例都要求本机**登录过 ZCode**：没登录过时 Root 的 provider 可用性登录入口守卫会打开登录页
+ * （`packages/ui/src/root/useProviderAvailabilityLoginEntryGuard.ts`），侧栏永远没有工作区行；
+ * 而本文件第二处（反向验证）还会无条件读隔离目录里的 `setting.json` ⇒ 缺文件直接 ENOENT。
+ * 这两种形态都不是产品缺陷，只会把「本机没备好数据」伪装成红灯，所以缺前提时显式 skip
+ * （判据见 `test/webE2eLoginState.ts`），并在 skip 文案里写清缺什么、怎么补 —— 跳过不等于通过。
  *
  * ## 为什么这里的过期产物检查与 webLoadConsoleErrors 不同
  * 那条测试断言的是「某个修复在产物里生效」，产物早于源码就必须 skip。
@@ -440,6 +448,12 @@ function assertSameVisibleSet(left: SidebarSnapshot, right: SidebarSnapshot, lab
 }
 
 test("M1 判据 3/4：断线重连后列表仍在 + 两个独立客户端可见集合一致", async (t) => {
+  // 先判最难补的前提（本机登录态），再判构建产物与注册表数据：三者都缺时，先要解决的是登录。
+  const loginState = inspectWebE2eLoginState();
+  if (loginState.skipReason) {
+    t.skip(loginState.skipReason);
+    return;
+  }
   if (!existsSync(join(webDist, "index.html")) || !existsSync(serverEntry)) {
     t.skip("缺少 packages/web/dist 或 packages/server/dist，跳过（先构建 web 与 server）");
     return;
@@ -653,6 +667,12 @@ test("M1 判据 3/4：断线重连后列表仍在 + 两个独立客户端可见�
 });
 
 test("反向验证：注册表内容不同 ⇒ 集合比较必须报出差异（证明断言有牙齿）", async (t) => {
+  // 同主用例：没有本机登录态就无法挂载界面，缺前提时显式 skip 而不是等超时。
+  const loginState = inspectWebE2eLoginState();
+  if (loginState.skipReason) {
+    t.skip(loginState.skipReason);
+    return;
+  }
   if (!existsSync(join(webDist, "index.html")) || !existsSync(serverEntry)) {
     t.skip("缺少构建产物，跳过");
     return;

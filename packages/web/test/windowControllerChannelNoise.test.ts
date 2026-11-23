@@ -14,6 +14,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { inspectWebE2eLoginState } from "./webE2eLoginState.js";
 
 /**
  * `window-controller` 通道噪音回归（task-32）。
@@ -36,6 +37,12 @@ import { fileURLToPath } from "node:url";
  * 不看源码、不看类型：自起隔离 `ZCODE_DATA_BASE_DIR` 的真实服务端 + 构建产物 + 真浏览器，
  * 390×844 与 1440×900 各加载一次，断言服务端日志里 `Unknown channel: window-controller` 计数 = 0。
  * 反向验证：把那 3 行改回原样并重建 ⇒ 计数回到 5/次 ⇒ 本条变红（已实测）。
+ *
+ * ## 挂载前提（task-11）
+ * 客户端能否挂载取决于**本机登录态**：没登录过时 Root 的 provider 可用性登录入口守卫会打开登录页
+ * （`packages/ui/src/root/useProviderAvailabilityLoginEntryGuard.ts`），侧栏永远没有工作区行，
+ * 本条只能以「等待挂载超时」收场。所以缺前提时显式 skip（判据见 `test/webE2eLoginState.ts`），
+ * 跳过的同时写清缺什么、怎么补 —— 跳过不等于通过。
  */
 
 const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
@@ -137,6 +144,12 @@ async function removeTempDir(dir: string, diagnostic: (message: string) => void)
 }
 
 test("加载 web 客户端不得向不存在的 window-controller 通道发 RPC（服务端日志零 Unknown channel）", async (t) => {
+  // 先判最难补的前提（本机登录态），再判构建产物：两者都缺时，使用者先要解决的是登录。
+  const loginState = inspectWebE2eLoginState();
+  if (loginState.skipReason) {
+    t.skip(loginState.skipReason);
+    return;
+  }
   if (!existsSync(join(webDist, "index.html")) || !existsSync(serverEntry)) {
     t.skip("缺少 packages/web/dist 或 packages/server/dist，跳过（先构建 web 与 server）");
     return;
