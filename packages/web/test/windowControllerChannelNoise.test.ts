@@ -20,8 +20,8 @@ import { inspectWebE2eLoginState } from "./webE2eLoginState.js";
  * `window-controller` 通道噪音回归（task-32）。
  *
  * ## 现象与根因
- * 普通 Web 客户端（`/ws` = terminal-client）加载后会向 `window-controller` 发 RPC，而这条通道**只由
- * 桌面 Host 注册**（`packages/desktop/src/host/index.ts`），服务端入口 `entry-http → createLocalServices`
+ * 普通 Web 客户端（`/ws` = terminal-client）加载后会向 `window-controller` 发 RPC，而这条通道只由
+ * 桌面 Host 注册（`packages/desktop/src/host/index.ts`），服务端入口 `entry-http → createLocalServices`
  * 不注册它 ⇒ 服务端每次加载打约 5 行 `Unknown channel: window-controller`（客户端 console 反而没有 error，
  * 因为它已静默降级到 fallback）。噪音本身不破坏功能，但会淹没真实排障信号。
  * 根因在 `packages/client/src/remoteServiceAccess.ts`：SDK 为每个 channel 无条件建 proxy，
@@ -39,7 +39,7 @@ import { inspectWebE2eLoginState } from "./webE2eLoginState.js";
  * 反向验证：把那 3 行改回原样并重建 ⇒ 计数回到 5/次 ⇒ 本条变红（已实测）。
  *
  * ## 挂载前提（task-11）
- * 客户端能否挂载取决于**本机登录态**：没登录过时 Root 的 provider 可用性登录入口守卫会打开登录页
+ * 客户端能否挂载取决于本机登录态：没登录过时 Root 的 provider 可用性登录入口守卫会打开登录页
  * （`packages/ui/src/root/useProviderAvailabilityLoginEntryGuard.ts`），侧栏永远没有工作区行，
  * 本条只能以「等待挂载超时」收场。所以缺前提时显式 skip（判据见 `test/webE2eLoginState.ts`），
  * 跳过的同时写清缺什么、怎么补 —— 跳过不等于通过。

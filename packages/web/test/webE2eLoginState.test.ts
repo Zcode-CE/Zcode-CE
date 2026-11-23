@@ -9,7 +9,7 @@ import { inspectWebE2eLoginState } from "./webE2eLoginState.js";
  * 挂载前提判据的自测（task-11）。
  *
  * 为什么这条判据本身需要测试：它决定 `windowControllerChannelNoise` 与 `workspaceRegistryReconnect`
- * 这两条真浏览器 E2E **跑还是不跑**。判据一旦写错（例如把「存在但缺 providerFamilyDomain」判成合格，
+ * 这两条真浏览器 E2E 跑还是不跑。判据一旦写错（例如把「存在但缺 providerFamilyDomain」判成合格，
  * 或把非法 JSON 判成合格），那两条 E2E 会重新回到「等待超时」的假红；反过来若判据永远 skip，
  * 两条 E2E 会静默失去覆盖 —— 两种失败都不会有人发现，只能靠这里钉住。
  *

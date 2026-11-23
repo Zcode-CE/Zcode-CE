@@ -11,9 +11,9 @@ import { resolveMermaidExternalLinkUrl } from "../src/components/ai-elements/mer
  * 其余协议与相对地址一律不许。
  *
  * 覆盖三类：
- * 1. **放行且规整**：绝对 http/https（含大小写与首尾空白）返回规范化的 href；
- * 2. **拒绝危险协议**：javascript: / data: / file: / mailto: / 应用自定义协议；
- * 3. **拒绝没有可信基准的输入**：协议相对、站内相对、纯锚点、空值。
+ * 1. 放行且规整：绝对 http/https（含大小写与首尾空白）返回规范化的 href；
+ * 2. 拒绝危险协议：javascript: / data: / file: / mailto: / 应用自定义协议；
+ * 3. 拒绝没有可信基准的输入：协议相对、站内相对、纯锚点、空值。
  *
  * 边界：本文件只测纯函数。DOM 级点击（`Element.closest("a")` → preventDefault → platform.openExternal）
  * 不在覆盖范围内；即便 UI 漏拦，主进程的 `guardWindowNavigation` 仍是兜底（见 windowNavigationGuard 测试）。

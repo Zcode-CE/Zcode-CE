@@ -1,5 +1,5 @@
 /**
- * Bash 权限的**文法收窄**：CMD / legacy-shell 不认「解析出来的」授权与只读结论。
+ * Bash 权限的文法收窄：CMD / legacy-shell 不认「解析出来的」授权与只读结论。
  *
  * 移植上游 v3.18.2 `tests/bash-command-permission-policy.test.ts` 的 cmd/legacy-shell 用例，
  * 并补上上游 bash.ts 的同一条收窄（只读能力）。为什么必须收窄：这两条结论都建立在 Bash AST

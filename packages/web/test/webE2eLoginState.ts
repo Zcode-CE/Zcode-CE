@@ -6,13 +6,13 @@ import { join } from "node:path";
  * 真浏览器 E2E 的「本机登录态」前提判定（task-11）。
  *
  * ## 为什么需要它
- * 本目录的 E2E 都用隔离的 `ZCODE_DATA_BASE_DIR` 起真实服务端，但**界面能否挂载**取决于用户自己的
+ * 本目录的 E2E 都用隔离的 `ZCODE_DATA_BASE_DIR` 起真实服务端，但界面能否挂载取决于用户自己的
  * 账号资料：Root 启动时会跑一遍 provider 可用性登录入口守卫，判据是
  * `shouldOpenLoginEntry = !providerFamilyDomain || (!user && !hasUsableProvider)`
  * （`packages/ui/src/root/useProviderAvailabilityLoginEntryGuard.ts`，由 `Root.tsx` 传入）。
  * 本机没登录过时两条判据都成立 ⇒ 页面停在「欢迎来到 ZCode 连接账号」登录页，侧栏里永远没有
  * `workspace-item-*` 行 ⇒ 用例只能以「等待挂载超时」收场，而超时看起来像产品缺陷。
- * 所以这里把「缺挂载前提」显式判成 skip：**跳过不等于通过**，且在跳过的同时写清缺什么、怎么补。
+ * 所以这里把「缺挂载前提」显式判成 skip：跳过不等于通过，且在跳过的同时写清缺什么、怎么补。
  *
  * ## 判据只认文件事实，不猜界面
  * 不 try/catch 探界面、不重试到「看不出来就算了」，只看 `~/.zcode/v2` 下的既有事实：

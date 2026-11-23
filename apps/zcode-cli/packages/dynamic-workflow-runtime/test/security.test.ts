@@ -2,7 +2,7 @@
  * 沙箱安全：vm.createContext 求值单元的隔离契约。
  *
  * 移植上游 v3.18.2 `tests/security.test.ts` 的逃逸链断言。上游那套跑在 vitest + runWorkflowScript
- * facade 上；本包没有 facade 测试环境，而 vm 契约本身才是被测对象——脚本按设计**无法**通过
+ * facade 上；本包没有 facade 测试环境，而 vm 契约本身才是被测对象——脚本按设计无法通过
  * facade typecheck（直接摸 process/import 等），所以这里直接驱动 `childMain`、把手写的 lowered
  * 函数体投喂进去，这是正当做法。
  *

@@ -10,7 +10,7 @@ import {
 } from "../src/plugins/marketplace.js";
 
 /**
- * Marketplace source kind 的白名单：只接受 `MarketplaceSource` 联合里列出的 kind，其余必须在**使用点**
+ * Marketplace source kind 的白名单：只接受 `MarketplaceSource` 联合里列出的 kind，其余必须在使用点
  * 得到可操作的显式错误。
  *
  * 为什么需要这层：`known_marketplaces.json` 是外部状态文件（可被旧版本、其它机器或导入的分享状态写入），
