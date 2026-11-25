@@ -43,6 +43,7 @@ import {
   type ToolState,
 } from "@zcode/contracts";
 import type { ZCodeApp } from "../app/types.js";
+import { joinMessageTextBlocks } from "../message-text.js";
 import { mapMessageWithParts } from "./message-mapper.js";
 import { formatProtocolModelSelection, optionalModelSelectionFromString } from "./model-mapper.js";
 import {
@@ -1030,10 +1031,11 @@ function withGoalSummaryTitleFallback(
   };
 }
 
+// goal 标题回填用它对齐首条用户请求与 target.objective。旧实现按物理 part 序把所有 part
+// 都映射成字符串再 join("\n")：非文字 part 会留下空段，多文字块之间又只有一个换行，
+// 与冷恢复合成正文用的块间空行不是一个形态。统一走 joinMessageTextBlocks，比较双方同形。
 function readMessageText(message: MessageWithParts): string {
-  return message.parts
-    .map((part) => (part.type === "text" && typeof part.text === "string" ? part.text : ""))
-    .join("\n");
+  return joinMessageTextBlocks(message.parts);
 }
 
 function normalizeText(value: string): string {

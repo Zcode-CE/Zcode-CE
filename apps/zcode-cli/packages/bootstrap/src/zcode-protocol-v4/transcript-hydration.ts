@@ -43,6 +43,7 @@ import {
   type ErrorAttribution,
   type WorkflowLaunchMeta,
 } from "@zcode/shared/zcode-protocol-v4";
+import { joinMessageTextBlocks } from "../message-text.js";
 import { shouldHideInvalidToolCallFromProduct } from "../tool-call-product-visibility.js";
 import { HYDRATION_TRACE_ID } from "./projection-state.js";
 
@@ -132,7 +133,15 @@ function isProviderContextOnlyAssistant(message: MessageWithParts): boolean {
   );
 }
 
+// 一条消息可以有多个文字块（blockIndex 落地后每块一个 text part）。直接拼接会把块边界
+// 粘掉：冷恢复合成 TurnStarted.input 时，多块用户的正文会变成 "ab" 而不是两段，翻新模型
+// 重试的 prompt 也跟着走样。展示用途统一走 joinMessageTextBlocks（单块结果逐字节不变）。
 function textOfMessage(parts: readonly MessagePart[]): string {
+  return joinMessageTextBlocks(parts);
+}
+
+// 维护命令识别（/compact）比对的是命令原文，块间空行会改变原文形态，因此仍直接拼接。
+function commandTextOfMessage(parts: readonly MessagePart[]): string {
   return parts
     .filter(
       (part): part is Extract<MessagePart, { type: "text" }> =>
@@ -1326,7 +1335,7 @@ function isLegacyCompactMaintenanceInput(
   // 只修复缺 canonical policy 的旧数据；显式 user-visible `/compact` 必须原样下发，
   // UI 不得再靠文本覆盖 CLI visibility authority。
   if (message.info.visibility !== undefined || message.info.semantics !== undefined) return false;
-  const text = textOfMessage(message.parts).trim();
+  const text = commandTextOfMessage(message.parts).trim();
   if (text !== "/compact" && !text.startsWith("/compact ")) return false;
   if (!nextMessage || nextMessage.info.role !== "assistant") return false;
   return nextMessage.parts.some(

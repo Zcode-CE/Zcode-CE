@@ -1,3 +1,4 @@
+import { joinMessageTextBlocks } from "../message-text.js";
 import { readBackgroundBashOutputFromOwner } from "./background-work-owner.js";
 import {
   normalizeStoredTitleSource,
@@ -1030,13 +1031,8 @@ export function createConversationV4Gateway(
       if (assistantInfo?.role !== "assistant") return null;
       const user = messages.find((message) => message.info.id === assistantInfo.parentID);
       if (!user || user.info.role !== "user") return null;
-      const text = user.parts
-        .filter(
-          (part): part is Extract<(typeof user.parts)[number], { type: "text" }> =>
-            part.type === "text" && part.ignored !== true,
-        )
-        .map((part) => part.text)
-        .join("");
+      // 多文字块用户消息曾在这里被直接拼接：retryTurn 重发时会拿到粘成一句的 prompt。
+      const text = joinMessageTextBlocks(user.parts);
       return text.length > 0 ? text : null;
     },
     setAssistantFeedback: async (sessionId, input) => {
