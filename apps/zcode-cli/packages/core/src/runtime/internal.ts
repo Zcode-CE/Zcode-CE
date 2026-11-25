@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入 prompt 快照（system 字节稳定）。
 import { PermissionService, ToolScheduler } from "./deps.js";
 import type {
   Logger,
@@ -56,6 +57,7 @@ import type { AgentRuntimeHookMethods } from "./internal-hook-methods.js";
 import type { ProjectMemoryExtractionScheduler } from "./helpers/project-memory-extraction.js";
 import type { RuntimeTelemetryFacade } from "../telemetry/runtime-telemetry.js";
 import type { WorkspaceHookRuntimeAdmissionPort } from "../hooks/workspace-hook-runtime-admission.js";
+import type { PromptSnapshot } from "./helpers/prompt-snapshot.js";
 
 export interface AgentRuntimeInternal
   extends AgentRuntimeCoreMethods, AgentRuntimeTurnMethods, AgentRuntimeHookMethods {
@@ -114,6 +116,8 @@ export interface AgentRuntimeInternal
   workingDirectory: string;
   workspaceRoot: string;
   sessionStore?: SessionStorePort;
+  // 主会话的 prompt 快照（helpers/prompt-snapshot.ts 是唯一写入方）；undefined 没有，null 已清掉。
+  promptSnapshot?: PromptSnapshot | null;
   sessionMailboxPort?: SessionMailboxPort;
   sessionPersisted: boolean;
   needsPlanModeExitReminder: boolean;

@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入 prompt 快照（system 字节稳定）。
 import { restorePermissionGrantMarker } from "../helpers/permission-grant-resume.js";
 import { executionStateSchema, resolveExecutionState } from "@zcode/shared";
 import { SESSION_ENTRY_EXECUTION_STATE } from "@zcode/contracts";
@@ -34,6 +35,7 @@ import {
   getSessionShellSelection,
   restoreSessionShellEnvironmentSelectionForResume,
 } from "./session-shell-environment.js";
+import { loadPromptSnapshot } from "../helpers/prompt-snapshot.js";
 import { repairPersistedRemoteSessionPaths } from "../helpers/persisted-remote-session-path-repair.js";
 import {
   restoreWorkspaceCheckpointEntries,
@@ -145,6 +147,8 @@ export async function resumeFromStore(
     workspaceRoot: this.workspaceRoot,
   });
   await this.ensureContextInitialized(traceContext);
+  // 第一个轮次重建前缀前装好 prompt 快照，恢复后的请求发送会话记录的 system。
+  await loadPromptSnapshot(this, traceContext);
   const recoveredCompactTimelineCount = await this.recoverInterruptedCompactTimelines(
     messages,
     traceContext,

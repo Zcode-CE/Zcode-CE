@@ -1,6 +1,11 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入 prompt 快照（system 字节稳定）。
 import { randomUUID } from "node:crypto";
 import { resolveExecutionState, type ExecutionState } from "@zcode/shared";
 import { buildExecutionStateEntry, readRuntimeExecutionState } from "../execution-state.js";
+import {
+  buildForkedPromptSnapshotEntry,
+  copyPromptSnapshotToFork,
+} from "../helpers/prompt-snapshot.js";
 import {
   createModelId,
   createModelProviderId,
@@ -694,6 +699,8 @@ async function commitAtomicConversationFork(
   });
   const clonedEntries = entries.map((entry) => cloneVerifierEntryForAtomicFork(entry, identities));
   const modelSelectionEntry = buildModelSelectionEntry(childSessionId, modelSelection);
+  // 父会话已有的 prompt 快照随同一次事务复制给 child：child 冷恢复发送与父会话相同的前缀字节。
+  const promptSnapshotEntry = buildForkedPromptSnapshotEntry(runtime, childSessionId);
   if (kind === "selection_side_chat") {
     copiedMessages.push(buildSelectionSideChatBoundary(runtime, childSessionId, modelSelection));
   } else {
@@ -752,6 +759,7 @@ async function commitAtomicConversationFork(
       ...clonedEntries.map((item) => item.entry),
       modelSelectionEntry,
       buildExecutionStateEntry(childSessionId, executionState),
+      ...(promptSnapshotEntry ? [promptSnapshotEntry] : []),
     ],
     ...(goal ? { goal } : {}),
     ...(options.initialInput ? { initialInput: options.initialInput } : {}),
@@ -854,6 +862,7 @@ export async function createForkedSession(
     parentSession: SessionInfo;
     forkedSessionId?: SessionId;
     stableForkMetadata?: StableConversationForkChildMetadata;
+    traceContext?: TraceContext;
   },
 ): Promise<SessionId> {
   if (!runtime.sessionStore) {
@@ -887,6 +896,14 @@ export async function createForkedSession(
 
   await runtime.sessionStore.saveSessionEntry?.(
     buildExecutionStateEntry(forkedSessionId, readRuntimeExecutionState(runtime)),
+  );
+  // legacy fork（session/fork、/fork、/rewind fork）原来只建 child、不复制 prompt 快照，
+  // child 第一个请求按当前代码重新渲染并记录 system；父会话的快照来自旧版本时 child 用不上
+  // 父会话的前缀缓存。与原子 fork 一样复制父会话当前的快照（三条 legacy 路径都经过这里建 child）。
+  await copyPromptSnapshotToFork(
+    runtime,
+    forkedSessionId,
+    options.traceContext ?? runtime.rootTraceContext,
   );
   return forkedSessionId;
 }
@@ -954,6 +971,7 @@ export async function forkConversationFromMessage(
   const forkedSessionId = await createForkedSession(this, {
     forkedSessionId: options.forkedSessionId,
     parentSession,
+    traceContext: options.traceContext,
   });
   const { copiedMessageCount, messageIdMap } = await this.copySessionMessagesForFork({
     forkedSessionId,

@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入 prompt 快照（system 字节稳定）。
 import {
   CoreErrorType,
   RewindScope,
@@ -233,6 +234,7 @@ export async function forkWorkspaceFromCheckpoint(
   const forkedSessionId = await createForkedSession(this, {
     forkedSessionId: options.forkedSessionId,
     parentSession,
+    traceContext,
   });
 
   const forkHistoryEndIndex = resolveForkHistoryEndIndex(forkSourceMessages, targetIndex, false);

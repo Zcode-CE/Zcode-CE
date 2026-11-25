@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入 prompt 快照（system 字节稳定）。
 import {
   CompactPhase,
   CompactReason,
@@ -64,6 +65,8 @@ import {
   selectCompactSummaryTools,
 } from "./compact-active-helpers.js";
 import { runCompactSummaryModelRequest } from "./compact-summary-model-request.js";
+import { rebuildContextPrefix } from "./context-refresh.js";
+import { clearPromptSnapshot } from "../helpers/prompt-snapshot.js";
 import { resolveNormalRequestMaxOutputTokens } from "./model-token-limits.js";
 import { createRefreshRuntimeHeadersBeforeModelAttempt } from "./model-runtime-headers.js";
 import { recordModelUsageFact } from "./usage-observability.js";
@@ -658,9 +661,17 @@ async function compactActiveConversationImpl(
           : recordablePostCompactEntries,
       );
       this.readFileState.clear();
+      // compaction 之后的窗口按当前代码重新组装 system：清掉 prompt 快照，并重建历史与
+      // 本轮请求的前缀，下一次主循环请求重新记录。不重建时旧 system 会被当成新快照记下来。
+      const entries = (await clearPromptSnapshot(this, turnTraceContext))
+        ? rebuildContextPrefix(this, {
+            model: compactModel,
+            turnRequestEntries: postCompactEntries,
+          })
+        : postCompactEntries;
       return {
         displayText: "Compacted",
-        entries: postCompactEntries,
+        entries,
         outcome: "compacted",
         tokenCount: providerPostCompactTokenCount,
       };

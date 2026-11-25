@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入 prompt 快照（system 字节稳定）。
 import { beginLocalTurnPreparation } from "@zcode/contracts";
 import {
   CompactPhase,
@@ -24,6 +25,7 @@ import {
 } from "../../agent/message-history.js";
 import { buildToolSearchAnnouncement } from "../../tool/search/exposure.js";
 import type { AgentRuntimeInternal } from "../internal.js";
+import { recordPromptSnapshot } from "../helpers/prompt-snapshot.js";
 import { runModelBackedTurnStep } from "./turn-model-step.js";
 import {
   AUTOMATION_MUTATION_TOOL_NAMES,
@@ -201,6 +203,13 @@ export async function runRegularTurnLoop(
       registry: this.getToolRegistry(),
       entries: requestEntries,
       applyCacheControl: true,
+    });
+    // 主会话没有可用的 prompt 快照时，按本次请求的前缀记录 system；工具调用不产生快照。
+    await recordPromptSnapshot(this, {
+      model: state.model,
+      modelSelectionScope: state.modelSelectionScope,
+      entries: requestEntries,
+      traceContext: state.turnTraceContext,
     });
     this.logger?.debug("ToolSearch request exposure", {
       event: "tool.search.exposure",
