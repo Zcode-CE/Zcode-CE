@@ -34,6 +34,7 @@
     "@modelcontextprotocol/client": "2.4.0",
     "@modelcontextprotocol/core": "2.4.0",
     "@modelcontextprotocol/ext-apps": "2.0.4",
+    "@napi-rs/keyring": "2.1.2",
     "@zcode/client": "workspace:*",
     "@zcode/provider": "workspace:*",
     "@zcode/provider-node": "workspace:*",

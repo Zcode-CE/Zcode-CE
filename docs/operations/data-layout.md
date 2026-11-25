@@ -80,6 +80,25 @@ packages/desktop/src/main/index.ts
 路径与字段，改名等于重置设备身份，`X-Device-Mid` 计费头随即丢失、权益领取失败。该文件由
 `packages/services/src/device/deviceMid.ts` 用文件锁保护，**不要手工编辑**。
 
+## 系统凭据库原生模块的随包边界
+
+密钥由 `packages/shared/src/credential-security/nativeKeyring.ts` 惰性 import 的
+`@napi-rs/keyring`（2.1.2，原生 NAPI）读写。它随哪些产物分发，决定了同一台机器上谁能解出
+`enc:v2:os:` 密文：
+
+| 产物                               | 原生模块                                                             |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| 桌面安装包（main / Host）          | 主包在 `app.asar`，只有目标平台变体的 `.node` 在 `app.asar.unpacked` |
+| 桌面内置 agent（`resources/glm`）  | 主包 + 目标平台变体，落 `resources/glm/node_modules/@napi-rs/`       |
+| 无头分发包（npm `zcode-ce`、远端） | 不带（无 `node_modules` 落点）→ `stage=load`，只能靠显式配置的密钥   |
+
+内置 agent 必须带同一份模块：Host 把目录绑定到系统凭据库后，agent 若加载不到它就只能报
+`CREDENTIAL_SECURE_STORAGE_UNAVAILABLE`，不会回退到文件密钥。安装包里只保留目标平台变体
+（prune 与 asarUnpack 规则见 `packages/desktop/scripts/desktop-native-package-policy.mjs`）。
+
+Linux 固定 `secret-service`。没有 DBus 会话（典型的无头/SSH 场景）时原生调用失败被归到
+`stage=load`，由失败矩阵决定回退还是拒绝，而不是让进程崩溃。
+
 ## 备份
 
 ### 推荐做法

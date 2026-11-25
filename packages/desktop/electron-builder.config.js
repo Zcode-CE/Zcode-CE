@@ -61,8 +61,13 @@ function resolveElectronBuilderWindowsTarget({
 import {
   findDesktopNativePackageViolations,
   createDesktopNativePackagePrunePatterns,
+  isRuntimeModuleOutsideTargetPlatform,
   parseAsarListWithPackState,
 } from "./scripts/desktop-native-package-policy.mjs";
+import {
+  keyringPlatformPackageName,
+  verifyStagedKeyring,
+} from "./scripts/keyring-package-assets.mjs";
 import { replaceAppAsarFromStaging } from "./scripts/app-asar-repack.mjs";
 import {
   patchNsisInstallSectionFile,
@@ -151,6 +156,12 @@ const REQUIRED_ASAR_RUNTIME_MODULES = [
   // 飞书渠道时才会在 host 里抛 ERR_MODULE_NOT_FOUND。与上游 v3.14.3 的
   // desktop/electron-builder.config.js:143 同一处置。
   "@larksuiteoapi/node-sdk",
+  // 凭据 v2 的系统凭据库后端：packages/shared/src/credential-security/nativeKeyring.ts 以
+  // 变量说明符惰性 import 它（打包器不静态解析）。它是原生模块，因此不能靠 tsup 内联，
+  // app.asar 里必须有主包 + 目标平台变体；缺失的表现是静默回退到私有文件而不是崩溃。
+  // 以它为闭包根注入时，非目标平台变体由 isRuntimeModuleOutsideTargetPlatform 过滤
+  // （闭包会收集到全部已安装变体，装进产物会立刻被 native 资源策略判死）。
+  "@napi-rs/keyring",
 ];
 // pacman 依赖必须使用 Arch 官方仓库中的包名。electron-builder 的历史默认集合包含
 // 已移除的 libappindicator-gtk3/http-parser，且缺少 Electron 实际需要的运行库；显式
@@ -318,7 +329,9 @@ function resolveMissingRuntimeModules(appAsarPath) {
   const runtimeModules = collectRuntimeModuleClosureEntries(
     REQUIRED_ASAR_RUNTIME_MODULES,
     runtimeModuleLookupRoots,
-  );
+    // 原生模块的平台变体只允许目标平台那一个进产物：闭包展开会带上全部已安装变体，
+    // 不先过滤的话注入阶段会把越界变体写回 app.asar，再被 native 资源策略判死。
+  ).filter((entry) => !isRuntimeModuleOutsideTargetPlatform(entry.moduleName, targetPlatform.key));
   const unresolvableRuntimeModules = [];
   const missingRuntimeModules = [];
   for (const entry of runtimeModules) {
@@ -478,6 +491,25 @@ function assertPackagedCuaDriver(context) {
 }
 
 /**
+ * agent 树里的系统凭据库原生模块必须随包。
+ *
+ * 为什么要在出包阶段单独校验：agent 树的原生模块由 extraResources 单独拷进
+ * resources/glm/node_modules。electron-builder 会硬编码丢掉 extraResources 源根直属的
+ * node_modules（见 glm 条目的说明），所以这条拷贝与 glob 都可能静默落空。缺了它 agent 仍
+ * 能启动、只是凭据密钥退回私有文件 —— 构建全程绿灯，用户侧却在 Host 已绑定系统凭据库时
+ * 拿不到同一把密钥，只能报 CREDENTIAL_SECURE_STORAGE_UNAVAILABLE。
+ */
+function assertPackagedKeyring(context) {
+  const issues = verifyStagedKeyring({
+    resourcesDir: resolvePackagedResourcesDir(context),
+    targetPlatformKey: targetPlatform.key,
+  });
+  if (issues.length > 0) {
+    throw new Error(`keyring 原生运行时校验失败:\n- ${issues.join("\n- ")}`);
+  }
+}
+
+/**
  * koffi 原生 addon 必须随包。
  *
  * 为什么要有这条校验（**此前是「有定义没调用」**）：`stageKoffiIntoBundledAgents` 已在
@@ -551,6 +583,10 @@ export default {
     // node-pty 的 target prebuild 还包含 spawn-helper / winpty-agent.exe 等辅助可执行文件，
     // 整个目标目录必须 unpack；其他平台目录已由 files 规则裁剪。
     `node_modules/node-pty/prebuilds/${targetPlatform.key}/**`,
+    // 系统凭据库原生模块只 unpack 目标变体里的 .node：主包的 JS 留在 app.asar 内，
+    // 与官方 4.0.0 产物同构（那里 app.asar.unpacked 下只有这一份 .node）。
+    // 整个包 unpack 会把包元数据与许可正文一起摊到 unpacked，而 Node 只需要 .node 是真实文件。
+    `node_modules/${keyringPlatformPackageName(targetPlatform.key)}/*.node`,
   ],
   beforePack: async (context) => {
     runTimedSync("beforePack:restoreTargetNodePtyPrebuild", () =>
@@ -614,6 +650,7 @@ export default {
     );
     runTimedSync("afterPack:assertPackagedCuaDriver", () => assertPackagedCuaDriver(context));
     runTimedSync("afterPack:assertPackagedKoffi", () => assertPackagedKoffi(context));
+    runTimedSync("afterPack:assertPackagedKeyring", () => assertPackagedKeyring(context));
     if (actualWindowsTarget) {
       await runTimedAsync("afterPack:writeWindowsInstallManifest", () =>
         writeWindowsInstallManifest(context),
@@ -716,6 +753,16 @@ export default {
       // `packages/node-repl-host/node_modules`（见 cua-driver-package-assets.mjs）：
       // 那个路径不是源根直属的 node_modules，能正常打包，而且正好在 node-repl-host
       // bundle 的祖先目录里，是 Node 解析原生依赖时的一站。
+      filter: ["**/*", "!**/*.map"],
+    },
+    {
+      // agent 树里的原生模块目录（@napi-rs/keyring）：上面的 glm 条目会丢掉源根直属的
+      // node_modules（util/filter.js 对 relative === "node_modules" 硬编码丢弃），所以单独以
+      // glm/node_modules/@napi-rs 为源根拷一次。落点必须在 glm/ 下 —— Node 从
+      // glm/zcode.cjs 出发向上找 node_modules，这一站正好命中；换到别处（例如 resources）
+      // agent 就解析不到，只能静默回退到文件兜底。
+      from: `bundled-agents/${targetPlatform.key}/glm/node_modules/@napi-rs`,
+      to: "glm/node_modules/@napi-rs",
       filter: ["**/*", "!**/*.map"],
     },
     {

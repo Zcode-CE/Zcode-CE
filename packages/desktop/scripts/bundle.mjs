@@ -15,6 +15,7 @@ import { collectRuntimeModuleClosureEntries } from "./runtime-dependency-closure
 import { resolveDesktopProductIdentity } from "./desktop-product-identity.mjs";
 import {
   findDesktopNativePackageViolations,
+  isRuntimeModuleOutsideTargetPlatform,
   parseAsarListWithPackState,
 } from "./desktop-native-package-policy.mjs";
 import { findDisallowedPreloadRequires, toAsarEntryLookupPath } from "./preload-require-policy.mjs";
@@ -113,6 +114,10 @@ const requiredRuntimeModules = [
   // 抛 ERR_MODULE_NOT_FOUND（启动期不报，属"打包能过、用起来才炸"）。
   // 与上游 v3.14.3 的 desktop/scripts/bundle.mjs:113 同一处置。
   "@larksuiteoapi/node-sdk",
+  // 凭据 v2 的系统凭据库原生模块（惰性 import、原生 .node）。与 electron-builder.config.js
+  // 的 REQUIRED_ASAR_RUNTIME_MODULES 同口径：产物里必须有主包与目标平台变体，
+  // 缺了不会崩，只会静默回退到私有文件，因此必须在最终产物上机械校验。
+  "@napi-rs/keyring",
 ];
 const publishPolicies = new Set(["always", "onTag", "onTagOrDraft", "never"]);
 const electronBuilderRetryCount = 3;
@@ -688,7 +693,9 @@ function verifyPackagedRuntimeDependencies(os, arch) {
   const runtimeModules = collectRuntimeModuleClosureEntries(
     requiredRuntimeModules,
     runtimeModuleLookupRoots,
-  );
+    // 原生模块的 6 个已安装平台变体都会进入闭包；产物只允许目标平台那一个，
+    // 不先过滤会把被 files 规则裁掉的变体误报成"缺少运行时依赖"。
+  ).filter((entry) => !isRuntimeModuleOutsideTargetPlatform(entry.moduleName, targetPlatformKey));
   const resolvableRuntimeModules = runtimeModules.filter((entry) => {
     if (!entry.sourceModulePath) {
       // afterPack 会按当前平台实际可解析依赖注入；bundle 校验也需保持同口径。
