@@ -38,8 +38,12 @@ import {
   type LoginProviderId,
 } from "./auth-login-credentials.js";
 import { throwIfAborted, waitWithAbort } from "./auth-login-abort.js";
+import { ZCodeCliLoginError } from "./auth-login-error.js";
 import { setTimeout as delay } from "node:timers/promises";
 import { pollUntilReady } from "./auth-login-polling.js";
+
+// 错误类型单独成模块（账号组自愈也要构造它），对外仍从本入口导出。
+export { ZCodeCliLoginError };
 
 // 登出与登录的键集合同源、语义相反（登出不比较期望值），拆到单独模块后仍从本入口导出，
 // 调用方（CLI / TUI）不感知文件拆分。
@@ -105,25 +109,6 @@ export async function hasConfiguredStandaloneCodingPlan(
   const credentialStore =
     options.credentialStore ?? createSharedZCodeCredentialStore({ env: options.env });
   return hasStandaloneCodingPlanAccess(credentialStore, options.env ?? process.env);
-}
-
-export class ZCodeCliLoginError extends Error {
-  readonly code:
-    | "auth_failed"
-    | "auth_timeout"
-    | "config_update_failed"
-    | "credential_conflict"
-    | "credential_write_failed";
-
-  constructor(
-    code: ZCodeCliLoginError["code"],
-    message: string,
-    options: { cause?: unknown } = {},
-  ) {
-    super(message, options);
-    this.name = "ZCodeCliLoginError";
-    this.code = code;
-  }
 }
 
 export async function loginZCodeCli(
@@ -196,7 +181,8 @@ export async function loginZCodeCli(
         accessToken: readyData.accessToken,
         zcodeJwtToken: readyData.token,
         userInfoRaw: serializeLoginUserInfo(providerId, readyData.user),
-        // zai 路径历史上不落 refresh token（saveZaiLoginCredentials 未写该键），保持同一字段集合。
+        // zai 的授权响应不带 refresh token（Host 也只取 bigmodel 下发的那一枚），
+        // 因此 zai 登录不写这个键：落盘字段集合与 Host 侧保持一致。
         ...(providerId === "bigmodel" && readyData.refreshToken
           ? { refreshToken: readyData.refreshToken }
           : {}),

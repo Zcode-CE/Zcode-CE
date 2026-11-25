@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { isCredentialDecryptError } from "@zcode/shared";
 import { SHARED_ZCODE_CREDENTIAL_KEYS, type SharedZCodeCredentialStore } from "@zcode/adapters";
+import { ZCodeCliLoginError } from "./auth-login-error.js";
 
 /**
  * CLI 登录的凭据整组提交（SPEC §7.3 的 CLI 侧落地）。
@@ -104,16 +105,49 @@ export interface StandaloneAccountCredentials extends StandaloneAccountCredentia
  * 除本组两个键外，还要比较会话版本键：`account-provider:<provider>:identity` 决定运行时用
  * 哪个账号的 API Key，而 Host 的 OAuth 登录会整体换掉当前账号（且不写这个键）。若不看版本
  * 键，CLI 的旧响应会把 identity 改回上一个账号 —— 这正是「CLI 覆盖 Host 新登录」的另一条路径。
+ *
+ * 快照里只要有一个键解不开，每次登录都会卡在读取处；因此按「密文解不开」错误码做一次自愈：
+ * 逐键复检定位坏键，交给 store 在锁内再确认一次仍损坏才删，然后重取快照。只删坏键、可读的
+ * 值留在快照里继续充当 CAS 期望值；存储不可用不是坏密文，直接上抛。自愈后仍读不出来时抛带
+ * credential_unreadable 码的错误，避免把「凭据解不开」伪装成配置写入失败。
  */
 export async function captureStandaloneAccountSnapshot(
-  credentialStore: Pick<SharedZCodeCredentialStore, "loadMany">,
+  credentialStore: Pick<SharedZCodeCredentialStore, "deleteUnreadable" | "load" | "loadMany">,
   keys: StandaloneAccountCredentialKeys,
 ): Promise<CredentialSnapshot> {
-  return await credentialStore.loadMany([
+  const snapshotKeys = [
     keys.identityCredentialKey,
     keys.apiKeyCredentialKey,
     SHARED_ZCODE_CREDENTIAL_KEYS.sessionRevision,
-  ]);
+  ];
+  try {
+    return await credentialStore.loadMany(snapshotKeys);
+  } catch (error) {
+    // 只按错误码判定可清理：按文案判定会把「存储不可用」也算成坏密文，误删别的进程的凭据。
+    if (!isCredentialDecryptError(error)) throw error;
+    // 批量读取只报「有值解不开」、不说是哪个键：逐键复检，避免把可读的组键一并删掉。
+    const unreadableKeys: string[] = [];
+    for (const key of snapshotKeys) {
+      try {
+        await credentialStore.load(key);
+      } catch (keyError) {
+        if (!isCredentialDecryptError(keyError)) throw keyError;
+        unreadableKeys.push(key);
+      }
+    }
+    if (unreadableKeys.length > 0) await credentialStore.deleteUnreadable(unreadableKeys);
+    try {
+      return await credentialStore.loadMany(snapshotKeys);
+    } catch (retryError) {
+      if (!isCredentialDecryptError(retryError)) throw retryError;
+      throw new ZCodeCliLoginError(
+        "credential_unreadable",
+        "Stored account credentials cannot be decrypted after automatic repair. " +
+          "Retry login; if the error persists, delete the shared credentials file and sign in again.",
+        { cause: retryError },
+      );
+    }
+  }
 }
 
 /**

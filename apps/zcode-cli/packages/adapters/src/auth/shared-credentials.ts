@@ -1,24 +1,27 @@
-import { readFile } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
-import { atomicWritePrivateTextFile, backupCorruptFile } from "@zcode/shared/node";
+import { atomicWritePrivateTextFile } from "@zcode/shared/node";
 import {
   captureCredentialGeneration,
   createSystemCredentialCipher,
+  deleteUnreadableCredentialValues,
   mutateCredentialRecordLocked,
   readCredentialRecordWithMigration,
-  resolveCredentialsFilePath,
-  resolveCredentialsFilePathIn,
+  recoverUnreadableCredentialValue,
   updateCredentialValuesMany,
   type CredentialCipher,
   type CredentialRecordTarget,
+  type DeleteUnreadableCredentialOptions,
 } from "@zcode/shared/credential-security";
+import {
+  readRawCredentialRecord,
+  resolveSharedZCodeCredentialsPath,
+  type SharedZCodeCredentialsPathOptions,
+} from "./shared-credentials-file.js";
+
+// 公开面保持不变：`auth/index.ts` 按 export * 转出，调用方仍从本模块取路径解析。
+export { resolveSharedZCodeCredentialsPath } from "./shared-credentials-file.js";
 
 const ZAI_PROVIDER_ID = "zai";
-const credentialChangeListeners = new Map<
-  string,
-  Set<() => void | Promise<void>>
->();
+const credentialChangeListeners = new Map<string, Set<() => void | Promise<void>>>();
 
 export const SHARED_ZCODE_CREDENTIAL_KEYS = {
   activeProvider: "oauth:active_provider",
@@ -36,25 +39,12 @@ export const SHARED_ZCODE_CREDENTIAL_KEYS = {
   sessionRevision: "oauth:session_revision",
 } as const;
 
-export interface SharedZCodeCredentialStoreOptions {
-  baseDir?: string;
+export interface SharedZCodeCredentialStoreOptions extends SharedZCodeCredentialsPathOptions {
   cipher?: CredentialCipher;
-  env?: Record<string, string | undefined>;
-  filePath?: string;
 }
 
-export interface ZaiLoginCredentialUser {
-  avatar?: string;
-  email?: string;
-  name?: string;
-  user_id: string;
-}
-
-export interface ZaiLoginCredentialPayload {
-  accessToken: string;
-  jwtToken: string;
-  user: ZaiLoginCredentialUser;
-}
+/** deleteUnreadable 的选项：与 Host 侧 DeleteUnreadableOptions 同义（SPEC §7.1）。 */
+export type SharedDeleteUnreadableOptions = DeleteUnreadableCredentialOptions;
 
 /** updateMany 的整组 CAS 选项（与 Host 侧 UpdateManyOptions 同义，SPEC §7.1）。 */
 export interface SharedCredentialUpdateOptions {
@@ -77,13 +67,22 @@ export interface SharedZCodeCredentialStore {
     expectedGuardValue: string,
     keysToDelete: readonly string[],
   ): Promise<boolean>;
+  /**
+   * 只清理锁内仍解不开的键（SPEC §7.1 deleteUnreadable）：可读的键不删，
+   * 另一进程已修好时返回 false 且不写盘；true = 本次提交了删除或替换并已发一次通知。
+   */
+  deleteUnreadable(
+    keys: readonly string[],
+    options?: SharedDeleteUnreadableOptions,
+  ): Promise<boolean>;
   load(key: string): Promise<string | null>;
   loadMany(keys: readonly string[]): Promise<Record<string, string | null>>;
   onDidChange?(listener: () => void | Promise<void>): () => void;
+  /** 读取并修复单个不可读键；assertCurrent 在锁内复核调用方前提，抛错即不写盘。 */
+  recoverUnreadable(key: string, assertCurrent: () => void): Promise<string | null>;
   save(key: string, value: string): Promise<void>;
   saveMany(entries: Readonly<Record<string, string>>): Promise<void>;
   saveReplacing(key: string, value: string, replacedKeys: readonly string[]): Promise<void>;
-  saveZaiLoginCredentials(payload: ZaiLoginCredentialPayload): Promise<void>;
   /**
    * 整组条件写：expected 全部相等才应用 changes（null = 删除该键）。
    * 返回 false = CAS 失败且未写盘（正常竞态，不抛错）；true = 已提交并发一次变更通知。
@@ -238,6 +237,34 @@ export function createSharedZCodeCredentialStore(
       return deleted;
     },
 
+    /**
+     * 批量清理不可读密文：共享层在锁内逐键解密复检，这里只做键值校验与一次通知。
+     * 读侧一旦遇到解不开的值（如账号连接组）就能删掉它再继续，不必整组永久失败。
+     */
+    async deleteUnreadable(
+      keys: readonly string[],
+      options: SharedDeleteUnreadableOptions = {},
+    ): Promise<boolean> {
+      const affected = await deleteUnreadableCredentialValues(
+        recordTarget,
+        keys.map(validateCredentialKey),
+        {
+          expected:
+            options.expected === undefined
+              ? undefined
+              : validateCredentialChanges(options.expected),
+          removeKeys: options.removeKeys?.map(validateCredentialKey),
+          replacements:
+            options.replacements === undefined
+              ? undefined
+              : validateCredentialValues(options.replacements),
+        },
+      );
+      if (affected === null) return false;
+      await notifyChangeListeners();
+      return true;
+    },
+
     async load(key: string): Promise<string | null> {
       const rawCredentials = await readCredentialRecordWithMigration(recordTarget);
       const rawValue = rawCredentials[validateCredentialKey(key)];
@@ -271,6 +298,20 @@ export function createSharedZCodeCredentialStore(
         listeners?.delete(listener);
         if (listeners?.size === 0) credentialChangeListeners.delete(filePath);
       };
+    },
+
+    /**
+     * 单键恢复：可读时只返回原值不动盘，不可读时删掉该键并返回 null。
+     * assertCurrent 由共享层在锁内执行两次（读后与删除前），前提失效即不写盘。
+     */
+    async recoverUnreadable(key: string, assertCurrent: () => void): Promise<string | null> {
+      const result = await recoverUnreadableCredentialValue(
+        recordTarget,
+        validateCredentialKey(key),
+        assertCurrent,
+      );
+      if (result.removed) await notifyChangeListeners();
+      return result.value;
     },
 
     async save(key: string, value: string): Promise<void> {
@@ -344,88 +385,7 @@ export function createSharedZCodeCredentialStore(
       }
       return committed;
     },
-
-    async saveZaiLoginCredentials(payload: ZaiLoginCredentialPayload): Promise<void> {
-      const { generation, encrypted } = await encryptWithGeneration({
-        [SHARED_ZCODE_CREDENTIAL_KEYS.activeProvider]: ZAI_PROVIDER_ID,
-        [SHARED_ZCODE_CREDENTIAL_KEYS.zaiAccessToken]: validateCredentialValue(payload.accessToken),
-        [SHARED_ZCODE_CREDENTIAL_KEYS.zcodeJwtToken]: validateCredentialValue(payload.jwtToken),
-        [SHARED_ZCODE_CREDENTIAL_KEYS.zaiUserInfo]: JSON.stringify(payload.user),
-      });
-      await mutate(
-        (rawCredentials) => {
-          for (const [key, encryptedValue] of Object.entries(encrypted)) {
-            rawCredentials[key] = encryptedValue;
-          }
-        },
-        { migrate: true, expectedGeneration: generation },
-      );
-    },
   };
-}
-
-/**
- * 凭据文件路径：与 Host 的服务端解析共用同一条规则（`ZCODE_DATA_BASE_DIR` trim 后 > `HOME` >
- * `homedir()`）。系统密钥条目按该绝对路径命名，两侧路径一旦分叉就会给同一文件造两把密钥，
- * 一半密文永久解不开。
- */
-export function resolveSharedZCodeCredentialsPath(
-  options: SharedZCodeCredentialStoreOptions = {},
-): string {
-  if (options.filePath) {
-    return resolveUserPath(options.filePath);
-  }
-  if (options.baseDir !== undefined) {
-    return resolveCredentialsFilePathIn(resolveUserPath(options.baseDir));
-  }
-  return resolveCredentialsFilePath(options.env ?? process.env);
-}
-
-async function readRawCredentialRecord(filePath: string): Promise<Record<string, string>> {
-  let raw: string;
-  try {
-    raw = await readFile(filePath, "utf-8");
-  } catch (error) {
-    if (getErrorCode(error) === "ENOENT") {
-      return {};
-    }
-    throw new Error(`Unable to read shared ZCode credentials: ${filePath}`, { cause: error });
-  }
-
-  try {
-    return parseCredentialRecord(JSON.parse(raw));
-  } catch (error) {
-    // 损坏的凭据文件若被当成空对象继续保存，会一次性抹掉其他进程的全部凭据。
-    // 先保留现场再失败，调用方必须显式处理恢复，不能静默覆盖。
-    const backupPath = await backupCorruptFile(filePath).catch(() => undefined);
-    const evidence = backupPath ? ` Backup: ${backupPath}` : "";
-    throw new Error(`Shared ZCode credentials are corrupt: ${filePath}.${evidence}`, {
-      cause: error,
-    });
-  }
-}
-
-function parseCredentialRecord(value: unknown): Record<string, string> {
-  if (!isRecord(value)) {
-    throw new Error("Credential record must be an object");
-  }
-
-  const result: Record<string, string> = {};
-  for (const [key, entry] of Object.entries(value)) {
-    if (typeof entry !== "string") {
-      throw new Error(`Credential record value must be a string: ${key}`);
-    }
-    result[key] = entry;
-  }
-  return result;
-}
-
-function getErrorCode(error: unknown): string | undefined {
-  if (typeof error !== "object" || error === null || !("code" in error)) {
-    return undefined;
-  }
-  const code = (error as { code?: unknown }).code;
-  return typeof code === "string" ? code : undefined;
 }
 
 function validateCredentialKey(key: string): string {
@@ -443,6 +403,18 @@ function validateCredentialValue(value: string): string {
   return value;
 }
 
+/** 替换值与写入值共用同一套非空校验；键名同样 trim。 */
+function validateCredentialValues(
+  values: Readonly<Record<string, string>>,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(values).map(([key, value]) => [
+      validateCredentialKey(key),
+      validateCredentialValue(value),
+    ]),
+  );
+}
+
 /** 变更/期望值共用同一套校验；null 保留为「必须不存在 / 删除」，不是空值。 */
 function validateCredentialChanges(
   changes: Readonly<Record<string, string | null>>,
@@ -453,18 +425,4 @@ function validateCredentialChanges(
       value === null ? null : validateCredentialValue(value),
     ]),
   );
-}
-
-function resolveUserPath(value: string): string {
-  if (value === "~") {
-    return homedir();
-  }
-  if (value.startsWith("~/")) {
-    return join(homedir(), value.slice(2));
-  }
-  return resolve(value);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

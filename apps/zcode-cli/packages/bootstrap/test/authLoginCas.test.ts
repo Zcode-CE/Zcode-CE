@@ -13,6 +13,7 @@ import {
   type SharedZCodeCredentialStore,
 } from "@zcode/adapters/auth";
 import {
+  CREDENTIAL_SECURE_STORAGE_UNAVAILABLE_CODE,
   createSystemCredentialCipher,
   type CredentialCipher,
   type CredentialKeyStore,
@@ -40,7 +41,8 @@ import {
  * ① 两实例用同一快照登录 ⇒ 只有一个成功，另一个 CAS 失败且磁盘不变；
  * ② 登录中途版本键被改 ⇒ 丢弃并提示重新登录；
  * ③ 一次成功提交只发一次通知，且版本键轮换（失败提交不发通知）；
- * ④ 归因类旁路键不参与 CAS、也不被登录清掉。
+ * ④ 归因类旁路键不参与 CAS、也不被登录清掉；
+ * ⑤ 账号组键解不开 ⇒ 锁内清理后重取快照继续，仍失败抛 credential_unreadable。
  *
  * 运行：cd apps/zcode-cli/packages/bootstrap && node --import tsx --import
  *   ../../../../packages/services/test/support/zcodeSourceResolver.mjs --test test/authLoginCas.test.ts
@@ -221,6 +223,24 @@ function assertLoginError(reason: unknown, code: ZCodeCliLoginError["code"]): ZC
   );
   assert.equal(reason.code, code);
   return reason;
+}
+
+/**
+ * 保留前缀、来源与密钥指纹，改坏密文载荷的中间字符：字节必变、GCM 认证必失败，
+ * 等价旧密钥残留/比特腐烂（换密钥会变成「存储不可用」，不是同一种失败）。
+ */
+async function damageStoredValue(filePath: string, key: string): Promise<void> {
+  const raw = JSON.parse(await readFile(filePath, "utf8")) as Record<string, string>;
+  const ciphertext = raw[key];
+  if (ciphertext === undefined) throw new Error(`credential key missing: ${key}`);
+  const segments = ciphertext.split(":");
+  const payloadIndex = segments.length - 1;
+  const payload = segments[payloadIndex]!;
+  const index = Math.floor(payload.length / 2);
+  const flipped = payload[index] === "A" ? "B" : "A";
+  segments[payloadIndex] = payload.slice(0, index) + flipped + payload.slice(index + 1);
+  raw[key] = segments.join(":");
+  await writeFile(filePath, `${JSON.stringify(raw, null, 2)}\n`);
 }
 
 function createSessionChange(providerId: "bigmodel" | "zai", label: string): LoginSessionChange {
@@ -495,7 +515,7 @@ test("账号组提交：期间换号则整体作废，成功时不轮换会话�
   );
 });
 
-test("zai 登录同样走整组 CAS，落盘字段集合与旧 saveZaiLoginCredentials 一致", async () => {
+test("zai 登录同样走整组 CAS，落盘字段集合固定（不含 refresh token）", async () => {
   const harness = await createHarness();
   const store = harness.createStore();
   const result = await loginZCodeCli(
@@ -524,7 +544,7 @@ test("zai 登录同样走整组 CAS，落盘字段集合与旧 saveZaiLoginCrede
   assert.equal(
     stored[KEYS.zaiRefreshToken],
     null,
-    "zai 路径历史上不落 refresh token，本次不改字段集合",
+    "zai 授权响应不带 refresh token，登录不写这个键",
   );
   assert.equal(typeof stored[KEYS.sessionRevision], "string");
 });
@@ -533,11 +553,7 @@ test("会话键解不开时按损坏恢复：只清会话命名空间，登录�
   const harness = await createHarness();
   const store = harness.createStore();
   await store.saveMany({ [KEYS.zaiAccessToken]: "legacy-token", [NON_SESSION_KEY]: "keep-me" });
-  // 保留前缀与密钥指纹、篡改 payload：同一把密钥解不开，等价旧密钥残留/比特腐烂。
-  const raw = JSON.parse(await readFile(harness.filePath, "utf8")) as Record<string, string>;
-  const ciphertext = raw[KEYS.zaiAccessToken]!;
-  raw[KEYS.zaiAccessToken] = ciphertext.slice(0, -1) + (ciphertext.endsWith("A") ? "B" : "A");
-  await writeFile(harness.filePath, `${JSON.stringify(raw, null, 2)}\n`);
+  await damageStoredValue(harness.filePath, KEYS.zaiAccessToken);
   await assert.rejects(
     () => store.loadMany([KEYS.zaiAccessToken]),
     (error: unknown) => {
@@ -568,4 +584,126 @@ test("会话键解不开时按损坏恢复：只清会话命名空间，登录�
   assert.equal(stored[KEYS.zaiAccessToken], "fresh-access");
   assert.equal(typeof stored[KEYS.sessionRevision], "string");
   assert.equal(stored[NON_SESSION_KEY], "keep-me", "损坏恢复只清会话键，其他凭据不受影响");
+});
+
+test("账号组键解不开时按损坏恢复：删掉坏键后用本次登录值继续", async () => {
+  const harness = await createHarness();
+  const store = harness.createStore();
+  const providerId = "account:bigmodel-individual-coding-plan";
+  const identityKey = standaloneAccountIdentityCredentialKey(providerId);
+  const apiKeyKey = standaloneAccountProviderCredentialKey({
+    accountIdentity: BIGMODEL_USER.user_id,
+    providerId,
+  });
+  // 组内留一份旧凭据再把 api-key 密文改坏：账号组快照读取会撞上解不开的值。
+  await store.saveMany({ [identityKey]: "stale-identity", [apiKeyKey]: "stale-api-key" });
+  await damageStoredValue(harness.filePath, apiKeyKey);
+  await assert.rejects(
+    () => store.loadMany([apiKeyKey]),
+    (error: unknown) => {
+      assert.equal((error as { code?: string }).code, CREDENTIAL_DECRYPT_ERROR_CODE);
+      return true;
+    },
+  );
+
+  const healed: string[][] = [];
+  const recordingStore: SharedZCodeCredentialStore = {
+    ...store,
+    async deleteUnreadable(keysToHeal, options) {
+      healed.push([...keysToHeal]);
+      return await store.deleteUnreadable(keysToHeal, options);
+    },
+  };
+
+  const result = await loginZCodeCli(
+    loginOptions(harness, {
+      credentialStore: recordingStore,
+      httpClient: createOAuthHttpClient({
+        accessToken: "bigmodel-access",
+        providerId: "bigmodel",
+        refreshToken: "bigmodel-refresh",
+        token: "bigmodel-jwt",
+        user: BIGMODEL_USER,
+      }),
+      providerId: "bigmodel",
+    }),
+  );
+  assert.equal(result.providerId, "bigmodel", "账号组自愈后登录照常完成，而不是报配置写入失败");
+  assert.deepEqual(healed, [[apiKeyKey]], "只清理仍解不开的键：可读的 identity 与版本键留给 CAS");
+  const stored = await store.loadMany([identityKey, apiKeyKey, KEYS.sessionRevision]);
+  assert.equal(stored[identityKey], BIGMODEL_USER.user_id, "可读的 identity 按本次登录覆盖");
+  assert.equal(stored[apiKeyKey], "resolved-api-key", "坏掉的 api-key 被本次登录值替换");
+  assert.equal(typeof stored[KEYS.sessionRevision], "string", "会话版本键不受账号组恢复影响");
+});
+
+test("账号组自愈仍失败：抛可诊断错误，且不把存储不可用当成可删密文", async () => {
+  const keys = {
+    apiKeyCredentialKey: "account-provider:test:api-key",
+    identityCredentialKey: "account-provider:test:identity",
+  };
+  const decryptFailure = () =>
+    Object.assign(new Error("Invalid encrypted credential"), {
+      code: CREDENTIAL_DECRYPT_ERROR_CODE,
+    });
+  const healedKeys: string[][] = [];
+  const stubborn: Pick<SharedZCodeCredentialStore, "deleteUnreadable" | "load" | "loadMany"> = {
+    async loadMany() {
+      throw decryptFailure();
+    },
+    async load() {
+      throw decryptFailure();
+    },
+    async deleteUnreadable(keysToHeal) {
+      healedKeys.push([...keysToHeal]);
+      return false;
+    },
+  };
+
+  await assert.rejects(
+    () => captureStandaloneAccountSnapshot(stubborn, keys),
+    (error: unknown) => {
+      assert.ok(
+        error instanceof ZCodeCliLoginError,
+        `期望可诊断的登录错误，实际：${String(error)}`,
+      );
+      assert.equal(error.code, "credential_unreadable");
+      assert.equal(
+        (error.cause as { code?: string }).code,
+        CREDENTIAL_DECRYPT_ERROR_CODE,
+        "保留底层解密失败作为 cause，避免丢失根因",
+      );
+      return true;
+    },
+  );
+  assert.equal(healedKeys.length, 1, "放弃前必须先尝试一次锁内清理");
+  assert.deepEqual(
+    healedKeys[0],
+    [keys.identityCredentialKey, keys.apiKeyCredentialKey, KEYS.sessionRevision],
+    "逐个复检后把解不开的键交给 store 复确认",
+  );
+
+  // 存储不可用不是「密文坏了」：不得复检、不得删键，原错误码原样上抛。
+  let fallbackHeals = 0;
+  let fallbackProbes = 0;
+  const unusable: Pick<SharedZCodeCredentialStore, "deleteUnreadable" | "load" | "loadMany"> = {
+    async loadMany() {
+      throw Object.assign(new Error("System credential storage is unavailable"), {
+        code: CREDENTIAL_SECURE_STORAGE_UNAVAILABLE_CODE,
+      });
+    },
+    async load() {
+      fallbackProbes += 1;
+      throw new Error("storage unavailable 时不应逐键复检");
+    },
+    async deleteUnreadable() {
+      fallbackHeals += 1;
+      return false;
+    },
+  };
+  await assert.rejects(
+    () => captureStandaloneAccountSnapshot(unusable, keys),
+    (error: { code?: string }) => error.code === CREDENTIAL_SECURE_STORAGE_UNAVAILABLE_CODE,
+  );
+  assert.equal(fallbackHeals, 0, "存储不可用时不得尝试清理");
+  assert.equal(fallbackProbes, 0, "存储不可用时不得逐键复检（复检会再次撞上同一错误）");
 });
