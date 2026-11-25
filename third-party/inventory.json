@@ -449,7 +449,7 @@
     "apps/zcode-cli/packages/zcode-guide-plugin/skills/zcode-configuration-guide/SKILL.md": "c173c54d3d125e5a3228f01a154c6a55e760dce07835226f0fa8dea644b0570d",
     "apps/zcode-cli/tools/prompt-trajectory/package.json": "7f161fc87f36691f01eb8c2034bd89cf28107da36db02bc20e76f059edd36af6",
     "apps/zcode-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
-    "package.json": "1cd794b6dbf9e14796bae13ef6d1b4e50709f7fb922a04b37d6a6d4268110a72",
+    "package.json": "ba72200a652ba35b607e5716186729fe9747653b1544bf7066c0f84819b59c57",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
     "packages/desktop/package.json": "ff7d867a03a9aad40098957d8edd8ee0c6e19afb63437229fd2992be3bf15797",
     "packages/desktop/src/host/index.ts": "a0e335750bedb82216ee8d0b0bfe56bc159eaa56ae84a8bcf99b7a0020702ce6",

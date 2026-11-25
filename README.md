@@ -18,7 +18,7 @@ ZCode-CE 是 AI 编程工作台 **ZCode 的开源社区版**，提供桌面应�
 
 我们基于 [zai-org/ZCode](https://github.com/zai-org/ZCode)（Apache-2.0）构建，面向希望**完全掌控自己开发环境**的用户，**欢迎社区成员参与建设** —— 功能开发、问题反馈、文档改进都算。
 
-**当前发布 `3.17.2-ce.1`**：代码基线是上游开源 `3.17.2`（`a9fe401e`）的逐特性移植；官方闭源 `3.17.2` 只做机制核对，未引入任何不可分发的能力。上游开源已到 **`4.0.0`**（`a4b44451`，官方闭源同步发布），本项目正按特性分批移植，下一版目标 `4.0.0-ce.1`。逐条状态见[上游同步](docs/development/upstream-sync.md)，本版变更见 [Releases](https://github.com/Zcode-CE/Zcode-CE/releases)。
+**当前发布 `4.0.0-ce.1`**：代码基线是上游开源 `4.0.0`（`a4b44451`，含 3.18.x 与 3.19.x 的增量）的逐特性移植；官方闭源 `4.0.0` 只做机制核对，未引入任何不可分发的能力。逐条状态见[上游同步](docs/development/upstream-sync.md)，本版变更见 [Releases](https://github.com/Zcode-CE/Zcode-CE/releases)。
 
 ### 我们不是什么
 

@@ -1,61 +1,105 @@
-# ZCode-CE 3.17.2-ce.1
-
-## 与官方版本的关系
-
-本版对齐官方开源 **3.17.2**（`a9fe401e`，2026-11-03 发布）。官方闭源 3.17.2 只做机制核对（签名器、验证码链、内置配置下发的形状），**没有引入任何不可分发的能力**。逐条同步状态见 `docs/development/upstream-sync.md` 的 v3.17.2 节。
+<!-- 草稿：未发版，发版前删除本行 -->
 
 ## 新增功能
 
-- **远程常驻会话**：远端主机装有无头服务器 `zcode-server` 时，远程工作区会优先走常驻 daemon —— 断网、关窗、断连都不会结束远端会话。重连后自动接回（host 换连接句柄 → 主进程重建通道 → 界面换代服务），失败时明确提示「需重新加载工作区」，不会假装已恢复。没装 `zcode-server` 的远端行为完全不变。
-- **工作区管理**：设置 →「工作区」新增统一入口，可查看本机记住过的全部工作区、编辑显示名、按最近使用/名称/会话数排序；每行提供「从列表移除」（保留数据）与「删除并清理数据」（不可恢复，需输入名称确认，运行中的工作区会被拒绝）。
-- **MCP 工作区信任**：项目里声明的 MCP 服务器默认**不再自动信任并连接**；未信任的服务器在设置页与工作区内提示条里显示，由你决定是否信任。未知、陈旧或损坏的信任记录一律按未信任处理。
-- **图片预览标注**：预览图片时可标注（画笔、形状、文字等），标注结果可保存并作为附件发进对话。
-- **未读任务筛选**：侧栏视图新增「按未读」，只列出有未读的任务；退出视图即回到原偏好。
-- **打开方式**：文件卡片与预览面板的下拉菜单会列出系统关联应用（含默认应用标记），可直接用指定应用打开；平台不支持时整组不出现。
-- **在文件管理器中定位**：文件树右键与预览面板新增「在文件管理器中打开」，会选中文件本身（macOS Finder / Windows 资源管理器 / WSL 走对应路径）。
-- **预览卡片整卡点击**：点击卡片任意位置即可打开预览，右侧按钮仍保持独立。
-- **帮助菜单复制设备号**：账号菜单可直接复制设备号，方便反馈问题。
+- **登录凭据存进系统钥匙串**：macOS 钥匙串、Windows 凭据管理器、Linux Secret Service 可用时，登录凭据由系统保管；钥匙串不可用时退回本机加密文件，并在设置里能看到当前用的是哪一种。
+- **读不出来的会话数据不再让整段会话打不开**：单条数据损坏或来自更新版本时，只把那一行显示为占位并说明是「可能来自更新版本」还是「数据可能已损坏」，其余内容照常可用。
+- **多段消息按原样分段显示**：一条消息里的多段文字不再被拼成一句。
+- **打开可执行类文件前先确认**：在终端中打开、或用指定应用打开脚本/快捷方式这类文件时会先询问，默认与 Esc 都是取消。
 
-## 安全
+## 体验优化
 
-- **计划模式不再放行高风险操作**：此前「计划模式 + 自主模式」的组合下，命中危险命令规则的工具可能免确认执行；现在计划模式会补做单次确认，且非只读的 MCP 工具不再被直接放行。
-- **自定义命令的脚本改为经权限确认**：命令里的 `!` shell 块不再在解析阶段直接执行，而是交给模型经 Bash 工具走审批。
-- **子代理权限不宽于父会话**：计划模式下探索型子代理不再被提升为完全放行，恢复子会话也不再沿用落盘的旧模式。
+- **会话启动不再长时间卡住**：等待文件系统准备的通用步骤有了上限，超时按降级处理而不是一直等。
+- **恢复会话后不再出现「内容块绑定到了不同会话」的服务商报错**，同一轮里的文字与工具调用顺序保持稳定。
+- **长时间对话的流式回复更少卡顿**：已发送过的系统提示按原样复用，不再每次重建。
 
 ## 问题修复
 
-- **配置文件损坏不再被覆盖**：`config.json` 的多处写入方改为「严格读取 → 写前重读 → 原子替换」，损坏的文件会保留备份而不是被默认值整份覆盖；`setting.json` 校验失败同样改为隔离备份，不再静默重置全部偏好。
-- **长对话流式回复卡顿**明显减少（渲染分区与历史段缓存）。
-- **产物卡片偶尔不刷新**：对陈旧修订号会按最新状态重查。
-- **远程订阅迟到不再打死 Host**：RPC 订阅失败改为回一帧错误而不是让进程退出。
-- **内容安全拦截快速报错**：被安全策略拦截的空回复不再反复重试。
-- **大于 15MB 的归档不再卡住渲染进程**（RPC 二进制载荷）。
-- **Windows 窗口被其他程序遮挡后恢复正常显示**；**macOS 应用图标空白**修复；**macOS 安装包补回中英文语言资源**。
-- **发布链两段化**：安装包在启动冒烟通过后才发布，冒烟失败不会再在 Release 上留下资产。
+- **安全**：工作流脚本无法再逃出沙箱拿到宿主机权限；网页内容与 Mermaid 图里的链接不再能把主窗口导航到外部地址；自定义 CA 只接受完整证书链；`adb` 只采用系统路径里的可执行文件，工作区内同名的 `adb` 不会被使用；项目里换掉钩子脚本后不再沿用旧的信任状态；插件的敏感选项不再写入通用配置文件。
+- **数据完整性**：配置合并不再把「工具与权限」「网络」「存储」里的用户设置重置为默认；导出日志与应用内反馈不再带出凭据；登录资料刷新不再把账号身份指向另一个账号；会话数据库升级到最新结构。
+- **其他**：MCP 服务的错误日志在截断后不再泄露密钥片段；不可读的会话行不再导致会话永久打不开。
 
-## 变更
+## 升级须知（行为变化）
 
-- **远程资产 CDN 换到新域名**：`https://cdn.wsdaxl.tech`（与旧域名指向同一个存储桶，内容一致）。已安装的旧版本继续使用旧域名，无需任何操作。
+- **使用脚本入口的工作区钩子需要重新信任一次**：信任摘要现在包含脚本内容，所以脚本变化的钩子不会再被当作已信任。没有脚本入口的钩子不受影响。
+- **登录凭据换用新的加密格式，不支持回退到旧版本**：旧版本读不了新格式的密文。如果可能需要回退，请先记下当前登录方式并准备重新登录。
+- **会话数据库会升级到最新结构**：如果这个数据库已被更新版本的官方客户端升级过，本版会明确拒绝写入并提示，而不是尝试混用。
+- **首次打开可执行类文件会多一次确认**：确认框中默认按钮与 Esc 都是取消。
+
+## 同步上游
+
+| 条目                                                                                                                                                           | 上游版本 | 来源     | 依据     | 同步情况                                                                                |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------- | -------- | --------------------------------------------------------------------------------------- |
+| 工作流脚本沙箱加固、只读命令判定收紧、会话行逐行降级、内容块顺序、系统提示快照、会话库结构调整、登录资料只更新展示字段                                         | 3.18.x   | 开源仓库 | 源码比对 | 已跟进                                                                                  |
+| 主窗口导航限制、插件敏感选项隔离、`adb` 只允许系统路径、钩子脚本内容纳入信任、文件监听原语、可执行文件打开确认、日志脱敏、自定义 CA 整链校验、配置合并逐项保留 | 4.0.0    | 开源仓库 | 源码比对 | 已跟进                                                                                  |
+| 请求签名器、验证码分流、官方端点路由、官方遥测上报                                                                                                             | 4.0.0    | 闭源包   | 逆向分析 | 不适用（查过：本版不引入签名器与验证码分流，也不上报遥测）                              |
+| 预装工具链（随官方 CDN 下发的办公引擎）、扩展宿主（Extension Host）                                                                                            | 4.0.0    | 开源仓库 | 源码比对 | 未跟进（有意）：与本版「办公能力零外部依赖」的边界冲突，且会引入上百 MB 的原生引擎      |
+| 项目与宿主分离的数据模型                                                                                                                                       | 4.0.0    | 开源仓库 | 源码比对 | 未跟进（有意）：本版的项目身份就是工作区路径，换成宿主+项目两套标识会打断现有工作区数据 |
+
+## 已知限制
+
+- 打开可执行文件的确认按扩展名判断，**没有扩展名的可执行文件不会触发确认**；这是为了不对普通源码文件反复打扰。
+- 不可读会话行的占位只给分类提示（更新版本 / 数据损坏），不展示原始内容。
 
 ## 本版尚未验证
 
-- Windows / macOS 安装包的启动与界面交互没有在真机逐项执行；本版的平台相关修复（遮挡重绘、图标、语言包）只在 Linux 上做了类型与构建验证。
-- 远程常驻会话的真机验证只覆盖 SSH（自建 sshd + 真 daemon：断连后 daemon 存活、重连回同一代）；**WSL / Docker 未验证**（会零变化回退到原链路）。
-- 工作区删除的确认框、图片标注、未读视图、打开方式菜单未在真实桌面会话里逐项点检（web 端已目视核过工作区列表与删除确认框）。
-- 真实 provider 网关的端到端行为（工具搜索的原生模式等）没有凭据验证。
+- **Windows 与 macOS 安装包的启动与界面交互未在真机逐项执行**；本期改动里的平台相关部分只在 Linux 上验证。
+- **系统钥匙串只在 Linux 上验证过**：macOS 钥匙串、Windows 凭据管理器，以及安装包形态（AppImage / deb / 系统包 / 安装器）下的原生模块加载，都还没有真机结论。
+- **`rpm` 安装包未在本地产出**（本机缺少打包工具），由 CI 产出；`AppImage` 与 `deb` 已本地产出并核对。
+- **真实服务商下的冷恢复没有端到端验证**：系统提示复用与内容块顺序只有本地用例覆盖。
+- **桌面端与网页端的新界面没有逐项点检**：可执行文件确认框、不可读行占位、钩子信任提示都只做了类型与文案核对。
+- **与官方客户端共用同一数据目录时的互开没有验证**：本版遇到更高版本的会话库会拒绝写入，反向（官方读本版升级后的库）没有实测。
 
 ---
 
-# English
+<!-- English -->
 
-ZCode-CE 3.17.2-ce.1 aligns with the upstream open-source **3.17.2** (`a9fe401e`). Highlights:
+## New features
 
-- **Persistent remote sessions**: when the remote host has `zcode-server` installed, remote workspaces run against a resident daemon — disconnects no longer end the remote session, and reconnects re-attach automatically (falling back to an explicit "reload workspace" prompt when the daemon restarted). Remotes without `zcode-server` behave exactly as before.
-- **Workspace management**: a unified settings page to rename, sort, remove from list (keeps data) or delete with data cleanup (irreversible, requires typing the name; running workspaces are refused).
-- **MCP workspace trust**: MCP servers declared inside a project are no longer trusted and connected automatically; unknown/stale/corrupt trust records are treated as untrusted.
-- **Image annotation**, **unread-only sidebar view**, **open with…**, **reveal in file manager**, **whole-card preview click**, **copy device id**.
-- **Security**: plan mode no longer lets dangerous-command rules skip confirmation; custom-command shell blocks now go through Bash approval; subagent permissions can no longer exceed the parent session.
-- **Fixes**: corrupted config files are no longer overwritten (quarantined instead), streaming jank in long conversations, stale preview cards, late RPC subscriptions no longer kill the host, content-filtered replies fail fast, >15MB archives no longer stall the renderer, Windows occlusion repaint, macOS icon/locale assets, two-phase release publishing.
-- **Change**: remote asset CDN moved to `https://cdn.wsdaxl.tech` (same bucket as before; existing installs keep using the old domain and need no action).
+- **Sign-in credentials in the system keychain**: when the macOS Keychain, Windows Credential Manager, or Linux Secret Service is available, credentials are kept there; otherwise they fall back to an encrypted local file. Settings shows which source is in use.
+- **One unreadable row no longer breaks a whole conversation**: a damaged row, or one written by a newer version, is shown as a placeholder that says whether it likely comes from a newer version or from damaged data. The rest of the conversation stays usable.
+- **Multi-part messages keep their paragraphs** instead of being joined into one line.
+- **Opening an executable file asks first**: opening scripts and shortcuts in the terminal or with a chosen app shows a confirmation; the default button and Esc both cancel.
 
-Not verified in this release: Windows/macOS installer startup and UI interaction, WSL/Docker for the persistent-session path, and real provider gateway behavior.
+## Improvements
+
+- **Session startup no longer hangs**: the generic step that waits for the file system now has a deadline and degrades instead of waiting indefinitely.
+- **Restored sessions no longer hit the provider error about content blocks bound to a different conversation**, and text and tool calls in a turn keep their order.
+- **Less streaming jank in long conversations**: the system prompt that was already sent is reused instead of being rebuilt each turn.
+
+## Fixes
+
+- **Security**: workflow scripts can no longer escape their sandbox to reach host privileges; links in page content and Mermaid diagrams can no longer navigate the main window to an external address; a custom CA is only accepted as part of a complete chain; `adb` is only taken from the system path, never a same-named file inside the workspace; changing a workspace hook script no longer keeps the old trust state; sensitive plugin options are no longer written to the shared config file.
+- **Data integrity**: merging configs no longer resets your tools-and-permissions, network, or storage settings to defaults; exported logs and in-app feedback no longer carry credentials; refreshing your profile no longer points the account identity at a different account; the session database is upgraded to the current structure.
+- **Other**: truncated MCP error logs no longer leak credential fragments; an unreadable conversation row no longer makes the conversation permanently unopenable.
+
+## Upgrade notes (behaviour changes)
+
+- **Workspace hooks with a script entry need to be trusted again once**: the trust digest now includes the script contents, so a hook whose script changed is not treated as trusted. Hooks without a script entry are unaffected.
+- **Credentials use a new encryption format and cannot be rolled back**: older versions cannot read the new ciphertext. If you may need to roll back, note how you sign in and be ready to sign in again.
+- **The session database is upgraded to the current structure**: if that database was already upgraded by a newer official client, this build refuses to write and tells you instead of mixing formats.
+- **Opening an executable file asks once more**: the confirmation's default button and Esc both cancel.
+
+## Upstream sync
+
+| Item                                                                                                                                                                                                                                                      | Upstream version | Source                 | Basis               | Status                                                                                                                                                                  |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ---------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workflow sandbox hardening, read-only command tightening, per-row conversation degradation, content block order, system prompt snapshot, session database structure, profile refresh limited to display fields                                            | 3.18.x           | Open-source repository | Source comparison   | Followed                                                                                                                                                                |
+| Main-window navigation guard, plugin sensitive option isolation, `adb` restricted to the system path, hook script contents in trust, file-watch primitive, executable open confirmation, log redaction, full custom CA chain, config merge field by field | 4.0.0            | Open-source repository | Source comparison   | Followed                                                                                                                                                                |
+| Request signer, captcha routing, official endpoint routing, official telemetry                                                                                                                                                                            | 4.0.0            | Closed-source package  | Reverse engineering | Not applicable (checked: this build uses neither a signer nor captcha routing, and reports no telemetry)                                                                |
+| Preinstalled toolchain (document engines fetched from the official CDN), extension host                                                                                                                                                                   | 4.0.0            | Open-source repository | Source comparison   | Not followed (deliberate): conflicts with this build's zero-external-dependency stance for document work and would add a native engine of well over a hundred megabytes |
+| Separate host and project data model                                                                                                                                                                                                                      | 4.0.0            | Open-source repository | Source comparison   | Not followed (deliberate): this build's project identity is the workspace path; two identifiers would break existing workspace data                                     |
+
+## Known limitations
+
+- The executable-open confirmation is based on file extensions, so an **executable without an extension does not trigger it**. This avoids nagging on ordinary source files.
+- The placeholder for an unreadable row only gives a category (newer version or damaged data), not the original content.
+
+## Not verified in this release
+
+- **Windows and macOS installers were not exercised on real machines**; the platform-specific parts of these changes were verified on Linux only.
+- **The system keychain was verified on Linux only**: the macOS Keychain, Windows Credential Manager, and loading the native module from installer packages (AppImage / deb / system package / installer) have no real-device conclusion yet.
+- **The `rpm` package was not produced locally** (the packaging tool is missing on the build host); CI produces it. `AppImage` and `deb` were produced and inspected locally.
+- **Cold restore against a real provider is not end-to-end verified**: prompt reuse and content block order are covered by local tests only.
+- **The new desktop and web surfaces were not walked through**: the executable confirmation, the unreadable-row placeholder, and the hook trust prompts were checked by types and copy only.
+- **Sharing a data directory with the official client was not verified**: this build refuses to write to a newer session database, but the reverse direction (an official client reading the upgraded database) was not tested.
