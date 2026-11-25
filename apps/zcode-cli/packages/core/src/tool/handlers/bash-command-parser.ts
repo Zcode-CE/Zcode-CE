@@ -1,7 +1,8 @@
 // Modified by ZCode: 本地修改（非整文件搬运）——F3 guarded 模式按上游 aac47556 的 4 点 diff 合并
 // （AST 解析管道补齐；CE 解析器为上游严格子集）。其余行为与 CE 原有实现一致。
 import { parse } from "unbash";
-import { literalPosixWord, type CommandWord } from "./guarded/word.js";
+import { unwrapCommand } from "./guarded/wrappers.js";
+import { commandBasename, literalPosixWord, type CommandWord } from "./guarded/word.js";
 import type {
   AndOr,
   Command,
@@ -289,6 +290,55 @@ function emptyAnalysis(): BashCommandAnalysis {
     hasUnsupportedSyntax: false,
     unsupportedNodeTypes: [],
   };
+}
+
+/**
+ * 找出真正会被执行的 adb 命令词；找不到返回 undefined。
+ *
+ * 只按 AST 给出的命令位置判断，注释、引号内文本、重定向目标里的 adb 不算命令。逐一剥掉
+ * wrapper（env/sudo/time/unwrapCommand）、command/exec 与 CMD 的 call，再比对命令名，
+ * 因此 "env -u HOME adb devices"、"command -- adb devices" 这类写法同样命中。
+ */
+export function directAdbWord(
+  input: CommandWord[],
+  windows: boolean,
+  cmd: boolean,
+  source: string,
+): CommandWord | undefined {
+  const unwrap = (input: CommandWord[]) => {
+    let words = input;
+    // CMD 的 @ 只关闭回显；解析词仍保留它，曾让 @adb.exe 漏过禁令。
+    // 只按原始命令位置去掉前缀，保留引号/转义中的字面 @，替换路径时仍保留命令前缀。
+    while (cmd && words[0]) {
+      const word = words[0];
+      const prefix = /^@+/.exec(source.slice(word.start, word.end))?.[0];
+      if (!prefix) break;
+      const value = word.value.slice(prefix.length);
+      if (value) {
+        words = [{ ...word, value, start: word.start + prefix.length }, ...words.slice(1)];
+        break;
+      }
+      words = words.slice(1);
+    }
+    return unwrapCommand(words, windows);
+  };
+  let words = unwrap(input);
+  while (words?.[0]) {
+    const name = commandBasename(words[0], windows);
+    if (!name) return undefined;
+    if (/^adb(?:\.(?:exe|com|cmd|bat))?$/.test(name)) return words[0];
+    if (cmd ? name !== "call" : name !== "command" && name !== "exec") return undefined;
+    words = words.slice(1);
+    while (words[0] && !words[0].dynamic && words[0].value.startsWith("-")) {
+      const option = words.shift()!.value;
+      if (option === "--") break;
+      if (name === "command" && (option === "-v" || option === "-V")) return undefined;
+      if (name === "exec" && option === "-a") words.shift();
+      else if (!(name === "command" ? ["-p"] : ["-c", "-l"]).includes(option)) return undefined;
+    }
+    words = unwrap(words);
+  }
+  return undefined;
 }
 
 function freezeAnalysis(analysis: MutableBashCommandAnalysis): BashCommandAnalysis {

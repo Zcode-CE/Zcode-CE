@@ -42,6 +42,7 @@ import type {
 } from "../types.js";
 import { supportsBashBackgroundLifecycle } from "./bash-background-lifecycle.js";
 import { isBashAutoBackgroundEligible } from "./bash-background-policy.js";
+import { prepareAdbCommand } from "./bash-adb-guard.js";
 import { resolveBashPermissionRulePolicy } from "./bash-command-permission-policy.js";
 import { decideBashCwdPolicy } from "./bash-cwd-policy.js";
 import { readStringProperty } from "./bash-metadata.js";
@@ -148,6 +149,15 @@ async function executeBashHandler(
   }
 
   const request = createExecutionRequest(parsed, context, timeoutPolicy);
+  // 工作区里的伪 adb 必须在启动 shell 之前被拒；放行时固定到已校验的 canonical 绝对路径。
+  if (request.command.mode === "shell") {
+    request.command.command = await prepareAdbCommand(
+      parsed.command,
+      context,
+      request.cwd ?? context.workspaceRoot,
+      context.bashShellSelection?.dialect ?? GUARDED_DEFAULT_DIALECT,
+    );
+  }
   const progressTiming: BashProgressTiming = {};
   const commandTelemetry = startBashCommandTelemetry(parsed, context);
   const runOptions = createExecutionRunOptions(context, progressTiming, commandTelemetry);

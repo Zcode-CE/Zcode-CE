@@ -281,7 +281,23 @@ export interface BackgroundExecutionSnapshot {
   error?: ExecutionFailure;
 }
 
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入 adb 工作区外准入契约（resolveAdbExecutable）。
+export interface AdbExecutableRequest {
+  file: string;
+  cwd: string;
+  workspaceRoot: string;
+}
+
+export type AdbExecutableResolution =
+  | { status: "resolved"; path: string }
+  | { status: "workspace" | "missing" };
+
 export interface ExecutionPort {
+  /**
+   * 只解析和校验 adb，不启动子进程；返回工作区外的 canonical 绝对路径。
+   * 缺省实现视为适配器无法安全解析，Bash 会拒绝执行 adb 命令而不是交给 Shell 重新查找。
+   */
+  resolveAdbExecutable?(request: AdbExecutableRequest): Promise<AdbExecutableResolution>;
   run(request: ExecutionRequest, options?: ExecutionRunOptions): Promise<ExecutionResult>;
   start?(
     request: ExecutionRequest,
