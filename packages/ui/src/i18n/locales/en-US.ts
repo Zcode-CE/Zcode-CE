@@ -190,6 +190,15 @@ const enUS: Record<string, string> = {
   "common.save": "Save",
   "common.saving": "Saving...",
   "common.delete": "Delete",
+  // Per-row degradation (shared UnreadableConversationRow): a row this build cannot read stays visible.
+  // Base copy follows upstream's soft "requires a newer version" hint and adds the corrupted case;
+  // the hint branches on reason and never renders internal identifiers (unknownKind / invalidRow).
+  "conversation.row.unreadable":
+    "This message can’t be read (it may come from a newer version or be corrupted)",
+  "conversation.row.unreadable.unknownKind":
+    "This version doesn’t recognize the content type. Updating ZCode may restore it.",
+  "conversation.row.unreadable.invalidRow":
+    "This message’s fields don’t match this version. Updating ZCode may restore it; if it still can’t be read, the data is corrupted.",
   "conversationShare.trigger": "Share",
   "conversationShare.shareTitle": "Share title",
   "conversationShare.permissionLabel": "Access",

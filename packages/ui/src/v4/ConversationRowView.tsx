@@ -1,5 +1,6 @@
 /* oxlint-disable eslint(max-lines) -- v4 逐行 row 渲染分发集中收口（每种 row 一个 memo 叶子 + timelineMarker 分隔线），拆分会打散行类型对照。 */
 // Modified by ZCode: F2 提取: ConversationAssistantTextActions 增加 compactForRemoteControl prop 与 resolveTooltip 紧凑态行为(上游 compactForRemoteControl)。
+// Modified by ZCode: 行分发补 unreadable 占位（消费侧对齐上游 v3.18.2 逐行降级的 §4.4.9）：读不懂的行必须显形，不得静默跳过。
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -127,6 +128,7 @@ import { ConversationUserInputBubble } from "@/v4/ConversationUserInputBubble.js
 import { formatModelChangeLabel } from "@/v4/composer/modelTriggerDisplay.js";
 import { formatMessageTimeLabel } from "@/v4/messageTimeLabel.js";
 import { parseConversationShareContext } from "@/lib/conversationShareContext.js";
+import { UnreadableRowBody } from "@/v4/conversationUnreadableRow.js";
 
 function RowShell({
   rowId,
@@ -2169,7 +2171,18 @@ function ConversationRowViewImpl({
       return <SubagentRowView row={row} />;
     case "artifact":
       return <ArtifactRowView row={row} />;
+    case "unreadable":
+      // 逐行降级的占位行必须停在原 rowId 位置（静默跳过会让用户以为消息丢了）。
+      // 外壳保留行身份，正文只表达「读不懂这一行」；行高由固定文案决定（一行标题 + 一行原因提示），
+      // 虚拟列表按 render unit 估算、挂载后由 measureElement 回写真实高度（timelineRowHeightCache.ts），无需额外估计表。
+      return (
+        <RowShell rowId={row.rowId} className="px-4 py-1">
+          <UnreadableRowBody row={row} />
+        </RowShell>
+      );
     default:
+      // 兜底而非静默丢弃：真正读不懂的行由 display schema 降级成 unreadable 占位，
+      // 这里只兜住「类型与运行时数据不同步」的协议新增行，避免整轮渲染失败。
       return null;
   }
 }

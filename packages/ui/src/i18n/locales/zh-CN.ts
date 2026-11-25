@@ -180,6 +180,14 @@ const zhCN: Record<string, string> = {
   "common.save": "保存",
   "common.saving": "保存中...",
   "common.delete": "删除",
+  // 会话行逐行降级（shared 的 UnreadableConversationRow）：读不懂的一行必须显形，不得静默跳过。
+  // 基础文案沿用上游「需要更新 ZCode 查看」的软提示语义，并补上「也可能已损坏」；提示按 reason
+  // 分支给下一步动作，正文不出现 unknownKind / invalidRow 这类内部标识。
+  "conversation.row.unreadable": "这条内容无法读取（可能来自更新版本，也可能是数据已损坏）",
+  "conversation.row.unreadable.unknownKind":
+    "当前版本不认识这条内容的类型。更新 ZCode 到最新版本后可能恢复显示。",
+  "conversation.row.unreadable.invalidRow":
+    "这条内容的字段与当前版本不一致。更新 ZCode 到最新版本后可能恢复显示；若更新后仍读不出来，说明该条数据已损坏。",
   "conversationShare.trigger": "分享",
   "conversationShare.shareTitle": "分享标题",
   "conversationShare.permissionLabel": "访问权限",
