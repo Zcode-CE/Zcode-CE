@@ -1,4 +1,8 @@
-import { databaseMigrationIdSchema, type DatabaseMigrationFacts } from "@zcode/shared";
+import {
+  assertSchemaNotTooNew,
+  databaseMigrationIdSchema,
+  type DatabaseMigrationFacts,
+} from "@zcode/shared";
 import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import {
@@ -79,6 +83,9 @@ const definitions = [
   },
 ] as const;
 
+const TASKS_MIGRATION_LEDGER_TABLE = "tasks_schema_migration";
+const KNOWN_TASKS_MIGRATION_IDS = definitions.map((migration) => migration.id);
+
 /**
  * 迁移 id → 执行动作（显式分派）。
  *
@@ -119,6 +126,12 @@ export function runTasksDatabaseMigrations(
     db.exec(`CREATE TABLE IF NOT EXISTS tasks_schema_migration (
       id TEXT PRIMARY KEY, checksum TEXT NOT NULL, time_applied INTEGER NOT NULL
     )`);
+    // 与会话库同一口径的版本守卫：官方任务索引会追加 0006/0007，本版只知道到 0005。
+    // 位置在拿锁之后、任何版本 SQL 之前；抛错即 rollback ⇒ 任务索引启动失败而非静默写。
+    assertSchemaNotTooNew(db, {
+      ledgerTable: TASKS_MIGRATION_LEDGER_TABLE,
+      knownMigrationIds: KNOWN_TASKS_MIGRATION_IDS,
+    });
     // 锁内、版本 SQL 之前采集；空账本是 none，异常编号不作为遥测原文发送。
     const baseline = db
       .prepare("SELECT id FROM tasks_schema_migration ORDER BY id DESC LIMIT 1")

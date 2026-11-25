@@ -4,7 +4,12 @@ import { arch, platform, release } from "node:os";
 import { join, posix } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { ZipFile } from "yazl";
-import { redactFeedbackText, ZCODE_VERSION, ZCODE_COMMIT } from "@zcode/shared";
+import {
+  LOG_REDACTION_NOTICE_LINES,
+  redactLogTextContent,
+  ZCODE_VERSION,
+  ZCODE_COMMIT,
+} from "@zcode/shared";
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 32 * 1024 * 1024;
@@ -34,7 +39,13 @@ function decodeDiagnosticLog(buffer: Buffer): string | null {
   }
 }
 
-/** 反馈上传唯一归档入口：白名单来源、有界读取、无法安全解码时禁止原文兜底。 */
+/**
+ * 反馈上传唯一归档入口：白名单来源、有界读取、逐文件过共享结构化脱敏，无法安全解码时禁止原文兜底。
+ *
+ * 脱敏必须与桌面「导出日志」共用 @zcode/shared 的 log-redaction（同一份规则）：
+ * 这条链路是自动外发的第二条导出入口，单独维护一份规则迟早与导出日志分叉 —— 既可能漏掉
+ * 只有值形态特征的密钥（JWT / sk- / AKIA），也可能像过去那样整行替换 JSONL，连诊断一起丢掉。
+ */
 export async function createFeedbackDiagnosticArchive(options: {
   sources: readonly FeedbackLogSource[];
   outputRootDir: string;
@@ -139,7 +150,7 @@ export async function createFeedbackDiagnosticArchive(options: {
               skipLogFile("unsupported-text");
               continue;
             }
-            const data = Buffer.from(redactFeedbackText(text, { diagnostic: true }));
+            const data = Buffer.from(redactLogTextContent(text));
             if (data.length > MAX_FILE_BYTES || totalBytes + data.length > budget) {
               skipLogFile("redacted-size-limit");
               continue;
@@ -170,7 +181,10 @@ export async function createFeedbackDiagnosticArchive(options: {
           `includedLogFiles: ${entries.length}`,
           `skippedLogFiles: ${Object.values(skippedLogFilesByReason).reduce((sum, count) => sum + count, 0)}`,
           `skippedLogFilesByReason: ${JSON.stringify(skippedLogFilesByReason)}`,
-          "Scope: diagnostic text log files modified today (local time); credentials and structured payloads redacted.",
+          "Scope: diagnostic text log files modified today (local time); every file passes through the structured redaction described below.",
+          ...LOG_REDACTION_NOTICE_LINES,
+          // 与导出日志不同：这里宁可少文件也不把未脱敏内容发出去，所以二进制文件不打包。
+          "- 二进制（无法解码为文本）的文件：未脱敏（二进制），因此不纳入本归档。",
         ].join("\n"),
       ),
       "about.txt",

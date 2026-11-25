@@ -3,6 +3,7 @@ import { discoverNodePluginsSync } from "@zcode/adapters/plugins";
 import type { AgentRuntimeConfig } from "@zcode/core";
 import type { Logger, McpServerConfig, PluginLoadOutcome } from "@zcode/contracts";
 import type { StartupTimer } from "../startup-logging.js";
+import { resolvePluginSecretsPath, withPluginSecrets } from "../plugin-secrets.js";
 import { resolveOfficialPluginRoots } from "./bundled-plugins.js";
 import { DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS } from "./official-plugin-definitions.js";
 import { getPluginStorageRoot } from "./paths.js";
@@ -19,8 +20,14 @@ export function resolveStartupPlugins(input: {
 }): PluginLoadOutcome {
   const pluginStorageRoot =
     input.options.pluginStorageRoot ?? getPluginStorageRoot(input.cliStorageRoot);
-  const pluginOutcome = discoverNodePluginsSync({
-    config: input.configResult.config.plugins,
+  // 会话运行时的 MCP 展开也要读到私有文件里的敏感值（与 resolveZCodePlugins 同一叠加）。
+  const secrets = withPluginSecrets(
+    input.configResult,
+    resolvePluginSecretsPath(pluginStorageRoot),
+    input.logger,
+  );
+  const discovered = discoverNodePluginsSync({
+    config: secrets.configResult.config.plugins,
     env: input.env ?? process.env,
     officialPluginRoots: resolveOfficialPluginRoots({
       extraRoots: input.options.officialPluginRoots,
@@ -36,6 +43,10 @@ export function resolveStartupPlugins(input: {
     storageRoot: pluginStorageRoot,
     workingDirectory: input.workingDirectory,
   });
+  const pluginOutcome: PluginLoadOutcome =
+    secrets.diagnostics.length > 0
+      ? { ...discovered, diagnostics: [...discovered.diagnostics, ...secrets.diagnostics] }
+      : discovered;
   input.startupTimer.mark("ZCode plugins resolved", {
     context: {
       commandRootCount: pluginOutcome.commandRoots.length,

@@ -1,3 +1,5 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入本波数据完整性与
+// 内容块顺序修复（会话行逐行降级 / blockIndex / 迁移 0023–0026 / schema_too_new 守卫）。
 import { z } from "zod";
 
 export const databaseStartupErrorCodeSchema = z.enum([
@@ -9,6 +11,8 @@ export const databaseStartupErrorCodeSchema = z.enum([
   "open_failed",
   "lock_timeout",
   "checksum_mismatch",
+  // 迁移账本里有比本版更新的未知迁移：库由更新版本写过，本版拒写（不静默降级）。
+  "schema_too_new",
   "sql_failed",
   "startup_status_timeout",
   "transport_closed",
@@ -170,6 +174,8 @@ export function canRetryDatabaseStartup(
     ![
       "corrupt",
       "checksum_mismatch",
+      // 库结构比本版新，重试同一版本只会再次失败；必须换更新版本或替换数据库文件。
+      "schema_too_new",
       "transport_closed",
       "startup_status_timeout",
       "unsupported_runtime",

@@ -23,6 +23,7 @@ import type { IOAuthService } from "./oauth.js";
 import { isCurrentOAuthCredentialRequest } from "#src/oauth/oauthUnauthorizedRequest.js";
 import { hasOAuthAuthorizationCode, parseOAuthLoginAttribution } from "./callbackAttribution.js";
 import {
+  planOAuthProfileRefresh,
   refreshLegacyBigModelCachedProfile,
   withProviderProfileSchema,
 } from "./oauthProfileSchema.js";
@@ -555,9 +556,13 @@ export class OAuthService implements IOAuthService {
       return null;
     }
 
+    // Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入主身份 CAS 判定 ——
+    // 主身份基线在发请求前读一次：远端返回后要与"发起刷新时看到的可信主体"比较。
+    const cachedProfile = await this.repo.loadUserProfile(activeProvider);
+    let fetchedProfile: OAuthUserProfile;
     try {
       log("restoreSession validating token with provider userinfo endpoint:", activeProvider);
-      const profile = await this.runWithAdapterError(adapter, () =>
+      fetchedProfile = await this.runWithAdapterError(adapter, () =>
         adapter.fetchUserInfo!(tokenSet, {
           providerId: activeProvider,
           state: "",
@@ -565,11 +570,6 @@ export class OAuthService implements IOAuthService {
           now: this.now,
         }),
       );
-
-      await this.repo.saveActiveUserProfile(withProviderProfileSchema(activeProvider, profile));
-      await this.repo.setActiveProvider(activeProvider);
-      log("restoreSession validated:", activeProvider, profile.id);
-      return toUserInfo(profile);
     } catch (error) {
       const normalized = adapter.normalizeError(error);
 
@@ -585,6 +585,41 @@ export class OAuthService implements IOAuthService {
 
       throw normalized;
     }
+
+    // 远端 userinfo 只拥有展示字段。落盘前在会话串行队列内重读缓存：期间若发生新登录、退出
+    // 或 provider 切换，旧刷新结果不能覆盖新会话，更不能把主身份换成业务账号。
+    const persistedProfile = await this.runSessionMutation(async () => {
+      if ((await this.repo.getActiveProvider()) !== activeProvider) {
+        log("restoreSession skipped: session changed while validating profile");
+        return null;
+      }
+      const currentProfile = await this.repo.loadUserProfile(activeProvider);
+      const plan = planOAuthProfileRefresh({
+        provider: activeProvider,
+        cachedProfile,
+        currentProfile,
+        fetchedProfile,
+      });
+      if (plan.action === "require-relogin") {
+        log("restoreSession requires relogin:", activeProvider, plan.reason);
+        return null;
+      }
+      if (plan.action === "reject") throw plan.error;
+      // 远端结果与缓存完全一致时（常见于 BigModel 拿不到业务 userinfo 的哨兵回退）不落盘：
+      // 写入会给旧缓存盖上 schema 版本，反而让之后一次真正的展示名迁移被跳过。
+      if (currentProfile && isSameOAuthProfile(plan.profile, currentProfile)) {
+        log("restoreSession profile unchanged, skip write:", activeProvider);
+        return plan.profile;
+      }
+      await this.repo.saveUserProfile(
+        activeProvider,
+        withProviderProfileSchema(activeProvider, plan.profile),
+      );
+      return plan.profile;
+    });
+    if (!persistedProfile) return null;
+    log("restoreSession validated:", activeProvider, persistedProfile.id);
+    return toUserInfo(persistedProfile);
   }
 
   async startOAuth(provider: OAuthProviderId): Promise<OAuthStartResponse> {

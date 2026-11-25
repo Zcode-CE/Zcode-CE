@@ -93,6 +93,16 @@ export function mergeConfigs(...configs: PrioritizedConfig[]): RuntimeConfigPatc
 
 /**
  * 按来源剥掉不允许进入 merged RuntimeConfig 的项目层字段。
+ *
+ * 插件选项可控制插件启动路径（解释器、请求地址等），不能混进可信用户配置：一旦仓库可控的
+ * 项目配置文件能设置插件选项，clone 一个仓库就等于改了本机插件的运行参数。项目层的
+ * `plugins.options` 因此整体剥离，workspace 选项改由 Host 私有文件承载
+ * （`plugin-secrets.json`，按 workspace root 分桶，见 adapters/src/config/plugin-secrets.adapter.ts），
+ * 读取时按层叠加。
+ *
+ * 旧值不自动迁移：迁移等于把仓库文件里的值搬进用户私有存储并让它从此生效 —— 正是这条边界要
+ * 拦下的信任升级，而且无法区分「用户自己写的 workspace 配置」与「仓库带来的值」。旧值原地
+ * 保留、不读回；`config_project_plugin_options_ignored` 诊断告知用户去插件设置页重新保存。
  */
 function prepareLayerConfig(config: RuntimeConfigPatch, scope: ConfigScope): RuntimeConfigPatch {
   if (scope !== ConfigScope.Project || !config.plugins) return config;
@@ -100,6 +110,7 @@ function prepareLayerConfig(config: RuntimeConfigPatch, scope: ConfigScope): Run
   // 保留 schema 兼容旧文件，但不能让项目层字段进入 merged RuntimeConfig/catalog。
   const projectPlugins = { ...config.plugins };
   delete projectPlugins.extraKnownMarketplaces;
+  delete projectPlugins.options;
   return { ...config, plugins: projectPlugins };
 }
 

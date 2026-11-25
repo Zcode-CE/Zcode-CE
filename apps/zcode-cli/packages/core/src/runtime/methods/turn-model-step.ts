@@ -16,9 +16,11 @@ import {
 } from "../deps.js";
 import type { MessageId, ModelNetworkStatusEvent, ModelToolContract } from "../deps.js";
 import {
+  buildAssistantEntries,
   createRuntimeAssistantEntry,
   type RuntimeMessageEntry,
 } from "../../agent/message-history.js";
+import { orderedAssistantHistoryBlocks } from "../helpers/assistant-history-blocks.js";
 import {
   createContentFilteredModelResultError,
   createModelContextExceededFinishError,
@@ -49,6 +51,7 @@ import {
   persistCompletedAssistantStep,
   persistOutputTokenLimitErrorCarrier,
 } from "./turn-stop.js";
+import { persistTextBlockParts } from "./message-persistence.js";
 import { createStreamingToolCoordinator } from "./streaming-tool-coordinator.js";
 import { persistCancelledStreamSnapshot } from "./cancelled-stream-persistence.js";
 import {
@@ -388,16 +391,32 @@ async function runModelBackedTurnStepImpl(
       if (latestStreamSnapshot.text.length > 0 || reasoning.length > 0) {
         // 取消时 durable snapshot 已经持久化，但成功路径的 live history commit
         // 和 historyRoundCount 不会执行，导致当前进程与 cold resume 的 provider history 不一致。
-        commitTurnRequestEntries(this, state.turnRequestState, [
-          createRuntimeAssistantEntry(
-            latestStreamSnapshot.text,
-            undefined,
-            reasoning,
-            state.model
-              ? { providerId: state.model.providerId, modelId: state.model.modelId }
-              : undefined,
-          ),
-        ]);
+        // 有序快照与冷恢复共用 buildAssistantEntries；本地工具仍不进入（已知差异）。
+        const blocks = orderedAssistantHistoryBlocks({
+          reasoning,
+          textBlocks: latestStreamSnapshot.textBlocks,
+        });
+        commitTurnRequestEntries(
+          this,
+          state.turnRequestState,
+          blocks
+            ? buildAssistantEntries({
+                blocks,
+                model: state.model
+                  ? { providerId: state.model.providerId, modelId: state.model.modelId }
+                  : undefined,
+              })
+            : [
+                createRuntimeAssistantEntry(
+                  latestStreamSnapshot.text,
+                  undefined,
+                  reasoning,
+                  state.model
+                    ? { providerId: state.model.providerId, modelId: state.model.modelId }
+                    : undefined,
+                ),
+              ],
+        );
         recordModelHistoryRound(state);
       }
     }
@@ -474,6 +493,17 @@ async function runModelBackedTurnStepImpl(
     state.modelResponse = buildAutomationCreateLimitFallback(state.input);
   } else if (state.automationCreateLimitReached && state.modelResponse.trim().length === 0) {
     state.modelResponse = buildAutomationCreateLimitFallback(state.input);
+  }
+  if (result.textBlocks && state.modelResponse !== result.text) {
+    // fallback 替换了模型文字：只保留一个 fallback 文字块，序号排在已有块之后，
+    // 写库与 live history 都读 result.textBlocks，两边保持一致。
+    result.textBlocks = [
+      {
+        type: "text",
+        text: state.modelResponse,
+        blockIndex: maxResultBlockIndex(result) + 1,
+      },
+    ];
   }
   const usage = result.usage ?? {};
   const responseLength = state.modelResponse.length;
@@ -590,6 +620,7 @@ async function runModelBackedTurnStepImpl(
         messageID: assistantMessageId,
         type: "reasoning",
         text: reasoning.text,
+        ...(reasoning.blockIndex !== undefined ? { blockIndex: reasoning.blockIndex } : {}),
         metadata: reasoning.providerOptions,
         time: {
           start: modelStartedAt,
@@ -599,22 +630,16 @@ async function runModelBackedTurnStepImpl(
       modelTraceContext,
     );
   }
-  if (state.modelResponse.length > 0) {
-    await this.persistPart(
-      {
-        id: createPartId(),
-        sessionID: this.sessionId,
-        messageID: assistantMessageId,
-        type: "text",
-        text: state.modelResponse,
-        time: {
-          start: modelStartedAt,
-          end: Date.now(),
-        },
-      },
-      modelTraceContext,
-    );
-  }
+  await persistTextBlockParts(
+    this,
+    {
+      messageId: assistantMessageId,
+      textBlocks: result.textBlocks,
+      text: state.modelResponse,
+      time: { start: modelStartedAt, end: Date.now() },
+    },
+    modelTraceContext,
+  );
 
   const cacheHit =
     querySource === "main_turn" ? recordMainTurnCacheHitUsage(this, result.usage) : undefined;
@@ -770,6 +795,15 @@ async function runModelBackedTurnStepImpl(
     streamedToolResults,
   });
   return toolStepResult;
+}
+
+function maxResultBlockIndex(result: RuntimeModelTextResult): number {
+  const indices = [
+    ...(result.reasoning ?? []),
+    ...(result.textBlocks ?? []),
+    ...(result.toolCalls ?? []),
+  ].map((block) => block.blockIndex ?? -1);
+  return Math.max(-1, ...indices);
 }
 
 function buildAutomationCreateLimitFallback(input: string): string {

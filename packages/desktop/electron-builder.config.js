@@ -120,6 +120,10 @@ const REQUIRED_ASAR_RUNTIME_MODULES = [
   // 这与 yauzl 漏 pend 是同一类隐患——校验要求的模块必须有人负责补齐。node-forge 无子依赖，
   // 已在产物里时 afterPack 扫描会跳过它，不改变现有打包结果。
   "node-forge",
+  // Main 静态依赖 PKIjs（自签 CA 完整建链校验，见 src/main/desktopNetworkPolicy.ts）；
+  // 以它为闭包根收集 asn1js/pvtsutils/pvutils/bytestreamjs/tslib 并校验产物，
+  // 避免 pnpm 去重后 app.asar 里只剩 pkijs 而没有它的运行时依赖，主进程加载即失败。
+  "pkijs",
   // 2.7.0 起 services 新增反馈日志压缩链路并引入 yazl；2.6.0 没有这条启动期依赖，
   // pnpm hoisted 布局下 yazl 可能进了 app.asar，但子依赖 buffer-crc32 没有稳定随包进入产物；
   // 这里显式以 yazl 作为闭包根注入，让递归依赖收集把 ZIP 打包链路所需依赖一起补齐。
@@ -303,37 +307,41 @@ function resolveMissingRuntimeModules(appAsarPath) {
     .filter(Boolean);
   const asarEntrySet = new Set(asarEntries);
 
+  const isPresentInAsar = (moduleName) => {
+    const moduleRoot = `/node_modules/${moduleName}`;
+    return (
+      asarEntrySet.has(moduleRoot) ||
+      asarEntries.some((entry) => entry.startsWith(`${moduleRoot}/`))
+    );
+  };
+
   const runtimeModules = collectRuntimeModuleClosureEntries(
     REQUIRED_ASAR_RUNTIME_MODULES,
     runtimeModuleLookupRoots,
   );
-  const resolvableRuntimeModules = runtimeModules.filter((entry) => {
+  const unresolvableRuntimeModules = [];
+  const missingRuntimeModules = [];
+  for (const entry of runtimeModules) {
+    if (isPresentInAsar(entry.moduleName)) {
+      continue;
+    }
     if (!entry.sourceModulePath) {
-      // 不同平台/安装布局下，部分运行时依赖可能被裁剪或未落到本次打包工作区。
-      // 之前这里直接在 copy 阶段抛错会中断整个平台出包；改为记录告警并跳过该模块，
-      // 让 afterPack 只处理当前环境确实可解析的依赖，避免 CI 因单个可选依赖缺失全量失败。
-      console.warn(
-        `[afterPack] runtime module not found, skip injection: ${entry.moduleName}; searched=${runtimeModuleLookupRoots
-          .map((lookupRoot) => resolve(lookupRoot, "node_modules", entry.moduleName))
-          .join(", ")}`,
-      );
-      return false;
+      // 必修运行时依赖既不在产物里、也无法从工作区补齐时，安装包启动即 Cannot find module。
+      // 这类缺依赖过去只打告警并跳过，等于把问题留到用户机器上才暴露；打包是唯一能拦它的阶段，
+      // 因此这里显式失败。平台差异由 files 规则裁剪的是可选载荷，不在必修清单里。
+      unresolvableRuntimeModules.push(entry.moduleName);
+      continue;
     }
-    return true;
-  });
-  return resolvableRuntimeModules.filter((entry) => {
-    const { moduleName } = entry;
-    const moduleRoot = `/node_modules/${moduleName}`;
-    if (asarEntrySet.has(moduleRoot)) {
-      return false;
-    }
-    for (const entry of asarEntrySet) {
-      if (entry.startsWith(`${moduleRoot}/`)) {
-        return false;
-      }
-    }
-    return true;
-  });
+    missingRuntimeModules.push(entry);
+  }
+  if (unresolvableRuntimeModules.length > 0) {
+    throw new Error(
+      `打包产物缺少必修运行时依赖：${unresolvableRuntimeModules.join(", ")}；已搜索: ${runtimeModuleLookupRoots
+        .map((lookupRoot) => resolve(lookupRoot, "node_modules"))
+        .join(", ")}`,
+    );
+  }
+  return missingRuntimeModules;
 }
 
 async function injectHoistedRuntimeModulesIntoAsar(context) {

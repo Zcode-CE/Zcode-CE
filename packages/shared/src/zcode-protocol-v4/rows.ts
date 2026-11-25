@@ -6,7 +6,7 @@ import { botGroupInputSourceSchema } from "../bots.js";
 import { z } from "zod";
 import { highspeedMessageMetaSchema } from "../highspeed.js";
 import { executionOutputPreviewSchema } from "../execution-output-preview.js";
-import { timestampSchema } from "./core.js";
+import { timestampSchema, type Timestamp } from "./core.js";
 import { conversationInputSourceSchema } from "./input-intent.js";
 import { backgroundResultOriginMetaSchema, workflowLaunchMetaSchema } from "./workflow-row-meta.js";
 import { attachmentRefSchema } from "./attachment-ref.js";
@@ -438,5 +438,87 @@ export const conversationRowSchema = z.discriminatedUnion("kind", [
   hookInvocationRowSchema,
   timelineMarkerRowSchema,
 ]);
-export type ConversationRow = z.infer<typeof conversationRowSchema>;
+/** wire 上的行（发送端产出的九种）。deltas、分享导出、分享导入校验都用它，解析失败必须拒帧。 */
+export type WireConversationRow = z.infer<typeof conversationRowSchema>;
+
+// ── 逐行降级（恢复阶梯的最后一级必须不可拒绝）──
+// 事故：一行读不懂 ⇒ 整帧被拒（proto.frameAssemblyInvalidPayload）⇒ 确定性内容失败 ⇒ 直接强制
+// snapshot ⇒ 同一份内容再被拒 ⇒ fault.subscription.contentRejected，会话永久打不开
+// （2026-09-21 sess_4142de31）。一张工具卡多两个键、或新 CLI 给闭集枚举加一个值就能触发。
+// 修法（与上游 v3.18.0 同源）：snapshot 的 B 区（rows.window）与 rows/range 历史回补逐行降级；
+// A 区与 deltas 仍严格——丢一条行变更会让投影与权威发散。
+/** 降级判别结论：本端不认识该行类型，还是认识的类型但字段偏斜。 */
+export type UnreadableRowReason = "unknownKind" | "invalidRow";
+
+/**
+ * 「这一行读不懂」的占位行，由消费端合成，发送端永远不产出它。
+ *
+ * 只保留 RowBase 里最稳定的四个字段（rowId/turnId 决定身份、排序与分轮，
+ * createdAt/createdAtSeq 决定时间轴位置）。连它们都读不懂说明信封本身坏了，必须继续拒帧——
+ * 没有 rowId 的降级会把「少一行」变成「错位的一屏」。
+ * 其余字段一律不保留：无法判断偏斜的那一处是否就在其中，也不允许把原始脏数据写进日志。
+ */
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入会话行逐行降级 ——
+// 不可读行以本结构占位（不带原始载荷），deltas / 分享 / 导入仍走严格 conversationRowSchema。
+export interface UnreadableConversationRow {
+  kind: "unreadable";
+  rowId: number;
+  turnId: string;
+  createdAt: Timestamp;
+  createdAtSeq: number;
+  /** 原行自报的 kind，原样保留（唯一保留的原始事实），用于区分「未知类型」与「已知类型但字段偏斜」。 */
+  sourceKind: string;
+  /** 降级原因，供诊断与 UI 文案分支；与 sourceKind 一起构成可诊断摘要。 */
+  reason: UnreadableRowReason;
+  // 占位行没有这些事实：读点本来就应该跳过这一行，显式 undefined 让消费端不必逐个写类型分支。
+  // 必填字段（例如 toolCallId）仍然不声明，误把占位行当具体行用仍是编译错误。
+  entityId?: undefined;
+  productTurnId?: undefined;
+  visibility?: undefined;
+  actions?: undefined;
+}
+
+// 从严格 union 派生，避免「新增行类型时 reason 判定表不同步」这份第二权威。
+const KNOWN_ROW_KINDS: ReadonlySet<string> = new Set(
+  conversationRowSchema.options.map((member) => {
+    const kind = (member.shape as { kind: z.ZodLiteral<string> }).kind;
+    return kind.value;
+  }),
+);
+
+export const unreadableRowSchema = z
+  .object({
+    rowId: z.number(),
+    turnId: z.string(),
+    createdAt: timestampSchema,
+    createdAtSeq: z.number(),
+    kind: z.string(),
+  })
+  .transform(
+    (row): UnreadableConversationRow => ({
+      kind: "unreadable",
+      rowId: row.rowId,
+      turnId: row.turnId,
+      createdAt: row.createdAt,
+      createdAtSeq: row.createdAtSeq,
+      sourceKind: row.kind,
+      reason: KNOWN_ROW_KINDS.has(row.kind) ? "invalidRow" : "unknownKind",
+    }),
+  );
+
+/**
+ * 展示用的行：先按严格 union 解析，失败才退到占位行。只用于 snapshot 的 rows.window 与
+ * rows/range 的历史回补，不用于 deltas。
+ *
+ * union 的顺序是语义的一部分：严格成员必须排在前面，否则合法行也会被当成占位行。
+ */
+export const displayConversationRowSchema = z.union([conversationRowSchema, unreadableRowSchema]);
+
+/** 消费端能持有的行。比 wire 多一个占位行，所以渲染侧的 switch 必须覆盖 unreadable。 */
+export type ConversationRow = WireConversationRow | UnreadableConversationRow;
 export type ConversationRowKind = ConversationRow["kind"];
+
+/** 窄化到 wire 行：分享导出、fork 目标等只能作用于真正读得懂的行。 */
+export function isWireConversationRow(row: ConversationRow): row is WireConversationRow {
+  return row.kind !== "unreadable";
+}

@@ -1,6 +1,12 @@
 import { beginLocalTurnPreparation } from "@zcode/contracts";
 import { runWithModelInvocationContext, traceContextToLogContext } from "../deps.js";
-import type { ModelReasoningContentBlock, ModelToolCall, ModelUsage, ToolCallId } from "../deps.js";
+import type {
+  ModelReasoningContentBlock,
+  ModelTextContentBlock,
+  ModelToolCall,
+  ModelUsage,
+  ToolCallId,
+} from "../deps.js";
 import {
   buildSuspiciousEmptyDiagnostics,
   createContentFilteredModelResultError,
@@ -22,7 +28,11 @@ import type { RunModelTextRequestOptions, RuntimeModelTextResult } from "../type
 import type { AgentRuntimeInternal } from "../internal.js";
 import { modelRequestTokenLimitLogContext } from "./model-token-limits.js";
 import { createModelStreamingEventQueue } from "./model-streaming-event-queue.js";
-import { getOrCreateReasoningBlock } from "./reasoning-stream.js";
+import {
+  createTextBlock,
+  getOrCreateReasoningBlock,
+  getOrCreateTextBlock,
+} from "./reasoning-stream.js";
 import { createRefreshRuntimeHeadersBeforeModelAttempt } from "./model-runtime-headers.js";
 import { resolveModelRequestSessionTypeFromTaskType } from "./model-request-session-type.js";
 import { isOutputTokenLimitFinishReason } from "./turn-output-token-continuation.js";
@@ -159,7 +169,17 @@ export async function runModelTextRequest(
     };
   }
 
+  // blockIndex 是一次响应里所有块（reasoning、text、tool）共用的到达序号。
+  // 不用 provider 事件里的 id：tool_use 事件的 id 是调用 id，不是块位置。
+  let nextBlockIndex = 0;
+  const allocateBlockIndex = () => nextBlockIndex++;
+  const lastAllocatedBlockIndex = () => (nextBlockIndex > 0 ? nextBlockIndex - 1 : undefined);
+  const toolBlockIndexById = new Map<string, number>();
   let text = "";
+  let textBlocks: ModelTextContentBlock[] = [];
+  const textById = new Map<string, ModelTextContentBlock>();
+  // 本次响应里已有文字块时，新块才可能被 live 界面接到上一行；只有这时才补发 text_start。
+  let hasTextBlockInResponse = false;
   let finishReason = "unknown";
   let usage: ModelUsage = {};
   let providerMetadata: Record<string, unknown> | undefined;
@@ -168,7 +188,8 @@ export async function runModelTextRequest(
   const toolCalls: ModelToolCall[] = [];
   const toolCallIds = new Set<string>();
   const toolInputDeltaBuffers = new Map<ToolCallId, string>();
-  const publishStreamSnapshot = () => options.onStreamSnapshot?.({ reasoning, text });
+  const publishStreamSnapshot = () =>
+    options.onStreamSnapshot?.({ reasoning, text, textBlocks });
   const streamingEventQueue = createModelStreamingEventQueue({
     events: options.events,
     runtime: this,
@@ -247,6 +268,8 @@ export async function runModelTextRequest(
         }
 
         case "text_start": {
+          createTextBlock({ id: event.id, textBlocks, textById, allocateBlockIndex });
+          hasTextBlockInResponse = true;
           await enqueueStreamingEvent({
             assistantMessageId: options.assistantMessageId,
             delta: "",
@@ -257,6 +280,25 @@ export async function runModelTextRequest(
         }
 
         case "text_delta": {
+          const { block, created } = getOrCreateTextBlock({
+            id: event.id,
+            textBlocks,
+            textById,
+            allocateBlockIndex,
+            lastAllocatedBlockIndex,
+          });
+          block.text += event.text;
+          if (created && hasTextBlockInResponse) {
+            // 这个块没有 text_start（例如工具之后复用了旧 id），上一段文字的行可能还开着。
+            // 补发一次，live 才会和冷恢复一样每个文字块一行。
+            await enqueueStreamingEvent({
+              assistantMessageId: options.assistantMessageId,
+              delta: "",
+              done: false,
+              kind: "text_start",
+            });
+          }
+          hasTextBlockInResponse = true;
           text += event.text;
           options.onStreamTextDelta?.(event.text);
           publishStreamSnapshot();
@@ -285,6 +327,7 @@ export async function runModelTextRequest(
             providerMetadata: event.providerMetadata,
             reasoning,
             reasoningById,
+            allocateBlockIndex,
           });
           if (event.providerMetadata) {
             block.providerOptions = event.providerMetadata;
@@ -304,6 +347,7 @@ export async function runModelTextRequest(
             providerMetadata: event.providerMetadata,
             reasoning,
             reasoningById,
+            allocateBlockIndex,
           });
           block.text += event.text;
           options.onStreamReasoningDelta?.(event.text);
@@ -336,6 +380,9 @@ export async function runModelTextRequest(
         case "tool_input_start": {
           const toolCallId = event.id as ToolCallId;
           toolInputDeltaBuffers.delete(toolCallId);
+          if (!toolBlockIndexById.has(event.id)) {
+            toolBlockIndexById.set(event.id, allocateBlockIndex());
+          }
           this.logger?.debug("Model streaming tool input started", {
             ...traceContextToLogContext(options.traceContext),
             event: "model.streaming.tool_input_start",
@@ -397,6 +444,9 @@ export async function runModelTextRequest(
             break;
           }
           toolCallIds.add(toolCall.id);
+          // 没有 tool_input_start 的调用（例如 mcp_tool_use）在这里分配；必须早于 push 与
+          // onStreamToolCall：两者都会把这个对象继续往下传。
+          toolCall.blockIndex = toolBlockIndexById.get(toolCall.id) ?? allocateBlockIndex();
           toolCalls.push(toolCall);
           this.logger?.debug("Model streaming tool call completed", {
             ...traceContextToLogContext(options.traceContext),
@@ -536,6 +586,7 @@ export async function runModelTextRequest(
     providerMetadata,
     reasoning: reasoning.length > 0 ? reasoning : undefined,
     text,
+    textBlocks,
     toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
     usage,
   };

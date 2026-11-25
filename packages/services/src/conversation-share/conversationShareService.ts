@@ -23,10 +23,11 @@ import {
   localizeConversationShareUrl,
   resolveRuntimeZCodeEndpointOrigin,
 } from "@zcode/shared";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow, WireConversationRow } from "@zcode/shared/zcode-protocol-v4";
 import {
   PROTOCOL_V4_LIMITS,
   ZCODE_ATTACHMENT_FAULT_CODES,
+  isWireConversationRow,
   readZCodeAttachmentFaultCode,
 } from "@zcode/shared/zcode-protocol-v4";
 import { Emitter } from "@zcode/rpc";
@@ -283,7 +284,8 @@ const importedConversationShareFileSchema = z
   .strip();
 
 interface ConversationRowsRead {
-  rows: ConversationRow[];
+  // 读到的 wire 行：逐行降级的 unreadable 占位行在 loadAllRows 已跳过（见那里的注释）。
+  rows: WireConversationRow[];
   revision: number;
   logEpoch: string;
 }
@@ -2337,7 +2339,7 @@ export class ConversationShareService implements IConversationShareService {
     >,
     agentService: ConversationShareAgentService,
   ): Promise<ConversationRowsRead> {
-    const pages: ConversationRow[][] = [];
+    const pages: WireConversationRow[][] = [];
     let beforeRowId: number | undefined;
     let logEpoch: string | undefined;
     let revision: number | undefined;
@@ -2359,7 +2361,10 @@ export class ConversationShareService implements IConversationShareService {
       }
       logEpoch = result.atLogEpoch;
       revision = result.atRevision;
-      pages.unshift(result.rows);
+      // rows/range 逐行降级后可能带回 unreadable 占位行（本端读不懂一行时合成）。
+      // 分享是内容产物：占位行既不是内容也不是选择单位，读入即跳过；
+      // 留在管道里会让它参与轮次序号/选择/结构消毒，把「本端读不懂」变成分享失败。
+      pages.unshift(result.rows.filter(isWireConversationRow));
       if (!result.hasMore) break;
       const firstRowId = result.rows[0]?.rowId;
       if (firstRowId === undefined || firstRowId === beforeRowId) {

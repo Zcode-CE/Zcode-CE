@@ -1,3 +1,5 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入本波数据完整性与
+// 内容块顺序修复（会话行逐行降级 / blockIndex / 迁移 0023–0026 / schema_too_new 守卫）。
 import { runtimeInputMetadata } from "./runtime-input-presentation.js";
 // ============================================================
 // Session History Hydration - rebuild provider-visible context
@@ -5,6 +7,7 @@ import { runtimeInputMetadata } from "./runtime-input-presentation.js";
 
 import {
   ModelCallWrapperSchema,
+  hasOrderedAssistantBlocks,
   modelMessageContentToText,
   selectActiveConversationBranch,
 } from "@zcode/contracts";
@@ -36,12 +39,14 @@ import {
 } from "../system-reminder/prompt-attachment.js";
 import { persistedTokenUsageBaseline } from "./message-history-usage.js";
 import {
+  buildAssistantEntries,
   isKnownSystemReminderSource,
   legacySyntheticRuntimeMetadata,
   realUserRuntimeMetadata,
   systemReminderAttachmentEntry,
   systemReminderRuntimeMetadata,
   todoReminderRuntimeMetadata,
+  type AssistantHistoryBlock,
   type MessageHistory,
   type RuntimeMessageEntry,
   type RuntimeMessageMetadata,
@@ -61,7 +66,7 @@ export interface SessionHistoryHydrationResult {
   partCount: number;
 }
 
-export async function hydrateMessageHistoryFromSession(input: {
+export interface HydrateMessageHistoryInput {
   logger?: Logger;
   artifactStore?: ToolArtifactStorePort;
   branchCutAfterMessageId?: MessageId;
@@ -70,7 +75,11 @@ export async function hydrateMessageHistoryFromSession(input: {
   rewindCreatedMessageId?: MessageId;
   rewindKeptMessageIds?: readonly MessageId[];
   rewindTargetMessageId?: MessageId;
-}): Promise<SessionHistoryHydrationResult> {
+}
+
+export async function hydrateMessageHistoryFromSession(
+  input: HydrateMessageHistoryInput,
+): Promise<SessionHistoryHydrationResult> {
   const activeMessages = activeSessionMessages(input.messages, {
     branchCutAfterMessageId: input.branchCutAfterMessageId,
     rewindCreatedMessageId: input.rewindCreatedMessageId,
@@ -126,6 +135,36 @@ export async function hydrateMessageHistoryFromSession(input: {
       continue;
     }
 
+    const assistantModel =
+      message.info.modelId && message.info.providerId
+        ? { modelId: message.info.modelId, providerId: message.info.providerId }
+        : undefined;
+
+    // 有序消息：与 live 共用 buildAssistantEntries，文字块按块边界保留，工具按 blockIndex 排列。
+    // 旧消息（有任何块 part 缺 blockIndex）走下面的旧拼接路径，行为逐字节不变。
+    if (hasOrderedAssistantBlocks(parts)) {
+      const toolParts = selectToolPartsForHistory(parts.filter(isToolPart));
+      const entries = buildAssistantEntries({
+        blocks: [
+          ...orderedContentBlocksFromParts(parts),
+          ...toolParts.map(
+            (part): AssistantHistoryBlock => ({
+              kind: "tool",
+              call: toolCallInputFromPart(part),
+            }),
+          ),
+        ],
+        model: assistantModel,
+        tokens: message.info.tokens,
+        keepEmptyFinal: persistedTokenUsageBaseline(message.info.tokens) !== undefined,
+      });
+      if (entries.length === 0) continue;
+      input.history.addEntries(entries);
+      appliedMessageCount++;
+      interruptedToolCount += await addToolResultsFromParts(input, toolParts);
+      continue;
+    }
+
     const text = assistantTextFromParts(parts);
     const reasoning = assistantReasoningFromParts(parts);
     const toolParts = selectToolPartsForHistory(parts.filter(isToolPart));
@@ -158,9 +197,28 @@ export async function hydrateMessageHistoryFromSession(input: {
       message.info.tokens,
     );
     appliedMessageCount++;
+    interruptedToolCount += await addToolResultsFromParts(input, toolParts);
+  }
 
-    for (const part of toolParts) {
-      const toolName = historyToolNameFromPart(part);
+  return {
+    appliedMessageCount,
+    interruptedToolCount,
+    messageCount: activeMessages.length,
+    partCount,
+  };
+}
+
+/**
+ * 把工具结果按传入顺序写回历史：completed 用模型当时收到的内容，error 用持久化错误，其余按中断收口。
+ * 有序消息与旧消息共用它，两条路径的结果条目一致。
+ */
+async function addToolResultsFromParts(
+  input: HydrateMessageHistoryInput,
+  toolParts: readonly ToolPart[],
+): Promise<number> {
+  let interruptedToolCount = 0;
+  for (const part of toolParts) {
+    const toolName = historyToolNameFromPart(part);
       const modelCallWrapper = modelCallWrapperFromPart(part);
       if (part.state.status === "completed") {
         // live tool result 使用结构化媒体，但旧恢复只读取 output 摘要，
@@ -221,15 +279,8 @@ export async function hydrateMessageHistoryFromSession(input: {
         true,
         modelCallWrapper,
       );
-    }
   }
-
-  return {
-    appliedMessageCount,
-    interruptedToolCount,
-    messageCount: activeMessages.length,
-    partCount,
-  };
+  return interruptedToolCount;
 }
 
 export function activeSessionMessages(
@@ -623,6 +674,46 @@ function assistantReasoningFromParts(parts: MessagePart[]): ModelReasoningConten
   }
 
   return blocks;
+}
+
+/**
+ * 有序 assistant 的内容块：保持 part 的物理顺序（读边界已按 blockIndex 重排），序号随块带到历史。
+ * 与旧路径的差别只有两处：文字不再拼成一段，reasoning 与 text 的先后按到达顺序而不是固定排列。
+ */
+function orderedContentBlocksFromParts(parts: readonly MessagePart[]): AssistantHistoryBlock[] {
+  const blocks: AssistantHistoryBlock[] = [];
+  for (const part of parts) {
+    if (part.type === "reasoning") {
+      blocks.push({
+        kind: "content",
+        block: {
+          type: "reasoning",
+          text: part.text,
+          providerOptions: part.metadata ? { ...part.metadata } : undefined,
+          blockIndex: part.blockIndex,
+        },
+      });
+      continue;
+    }
+    if (part.type === "text" && !part.ignored) {
+      blocks.push({
+        kind: "content",
+        block: { type: "text", text: part.text, blockIndex: part.blockIndex },
+      });
+    }
+  }
+  return blocks;
+}
+
+function toolCallInputFromPart(part: ToolPart): ToolCallInput {
+  const modelCallWrapper = modelCallWrapperFromPart(part);
+  return {
+    id: part.callID,
+    input: part.state.input,
+    name: historyToolNameFromPart(part),
+    blockIndex: part.blockIndex,
+    ...(modelCallWrapper ? { modelCallWrapper } : {}),
+  };
 }
 
 function isToolPart(part: MessagePart): part is ToolPart {

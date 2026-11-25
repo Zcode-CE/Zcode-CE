@@ -32,6 +32,13 @@ import {
   type ProjectConfigDiscovery,
   type ProjectConfigFile,
 } from "./project-config.adapter.js";
+import { resolvePluginConfigSources, type PluginConfigSources } from "./plugin-config-sources.js";
+
+export type {
+  PluginConfigScope,
+  PluginConfigSources,
+  PluginOptionLayer,
+} from "./plugin-config-sources.js";
 
 export interface ConfigFactoryOptions {
   /** Path to user config file (default: ~/.zcode/cli/config.json) */
@@ -100,21 +107,6 @@ type OptionalPathLoadedConfig = Omit<LoadedConfig, "path"> & {
 };
 
 export type McpServerConfigSource = "system" | "project" | "user" | "env" | "cli";
-export type PluginConfigScope = "user" | "workspace";
-
-export interface PluginConfigSources {
-  dirs: {
-    user: string[];
-    workspace: string[];
-  };
-  enabled: Record<string, PluginConfigScope>;
-  marketplaces: Record<string, PluginConfigScope>;
-  options: Record<string, Record<string, PluginConfigScope>>;
-  paths: {
-    user: string;
-    workspace: string | undefined;
-  };
-}
 
 /**
  * Create ConfigPort with all sources merged
@@ -232,7 +224,9 @@ export function createConfig(options: ConfigFactoryOptions = {}): ConfigResult {
   const merged = mergeConfigs(...configs);
   const pluginConfigSources = resolvePluginConfigSources({
     projectConfig: projectConfigResult.config,
+    projectFiles: projectConfigFiles,
     projectPath: projectConfigResult.path,
+    skipUserConfig: options.skipUserConfig === true,
     userConfig: userConfigResult.config,
     userPath: userConfigResult.path,
   });
@@ -283,52 +277,6 @@ export function createConfig(options: ConfigFactoryOptions = {}): ConfigResult {
       },
       env: Object.keys(envConfig).length > 0,
       cli: !!options.cliOverrides,
-    },
-  };
-}
-
-function resolvePluginConfigSources(input: {
-  projectConfig: RuntimeConfigPatch;
-  projectPath: string | undefined;
-  userConfig: RuntimeConfigPatch;
-  userPath: string;
-}): PluginConfigSources {
-  const enabled: Record<string, PluginConfigScope> = {};
-  const marketplaces: Record<string, PluginConfigScope> = {};
-  const options: Record<string, Record<string, PluginConfigScope>> = {};
-
-  for (const pluginId of Object.keys(input.userConfig.plugins?.enabledPlugins ?? {})) {
-    enabled[pluginId] = "user";
-  }
-  for (const pluginId of Object.keys(input.projectConfig.plugins?.enabledPlugins ?? {})) {
-    enabled[pluginId] = "workspace";
-  }
-
-  for (const marketplaceId of Object.keys(input.userConfig.plugins?.extraKnownMarketplaces ?? {})) {
-    marketplaces[marketplaceId] = "user";
-  }
-  for (const [pluginId, pluginOptions] of Object.entries(input.userConfig.plugins?.options ?? {})) {
-    options[pluginId] = {};
-    for (const key of Object.keys(pluginOptions)) options[pluginId][key] = "user";
-  }
-  for (const [pluginId, pluginOptions] of Object.entries(
-    input.projectConfig.plugins?.options ?? {},
-  )) {
-    const sourceByKey = (options[pluginId] ??= {});
-    for (const key of Object.keys(pluginOptions)) sourceByKey[key] = "workspace";
-  }
-
-  return {
-    dirs: {
-      user: input.userConfig.plugins?.dirs ?? [],
-      workspace: input.projectConfig.plugins?.dirs ?? [],
-    },
-    enabled,
-    marketplaces,
-    options,
-    paths: {
-      user: input.userPath,
-      workspace: input.projectPath,
     },
   };
 }
@@ -434,6 +382,9 @@ function resolveConfigDiagnosticLogMessage(
   if (code === "config_project_hooks_pending_trust") {
     return "Project hooks pending workspace trust";
   }
+  if (code === "config_project_plugin_options_ignored") {
+    return "Project plugin options ignored";
+  }
   return "Config file failed to load";
 }
 
@@ -443,6 +394,9 @@ function resolveConfigDiagnosticLogEvent(
   if (code === "config_mcp_server_invalid") return "config.mcp_server.skipped";
   if (code === "config_project_hooks_pending_trust") {
     return "config.project_hooks.pending_trust";
+  }
+  if (code === "config_project_plugin_options_ignored") {
+    return "config.plugin_options.project_ignored";
   }
   return "config.file.invalid";
 }

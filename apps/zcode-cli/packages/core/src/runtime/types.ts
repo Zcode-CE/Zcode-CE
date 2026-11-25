@@ -45,6 +45,7 @@ import type {
   ModelNetworkStatusEvent,
   ModelMessageContentBlock,
   ModelReasoningContentBlock,
+  ModelTextContentBlock,
   ModelStreamRecoveryStatus,
   ModelToolCall,
   ModelToolContract,
@@ -879,6 +880,8 @@ export interface RunModelTextRequestOptions {
 export interface RuntimeModelStreamSnapshot {
   reasoning: ModelReasoningContentBlock[];
   text: string;
+  /** 按到达顺序的文字块；`text` 是它们的直接拼接。每块带 blockIndex。 */
+  textBlocks?: ModelTextContentBlock[];
 }
 
 export interface StreamedToolExecutionResult {
@@ -895,6 +898,8 @@ export interface RuntimeModelTextResult {
   providerMetadata?: Record<string, unknown>;
   reasoning?: ModelReasoningContentBlock[];
   text: string;
+  /** 按到达顺序的文字块，每块带 blockIndex；`text` 仍是所有文字块直接拼接。缺失时按旧数据写入和回放。 */
+  textBlocks?: ModelTextContentBlock[];
   toolCalls?: ModelToolCall[];
   usage: ModelUsage;
 }

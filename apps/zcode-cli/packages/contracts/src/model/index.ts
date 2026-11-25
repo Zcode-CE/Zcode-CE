@@ -1,3 +1,5 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入本波数据完整性与
+// 内容块顺序修复（会话行逐行降级 / blockIndex / 迁移 0023–0026 / schema_too_new 守卫）。
 // ============================================================
 // Model Protocol - provider-neutral model contracts
 // ============================================================
@@ -325,6 +327,8 @@ export interface ModelToolCall {
   name: string;
   input: unknown;
   providerExecuted?: boolean;
+  /** 本次模型响应内的块到达序号，与 text / reasoning 块共用序号空间；旧数据可缺失。 */
+  blockIndex?: number;
 }
 
 export type AttachmentKind = "local_file" | "resource" | "inline";
@@ -343,12 +347,16 @@ export interface AttachmentRef {
 export interface ModelTextContentBlock {
   type: "text";
   text: string;
+  /** assistant 块到达序号，只用于请求投影排序，不进入 provider 请求。 */
+  blockIndex?: number;
 }
 
 export interface ModelReasoningContentBlock {
   type: "reasoning";
   text: string;
   providerOptions?: Record<string, unknown>;
+  /** assistant 块到达序号，只用于请求投影排序，不进入 provider 请求。 */
+  blockIndex?: number;
 }
 
 export interface ModelImageContentBlock {
@@ -447,6 +455,26 @@ export function modelMessageContentBlockToText(block: ModelMessageContentBlock):
 
 function attachmentPlaceholder(prefix: string, mediaType: string, name?: string): string {
   return name && name.length > 0 ? `[${prefix} ${mediaType}: ${name}]` : `[${prefix} ${mediaType}]`;
+}
+
+/**
+ * blockIndex 是否合法（非负整数）。库、runtime、请求投影判定「有序」都用它，三层结论才一致。
+ * null、负数、小数都按缺失处理。
+ */
+export function isBlockIndex(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 0;
+}
+
+/**
+ * 每一项的序号都合法（isBlockIndex）时，返回按序号稳定排序的新数组；
+ * 有任何一项缺失或非法时返回 undefined，由调用方决定退回哪种顺序。
+ */
+export function sortByCompleteIndex<T>(
+  items: readonly T[],
+  indexOf: (item: T) => unknown,
+): T[] | undefined {
+  if (!items.every((item) => isBlockIndex(indexOf(item)))) return undefined;
+  return [...items].sort((left, right) => (indexOf(left) as number) - (indexOf(right) as number));
 }
 
 export interface ModelToolExecutionContext {
@@ -713,6 +741,8 @@ export interface ModelToolResult {
 
 export interface ModelTextResult {
   text: string;
+  /** 按到达顺序的文字块，每块带 blockIndex；`text` 仍是所有文字块直接拼接。 */
+  textBlocks?: ModelTextContentBlock[];
   finishReason: string;
   usage: ModelUsage;
   reasoning?: ModelReasoningContentBlock[];
@@ -872,6 +902,7 @@ const modelMessageContentBlockJsonSchema = {
       properties: {
         type: { enum: ["text"] },
         text: { type: "string" },
+        blockIndex: { type: "integer", minimum: 0 },
       },
     },
     {
@@ -882,6 +913,7 @@ const modelMessageContentBlockJsonSchema = {
         type: { enum: ["reasoning"] },
         text: { type: "string" },
         providerOptions: { type: "object" },
+        blockIndex: { type: "integer", minimum: 0 },
       },
     },
     {

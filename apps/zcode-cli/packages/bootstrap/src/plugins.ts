@@ -10,7 +10,6 @@ import {
   removePluginFromFileConfig,
   removeSuppressedBuiltinInFileConfig,
   updatePluginEnabledInFileConfig,
-  updatePluginOptionsInFileConfig,
   type ConfigResult,
 } from "@zcode/adapters/config";
 import {
@@ -58,6 +57,12 @@ import {
 } from "./app/official-plugin-definitions.js";
 import { getCliStorageRoot, getPluginStorageRoot } from "./app/paths.js";
 import { withPluginStorageLock } from "./lib/plugin-storage-lock.js";
+import {
+  removeStoredPluginSecrets,
+  resolvePluginSecretsPath,
+  savePluginOptions,
+  withPluginSecrets,
+} from "./plugin-secrets.js";
 
 export interface ResolveZCodePluginsOptions {
   configResult?: ConfigResult;
@@ -248,10 +253,13 @@ function countVisibleMarketplacePlugins(
 }
 
 export function resolveZCodePlugins(options: ResolveZCodePluginsOptions = {}): PluginLoadOutcome {
-  const { configResult, pluginStorageRoot, workingDirectory } = resolvePluginContext(options);
-
-  return discoverNodePluginsSync({
-    config: configResult.config.plugins,
+  const { configResult, pluginSecretsPath, pluginStorageRoot, workingDirectory } =
+    resolvePluginContext(options);
+  // 敏感选项在私有文件里：按层叠加后再交给发现，运行时展开（MCP header 等）与协议投影
+  // 读到的是同一份有效值。文件读不出时按空处理并回传诊断，不静默降级。
+  const secrets = withPluginSecrets(configResult, pluginSecretsPath, options.logger);
+  const outcome = discoverNodePluginsSync({
+    config: secrets.configResult.config.plugins,
     env: options.env ?? process.env,
     officialPluginRoots: resolveOfficialPluginRoots({
       extraRoots: options.officialPluginRoots,
@@ -264,6 +272,9 @@ export function resolveZCodePlugins(options: ResolveZCodePluginsOptions = {}): P
     storageRoot: pluginStorageRoot,
     workingDirectory,
   });
+  return secrets.diagnostics.length > 0
+    ? { ...outcome, diagnostics: [...outcome.diagnostics, ...secrets.diagnostics] }
+    : outcome;
 }
 
 export function getZCodePluginsOverview(
@@ -753,7 +764,8 @@ export async function installZCodeMarketplacePlugin(
 export async function uninstallZCodeMarketplacePlugin(
   options: UninstallZCodeMarketplacePluginOptions,
 ): Promise<ZCodeInstalledPluginData | null> {
-  const { configResult, pluginStorageRoot, workingDirectory } = resolvePluginContext(options);
+  const { configResult, pluginSecretsPath, pluginStorageRoot, workingDirectory } =
+    resolvePluginContext(options);
   return withPluginStorageLock(pluginStorageRoot, async () => {
     const pluginId = resolvePluginIdForMutation(options);
 
@@ -775,6 +787,8 @@ export async function uninstallZCodeMarketplacePlugin(
       });
       if (!removed) return null;
       await removePluginFromFileConfig(configResult.sources.user.path, removed.id);
+      // 卸载是彻底清除：私有敏感选项也不能留下（任何 scope）。
+      await removeStoredPluginSecrets(pluginSecretsPath, removed.id, "all");
       await removeSuppressedBuiltinInFileConfig(configResult.sources.user.path, removed.id);
       return toInstalledPluginData(removed, false);
     }
@@ -797,6 +811,8 @@ export async function uninstallZCodeMarketplacePlugin(
       // 唯一真相源（写入用原子 temp+rename），即使后续删除抛错，下次 resolve 也会跳过并补删
       // 缓存；把 config 清理放在删除之前可保证「恢复时从干净状态开始」即便删除中途失败。
       await removePluginFromFileConfig(configResult.sources.user.path, pluginId);
+      // 同上：内置插件卸载也删掉私有敏感选项，恢复后从干净状态开始。
+      await removeStoredPluginSecrets(pluginSecretsPath, pluginId, "all");
       // 不删除官方 cache：它与 Marketplace Catalog 同属详情/恢复所需的只读资产。
       if (options.keepData !== true) {
         await rm(getPluginDataDir(pluginStorageRoot, pluginId), { force: true, recursive: true });
@@ -918,7 +934,8 @@ export async function restoreBuiltinPlugin(options: RestoreBuiltinPluginOptions)
 export async function configureZCodePlugin(options: ConfigureZCodePluginOptions): Promise<void> {
   const normalizedOptions = normalizePluginOptions(options.options);
   const clearOptionKeys = normalizePluginOptionKeys(options.clearOptionKeys);
-  const { configResult, pluginStorageRoot, workingDirectory } = resolvePluginContext(options);
+  const { configResult, pluginSecretsPath, pluginStorageRoot, workingDirectory } =
+    resolvePluginContext(options);
   const outcome = resolveZCodePlugins({
     ...options,
     configResult,
@@ -927,19 +944,30 @@ export async function configureZCodePlugin(options: ConfigureZCodePluginOptions)
   });
   const plugin = resolvePluginSelector(options.pluginId, outcome.plugins);
   if (options.dryRun === true) return;
-  await updatePluginOptionsInFileConfig(
-    resolvePluginConfigPath(options, configResult, workingDirectory),
-    plugin.id,
-    normalizedOptions,
+  const configPath = resolvePluginConfigPath(options, configResult, workingDirectory);
+  // 敏感键（user 作用域）与全部 workspace 选项进私有文件，普通 user 键仍写 config.json；
+  // 项目配置文件里的 options 已从 merged config 剥离，写回项目文件也不会生效。
+  await savePluginOptions({
     clearOptionKeys,
-  );
+    configPath,
+    options: normalizedOptions,
+    plugin,
+    scope:
+      options.scope === "workspace"
+        ? {
+            kind: "workspace",
+            root: resolvePluginConfigWorkspaceRoot(configPath, configResult, workingDirectory),
+          }
+        : { kind: "user" },
+    secretsPath: pluginSecretsPath,
+  });
 }
 
 /** 删除指定 scope 的 Plugin 配置键，使 Workspace scope 回退到 User。 */
 export async function resetZCodePluginConfig(
   options: ResetZCodePluginConfigOptions,
 ): Promise<{ path: string; pluginId: string }> {
-  const { configResult, workingDirectory } = resolvePluginContext(options);
+  const { configResult, pluginSecretsPath, workingDirectory } = resolvePluginContext(options);
   const path = resolvePluginConfigPath(options, configResult, workingDirectory);
   if (options.scope === "workspace") {
     // “恢复继承”只删除 Workspace 的 enable override。options 是独立配置维度，
@@ -947,6 +975,8 @@ export async function resetZCodePluginConfig(
     await removePluginEnabledFromFileConfig(path, options.pluginId);
   } else {
     await removePluginFromFileConfig(path, options.pluginId);
+    // user 作用域的 options 同时存在于私有文件，重置要把这份一起清掉，否则旧敏感值仍然生效。
+    await removeStoredPluginSecrets(pluginSecretsPath, options.pluginId, { kind: "user" });
   }
   return { path, pluginId: options.pluginId };
 }
@@ -1016,6 +1046,7 @@ export async function describeZCodePlugin(
 
 function resolvePluginContext(options: ResolveZCodePluginsOptions): {
   configResult: ConfigResult;
+  pluginSecretsPath: string;
   pluginStorageRoot: string;
   workingDirectory: string;
 } {
@@ -1030,10 +1061,13 @@ function resolvePluginContext(options: ResolveZCodePluginsOptions): {
       userConfigPath: options.userConfigPath,
     });
   const storageRoot = resolvePath(configResult.config.storage.dir);
+  const pluginStorageRoot =
+    options.pluginStorageRoot ?? getPluginStorageRoot(getCliStorageRoot(storageRoot));
   return {
     configResult,
-    pluginStorageRoot:
-      options.pluginStorageRoot ?? getPluginStorageRoot(getCliStorageRoot(storageRoot)),
+    // 私有敏感选项文件与 `plugins/` 同级；调用方覆盖 pluginStorageRoot 时文件跟着走。
+    pluginSecretsPath: resolvePluginSecretsPath(pluginStorageRoot),
+    pluginStorageRoot,
     workingDirectory,
   };
 }
@@ -1315,6 +1349,26 @@ function normalizePluginConfigPathForComparison(
 ): string {
   const resolvedPath = platform === "win32" ? win32.resolve(path) : resolve(path);
   return platform === "win32" ? resolvedPath.replaceAll("\\", "/").toLowerCase() : resolvedPath;
+}
+
+/**
+ * 写入私有文件时 workspace 条目的键：必须与读取端（optionLayers 的 workspaceRoot）同源，
+ * 否则写进去的值读不回来。配置层里找不到该文件时（首次创建）回落到当前 workspace 目录，
+ * 与 resolvePluginConfigPath 的新建规则一致。
+ */
+function resolvePluginConfigWorkspaceRoot(
+  configPath: string,
+  configResult: ConfigResult,
+  workingDirectory: string,
+): string {
+  const target = normalizePluginConfigPathForComparison(configPath);
+  const layer = configResult.sources.plugins.optionLayers.find(
+    (item) =>
+      item.scope === "workspace" &&
+      item.workspaceRoot !== undefined &&
+      normalizePluginConfigPathForComparison(item.path) === target,
+  );
+  return layer?.workspaceRoot ?? workingDirectory;
 }
 
 function resolveMarketplaceRefreshTargetIds(input: {

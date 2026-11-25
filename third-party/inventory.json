@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "f8fdffdf17d2ce6867a68cfbc0c132b5da04c5c114cb21bf292e119025402962",
+  "noticesSha256": "7e40eff61acd6f56402ee2220aee431e6c61dc08c20979dbd6a9adce89e71197",
   "inputs": {
     ".agents/skills/agent-browser/references/authentication.md": "e2c3b0f4a1dc1368dee821f03c000d818a48421d09f3872525dddffe73f2112b",
     ".agents/skills/agent-browser/references/commands.md": "17522fc56d742663f47231ff06c4811abc87e12c7f78e11f94d253ddd540a909",
@@ -226,12 +226,24 @@
     ".agents/skills/react-best-practices/SKILL.md": "b7d246acb440bee224ab33614979a5b8debe5fdb13d0304967aa19358eb69d9f",
     "apps/zcode-cli/package.json": "6c48017b05d8a7215c5bf7dea12f50edd1487bf5b8b22e11c21703d32e8f7742",
     "apps/zcode-cli/packages/adapters/package.json": "9aee09c4b4b5292c8ae21f4a34ca3dedeccc02f03d00d9e078bb07447f576a01",
-    "apps/zcode-cli/packages/adapters/src/config/config-merger.ts": "3d522750966eef3ab3a36b7948ebc054b5ed86498afd3b7fdcf03e4dac5ec852",
+    "apps/zcode-cli/packages/adapters/src/config/config-merger.ts": "bc265adca56dc9e8c2f73d5c2130278a8548fdff3044686f909c4ad88987228f",
+    "apps/zcode-cli/packages/adapters/src/config/plugin-secrets.adapter.ts": "dc31ba827281ab70f9b897b05a44b02fbe2b116204af3274c2da1ce539ed3546",
     "apps/zcode-cli/packages/adapters/src/mcp/index.ts": "a7c880099f29ba2e772fcf5c758dcbac719c49bf231b7859b4019ce031adfef0",
     "apps/zcode-cli/packages/adapters/src/mcp/stdio-stderr.ts": "00d607329e677c03b78b48e88659a498e8e720817dd0b2f0446d986e429a7cdc",
+    "apps/zcode-cli/packages/adapters/src/model/runner-generate.ts": "5a875b6ed19a2e55e2282221b58bcea757d0f211c93508bade7841332e04c019",
+    "apps/zcode-cli/packages/adapters/src/model/runner-normalization.ts": "329db5631e54cfe85e9d27a474ef0c91e328e52cc7cf3ca27e828590c289379e",
     "apps/zcode-cli/packages/adapters/src/model/tool-search.ts": "f79f2dc24922a7fe890d9ed73aba36c1758cab8885435f4d26e2c94faf5e70d1",
+    "apps/zcode-cli/packages/adapters/src/model/transform.ts": "7982d17bc3cc97873a35ddb5b1b853c1c3e7c43f39b0dbd01db9e85663be1489",
+    "apps/zcode-cli/packages/adapters/src/storage/session-store/migration-runner.ts": "8087504f35340d3d55b3a41afbf14e22ad335862e7a58ccf197f6f6f935b2cbc",
+    "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations.ts": "9fc8e1ec47eed9b1dd193c957ecfc6aa064e8b0e45d92c0590ffd399de6e10bd",
+    "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0023-session-soft-delete-outcome.ts": "9cb398802d5535e1c6dcbc775ef8cd7afc35413509c33fb14be5d9ba6bde24c1",
+    "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0024-session-database-identity.ts": "3ff04a8459d044c67f974835315dbc9e694550143f200574affd4c1d84427d79",
+    "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0025-session-permanent-deletion.ts": "7f31282ad14803efc7bafdeaf78dfb0426bae30356a85e46b592794b3ed1f115",
+    "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0026-dwf-run-parent-session-index.ts": "0876e084be66b8f2a866b5b67e16e1ad174db0040074ea506f8aedf4c9ce36e0",
+    "apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/messages.ts": "c57257cc509062f3f7981e030f94e27cb96300d1e97640b329a42ddd783ad4cc",
     "apps/zcode-cli/packages/bootstrap/package.json": "0e175ac8b64cd5b478c15e6bf71fb3940c17ddb7f95fb7cbcdd426bb61ce5bef",
     "apps/zcode-cli/packages/bootstrap/src/app/types.ts": "dfab2777335f291d4e1c7b6be137aadec2fc770f2c9f7cf82a4caf6f23ad5275",
+    "apps/zcode-cli/packages/bootstrap/src/plugin-secrets.ts": "8a12d9cecae87db2e26871fa4654d645e6e865e20fd12b1710548e18517f56b9",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/canonical-intent-replay.ts": "544f8528b4b89fc2a3fe7d7ad6edfcce53fe6c606ca797f51a4adf0d4293cd72",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/fork-edit-retry.ts": "21c312dcf3069aaca4f366e68800d55b0f4b8621b16d3b7b68cef4ac18a1bda6",
     "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/input-intent.ts": "daa953b7726027fc4ed08107da3ebbdea6cb3f5578b4ad5f2d72a92a51ebd960",
@@ -269,16 +281,21 @@
     "apps/zcode-cli/packages/cli/src/tool-search-flag.ts": "c981c33e82565f1c19d3891c0c80a1e79f7573e9046790b71899e3a40d4bc878",
     "apps/zcode-cli/packages/contracts/package.json": "7443f402f58df867ad5f776b2e94823d2b3bb235b16d0155f7a939ba181aa3ac",
     "apps/zcode-cli/packages/contracts/src/interfaces/mcp.port.ts": "324764169e9651500f6ce7be4dad90e32ec0c9214249f35dda749fafa4bdc046",
+    "apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts": "3e08141fb0809ff1f59dfe473920ca1b1c8ec88f21b83dc3d52831d87d133e29",
     "apps/zcode-cli/packages/contracts/src/interfaces/session.port.ts": "c8fde4e6ecb7db934a8200f5e2851f0ab97072762c9a57d7762f3c64bd687292",
+    "apps/zcode-cli/packages/contracts/src/model/index.ts": "04dfca87deeaaddcb2a8c8f7c791a598980d6b696e375f2fce8a5d1c5db4adfb",
     "apps/zcode-cli/packages/contracts/src/tools/deferred-tool-call.ts": "f60bccc785e769bf889583145dd48f7c3acfa2d98cc71cb5b293b8a3474a071e",
     "apps/zcode-cli/packages/contracts/src/tools/tool-search.ts": "e8f17a2bc359822a3e50cc78a8bab105e70821b9db8717571a769f6108e20384",
     "apps/zcode-cli/packages/core/package.json": "abf5a6c8715fe87ea4b5ef3a48b225f94980dc386fe2ccfe98844347aa16bcd8",
+    "apps/zcode-cli/packages/core/src/agent/message-history.ts": "99b1d494b766768155fa04233d85d5f3bfed44ec421f120b2b874b314263f76b",
+    "apps/zcode-cli/packages/core/src/agent/session-history-hydrator.ts": "8bcae5af9369d0af211ceee01f533766cd5a75ed50d5631c24e6696d634bc7a7",
+    "apps/zcode-cli/packages/core/src/agent/tool-part-order.ts": "13804341425267ec415f6e57ee417b9ca68c220e1e1e7baf03febf0e2d531d11",
     "apps/zcode-cli/packages/core/src/agent/tool-search-hydration.ts": "df1c2c14c0dc51a4d7294aa10d31873287dcb62be0aef9cc01010bb99bd35988",
     "apps/zcode-cli/packages/core/src/mcp/app-tools.ts": "711d3c33a956f5bbfec34c53d4d23dc4c7649288803e84d5108c2c4a70427c72",
     "apps/zcode-cli/packages/core/src/permission/broker.ts": "8b277e3be0821abfe49d1a64225b6c31dc10f9a500db698bc26e774bded61e68",
     "apps/zcode-cli/packages/core/src/permission/service.ts": "2fe5fb7cc84d02b63c227da7a1dadcf336a685e667eb2326d1b64f61f2404f7a",
     "apps/zcode-cli/packages/core/src/runtime/methods/prompt-admission.ts": "193e9142b32de493f3746c30311fc4a84dde37620bc2910a65f228e1e0948ab8",
-    "apps/zcode-cli/packages/core/src/runtime/types.ts": "0e4a952b9300112b8e21492dea9cf38872303c17b1151b253bdf0b98e370543f",
+    "apps/zcode-cli/packages/core/src/runtime/types.ts": "20789f043c3afa13354a78e3dd6c7a6a98d3be188ae1f0f459e80e11b8247418",
     "apps/zcode-cli/packages/core/src/tool/deferred-call.ts": "e05bf2f52f3f0ad7e79ce0add6612a276b702a2a9caa620fac79693b352c1232",
     "apps/zcode-cli/packages/core/src/tool/executor/permission-flow.ts": "e3ca0f578bec58eabfe2672c64aed4e0f3148062c397cb8c433df4e02f11ed11",
     "apps/zcode-cli/packages/core/src/tool/executor/permission-input-adjustments.ts": "51ca4ccaa85377ff8408c762d6e5e46d3df89263fd0e7c4f39dac89fb01713d6",
@@ -309,7 +326,7 @@
     "apps/zcode-cli/packages/documents-plugin/LICENSE.dsh": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
     "apps/zcode-cli/packages/documents-plugin/package.json": "f63333fd5b86cb8ce51d290a8f3bcde17088d3c96e8b64f7d97a83fa1b86bc4d",
     "apps/zcode-cli/packages/documents-plugin/scripts/check_office.mjs": "58c4afaedf83894ba698596129cfb52ae58d99874fe124bd927346d8659267c3",
-    "apps/zcode-cli/packages/documents-plugin/scripts/check_office.py": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358",
+    "apps/zcode-cli/packages/documents-plugin/scripts/check_office.py": "8202f72fe3527a0d4377b33379aa9fd6d60340ea6d493231de99feff8a05a7b5",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-cli.mjs": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-main.mjs": "3d1d226e8b428e6d29bf538cf484acf4667983a89ffefc604993855c0ec8426a",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-parts.mjs": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd",
@@ -319,10 +336,10 @@
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-scan.mjs": "190d335c7862893e4abda9660b9a1b2c05b9989b8c08ae92abc10c3259a2a2e4",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
     "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
-    "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md": "9bc8ca5ed65a4b470432a652797460b464bc005a0b489c73d02cdf9ea94da4bb",
-    "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "6197dfe9c2481378c3de489a8566b3840ae4941aa334ef83e6ace50b8bd7bded",
+    "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md": "2b9273e6ad8c4d31835504d4e706eb5987f729c5df2dc62637ee6bbda041f42f",
+    "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs": "63d276e8e3e838060caa574e00b2898a7474ed519635e6bef483a931ffc992db",
     "apps/zcode-cli/packages/documents-plugin/test/checkOfficePrefix.test.mjs": "de63355f4bfe5a897706bb044c16e419c289b38b2e8b5ef2b731f43900258b98",
-    "apps/zcode-cli/packages/documents-plugin/test/skillVisualChain.test.mjs": "ec427af9d28fb398603c781fb0fb7cbac7b65ed323113e4799473a15cd2d9938",
+    "apps/zcode-cli/packages/documents-plugin/test/skillVisualChain.test.mjs": "bc6dfe4e503c9cac74813d6c37afa34d7ecaa4c0aab398be9006646692195a0a",
     "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "6b7c62b7b68da2ba6dfb67ab0782f4f5e9d78921dc28407aeb98e852de602224",
     "apps/zcode-cli/packages/dynamic-workflow-runtime/src/child-source.ts": "794dcdd6f20b0b8261886a0a84cde65d002b84f2790969259ce2dade39c3cf50",
     "apps/zcode-cli/packages/dynamic-workflow/package.json": "aac5891463ddeb419ff6f73fc95b7c407964b06f8aeff66b6a9ba4d999164f99",
@@ -343,7 +360,7 @@
     "apps/zcode-cli/packages/presentations-plugin/LICENSE.dsh": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
     "apps/zcode-cli/packages/presentations-plugin/package.json": "30c1c737972f7c5fe297eb827c25ac7a6b789602959f99347c256ad14347fea9",
     "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.mjs": "58c4afaedf83894ba698596129cfb52ae58d99874fe124bd927346d8659267c3",
-    "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.py": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358",
+    "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.py": "8202f72fe3527a0d4377b33379aa9fd6d60340ea6d493231de99feff8a05a7b5",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-cli.mjs": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-main.mjs": "3d1d226e8b428e6d29bf538cf484acf4667983a89ffefc604993855c0ec8426a",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-parts.mjs": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd",
@@ -353,7 +370,7 @@
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-scan.mjs": "190d335c7862893e4abda9660b9a1b2c05b9989b8c08ae92abc10c3259a2a2e4",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
     "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
-    "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md": "285a4237427d107eb60b4bc1a858eddd963717cfb1982ebc3c56a74de9e2dae4",
+    "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md": "3dea74269a1d701d75c9598bfb022123dcc1a25b6ae300a26359997fdc530c8a",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/.zcode-plugin/plugin.json": "74580ca50246dd14e747321f25925755c1f091969166f01470de30dd0f3fdb8d",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/commands/restore-legacy-sessions.md": "50fefcf09f13e4e8c8fa424adf5cda4385a9da6e020f337f3517447ff4fc9aff",
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/README.md": "c0f365788e147d6e5a6b70a30260aac9a19f913e6800a27f8ff81ef7cb1ec0ae",
@@ -368,7 +385,7 @@
     "apps/zcode-cli/packages/spreadsheets-plugin/LICENSE.dsh": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
     "apps/zcode-cli/packages/spreadsheets-plugin/package.json": "0663c3933e4682acccd2f6e1883dba7bd969f3de2c806a09398f41cad7675dfe",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.mjs": "58c4afaedf83894ba698596129cfb52ae58d99874fe124bd927346d8659267c3",
-    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.py": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.py": "8202f72fe3527a0d4377b33379aa9fd6d60340ea6d493231de99feff8a05a7b5",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-cli.mjs": "95ab42dc9c7ec5a406c2d463337326fd052c4878f89839aa771806ae9591bfae",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-main.mjs": "3d1d226e8b428e6d29bf538cf484acf4667983a89ffefc604993855c0ec8426a",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-parts.mjs": "31a5d1ea16c81d69b8d690dda6f939171fd80d56dff7103fe3963f72ee85cabd",
@@ -378,8 +395,8 @@
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-scan.mjs": "190d335c7862893e4abda9660b9a1b2c05b9989b8c08ae92abc10c3259a2a2e4",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-xml-tree.mjs": "32d0d169b95e866a6dfe5124b2f4044f137a6a982b951981f79538df8ce3b281",
     "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-zip.mjs": "6f432c94b654d93267468af0e9e3f106aa41fb3bc9c6108bd23a377af32e98d1",
-    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/office-capabilities.mjs": "d821918a22f2db53c989e9921694733a63f7c42b7b7b576ca06174c5d42f2cda",
-    "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md": "587cb7dcf1d22e054df23b20f30e7d8ba84fba2e00702cdf5fec9ec5c904b8eb",
+    "apps/zcode-cli/packages/spreadsheets-plugin/scripts/office-capabilities.mjs": "60b9d97d600319e6a7ba259bb8f7ee763ff2839da6658a31d13e789696e944b8",
+    "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md": "2a2e0853c87f3e75f02dc6721112b947f5545acff09f74513735244345c42dd6",
     "apps/zcode-cli/packages/spreadsheets-plugin/test/fixtures/pdftoppm-fake.cjs": "e24f950403ec6a84704453dfec7fba50519ff353a1a819543a7ec3309c04b565",
     "apps/zcode-cli/packages/spreadsheets-plugin/test/fixtures/soffice-fake.cjs": "6b6819686ff4e8d0c4f32389b72edd8a79521fca19d5b38cb869be98d18e96d3",
     "apps/zcode-cli/packages/spreadsheets-plugin/test/lib/blank-render-support.mjs": "f1d50f3b01a1b9869e2135b6f3329e8e8c1cd9af9c85c058b75ee611e33d0d7d",
@@ -404,11 +421,12 @@
     "apps/zcode-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
     "package.json": "1cd794b6dbf9e14796bae13ef6d1b4e50709f7fb922a04b37d6a6d4268110a72",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
-    "packages/desktop/package.json": "60c83f3d5a348d99111ed42d226ab85d40ef718f8a04efcef00267d80003aec6",
+    "packages/desktop/package.json": "7e5c66f0b858adae436552bfcfafbfaa469b18f9fbff23470d6c3c76432c075a",
     "packages/desktop/src/host/index.ts": "a0e335750bedb82216ee8d0b0bfe56bc159eaa56ae84a8bcf99b7a0020702ce6",
     "packages/desktop/src/main/autoUpdater.ts": "afd58ffc03bf86771965f2a1ca27a9fc54842581f4a01e34b94f762ea4d937dc",
     "packages/desktop/src/main/desktopMainIpcHelpers.ts": "a3e917745f814b5a47d167e343086bcfca289a262d0ae176cb692443cc3c9562",
     "packages/desktop/src/main/desktopMainIpcRemote.ts": "8f88cd337d4afd890078db92a1299c56de6b9410e747dcb4a91d9f13bf58caea",
+    "packages/desktop/src/main/desktopNetworkPolicy.ts": "0858935d97887868e0d9b77ddf0bdf1e0f9fa542321474b872a849faeb43a16c",
     "packages/desktop/src/main/desktopOAuthDeepLink.ts": "d37eee3fc71564e8e12aa8f61dfb1feb479e1f6be693d4347c1fd8b7d36eae57",
     "packages/desktop/src/main/desktopTray.ts": "ab7eeafe890f37f7a9cbc26ccd261c2fea9e413138cdd190aa326304b92bc9dc",
     "packages/desktop/src/main/desktopTraySupport.ts": "e7c489c5d98be673ceb6ea8216ded61248d79287d145ae38cc09d243db3aa694",
@@ -420,6 +438,7 @@
     "packages/desktop/src/main/embeddedBrowserPermissionUiBridge.ts": "6aa2ebd0558ffd9ad14d03c8baf65a3aaac2c4f582c48224ea474bc5741c1619",
     "packages/desktop/src/main/embeddedBrowserSitePermissions.ts": "6b5f7a128a51907f18ca13cc1acb34bb2df824aa58e17448a13d56d5b1d114e3",
     "packages/desktop/src/main/embeddedBrowserSitePermissionStore.ts": "6d140e08bda375251d581bbbfdd4032f4ebbd8fda8fa5cb76171a9df32d447a4",
+    "packages/desktop/src/main/exportLogs.ts": "245c1fab46c1e688a38171dcc33f17e0161a51da5c5f002cbdecbfe4b6ada69a",
     "packages/desktop/src/main/index.ts": "067b1d1de8cbe9d09852e3d13d1b34b1b683911c21d351fa9306b770adbba8f8",
     "packages/desktop/src/main/pluginSandbox/capture.ts": "8989d8c4f14c3eb0d98ca0d3715ebe65910fbd2593cdf016bf90427831ffe9e2",
     "packages/desktop/src/main/pluginSandbox/contract.example.ts": "9c0e2cc08b145778c3fb0a43400fc6a2e5c841ebf08cf21770098f80ef7a98a4",
@@ -435,7 +454,7 @@
     "packages/desktop/src/main/pluginSandbox/permissions.ts": "e9faf395fb270efeeabdfbd67949df2a42a787a043f971327b960f142b8036a2",
     "packages/desktop/src/main/pluginSandbox/protocol.ts": "66b05ee149cc310fd639d7cf0c8d8a6912e6c5a45f5a29d0dd6b4bd9286dffeb",
     "packages/desktop/src/main/pluginSandbox/registry.ts": "d7066defcd25a6a8dd6e45029bf8a4a35008eb1331875de66ef5e08288a40fa2",
-    "packages/desktop/src/main/pluginSandbox/session.ts": "058e4ca737d7542b06750cdce248c48f11bbb504ce5c7db364f302072e2f8672",
+    "packages/desktop/src/main/pluginSandbox/session.ts": "71af4e9f6e09217d71ba789b25f1d5f2c3b4c45c4adb0a464280d3f809263d9d",
     "packages/desktop/src/main/startupWorkspace.ts": "c99c7bee509fcf234b42cddb7b02e6b7e6b8a0535562af439b3a5aa1249a83f2",
     "packages/desktop/src/preload/pluginSandbox/hostBridge.ts": "21fd2225df1833c51742c66d4054a0539bd25ba9b356e8f8848acc8c2d76eb2c",
     "packages/desktop/src/preload/pluginSandbox/index.ts": "85c298706e5f366cafb1fe02b17bc9f34901e71dc8392f63f388ff35e700edc3",
@@ -1684,7 +1703,9 @@
     "packages/services/src/gen-ui/module.ts": "a8b844795cbd629c1036351a4768e98db1466251b61a55fd18530d4fff60fd9b",
     "packages/services/src/gen-ui/node.ts": "a6047379a2ad34185cd98f3d0ada603d376fd034744eb86b9184eb10547d48fd",
     "packages/services/src/index.ts": "ab2d1d9ed00a85e63b511606f94fffabdada794344eda4173f0c93b466485936",
-    "packages/services/src/node.ts": "adb67bc69fcd494ae83be668253439953e3622cf0ffee8f42e7bda6c7794df51",
+    "packages/services/src/node.ts": "e4b812583b30ae871533651b417ea5ca044113eda542a15ec8995fc4fa40bc52",
+    "packages/services/src/oauth/oauthProfileSchema.ts": "e6d6732edf23968292895d9fec493f93c4a7d6b4ba8a299c87e3114c3ea4ce23",
+    "packages/services/src/oauth/oauthService.ts": "c94d146c7343572e17b71828677830246893e5be7bf7405f1980dcc65d269188",
     "packages/services/src/plugin-ui-bridge/appToolsContract.ts": "13543dee77d43a67af4066fd9b98706cc0d2e478d9edf7508f1da155f6b3176c",
     "packages/services/src/plugin-ui-bridge/contract.example.ts": "7c0e4a5ab6ba1178de7b0efd0621a92a3561baa2682f3e9273b6f41d9c54d072",
     "packages/services/src/plugin-ui-bridge/CONTRACT.md": "4f60abf0876f83177be041332540e76c340a888f75d51d60c056a566e84ba800",
@@ -1704,12 +1725,13 @@
     "packages/services/src/zcode-agent/zcodeAgentPluginParams.ts": "4cc744012ab424eaa819812bc7b9e376bc5de6f1979da88cb9e4c924a7c6b811",
     "packages/services/src/zcode-agent/zcodeAgentService.ts": "7bfafcae0417cb0783ee0157da44fed932557deb83bde3bb7f749910eb3c99ee",
     "packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts": "5ec39387fe66285fd2d4ed35e47fa1a15adbae0f4b416c3490aaf6ca3f253d94",
-    "packages/shared/package.json": "99a9ef13ce255b28106f0c7f5a4cba14ff44c9ebabd6027c0ccc8ffe2c2d7f94",
+    "packages/shared/package.json": "d7e30597bdc8f9de32ef022d984359bb0b2986b7c919960ac3002dcebc846cda",
     "packages/shared/src/attachment-source.ts": "1ab5985a30d2be53e9e3af364e04c8a902ce4a6dc3b9bcc18e8d81c227d37069",
     "packages/shared/src/bots.ts": "c9ae67d700e4f744118348e3cb4517968393d9f86fa7d0e8cbf5c957b3ba315d",
     "packages/shared/src/channel-mention.ts": "0266aa4b95b1d8d86ac41be66a7ae9e3f9be0a945c11dedba358c5892ab94ebf",
     "packages/shared/src/channels.ts": "65dd76213fa2b885288413cc97a8920c7cfcc2e30bf7cdd340c1fea0f543070e",
     "packages/shared/src/conversationSelection.ts": "b76e80d143f71afea20dcddee9414324c4964f1d1ef36e836a39a810a6960e75",
+    "packages/shared/src/database-startup.ts": "304fa3b7aeeb52ab85bb8282f1d503b948e90e66d9d918a65d9197e277b5f917",
     "packages/shared/src/execution-state.ts": "f038842aaab66675fe3f6a430cacfc72536480029b8b3544f995d860ddb8533c",
     "packages/shared/src/gen-ui/contract.example.ts": "41fbfd962f28bff286be97e59675634c99450fb2d8de7b54f81c10140e8cea48",
     "packages/shared/src/gen-ui/CONTRACT.md": "e61df6f580d39f88bc80ba1fa665e58b2777c1e94cea9d23673ea0b57b98fb73",
@@ -1718,7 +1740,8 @@
     "packages/shared/src/gen-ui/module.ts": "e2ce94c157dee72a908d44e6c39e97fb8df62f0e7d88533e7f19a75a123f115f",
     "packages/shared/src/gen-ui/tweakProtocol.ts": "474b7bc47a6c4d6fca8620834ac5c09b056c81e8cd938a585d8565200d1cd05a",
     "packages/shared/src/highspeed.ts": "baefa07e92d934e9e0af62518694445d56e4025da6bfda006f0a1cea92092c5d",
-    "packages/shared/src/index.ts": "052ed3c0e9c65fa82a7aca1e56259390a82e1fccfc02676772afa1e9b257985c",
+    "packages/shared/src/index.ts": "4d22c06235a863f9ddc79756e6262910b704d25e28e9ee6b2cdf098096e007b0",
+    "packages/shared/src/log-redaction.ts": "bd5d78d97911502a420568a7ece38570f331cd3754006793ceed01a569c8c903",
     "packages/shared/src/mcp-apps/appTools.ts": "56e79ed990a404269084450bb4eec4297df07b43de5a5b0399123c56342483b4",
     "packages/shared/src/mcp-apps/content.ts": "1675b0b89b82c70573b8e60ddd75b25e6a81c8620ce9d2e49d8363900b207056",
     "packages/shared/src/mcp-apps/contract.example.ts": "17189b1f889d1ad128cde9de4cf09b2990e598c61ed926bd641b35a63179c035",
@@ -1740,6 +1763,8 @@
     "packages/shared/src/request-security-edition/index.ts": "12735d8622bfd0b1b4e566cb5bf773e530805c976880fab37d85a9cbfb8941e4",
     "packages/shared/src/request-security-edition/policy.ts": "b3c87d9f01bf3c9477188399d841dd8f63a6e6a02737f78777bce0a6c4201c42",
     "packages/shared/src/request-security-edition/verification-policy.ts": "8cc61deede90d2456e1bd077b885ac600692efa8e62baf6beaa984f76f59d7b5",
+    "packages/shared/src/sqlite-migrations/index.ts": "3a105ca5e243167877f07eda75495a38c298c381427588213bbe013acde70dc6",
+    "packages/shared/src/sqlite-migrations/schema-too-new.ts": "90fcc3183603a39f70dd05bc90054e6abb1a842be26fffeef41b6227bd403c62",
     "packages/shared/src/subagent-profile.ts": "18cc59f19f9cb016b12d8a78543bd283c937b5cfde53ea7a06c574805c7b09d7",
     "packages/shared/src/subagent-runtime-config.ts": "82cee4df76835bb37f934ca8a922ffbf32b539e200127c0d288ffb6d2b75eba2",
     "packages/shared/src/task-realtime-core.ts": "0915d0969491e237a384d5bcfd689733409ce69ac35dace9d336beaaa40952bf",
@@ -1764,17 +1789,17 @@
     "packages/shared/src/zcode-protocol-v4/index.ts": "d09cadb034e4a8b00721a35adb2d358e6cfc8f1037e819669a403c8d860caf82",
     "packages/shared/src/zcode-protocol-v4/input-intent.ts": "6ee238b780411c6d0364e042d547d98c5efe740ebc84580020e6336016431243",
     "packages/shared/src/zcode-protocol-v4/profiles.ts": "0c858e4886040a57752312ff177d8d86b3047d09d9372ff508a25923299a79e5",
-    "packages/shared/src/zcode-protocol-v4/rows.ts": "a9bcf5dc0f47641b58d7257d9dc57db8e6b8a25675a26febf8edd2e9c869827e",
+    "packages/shared/src/zcode-protocol-v4/rows.ts": "6894b5f3a018a3ffdc89d3e1ae6a9f7eae7a50f0a80f3a7cb88126c54729de4c",
     "packages/shared/src/zcode-protocol-v4/session-config.ts": "9a261de2b2c5bfc7d6cf8dd10598a9dc681bc54dbe1b46e753cf9909fd9b51a0",
     "packages/shared/src/zcode-protocol-v4/sessions-index-workflow-activity.ts": "f0b27b3c4f9568c0f5374dbae85f23fc7a6dc8cf5cfb7f90e1752b4f1d726da8",
     "packages/shared/src/zcode-protocol-v4/sessions-index.ts": "938daae0e06f7ad8491e86f42e17468a2d3fb2e694a435259e0a9adf88ec3e4d",
     "packages/shared/src/zcode-protocol-v4/shared-context-import.ts": "fcd422a4cb073af2ed2d4e74862e8360f14a7a94f58a736d7a3e09110f88f5de",
     "packages/shared/src/zcode-protocol-v4/shared-context-ref.ts": "660f6beb529f853660994f22a56149761cb7c775abb3ea047b3fdd5518294c76",
-    "packages/shared/src/zcode-protocol-v4/snapshot.ts": "c4f4caa2ddcd312128c02e9eeaf73e9224be21aa5f41829aa82eb38587c0852b",
+    "packages/shared/src/zcode-protocol-v4/snapshot.ts": "6af281d488113bab80ae841b5b5b129ef2abfc57fae13107e07b3bd9cbf72337",
     "packages/shared/src/zcode-protocol-v4/submission.ts": "aba9b3d2140065615398429fe1404806b453ae5d854dce05e7c3b4271b0b3c57",
     "packages/shared/src/zcode-protocol-v4/telemetry.ts": "056f2359c1a1ba87fe0b364d19e400bda17a03ad95aa06b1814793251d0bf00d",
     "packages/shared/src/zcode-protocol-v4/toolDisplay.ts": "3dbdb181eb736867dc4f657135728418ed368a4f026dd90a3491753b859a95e4",
-    "packages/shared/src/zcode-protocol-v4/transport.ts": "3141f424f5bd2762c96a67dbc8365a95d07fce8eac33e4b6b1d9b9ae95735927",
+    "packages/shared/src/zcode-protocol-v4/transport.ts": "bdf244e7a3b61d746e796f198470c168297d68511236c7dd0800cf9fe932bd7c",
     "packages/shared/src/zcode-protocol-v4/wire-assembler.ts": "ad15fb1af701f8155912e251fe9f38b04d2cfa2d2c1548868a52fc96953c3a4c",
     "packages/shared/src/zcode-protocol-v4/wire-binary.ts": "28f287c5764d3d7afa56b6291e3cc67f4234ccb5749f365a66cc7260ddcfbfee",
     "packages/shared/src/zcode-protocol-v4/wire-codec.ts": "ac2494a3acc795c809c94ee9393f50271a9c2a0fd33813459e5ab93842ceef75",
@@ -2060,8 +2085,8 @@
     "packages/ui/src/hooks/useBrowserSitePermissions.ts": "75d84af4d726b95d0d7cd166b1977514dc56d1644122b5857724cfc349ff0faa",
     "packages/ui/src/hooks/useCodingPlanQuotaResetUi.ts": "eed75a370ca2a08fa78ecd9129ac36355017b4ab9ed5d05c7c603d252587b6b4",
     "packages/ui/src/hooks/useWorkflowRunSave.ts": "e29d0d84541ecc772c8295255fefab7c537f9c75948210147838a82ec3dbc40d",
-    "packages/ui/src/i18n/locales/en-US.ts": "3d8bd56bbbf5ece300a63457e7501fa28135c5cd7b709f8b2728397f06f22dcd",
-    "packages/ui/src/i18n/locales/zh-CN.ts": "364b7ddafabb5b52295a2b0e1f22ac866b8f98a0da543f80eb5fa657a5ae7120",
+    "packages/ui/src/i18n/locales/en-US.ts": "200af8456dd5aa717561280c78e74df6458275f377ec435c14ba884f613da4bd",
+    "packages/ui/src/i18n/locales/zh-CN.ts": "1679464150dfbf858e6d4a084e6609c20a1e6dba16bf0ec8ab8ed8bea1745d45",
     "packages/ui/src/lib/assistantDirectiveParser.ts": "c64b119e46f917e2d869658559cb1113cc40caae1a89d68328b256ee4d76e09f",
     "packages/ui/src/lib/builtinSkillI18n.ts": "fbb44f7044214b70148f64dbafc1cea5ea550531e8084965ea978c5defc06deb",
     "packages/ui/src/lib/codingPlanQuotaResetUi.ts": "9ff69e18487e842d56136283b15fe9bfdfd383b79d911b25f967ec69f65af11f",
@@ -3320,13 +3345,13 @@
     "packages/zcode-server-cli/package.json": "6e294c4409cb90863d85b2e3d60f92766b156ccee577ebfeaffcb85e94194004",
     "patches/@ai-sdk__anthropic@3.0.81.patch": "d3a7c381eba7f5157f765a0528003af17cf84544911dfb7412c7800168e01c18",
     "patches/@ai-sdk__openai-compatible@2.0.60.patch": "9632fe9d821b3dc20939ae509cc35b968d90d018bbd1d812390718898182a38b",
-    "pnpm-lock.yaml": "71e5a23d30a2ce86b85b1fe643f4316f9a1044e1433f58bd6cd96be2d7031c57",
+    "pnpm-lock.yaml": "44e737f11b8b49718a394c176237e93e6f653eb8ac8bfe983de1d1c2b8ea0149",
     "pnpm-workspace.yaml": "f18a18233e82cda1dc40be61bf2ad1bc99de25de63ad0be64bc652761a638372",
     "scripts/license-texts/Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "scripts/license-texts/MPL-2.0.txt": "5eba353fe5076ac3432177f8ab1cf75e3afcd0584251e37c3bfead5f447d040e",
     "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
     "scripts/remote-native-search-tools-config.mjs": "472322a66f84c7452f96aa9e16e9c4e0600f7c2588a03dc6bc869229161b1cb2",
-    "third-party/copied-components.json": "4f74d89f3003bbd2b8ce06c35c797dbb53b18666a087a3645041292339663432",
+    "third-party/copied-components.json": "5bead9c24d919975d3a7d90019ccd7c0066e08d7bd48dbb47bf63d8e8d4db640",
     "third-party/embedded-components.json": "1160d4b37e297584099e640998b75599a9ac237dc39dc29d49f2a538e514bb4e",
     "third-party/native-search/licenses/00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce.txt": "00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce",
     "third-party/native-search/licenses/01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f.txt": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
@@ -8560,6 +8585,22 @@
       ]
     },
     {
+      "name": "asn1js",
+      "version": "3.1.0",
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/PeculiarVentures/ASN1.js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "ebe5d98519d0dfcbcb80e20b22a56e7321e8557cd14355760434bbd4c1f4f683"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "019e9cb79f848d4b3e1beffd88d67b3f6001e1086114aa2e4156f97420f13d29"
+        }
+      ]
+    },
+    {
       "name": "ast-types",
       "version": "0.13.4",
       "license": "MIT",
@@ -9076,6 +9117,22 @@
         {
           "member": "Readme.md (license section)",
           "sha256": "084adb10b5fc6c48ed64780d1fe8ef625aca43532bafed6762d96ac3ec03cec5"
+        }
+      ]
+    },
+    {
+      "name": "bytestreamjs",
+      "version": "2.0.1",
+      "license": "BSD-3-Clause",
+      "repository": "git://github.com/PeculiarVentures/ByteStream.js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "f0fd6a4bf9bf46cfcea2005f800305fbb72cd0152b3c269cf496388258ee08f9"
+        },
+        {
+          "member": "README.MD (license section)",
+          "sha256": "3c762cc2e0de215fc1f077709f456994a309604c38491050ac7a1e260899ce4b"
         }
       ]
     },
@@ -16339,6 +16396,18 @@
       ]
     },
     {
+      "name": "pkijs",
+      "version": "3.4.3",
+      "license": "BSD-3-Clause",
+      "repository": "https://github.com/PeculiarVentures/PKI.js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "d27a2aa238102924ea75da808f79253484347d824b9b7b077837e4232f9493f5"
+        }
+      ]
+    },
+    {
       "name": "playwright-core",
       "version": "1.59.1",
       "license": "Apache-2.0",
@@ -16647,6 +16716,30 @@
         {
           "member": "LICENSE",
           "sha256": "f55828df4b8752c48e765a806465b76a103e3cb363379c569b15a1df2ba2d79e"
+        }
+      ]
+    },
+    {
+      "name": "pvtsutils",
+      "version": "1.3.6",
+      "license": "MIT",
+      "repository": "git+https://github.com/PeculiarVentures/pvtsutils",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c620c1d08a47c93ce242914a4269b86e41df5a97845325725a5f83d5d6f9d7fd"
+        }
+      ]
+    },
+    {
+      "name": "pvutils",
+      "version": "1.2.0",
+      "license": "MIT",
+      "repository": "https://github.com/PeculiarVentures/pvutils",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "15c88630f1e778db64a446cb31b67362cc9eb7a048fdf5ac7ab51905b74464cd"
         }
       ]
     },
@@ -31094,7 +31187,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/scripts/check_office.py",
-          "sha256": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358"
+          "sha256": "8202f72fe3527a0d4377b33379aa9fd6d60340ea6d493231de99feff8a05a7b5"
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/scripts/lib/office-cli.mjs",
@@ -31134,11 +31227,11 @@
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md",
-          "sha256": "9bc8ca5ed65a4b470432a652797460b464bc005a0b489c73d02cdf9ea94da4bb"
+          "sha256": "2b9273e6ad8c4d31835504d4e706eb5987f729c5df2dc62637ee6bbda041f42f"
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs",
-          "sha256": "6197dfe9c2481378c3de489a8566b3840ae4941aa334ef83e6ace50b8bd7bded"
+          "sha256": "63d276e8e3e838060caa574e00b2898a7474ed519635e6bef483a931ffc992db"
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/test/checkOfficePrefix.test.mjs",
@@ -31146,7 +31239,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/documents-plugin/test/skillVisualChain.test.mjs",
-          "sha256": "ec427af9d28fb398603c781fb0fb7cbac7b65ed323113e4799473a15cd2d9938"
+          "sha256": "bc6dfe4e503c9cac74813d6c37afa34d7ecaa4c0aab398be9006646692195a0a"
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/.zcode-plugin/plugin.json",
@@ -31170,7 +31263,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/scripts/check_office.py",
-          "sha256": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358"
+          "sha256": "8202f72fe3527a0d4377b33379aa9fd6d60340ea6d493231de99feff8a05a7b5"
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/scripts/lib/office-cli.mjs",
@@ -31210,7 +31303,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md",
-          "sha256": "285a4237427d107eb60b4bc1a858eddd963717cfb1982ebc3c56a74de9e2dae4"
+          "sha256": "3dea74269a1d701d75c9598bfb022123dcc1a25b6ae300a26359997fdc530c8a"
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/.zcode-plugin/plugin.json",
@@ -31234,7 +31327,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/check_office.py",
-          "sha256": "e45c2759654ca819fbe4fda4e6ff18dd52563472776bbeb109eb86eb1f6fe358"
+          "sha256": "8202f72fe3527a0d4377b33379aa9fd6d60340ea6d493231de99feff8a05a7b5"
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/lib/office-cli.mjs",
@@ -31274,11 +31367,11 @@
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/office-capabilities.mjs",
-          "sha256": "d821918a22f2db53c989e9921694733a63f7c42b7b7b576ca06174c5d42f2cda"
+          "sha256": "60b9d97d600319e6a7ba259bb8f7ee763ff2839da6658a31d13e789696e944b8"
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md",
-          "sha256": "587cb7dcf1d22e054df23b20f30e7d8ba84fba2e00702cdf5fec9ec5c904b8eb"
+          "sha256": "2a2e0853c87f3e75f02dc6721112b947f5545acff09f74513735244345c42dd6"
         },
         {
           "file": "apps/zcode-cli/packages/spreadsheets-plugin/test/fixtures/pdftoppm-fake.cjs",
@@ -32124,7 +32217,7 @@
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/rows.ts",
-          "sha256": "a9bcf5dc0f47641b58d7257d9dc57db8e6b8a25675a26febf8edd2e9c869827e"
+          "sha256": "6894b5f3a018a3ffdc89d3e1ae6a9f7eae7a50f0a80f3a7cb88126c54729de4c"
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/session-config.ts",
@@ -32148,7 +32241,7 @@
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/snapshot.ts",
-          "sha256": "c4f4caa2ddcd312128c02e9eeaf73e9224be21aa5f41829aa82eb38587c0852b"
+          "sha256": "6af281d488113bab80ae841b5b5b129ef2abfc57fae13107e07b3bd9cbf72337"
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/submission.ts",
@@ -32164,7 +32257,7 @@
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/transport.ts",
-          "sha256": "3141f424f5bd2762c96a67dbc8365a95d07fce8eac33e4b6b1d9b9ae95735927"
+          "sha256": "bdf244e7a3b61d746e796f198470c168297d68511236c7dd0800cf9fe932bd7c"
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/wire-assembler.ts",
@@ -32733,7 +32826,7 @@
         },
         {
           "file": "packages/desktop/src/main/pluginSandbox/session.ts",
-          "sha256": "058e4ca737d7542b06750cdce248c48f11bbb504ce5c7db364f302072e2f8672"
+          "sha256": "71af4e9f6e09217d71ba789b25f1d5f2c3b4c45c4adb0a464280d3f809263d9d"
         },
         {
           "file": "packages/desktop/src/renderer/src/plugin-sandbox/alias.ts",
@@ -32873,7 +32966,7 @@
         },
         {
           "file": "packages/shared/src/index.ts",
-          "sha256": "052ed3c0e9c65fa82a7aca1e56259390a82e1fccfc02676772afa1e9b257985c"
+          "sha256": "4d22c06235a863f9ddc79756e6262910b704d25e28e9ee6b2cdf098096e007b0"
         },
         {
           "file": "packages/shared/src/test-ids.ts",
@@ -33055,7 +33148,7 @@
         },
         {
           "file": "packages/services/src/node.ts",
-          "sha256": "adb67bc69fcd494ae83be668253439953e3622cf0ffee8f42e7bda6c7794df51"
+          "sha256": "e4b812583b30ae871533651b417ea5ca044113eda542a15ec8995fc4fa40bc52"
         },
         {
           "file": "packages/services/src/accessor.ts",
@@ -33110,7 +33203,7 @@
         },
         {
           "file": "apps/zcode-cli/packages/core/src/runtime/types.ts",
-          "sha256": "0e4a952b9300112b8e21492dea9cf38872303c17b1151b253bdf0b98e370543f"
+          "sha256": "20789f043c3afa13354a78e3dd6c7a6a98d3be188ae1f0f459e80e11b8247418"
         },
         {
           "file": "apps/zcode-cli/packages/bootstrap/src/app/types.ts",
@@ -33961,11 +34054,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "364b7ddafabb5b52295a2b0e1f22ac866b8f98a0da543f80eb5fa657a5ae7120"
+          "sha256": "1679464150dfbf858e6d4a084e6609c20a1e6dba16bf0ec8ab8ed8bea1745d45"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "3d8bd56bbbf5ece300a63457e7501fa28135c5cd7b709f8b2728397f06f22dcd"
+          "sha256": "200af8456dd5aa717561280c78e74df6458275f377ec435c14ba884f613da4bd"
         },
         {
           "file": "packages/ui/src/v4/WorkflowNotificationToolRow.tsx",
@@ -34793,11 +34886,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "364b7ddafabb5b52295a2b0e1f22ac866b8f98a0da543f80eb5fa657a5ae7120"
+          "sha256": "1679464150dfbf858e6d4a084e6609c20a1e6dba16bf0ec8ab8ed8bea1745d45"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "3d8bd56bbbf5ece300a63457e7501fa28135c5cd7b709f8b2728397f06f22dcd"
+          "sha256": "200af8456dd5aa717561280c78e74df6458275f377ec435c14ba884f613da4bd"
         }
       ]
     },
@@ -34959,7 +35052,209 @@
         },
         {
           "file": "apps/zcode-cli/packages/adapters/src/config/config-merger.ts",
-          "sha256": "3d522750966eef3ab3a36b7948ebc054b5ed86498afd3b7fdcf03e4dac5ec852"
+          "sha256": "bc265adca56dc9e8c2f73d5c2130278a8548fdff3044686f909c4ad88987228f"
+        }
+      ]
+    },
+    {
+      "id": "ZCode 3.18 data-integrity & block order port (Z.ai)",
+      "referenceRevision": "fec975905a2abd4c07e35c40d51fa097a2258ec9",
+      "source": "https://raw.githubusercontent.com/zai-org/ZCode/fec975905a2abd4c07e35c40d51fa097a2258ec9/LICENSE",
+      "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
+      "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
+      "importRevision": "fec975905a2abd4c07e35c40d51fa097a2258ec9",
+      "provenance": "Ported from the official open-source checkout zai-org/ZCode at revision fec97590 (tag v3.18.2) during the 4.0.0 sync wave. Same LICENSE snapshot as the other ZCode entries (Apache-2.0 text unchanged).",
+      "roots": [
+        "apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts",
+        "apps/zcode-cli/packages/contracts/src/model/index.ts",
+        "apps/zcode-cli/packages/core/src/agent/tool-part-order.ts",
+        "apps/zcode-cli/packages/core/src/agent/message-history.ts",
+        "apps/zcode-cli/packages/core/src/agent/session-history-hydrator.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/migration-runner.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/messages.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0023-session-soft-delete-outcome.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0024-session-database-identity.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0025-session-permanent-deletion.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0026-dwf-run-parent-session-index.ts",
+        "apps/zcode-cli/packages/adapters/src/model/transform.ts",
+        "apps/zcode-cli/packages/adapters/src/model/runner-normalization.ts",
+        "apps/zcode-cli/packages/adapters/src/model/runner-generate.ts",
+        "packages/shared/src/zcode-protocol-v4/rows.ts",
+        "packages/shared/src/zcode-protocol-v4/snapshot.ts",
+        "packages/shared/src/zcode-protocol-v4/transport.ts",
+        "packages/shared/src/sqlite-migrations/index.ts",
+        "packages/shared/src/sqlite-migrations/schema-too-new.ts",
+        "packages/shared/src/database-startup.ts",
+        "packages/services/src/oauth/oauthProfileSchema.ts",
+        "packages/services/src/oauth/oauthService.ts"
+      ],
+      "scope": "Data-integrity and assistant-block-order work from 3.18: unreadable conversation rows degrade per row (placeholder keeps only rowId/turnId/createdAt/createdAtSeq + sourceKind + reason, never the raw payload), blockIndex assignment and read-boundary ordering (contracts port/model, core agent history + hydrator, adapters read boundary + model transforms, runtime assignment points across core/src/runtime/**), session migrations 0023-0026 with a schema_too_new guard (shared/sqlite-migrations) covering both the session DB and tasks-index, and OAuth display-profile merge with an explicit identity-mismatch rejection. CE-specific additions: the file-level migration backup and the explainable SESSION_DELETING error are CE-authored.",
+      "license": "Apache-2.0",
+      "modifiedFiles": [
+        "apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts",
+        "apps/zcode-cli/packages/contracts/src/model/index.ts",
+        "apps/zcode-cli/packages/core/src/agent/tool-part-order.ts",
+        "apps/zcode-cli/packages/core/src/agent/message-history.ts",
+        "apps/zcode-cli/packages/core/src/agent/session-history-hydrator.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/migration-runner.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/messages.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0023-session-soft-delete-outcome.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0024-session-database-identity.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0025-session-permanent-deletion.ts",
+        "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0026-dwf-run-parent-session-index.ts",
+        "apps/zcode-cli/packages/adapters/src/model/transform.ts",
+        "apps/zcode-cli/packages/adapters/src/model/runner-normalization.ts",
+        "apps/zcode-cli/packages/adapters/src/model/runner-generate.ts",
+        "packages/shared/src/zcode-protocol-v4/rows.ts",
+        "packages/shared/src/zcode-protocol-v4/snapshot.ts",
+        "packages/shared/src/zcode-protocol-v4/transport.ts",
+        "packages/shared/src/sqlite-migrations/index.ts",
+        "packages/shared/src/sqlite-migrations/schema-too-new.ts",
+        "packages/shared/src/database-startup.ts",
+        "packages/services/src/oauth/oauthProfileSchema.ts",
+        "packages/services/src/oauth/oauthService.ts"
+      ],
+      "files": [
+        {
+          "file": "apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts",
+          "sha256": "3e08141fb0809ff1f59dfe473920ca1b1c8ec88f21b83dc3d52831d87d133e29"
+        },
+        {
+          "file": "apps/zcode-cli/packages/contracts/src/model/index.ts",
+          "sha256": "04dfca87deeaaddcb2a8c8f7c791a598980d6b696e375f2fce8a5d1c5db4adfb"
+        },
+        {
+          "file": "apps/zcode-cli/packages/core/src/agent/tool-part-order.ts",
+          "sha256": "13804341425267ec415f6e57ee417b9ca68c220e1e1e7baf03febf0e2d531d11"
+        },
+        {
+          "file": "apps/zcode-cli/packages/core/src/agent/message-history.ts",
+          "sha256": "99b1d494b766768155fa04233d85d5f3bfed44ec421f120b2b874b314263f76b"
+        },
+        {
+          "file": "apps/zcode-cli/packages/core/src/agent/session-history-hydrator.ts",
+          "sha256": "8bcae5af9369d0af211ceee01f533766cd5a75ed50d5631c24e6696d634bc7a7"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations.ts",
+          "sha256": "9fc8e1ec47eed9b1dd193c957ecfc6aa064e8b0e45d92c0590ffd399de6e10bd"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/storage/session-store/migration-runner.ts",
+          "sha256": "8087504f35340d3d55b3a41afbf14e22ad335862e7a58ccf197f6f6f935b2cbc"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/messages.ts",
+          "sha256": "c57257cc509062f3f7981e030f94e27cb96300d1e97640b329a42ddd783ad4cc"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0023-session-soft-delete-outcome.ts",
+          "sha256": "9cb398802d5535e1c6dcbc775ef8cd7afc35413509c33fb14be5d9ba6bde24c1"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0024-session-database-identity.ts",
+          "sha256": "3ff04a8459d044c67f974835315dbc9e694550143f200574affd4c1d84427d79"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0025-session-permanent-deletion.ts",
+          "sha256": "7f31282ad14803efc7bafdeaf78dfb0426bae30356a85e46b592794b3ed1f115"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0026-dwf-run-parent-session-index.ts",
+          "sha256": "0876e084be66b8f2a866b5b67e16e1ad174db0040074ea506f8aedf4c9ce36e0"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/model/transform.ts",
+          "sha256": "7982d17bc3cc97873a35ddb5b1b853c1c3e7c43f39b0dbd01db9e85663be1489"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/model/runner-normalization.ts",
+          "sha256": "329db5631e54cfe85e9d27a474ef0c91e328e52cc7cf3ca27e828590c289379e"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/model/runner-generate.ts",
+          "sha256": "5a875b6ed19a2e55e2282221b58bcea757d0f211c93508bade7841332e04c019"
+        },
+        {
+          "file": "packages/shared/src/zcode-protocol-v4/rows.ts",
+          "sha256": "6894b5f3a018a3ffdc89d3e1ae6a9f7eae7a50f0a80f3a7cb88126c54729de4c"
+        },
+        {
+          "file": "packages/shared/src/zcode-protocol-v4/snapshot.ts",
+          "sha256": "6af281d488113bab80ae841b5b5b129ef2abfc57fae13107e07b3bd9cbf72337"
+        },
+        {
+          "file": "packages/shared/src/zcode-protocol-v4/transport.ts",
+          "sha256": "bdf244e7a3b61d746e796f198470c168297d68511236c7dd0800cf9fe932bd7c"
+        },
+        {
+          "file": "packages/shared/src/sqlite-migrations/index.ts",
+          "sha256": "3a105ca5e243167877f07eda75495a38c298c381427588213bbe013acde70dc6"
+        },
+        {
+          "file": "packages/shared/src/sqlite-migrations/schema-too-new.ts",
+          "sha256": "90fcc3183603a39f70dd05bc90054e6abb1a842be26fffeef41b6227bd403c62"
+        },
+        {
+          "file": "packages/shared/src/database-startup.ts",
+          "sha256": "304fa3b7aeeb52ab85bb8282f1d503b948e90e66d9d918a65d9197e277b5f917"
+        },
+        {
+          "file": "packages/services/src/oauth/oauthProfileSchema.ts",
+          "sha256": "e6d6732edf23968292895d9fec493f93c4a7d6b4ba8a299c87e3114c3ea4ce23"
+        },
+        {
+          "file": "packages/services/src/oauth/oauthService.ts",
+          "sha256": "c94d146c7343572e17b71828677830246893e5be7bf7405f1980dcc65d269188"
+        }
+      ]
+    },
+    {
+      "id": "ZCode 4.0 desktop redaction, CA chain & plugin secrets port (Z.ai)",
+      "referenceRevision": "a4b4445141eb7d3b3e99eada9292775383bfc44e",
+      "source": "https://raw.githubusercontent.com/zai-org/ZCode/a4b4445141eb7d3b3e99eada9292775383bfc44e/LICENSE",
+      "file": "third-party/upstream/606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b.txt",
+      "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
+      "importRevision": "a4b4445141eb7d3b3e99eada9292775383bfc44e",
+      "provenance": "Ported from the official open-source checkout zai-org/ZCode at revision a4b44451 (tag v4.0.0) during the 4.0.0 sync wave. Same LICENSE snapshot as the other ZCode entries.",
+      "roots": [
+        "packages/desktop/src/main/exportLogs.ts",
+        "packages/desktop/src/main/desktopNetworkPolicy.ts",
+        "packages/shared/src/log-redaction.ts",
+        "apps/zcode-cli/packages/adapters/src/config/plugin-secrets.adapter.ts",
+        "apps/zcode-cli/packages/bootstrap/src/plugin-secrets.ts"
+      ],
+      "scope": "Desktop log export structured redaction (JSON-aware, PEM blocks, value-shape fallbacks) extracted into shared/src/log-redaction.ts so the feedback log archive reuses one implementation instead of a second text-replace pass; self-signed CA chain verification via PKIjs with only CERT_AUTHORITY_INVALID taken over and the autoUpdater netSession as a third policy outlet; plugin sensitive-option private storage (0600 file, lock + atomic write, readable diagnostics) plus project-level plugins.options stripping. CE adaptations: existing CE structures kept, project option values are not auto-migrated, and the feedback archive omits undecodable binary files instead of shipping them unredacted.",
+      "license": "Apache-2.0",
+      "modifiedFiles": [
+        "packages/desktop/src/main/exportLogs.ts",
+        "packages/desktop/src/main/desktopNetworkPolicy.ts",
+        "packages/shared/src/log-redaction.ts",
+        "apps/zcode-cli/packages/adapters/src/config/plugin-secrets.adapter.ts",
+        "apps/zcode-cli/packages/bootstrap/src/plugin-secrets.ts"
+      ],
+      "files": [
+        {
+          "file": "packages/desktop/src/main/exportLogs.ts",
+          "sha256": "245c1fab46c1e688a38171dcc33f17e0161a51da5c5f002cbdecbfe4b6ada69a"
+        },
+        {
+          "file": "packages/desktop/src/main/desktopNetworkPolicy.ts",
+          "sha256": "0858935d97887868e0d9b77ddf0bdf1e0f9fa542321474b872a849faeb43a16c"
+        },
+        {
+          "file": "packages/shared/src/log-redaction.ts",
+          "sha256": "bd5d78d97911502a420568a7ece38570f331cd3754006793ceed01a569c8c903"
+        },
+        {
+          "file": "apps/zcode-cli/packages/adapters/src/config/plugin-secrets.adapter.ts",
+          "sha256": "dc31ba827281ab70f9b897b05a44b02fbe2b116204af3274c2da1ce539ed3546"
+        },
+        {
+          "file": "apps/zcode-cli/packages/bootstrap/src/plugin-secrets.ts",
+          "sha256": "8a12d9cecae87db2e26871fa4654d645e6e865e20fd12b1710548e18517f56b9"
         }
       ]
     }

@@ -1,5 +1,6 @@
 import * as permissionFullAccessRepository from "./repositories/permission-full-access.js";
 import { DatabaseSync } from "node:sqlite";
+import { guardSessionStoreWrites } from "./session-deleting.js";
 import type {
   CollaborationMode,
   ClaimLegacySessionWorkspaceInput,
@@ -246,6 +247,8 @@ export class SqliteSessionStore
       // 多个本地或远程 Agent 会共享同一个 session DB；timeout 必须在执行首条
       // PRAGMA 前生效，否则并发启动会在 migration prelude 直接抛 database is locked。
       this.db = new DatabaseSync(this.dbPath, { timeout: startupLockTimeoutMs });
+      // 官方留下删除凭据时，0025 的触发器会把写入换成可解释错误；守卫只包写语句。
+      guardSessionStoreWrites(this.db);
     } catch (error) {
       throw new SqliteSessionMigrationError(
         `Failed to open SQLite session database at ${this.dbPath}`,
@@ -258,7 +261,9 @@ export class SqliteSessionStore
     }
     try {
       if (startupToken !== deferredStartup)
-        runSqliteSessionMigrations(this.db, this.dbPath, startupLockTimeoutMs);
+        runSqliteSessionMigrations(this.db, this.dbPath, startupLockTimeoutMs, {
+          backupRootDir: options.backupRootDir,
+        });
     } catch (error) {
       try {
         this.db.close();
@@ -276,7 +281,10 @@ export class SqliteSessionStore
     // 未迁移的实例只保留在这个工厂内部；所有 Repo/业务只可能拿到 COMMIT 后的连接。
     const store = new SqliteSessionStore(options, deferredStartup);
     try {
-      await runSqliteSessionMigrationsAsync(store.db, store.dbPath, migrationOptions);
+      await runSqliteSessionMigrationsAsync(store.db, store.dbPath, {
+        ...migrationOptions,
+        backupRootDir: migrationOptions.backupRootDir ?? options.backupRootDir,
+      });
       return store;
     } catch (error) {
       // close 也可能因 IO 失败；迁移的原始 cause 才是用户应处理的原因。

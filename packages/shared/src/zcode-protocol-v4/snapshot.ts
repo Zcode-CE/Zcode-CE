@@ -13,7 +13,7 @@ import {
   zcodeSessionContextCacheUsageSchema,
 } from "../zcode-protocol-legacy-types.js";
 import { timestampSchema } from "./core.js";
-import { conversationRowSchema } from "./rows.js";
+import { displayConversationRowSchema } from "./rows.js";
 import { toolCallDisplaySchema } from "./toolDisplay.js";
 
 import { workspaceHookReviewRequestPayloadSchema } from "./workspace-hook-review.js";
@@ -451,8 +451,9 @@ export type PlanState = z.infer<typeof planStateSchema>;
 
 // ── Snapshot 总览 ──
 export const rowsWindowSchema = z.object({
-  // 尾部窗口，rowId 升序。
-  window: z.array(conversationRowSchema),
+  // 尾部窗口，rowId 升序。逐行降级：读不懂的行退化成 unreadable 占位行，不再让整帧被拒；
+  // totalCount/firstRowId 不受影响——降级只改变一行能否渲染，不改变它是否存在、排在哪里。
+  window: z.array(displayConversationRowSchema),
   // 当前全序行数（截断后会减小；仅用于滚动条估计）。
   totalCount: z.number(),
   // 全序第一行 rowId；window 首行等于它 ⇔ 已到顶（游标分页判定）。

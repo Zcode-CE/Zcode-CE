@@ -59,6 +59,21 @@ export function loadProjectConfigFile(
   const baseDir = getProjectConfigBaseDir(result.path);
   const diagnostics = [...result.diagnostics];
   const hooks = result.loaded ? result.config.hooks : undefined;
+  const config = result.loaded ? normalizeProjectConfig(result.config, baseDir) : {};
+
+  // 项目层 plugins.options 已由 config-merger 从 merged config 剥离（理由见那里的注释）。
+  // 装载时记一条诊断，让「写了项目选项但不生效」有可查原因，而不是静默消失；诊断只报字段
+  // 路径，不回显任何选项值。
+  if (hasDeclaredPluginOptions(config)) {
+    diagnostics.push({
+      code: "config_project_plugin_options_ignored",
+      filePath: result.path,
+      message:
+        "Project plugin options are ignored; save workspace plugin options in plugin settings instead",
+      path: "plugins.options",
+      severity: "warning",
+    });
+  }
 
   if (hooks) {
     diagnostics.push({
@@ -72,7 +87,7 @@ export function loadProjectConfigFile(
 
   return {
     baseDir,
-    config: result.loaded ? normalizeProjectConfig(result.config, baseDir) : {},
+    config,
     diagnostics,
     ...(hooks
       ? {
@@ -112,6 +127,14 @@ export function summarizeProjectConfigs(files: ProjectConfigFile[]): ProjectConf
     paths: loadedFiles.map((file) => file.path),
     mcpServerNames: [...mcpServerNames],
   };
+}
+
+/** 项目配置文件是否声明了插件选项（都会被剥离，所以要给出可诊断的原因）。 */
+function hasDeclaredPluginOptions(config: RuntimeConfigPatch): boolean {
+  for (const pluginOptions of Object.values(config.plugins?.options ?? {})) {
+    if (Object.keys(pluginOptions).length > 0) return true;
+  }
+  return false;
 }
 
 function getProjectConfigBaseDir(path: string): string {

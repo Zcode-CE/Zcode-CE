@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { basename, join, win32 } from "node:path";
 import { homedir } from "node:os";
 import { DATA_BASE_DIR_FORBIDDEN_WINDOWS_INSTALL_DIR_ERROR_CODE } from "@zcode/shared";
+import { resolveCredentialsFilePathIn } from "@zcode/shared/credential-paths";
 
 let _dataBaseDir: string | null = null;
 export const ZCODE_WINDOWS_APP_INSTALL_DIR_ENV = "ZCODE_WINDOWS_APP_INSTALL_DIR";
@@ -70,6 +71,19 @@ export function getConversationWorkspaceDir(): string {
 /** {dataBaseDir}/.zcode/v2 */
 export function getAppConfigDir(): string {
   return join(getZCodeDataRootDir(), "v2");
+}
+
+/**
+ * `{dataBaseDir}/.zcode/v2/credentials.json`
+ *
+ * 为什么用共享解析器而不是 `join(getAppConfigDir(), "credentials.json")`：系统凭据库条目名
+ * 由凭据文件绝对路径推导（sha256），CLI 侧用 `resolveCredentialsFilePath(env)`。两侧规则一旦
+ * 分叉（相对数据根、`..`、尾斜杠的归一化差异），就会给同一个文件造两把密钥，一半密文永久解不开。
+ * 这里与 CLI 共用同一个 `resolveCredentialsFilePathIn`，差别只在 baseDir 来自 `setDataBaseDir()`
+ * —— 桌面切数据根时只有本进程知道新根。
+ */
+export function getCredentialsFilePath(): string {
+  return resolveCredentialsFilePathIn(getDataBaseDir());
 }
 
 function readEnvValue(env: Record<string, string | undefined>, key: string): string | undefined {

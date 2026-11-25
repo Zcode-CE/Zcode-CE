@@ -100,6 +100,8 @@ const enUS: Record<string, string> = {
     "The database appears damaged. Preserve your data and diagnostics and contact support. Do not delete the database.",
   "startup.global.error.checksum_mismatch":
     "The migration records do not match this app version. Preserve your data and diagnostics and contact support.",
+  "startup.global.error.schema_too_new":
+    "A newer version of ZCode has written to this data, so this version will not write to it. Open it with the newer version, or back up the data directory first and then restore the older data as documented. Do not delete the database file.",
   "startup.global.error.open_failed":
     "The database could not be opened. Check that the data directory exists and is accessible, then retry.",
   "startup.global.error.lock_timeout":
@@ -6113,6 +6115,8 @@ const enUS: Record<string, string> = {
   // ZCode Agent
   "zcode.unavailable": "AI agent not available",
   "zcode.initFailed": "Failed to start AI agent",
+  "zcode.error.SESSION_DELETING":
+    "This session is being deleted by a newer version of ZCode, so this version will not write to it. Open it with the newer version, or wait for the deletion to finish and retry.",
   "zcode.error.TASK_OWNED_BY_OTHER_HOST": "This task is already running in another connected view.",
   "zcode.error.STALE_TASK_OWNER_COMMAND": "This action belongs to an older run and was ignored.",
   "zcode.error.NO_ACTIVE_TASK_OWNER": "No active task owner is available for this action.",

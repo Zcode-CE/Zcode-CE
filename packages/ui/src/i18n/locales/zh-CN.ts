@@ -95,6 +95,8 @@ const zhCN: Record<string, string> = {
     "数据库无法通过完整性检查。请保留数据和诊断信息，联系支持人员处理；不要删除数据库。",
   "startup.global.error.checksum_mismatch":
     "数据库迁移记录与当前程序不匹配。请保留数据和诊断信息，联系支持人员处理。",
+  "startup.global.error.schema_too_new":
+    "本地数据已由更新版本的 ZCode 写过，本版不会写入它。请用更新版本打开；或先备份数据目录，再按文档恢复旧数据。不要删除数据库文件。",
   "startup.global.error.open_failed":
     "无法打开数据库。请检查数据目录是否存在且可访问，处理后点击重试。",
   "startup.global.error.lock_timeout":
@@ -5823,6 +5825,8 @@ const zhCN: Record<string, string> = {
   // ZCode Agent
   "zcode.unavailable": "AI 代理不可用",
   "zcode.initFailed": "启动 AI 代理失败",
+  "zcode.error.SESSION_DELETING":
+    "该会话正在删除中（由更新版本的 ZCode 发起），本版不会写入它。请用更新版本打开，或等删除完成后再试。",
   "zcode.error.TASK_OWNED_BY_OTHER_HOST": "该任务正在另一个已连接视图中运行。",
   "zcode.error.STALE_TASK_OWNER_COMMAND": "该操作属于旧的运行轮次，已忽略。",
   "zcode.error.NO_ACTIVE_TASK_OWNER": "当前没有可处理该操作的任务所有者。",

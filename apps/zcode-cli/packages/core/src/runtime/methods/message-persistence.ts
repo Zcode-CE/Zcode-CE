@@ -7,6 +7,7 @@ import type {
   MessagePart,
   MessageVisibility,
   Model,
+  ModelTextContentBlock,
   SessionId,
   SessionProjection,
   SessionStorePort,
@@ -265,6 +266,38 @@ export async function persistSyntheticUserNoticeForSession(
     },
     options.traceContext,
   );
+}
+
+/**
+ * 每个文字块写一个 text part，冷恢复与 live 一样一块一行；空块不写。
+ * 没有 textBlocks 时（旧路径、非流式未编号）整段文字写成一个不带序号的 part，行为与改动前一致。
+ */
+export async function persistTextBlockParts(
+  runtime: AgentRuntimeInternal,
+  input: {
+    messageId: MessageId;
+    textBlocks: readonly ModelTextContentBlock[] | undefined;
+    text: string;
+    time: { start: number; end: number };
+  },
+  traceContext: TraceContext,
+): Promise<void> {
+  const textBlocks = input.textBlocks ?? [{ type: "text" as const, text: input.text }];
+  for (const block of textBlocks) {
+    if (block.text.length === 0) continue;
+    await runtime.persistPart(
+      {
+        id: createPartId(),
+        sessionID: runtime.sessionId,
+        messageID: input.messageId,
+        type: "text",
+        text: block.text,
+        ...(block.blockIndex !== undefined ? { blockIndex: block.blockIndex } : {}),
+        time: { ...input.time },
+      },
+      traceContext,
+    );
+  }
 }
 
 export async function persistAssistantMessage(

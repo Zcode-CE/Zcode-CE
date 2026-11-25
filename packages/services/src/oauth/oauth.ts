@@ -28,7 +28,13 @@ export interface IOAuthService {
   /** 恢复本地展示态，并区分从未登录与 JWT 过期后需要重新认证。 */
   restoreCachedSessionState(): Promise<OAuthCachedSessionRestoreResult>;
 
-  /** 显式校验当前 provider 会话：成功返回用户信息，失败或过期返回 null */
+  /**
+   * 显式校验当前 provider 会话：成功返回用户信息，失败或过期返回 null。
+   *
+   * 远端 userinfo 只更新展示字段；主身份始终取本地可信缓存。缺少可信主身份、或刷新期间主身份
+   * 已被并发会话换掉时都不落盘（前者返回 null 要求重新登录，后者抛
+   * OAuthProfileIdentityMismatchError），已保存的凭据保持可读。
+   */
   restoreSession(): Promise<UserInfo | null>;
 
   /**

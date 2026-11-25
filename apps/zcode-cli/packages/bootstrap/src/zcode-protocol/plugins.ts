@@ -48,6 +48,7 @@ import {
 } from "../plugins.js";
 import { listInstalledPluginRecords } from "@zcode/adapters/plugins";
 import { withPluginStorageLock } from "../lib/plugin-storage-lock.js";
+import { resolvePluginSecretsPath, withPluginSecrets } from "../plugin-secrets.js";
 import { getCliStorageRoot, getPluginStorageRoot } from "../app/paths.js";
 import { resolveOfficialPluginHostMcpServerNames } from "../app/official-plugin-definitions.js";
 import { createConfig, resolvePath, type ConfigResult } from "@zcode/adapters/config";
@@ -135,10 +136,18 @@ function createPluginConfigView(
   // User 视图若继续加载 project config，会把 Workspace override 投影成 User 当前值；
   // 不传 workingDirectory 可保留 User/default 层，同时仍由调用方的 workspacePath 决定
   // package storage 和相对执行上下文。
-  return createConfig({
+  const configResult = createConfig({
     env: context.deps?.env,
     ...(configScope === "user" ? {} : { workingDirectory: workspacePath }),
   });
+  // 敏感键与 workspace 选项只存在于私有文件（项目层 options 已从 merged config 剥离），
+  // 投影的 configuredOptions/optionSources 必须看叠加后的视图，否则设置页读不到已保存的值。
+  return withPluginSecrets(
+    configResult,
+    resolvePluginSecretsPath(
+      getPluginStorageRoot(getCliStorageRoot(resolvePath(configResult.config.storage.dir))),
+    ),
+  ).configResult;
 }
 
 function createMissingConfiguredPluginInfos(

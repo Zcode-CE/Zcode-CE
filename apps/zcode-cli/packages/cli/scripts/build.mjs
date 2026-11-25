@@ -153,6 +153,12 @@ export const resolveBuildAliases = ({
     rootDirectory,
     "../../packages/shared/src/runtime-tool-runtime.ts",
   ),
+  // 凭据 v2：CLI 侧的凭据读写走 shared 的 credential-security 独立入口（v2 密文、v1 就地迁移、
+  // 密钥来源判定）。esbuild alias 按前缀改写，不精确声明会被拼成 `src/index.ts/credential-security`。
+  "@zcode/shared/credential-security": resolve(
+    rootDirectory,
+    "../../packages/shared/src/credential-security/module.ts",
+  ),
   // esbuild alias 按前缀改写导入路径。所有 shared subpath 必须在通用入口前精确声明，
   // 否则会被错误解析为 `src/index.ts/<subpath>` 并让 Desktop agent/SEA 打包失败。
   "@zcode/shared/zcode-protocol-v4": resolve(

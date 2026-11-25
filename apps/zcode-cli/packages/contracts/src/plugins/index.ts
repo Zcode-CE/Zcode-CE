@@ -52,7 +52,9 @@ export type PluginDiagnosticCode =
   | "plugin_variable_missing"
   | "plugin_duplicate_id"
   | "plugin_not_found"
-  | "plugin_ambiguous_name";
+  | "plugin_ambiguous_name"
+  // 私有敏感选项文件读不出（损坏或 I/O 失败）：已存插件选项按空处理，但要显式告知原因。
+  | "plugin_secrets_unreadable";
 
 export interface PluginUserConfigOption {
   default?: string | number | boolean;

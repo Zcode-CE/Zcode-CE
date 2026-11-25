@@ -15,7 +15,8 @@ const preparedSessions = new WeakSet<Session>();
 /**
  * 每个可信 App 身份一个持久 partition（多个沙箱共享）。首次使用时把 partition session 锁死：
  * 装 protocol handler、权限交给闸门（未声明一律拒绝）、阻止下载、代理 direct。
- * desktopNetworkPolicy 只覆盖 defaultSession 与 embedded-browser partition，沙箱 session 必须自己设。
+ * desktopNetworkPolicy 只覆盖 defaultSession、embedded-browser partition 与更新器出口（autoUpdater.netSession），
+ * 沙箱 session 必须自己设。
  */
 export function preparePluginSandboxSession(input: {
   session: Session;

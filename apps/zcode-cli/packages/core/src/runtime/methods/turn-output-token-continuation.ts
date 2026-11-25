@@ -1,7 +1,9 @@
 import type { RuntimeModelTextResult } from "../types.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 import { toTokenUsageInfo } from "../helpers/index.js";
+import { orderedAssistantHistoryBlocks } from "../helpers/assistant-history-blocks.js";
 import {
+  buildAssistantEntries,
   countContextPrefixMessages,
   createRuntimeAssistantEntry,
   createRuntimeUserEntry,
@@ -111,13 +113,25 @@ export function commitAssistantToTurnRequest(
   result: RuntimeModelTextResult,
   toolCalls: Parameters<typeof createRuntimeAssistantEntry>[1],
 ): boolean {
+  // provider result metadata 可能报告别的模型；assistant 归因必须使用
+  // Turn 已绑定的 Model，避免恢复链重新引入旧的 provider-owned 模型身份。
+  const modelRef = { providerId: state.model.providerId, modelId: state.model.modelId };
+  const orderedBlocks = orderedAssistantHistoryBlocks(result, toolCalls);
+  if (orderedBlocks) {
+    // 有序结果与冷恢复共用 buildAssistantEntries：条目内容与工具顺序逐块一致，
+    // 冷恢复的 ordered 分支用同一个构造函数（上游 v3.18.2 assistant-block-order.md）。
+    const entries = buildAssistantEntries({
+      blocks: orderedBlocks,
+      model: modelRef,
+      tokens: toTokenUsageInfo(result.usage),
+    });
+    commitTurnRequestEntries(runtime, state.turnRequestState, entries);
+    return entries.length > 0;
+  }
   const reasoning = result.reasoning?.filter(hasAssistantReasoningContent);
   const hasAssistantContent =
     state.modelResponse.length > 0 || (reasoning?.length ?? 0) > 0 || (toolCalls?.length ?? 0) > 0;
   if (!hasAssistantContent) return false;
-  // provider result metadata 可能报告别的模型；assistant 归因必须使用
-  // Turn 已绑定的 Model，避免恢复链重新引入旧的 provider-owned 模型身份。
-  const modelRef = { providerId: state.model.providerId, modelId: state.model.modelId };
   commitTurnRequestEntries(runtime, state.turnRequestState, [
     createRuntimeAssistantEntry(
       state.modelResponse,

@@ -1,3 +1,5 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入结构化脱敏（脱敏核心已抽到
+// @zcode/shared 的 log-redaction.ts 供反馈归档复用；编码探测/流式 Transform/打包仍留在 main）。
 /* eslint-disable max-lines -- 导出日志流程涉及文件收集、脱敏与打包，集中维护便于排查与一致性 */
 import { constants, createReadStream, createWriteStream } from "node:fs";
 import {
@@ -6,6 +8,7 @@ import {
   mkdir,
   mkdtemp,
   open,
+  readFile,
   readdir,
   realpath,
   rm,
@@ -25,6 +28,13 @@ import {
   getExportLogStageDir as getDefaultExportLogStageDir,
   getFeedbackLogArchiveDir as getDefaultFeedbackLogArchiveDir,
 } from "@zcode/services/node";
+import {
+  createPrivateKeyRedactionState,
+  isFormattedJsonDocumentText,
+  LOG_REDACTION_NOTICE_LINES,
+  sanitizeJsonDocumentText,
+  sanitizeSensitiveLogChunk,
+} from "@zcode/shared";
 import { createAboutSnapshot, formatAboutDetail, readBuildMetadata } from "./about.js";
 import { logger } from "./logger.js";
 
@@ -149,59 +159,8 @@ const SENSITIVE_CREDENTIAL_ARCHIVE_FILE_NAMES = new Set(["credentials.json", ".c
 const EXCLUDED_ARCHIVE_DIRECTORY_NAMES = new Set(["debug"]);
 const DEFAULT_LOG_EXPORT_LOOKBACK_DAYS = 3;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
-const REDACTED_PLACEHOLDER = "***REDACTED***";
-// 敏感键名“族”：只要键名里包含这些子串就视为敏感（兜底通配），
-// 从而覆盖自定义命名（如 db_password、my_secret、x-conn-string 等）而不必逐个精确列举。
-// 注意：`token` / `auth` 等是宽松子串，配合下方白名单排除误伤项（如 input_tokens、author）。
-const SENSITIVE_KEY_SUBSTRING_PATTERN = [
-  "password",
-  "passwd",
-  "pwd",
-  "secret",
-  "token",
-  "credential",
-  "api(?:_|-)?key",
-  "access(?:_|-)?key",
-  "private(?:_|-)?key",
-  "auth",
-  "cookie",
-  "dsn",
-  "conn(?:ection)?(?:_|-)?str(?:ing)?",
-  "database(?:_|-)?url",
-  "db(?:_|-)?url",
-].join("|");
-const SENSITIVE_KEY_NAME_REGEX = new RegExp(`(?:${SENSITIVE_KEY_SUBSTRING_PATTERN})`, "i");
-// 白名单：命中敏感子串但实际并非密钥的常见键名，避免脱掉排障需要的上下文。
-// 不能把任意 "*_tokens" 都白名单化，否则 access_tokens/session_tokens 会被原样导出；
-// max_tokens/budget_tokens 是模型输出与思考预算，不是凭据，需保留用于判断 provider 请求是否撞限；
-// 因此这里只放行明确的 LLM token 计数/预算字段，以及 author/authority 这类含 "auth" 的普通词。
-const NON_SENSITIVE_KEY_NAME_ALLOWLIST_REGEX =
-  /^(?:public(?:_|-)?key|keywords?|tokenizer|token(?:_|-)?count|(?:prompt|completion|total|input|output|cached|reasoning|max|budget|accepted(?:_|-)?prediction|rejected(?:_|-)?prediction|tool(?:_|-)?use(?:_|-)?prompt)(?:_|-)?tokens|author(?:s|ity|ed)?)$/i;
+const MAX_WHOLE_JSON_REDACTION_BYTES = 4 * 1024 * 1024;
 
-function isSensitiveKeyName(keyName: string): boolean {
-  if (NON_SENSITIVE_KEY_NAME_ALLOWLIST_REGEX.test(keyName)) {
-    return false;
-  }
-  return SENSITIVE_KEY_NAME_REGEX.test(keyName);
-}
-
-// 以下正则先宽松捕获“键名 + 值”，再由 isSensitiveKeyName 决定是否脱敏，
-// 这样键名黑名单不再是硬编码列表，而是“敏感族 + 通配 + 白名单例外”。
-const JSON_STYLE_SENSITIVE_VALUE_REGEX =
-  /(["'])([A-Za-z0-9_.-]+)\1(\s*:\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^,\r\n}\]]+)/g;
-const ASSIGNMENT_STYLE_SENSITIVE_VALUE_REGEX =
-  /((?:^|\n)[ \t]*)([A-Za-z0-9_.-]+)([ \t]*=[ \t]*)([^\r\n#]+)/g;
-const HEADER_STYLE_SENSITIVE_VALUE_REGEX =
-  /((?:^|\n)[ \t]*)([A-Za-z0-9-]+)([ \t]*:[ \t]*)([^\r\n]+)/g;
-const BEARER_TOKEN_REGEX = /(Bearer\s+)([^\s"']+)/g;
-const QUERY_TOKEN_REGEX =
-  /([?&](?:key|api(?:_|-)?key|access(?:_|-)?token|refresh(?:_|-)?token|token|password|passwd|pwd|secret|client(?:_|-)?secret|auth(?:_|-)?token|session(?:_|-)?token)=)([^&#\s]+)/gi;
-// 按“值形态”脱敏：连接串 scheme://user:pass@host 里的凭据部分，
-// 不依赖键名即可覆盖 postgres/mysql/mongodb/redis/amqp 等数据库连接信息。保留 scheme 与 host 便于排障。
-// 用户名段允许为空以覆盖 redis://:password@host；口令段贪婪匹配到最后一个 @（host 段不含 @），
-// 这样口令里含裸 @（如 P@ssw0rd）也能整段脱敏，不残留片段。
-const CONNECTION_STRING_CREDENTIALS_REGEX =
-  /\b([a-z][a-z0-9+.-]*:\/\/)([^:/\s]*):([^/\s]+)@(?=[^@/\s])/gi;
 const TEXT_DETECTION_SAMPLE_BYTES = 64 * 1024;
 const EMPTY_BOM = Buffer.alloc(0);
 
@@ -218,66 +177,30 @@ interface TextDecodingScore {
   invalidCharRatio: number;
 }
 
-function redactValue(rawValue: string): string {
-  const leadingSpaces = rawValue.match(/^\s*/)?.[0] ?? "";
-  const trailingSpaces = rawValue.match(/\s*$/)?.[0] ?? "";
-  const core = rawValue.trim();
-  const quote =
-    core.startsWith('"') && core.endsWith('"')
-      ? '"'
-      : core.startsWith("'") && core.endsWith("'")
-        ? "'"
-        : "";
-  const redacted = quote ? `${quote}${REDACTED_PLACEHOLDER}${quote}` : REDACTED_PLACEHOLDER;
-  return `${leadingSpaces}${redacted}${trailingSpaces}`;
-}
-
-function redactHeaderValue(rawValue: string): string {
-  const trimmed = rawValue.trim();
-  if (/^bearer\s+/i.test(trimmed)) {
-    return trimmed.replace(/^bearer\s+.+$/i, `Bearer ${REDACTED_PLACEHOLDER}`);
-  }
-  return REDACTED_PLACEHOLDER;
-}
-
-function redactConnectionStringCredentials(rawContent: string): string {
-  // postgres://admin:secret@host → postgres://***REDACTED***:***REDACTED***@host
-  return rawContent.replace(
-    CONNECTION_STRING_CREDENTIALS_REGEX,
-    (_match, scheme: string) => `${scheme}${REDACTED_PLACEHOLDER}:${REDACTED_PLACEHOLDER}@`,
+async function trySanitizeJsonDocumentFile(
+  sourcePath: string,
+  destinationPath: string,
+  encodingInfo: TextFileEncodingInfo,
+  sourceSize: number,
+): Promise<boolean> {
+  if (sourceSize > MAX_WHOLE_JSON_REDACTION_BYTES) return false;
+  const rawContent = await readFile(sourcePath);
+  const decodedContent = new TextDecoder(encodingInfo.encoding).decode(
+    rawContent.subarray(encodingInfo.bomLength),
   );
-}
-
-function sanitizeSensitiveLogContent(rawContent: string): string {
-  // 导出日志不能按文件原样拷贝：会把用户配置和协议日志里的 token/apiKey 一并带出。
-  // 线上排障需要“保留文件结构和上下文”，但不应该泄露密钥本体；
-  // 这里在导出阶段统一对常见敏感值做脱敏，字段和日志行仍完整保留，支持继续定位问题。
-  // 键名不再是硬编码黑名单，而是“敏感键名族 + 子串通配 + 白名单例外”（isSensitiveKeyName），
-  // 并叠加按值形态的连接串脱敏，以覆盖数据库连接串等自定义命名的敏感信息。
-  return redactConnectionStringCredentials(rawContent)
-    .replace(
-      JSON_STYLE_SENSITIVE_VALUE_REGEX,
-      (match, quote: string, keyName: string, separator: string, rawValue: string) =>
-        isSensitiveKeyName(keyName)
-          ? `${quote}${keyName}${quote}${separator}${redactValue(rawValue)}`
-          : match,
-    )
-    .replace(
-      ASSIGNMENT_STYLE_SENSITIVE_VALUE_REGEX,
-      (match, prefix: string, keyName: string, separator: string, rawValue: string) =>
-        isSensitiveKeyName(keyName)
-          ? `${prefix}${keyName}${separator}${redactValue(rawValue)}`
-          : match,
-    )
-    .replace(
-      HEADER_STYLE_SENSITIVE_VALUE_REGEX,
-      (match, prefix: string, headerName: string, separator: string, rawValue: string) =>
-        isSensitiveKeyName(headerName)
-          ? `${prefix}${headerName}${separator}${redactHeaderValue(rawValue)}`
-          : match,
-    )
-    .replace(BEARER_TOKEN_REGEX, `$1${REDACTED_PLACEHOLDER}`)
-    .replace(QUERY_TOKEN_REGEX, `$1${REDACTED_PLACEHOLDER}`);
+  // 单行就是完整 JSON 的文件交给按行结构脱敏，保持原有紧凑格式；这里只处理多行格式化 JSON。
+  // 判定条件与反馈归档共用同一份（isFormattedJsonDocumentText），两条入口不能各判断一套。
+  if (!isFormattedJsonDocumentText(decodedContent)) return false;
+  const sanitizedContent = sanitizeJsonDocumentText(decodedContent);
+  if (sanitizedContent === null) return false;
+  await writeFile(
+    destinationPath,
+    Buffer.concat([
+      encodingInfo.bomBytes,
+      encodeTextWithEncoding(sanitizedContent, encodingInfo.encoding),
+    ]),
+  );
+  return true;
 }
 
 function detectUtf16EncodingByNullPattern(sample: Buffer): SupportedTextEncoding | null {
@@ -606,6 +529,8 @@ function splitByCompleteLine(content: string): {
 
 function createSensitiveContentSanitizerTransform(encoding: SupportedTextEncoding): Transform {
   const decoder = new TextDecoder(encoding);
+  // 私钥块状态跨 chunk 保留：一个块可能被 64 KB 的读块边界切开。
+  const privateKeyState = createPrivateKeyRedactionState();
   let pendingChunk = "";
 
   return new Transform({
@@ -621,7 +546,7 @@ function createSensitiveContentSanitizerTransform(encoding: SupportedTextEncodin
           callback();
           return;
         }
-        const sanitizedChunk = sanitizeSensitiveLogContent(completeChunk);
+        const sanitizedChunk = sanitizeSensitiveLogChunk(completeChunk, privateKeyState);
         callback(null, encodeTextWithEncoding(sanitizedChunk, encoding));
       } catch (error) {
         callback(error as Error);
@@ -634,7 +559,7 @@ function createSensitiveContentSanitizerTransform(encoding: SupportedTextEncodin
           callback();
           return;
         }
-        const sanitizedChunk = sanitizeSensitiveLogContent(remainingContent);
+        const sanitizedChunk = sanitizeSensitiveLogChunk(remainingContent, privateKeyState);
         callback(null, encodeTextWithEncoding(sanitizedChunk, encoding));
       } catch (error) {
         callback(error as Error);
@@ -800,9 +725,13 @@ async function filterRecentLogArchiveFiles(
   return recentFiles;
 }
 
+// 二进制文件的处置与反馈归档不同（那边不打包未脱敏内容），所以这条事实只能由本入口声明。
+const LOG_EXPORT_BINARY_DISPOSITION_NOTICE = "- 二进制或无法识别编码的文件按原样复制，未做脱敏。";
+
 function createAboutContent(): string {
   const snapshot = createAboutSnapshot({ buildMetadata: readBuildMetadata() });
-  return formatAboutDetail(snapshot);
+  const noticeLines = [...LOG_REDACTION_NOTICE_LINES, LOG_EXPORT_BINARY_DISPOSITION_NOTICE];
+  return `${formatAboutDetail(snapshot)}\n\n${noticeLines.join("\n")}\n`;
 }
 
 function formatErrorMessage(error: unknown): string {
@@ -1047,7 +976,14 @@ async function copyLogArchiveFilesToDirectory(
       const textEncodingInfo = detectTextFileEncoding(sourceSample);
       if (!textEncodingInfo) {
         await copyFile(file.absolutePath, destinationPath);
-      } else {
+      } else if (
+        !(await trySanitizeJsonDocumentFile(
+          file.absolutePath,
+          destinationPath,
+          textEncodingInfo,
+          sourceStats.size,
+        ))
+      ) {
         await sanitizeTextLogFileToDestination(
           file.absolutePath,
           destinationPath,

@@ -293,6 +293,37 @@ export async function enablePluginsByDefaultInFileConfig(
 }
 
 /**
+ * 读取配置文件里某个插件已存的选项（旧明文值的来源）。
+ *
+ * 迁移只在保存时发生：user 层的旧明文敏感键要在下一次保存时迁进私有文件，
+ * 项目层则只用来把旧键从文件里清掉（旧值不迁、不回读）。缺文件按空对象处理。
+ */
+export async function readPluginOptionsFromFileConfig(
+  filePath: string,
+  pluginId: string,
+): Promise<Record<string, string | number | boolean>> {
+  const parsed = await readJsonConfigFileOrEmpty(resolvePath(filePath));
+  const plugins = isRecord(parsed.plugins) ? parsed.plugins : {};
+  const options = isRecord(plugins.options) ? plugins.options : {};
+  const canonicalPluginId = canonicalizePluginId(pluginId);
+  const aliases = pluginIdAliases(canonicalPluginId);
+  const legacyPluginId = aliases.length > 1 ? aliases[1] : undefined;
+  const pluginOptions = isRecord(options[canonicalPluginId])
+    ? options[canonicalPluginId]
+    : legacyPluginId && isRecord(options[legacyPluginId])
+      ? options[legacyPluginId]
+      : {};
+  return Object.fromEntries(
+    Object.entries(pluginOptions).filter(
+      (entry): entry is [string, string | number | boolean] =>
+        typeof entry[1] === "string" ||
+        typeof entry[1] === "number" ||
+        typeof entry[1] === "boolean",
+    ),
+  );
+}
+
+/**
  * Patch plugin user options without touching plugin installation state.
  */
 export async function updatePluginOptionsInFileConfig(

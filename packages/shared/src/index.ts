@@ -310,6 +310,7 @@ export {
 } from "./subagent-markdown-selection.js";
 export * from "./memoryDiagnostics.js";
 export * from "./database-startup.js";
+export * from "./sqlite-migrations/index.js";
 export * from "./processResourceTelemetry.js";
 export * from "./execution-state.js";
 
@@ -334,3 +335,4 @@ export * from "./subagent-runtime-config.js";
 export * from "./subagent-profile.js";
 export * from "./toolSearch.js";
 export { redactFeedbackText } from "./feedbackPrivacy.js";
+export * from "./log-redaction.js";

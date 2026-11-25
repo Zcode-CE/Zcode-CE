@@ -13,7 +13,7 @@ import {
   timestampSchema,
 } from "./core.js";
 import { conversationDeltaSchema } from "./delta.js";
-import { conversationRowSchema, toolCallRowSchema } from "./rows.js";
+import { displayConversationRowSchema, toolCallRowSchema } from "./rows.js";
 import { sessionsIndexDeltaSchema, sessionsIndexSnapshotSchema } from "./sessions-index.js";
 import { WORKFLOW_RUN_STOP_REASONS } from "./workflow-observation-display.js";
 import { conversationSnapshotSchema } from "./snapshot.js";
@@ -526,8 +526,9 @@ export const v4ConversationRowsRangeParamsSchema = z.object({
 export type V4ConversationRowsRangeParams = z.infer<typeof v4ConversationRowsRangeParamsSchema>;
 
 export const v4ConversationRowsRangeResultSchema = z.object({
-  // rowId 升序。
-  rows: z.array(conversationRowSchema),
+  // rowId 升序。与 snapshot 的 rows.window 同一份逐行降级：历史回补读不懂的行同样退化成
+  // unreadable 占位行，否则「打开会话」修好了、「向上翻历史」仍会把整次查询拒掉。
+  rows: z.array(displayConversationRowSchema),
   // 服务端取值时的水位/纪元；与 fileChanges 等只读查询共用，避免跨 revision 拼接发布数据。
   atSeq: z.number(),
   atRevision: z.number().int().nonnegative(),

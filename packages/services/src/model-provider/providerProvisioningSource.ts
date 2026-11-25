@@ -13,12 +13,18 @@ import type {
 } from "@zcode/provider";
 import { decodeProviderConfigFile, encodeProviderConfigFile } from "@zcode/provider-node";
 import {
-  createCredentialCipherProvider,
-  type CredentialCipherProvider,
-} from "../credential/providers/credentialCipherProvider.js";
+  createCredentialCipherByPath,
+  type CredentialCipher,
+} from "@zcode/shared/credential-security";
 import type { ISettingService } from "../setting/setting.js";
 
 const CREDENTIAL_FILE_NAME = "credentials.json";
+/**
+ * 与 Host 凭据服务共用同一份 cipher 解析（按凭据文件路径取，密钥按路径命名）。
+ * 这条链路本身就是异步的（`read()` 返回 Promise），所以解密直接 `await`；
+ * 不能为了「保持同步」在这里维护第二套派生实现 —— 那正是 P1 要收敛掉的弱密钥来源。
+ */
+const defaultCredentialCiphers = createCredentialCipherByPath();
 export const PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS = [
   "oauth:active_provider",
   "oauth:zai:access_token",
@@ -39,7 +45,8 @@ export interface ProviderProvisioningSourceOptions {
   readonly settingService: ISettingService;
   readonly credentialFilePath: string;
   readonly personalConfigFilePath: string;
-  readonly cipherProvider?: CredentialCipherProvider;
+  /** 注入的加密后端；默认是本机系统凭据库（keyring 优先、私有文件兜底）。 */
+  readonly cipher?: CredentialCipher;
 }
 
 /** 从 Local Environment 读取可 Provision 的事实；不会读取或导出完整 Registry Snapshot。 */
@@ -51,7 +58,7 @@ export function createProviderProvisioningSource(
       const [personal, settings, credentials] = await Promise.all([
         readProvisionablePersonalConfig(options.personalRepository, options.personalConfigFilePath),
         options.settingService.get(),
-        readProvisioningCredentials(options.credentialFilePath, options.cipherProvider),
+        readProvisioningCredentials(options.credentialFilePath, options.cipher),
       ]);
       // 默认与规则来自同一份持锁读取，不能把两次读取的值拼成不存在的配置版本。
       const personalConfig = encodeProviderConfigFile(personal).config;
@@ -110,7 +117,7 @@ export async function readProvisionablePersonalConfig(
 
 async function readProvisioningCredentials(
   credentialFilePath: string,
-  cipherProvider?: CredentialCipherProvider,
+  injectedCipher?: CredentialCipher,
 ): Promise<ProviderProvisioningCredentialEntry[]> {
   let raw: string;
   try {
@@ -123,7 +130,7 @@ async function readProvisioningCredentials(
   if (!isRecord(parsed)) {
     throw new Error("Credential Store 必须是 JSON 对象");
   }
-  const cipher = cipherProvider ?? createCredentialCipherProvider();
+  const cipher = injectedCipher ?? defaultCredentialCiphers(credentialFilePath);
   const allowedKeys = new Set<string>(PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS);
   const entries: ProviderProvisioningCredentialEntry[] = [];
   // Credential Store 还可能包含不属于 Provisioning allowlist 的历史记录；
@@ -139,7 +146,7 @@ async function readProvisioningCredentials(
     if (typeof encrypted !== "string") {
       throw new Error(`Credential allowlist value must be a string: ${key}`);
     }
-    const value = cipher.decrypt(encrypted);
+    const value = await cipher.decrypt(encrypted);
     if (!value.trim()) continue;
     entries.push({ scope, key, value });
   }

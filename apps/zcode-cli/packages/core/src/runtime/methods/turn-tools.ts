@@ -1,4 +1,5 @@
 import type { ModelCallWrapper, ToolSearchExecutionContext } from "@zcode/contracts";
+import { sortByCompleteIndex } from "@zcode/contracts";
 import { resolveDeferredToolCall } from "../../tool/deferred-call.js";
 import { createPartId, traceContextToLogContext, TurnMachineImpl } from "../deps.js";
 import type {
@@ -64,7 +65,13 @@ export async function executeToolCallsForModelStep(
   // 统一使用目标身份，包装标记只留在 part metadata 与 ToolCall 上供协议出口还原。
   // 准入失败的调用保持包装身份，由 executor 的公共准入给出配对的失败结果。
   const wrapperByCallId = new Map<string, ModelCallWrapper>();
-  const coreToolCalls: ToolCall[] = options.toolCalls.map((tc) => {
+  // 工具的执行与结果按块到达顺序提交：blockIndex 在 tool_input_start 分配，toolCalls 却按
+  // tool_call 事件到达排列，两者可能不同（openai-compatible 在流末尾一次性发出全部调用）。
+  // 只用一个顺序来源，live 与冷恢复的 tool_use 和结果顺序才一致。
+  // 只在所有调用都有合法序号时排序；旧数据与未编号的非流式结果保持原顺序。
+  const orderedToolCalls =
+    sortByCompleteIndex(options.toolCalls, (toolCall) => toolCall.blockIndex) ?? options.toolCalls;
+  const coreToolCalls: ToolCall[] = orderedToolCalls.map((tc) => {
     // Model step admission 已完成类型/ID 校验；空名按原值保留，让 executor 强制走 registry miss，
     // 而不是把 storage 占位值当成真实工具。
     const admission = resolveDeferredToolCall<ToolCall>(
@@ -83,6 +90,7 @@ export async function executeToolCallsForModelStep(
   const toolParts = new Map<
     string,
     {
+      blockIndex?: number;
       partID: ReturnType<typeof createPartId>;
       declarationIndex: number;
       input: Record<string, unknown>;
@@ -93,6 +101,7 @@ export async function executeToolCallsForModelStep(
     const streamed = streamedResultsById.get(toolCall.id as ToolCallId);
     if (streamed) {
       toolParts.set(toolCall.id, {
+        blockIndex: toolCall.blockIndex,
         declarationIndex,
         partID: streamed.partID,
         input: streamed.input,
@@ -101,6 +110,7 @@ export async function executeToolCallsForModelStep(
       if (streamed.ledgerRecorded === false) {
         await persistPendingToolPart(this, {
           assistantMessageId: options.assistantMessageId,
+          blockIndex: toolCall.blockIndex,
           declarationIndex,
           input: streamed.input,
           partID: streamed.partID,
@@ -132,6 +142,7 @@ export async function executeToolCallsForModelStep(
     const partID = createPartId();
     const normalizedInput = toRecordInput(toolCall.input);
     toolParts.set(toolCall.id, {
+      blockIndex: toolCall.blockIndex,
       declarationIndex,
       partID,
       input: normalizedInput,
@@ -139,6 +150,7 @@ export async function executeToolCallsForModelStep(
     });
     await persistPendingToolPart(this, {
       assistantMessageId: options.assistantMessageId,
+      blockIndex: toolCall.blockIndex,
       declarationIndex,
       input: normalizedInput,
       partID,
@@ -223,6 +235,9 @@ export async function executeToolCallsForModelStep(
               messageID: options.assistantMessageId,
               type: "tool",
               callID: toolCall.id,
+              ...(persisted.blockIndex !== undefined
+                ? { blockIndex: persisted.blockIndex }
+                : {}),
               declarationIndex: persisted.declarationIndex,
               tool: projectedToolName.toolName,
               metadata: withModelCallWrapper(
@@ -331,6 +346,7 @@ export async function executeToolCallsForModelStep(
           messageID: options.assistantMessageId,
           type: "tool",
           callID: result.toolCallId,
+          ...(persisted.blockIndex !== undefined ? { blockIndex: persisted.blockIndex } : {}),
           declarationIndex: persisted.declarationIndex,
           tool: projectedResultToolName.toolName,
           // 包装标记必须活到 completed/error：冷恢复按它还原模型协议里的外层调用。

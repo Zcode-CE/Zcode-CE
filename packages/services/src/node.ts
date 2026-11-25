@@ -352,6 +352,7 @@ import { createOnboardingRecordService } from "./onboarding/onboardingRecordServ
 import { createLegacyTeamOrganizationResolver } from "./model-provider/legacyTeamOrganizationResolver.js";
 import { createObservableSettingService } from "./setting/observableSettingService.js";
 import { createCredentialService } from "./credential/credentialService.js";
+import type { CredentialCipher } from "@zcode/shared/credential-security";
 import { createBroadcastService } from "./broadcast/broadcastService.js";
 import { createZCodeAgentService } from "./zcode-agent/zcodeAgentService.js";
 import type { ZCodeAgentCommandResolver } from "./zcode-agent/zcodeAgentProcessManager.js";
@@ -1358,6 +1359,11 @@ export function createLocalServices(options: {
   // Modified by ZCode: 增量自上游 aac47556——Desktop Host 请求 Main 登记已校验的插件
   // UI HTML，换取沙箱句柄；gen-ui 服务的 prepareSandbox 经此注入。
   registerPluginSandbox?: (input: PluginSandboxRegisterInput) => Promise<PluginSandboxHandle>;
+  /**
+   * 凭据加密后端。默认是本机系统凭据库（keyring 优先、同目录 0600 私有文件兜底），
+   * 按凭据文件路径取，可承受数据根切换；只有需要外部密钥源（如经 Main 的私有桥）时才注入。
+   */
+  credentialCipher?: CredentialCipher;
   feedback?: Partial<
     Omit<CreateFeedbackServiceOptions, "apiClient" | "credentialService" | "oauthService">
   >;
@@ -1469,6 +1475,7 @@ export function createLocalServices(options: {
   let invalidatePluginUiAccounts: (() => void) | undefined;
   const provisioningOAuthKeys = new Set<string>(PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS);
   const credentialService = createCredentialService({
+    cipher: options?.credentialCipher,
     onDidMutate: ({ key }) => {
       // Modified by ZCode: 增量自上游 aac47556——账号切换时让 plugin-ui 实例绑定失效，
       // 防止旧 OAuth 凭据的实例句柄存活到新账号会话。

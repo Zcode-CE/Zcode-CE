@@ -321,6 +321,8 @@ export function extractToolCallsFromResult(
           name: tc.name ?? tc.toolName,
           input: tc.input,
           providerExecuted: tc.providerExecuted,
+          // 块序号随调用一起进历史：提交 assistant 时 buildAssistantEntries 需要它。
+          ...(tc.blockIndex !== undefined ? { blockIndex: tc.blockIndex } : {}),
         });
       }
     }
@@ -335,6 +337,7 @@ export function extractToolCallsFromResult(
           name: tc.name ?? tc.toolName,
           input: tc.input,
           providerExecuted: tc.providerExecuted,
+          ...(tc.blockIndex !== undefined ? { blockIndex: tc.blockIndex } : {}),
         });
       }
     }

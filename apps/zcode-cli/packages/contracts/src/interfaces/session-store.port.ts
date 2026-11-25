@@ -1,5 +1,7 @@
 // Session Store Port：为会话输入、消息和投影提供稳定的存储边界。
 // ============================================================
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入 assistant 内容块的
+// 可选 `blockIndex` 与读边界排序（`orderAssistantBlockParts` 等）；旧数据无该字段时保持物理序。
 
 import type {
   MessageId,
@@ -19,6 +21,7 @@ import type {
   CompactTimelineStatus,
   CompactTrigger,
 } from "../compact/index.js";
+import { isBlockIndex, sortByCompleteIndex } from "../model/index.js";
 import type {
   ModelId,
   ModelProviderId,
@@ -428,6 +431,8 @@ export interface TextPart {
   text: string;
   synthetic?: boolean;
   ignored?: boolean;
+  /** assistant 块到达序号；旧记录缺失。规格见上游 v3.18.2 docs/design/v2/model/assistant-block-order.md。 */
+  blockIndex?: number;
   time?: {
     start: number;
     end?: number;
@@ -441,6 +446,8 @@ export interface ReasoningPart {
   messageID: MessageId;
   type: "reasoning";
   text: string;
+  /** assistant 块到达序号；不放进 metadata，因为 metadata 会原样变成 providerOptions。 */
+  blockIndex?: number;
   metadata?: Record<string, unknown>;
   time: {
     start: number;
@@ -764,6 +771,11 @@ export interface ToolPart {
   callID: string;
   /** 同一 assistant 内本地工具的声明序号；旧记录可缺失，不能用落盘顺序代替。 */
   declarationIndex?: number;
+  /**
+   * assistant 块到达序号，与 text / reasoning part 共用；重试新建的 part 沿用同一序号。
+   * 每次写入都必须带上：savePart 的冲突更新整体替换 data，漏写一次这条消息就静默按旧数据排序。
+   */
+  blockIndex?: number;
   tool: string;
   state: ToolState;
   metadata?: Record<string, unknown>;
@@ -783,6 +795,62 @@ export type MessagePart =
   | SnapshotPart
   | PatchPart
   | ToolPart;
+
+// ============================================================
+// assistant 内容块顺序（blockIndex）
+// ============================================================
+// 一次模型响应里的 reasoning / text / tool 块按到达顺序保存到 part 的顶层 blockIndex（可选，旧记录缺失）。
+// 库、runtime、请求投影三层用同一个 isBlockIndex 判定「有序」，三层结论才一致（定义在 model/index.ts）。
+// 设计依据：上游 zai-org/ZCode v3.18.2 的 apps/zcode-cli/docs/design/v2/model/assistant-block-order.md；
+// 本仓库按需分步移植，全文规格尚未落地，落地进度见交付记录。
+
+/** 参与 assistant 块顺序的 part：reasoning、text、tool。其他 part（step-start、file、snapshot…）不参与。 */
+export type AssistantBlockPart = TextPart | ReasoningPart | ToolPart;
+
+// 类型谓词只按 part 类型判断，供下面的筛选与重排共用。
+function isBlockTypePart(part: MessagePart): part is AssistantBlockPart {
+  return part.type === "reasoning" || part.type === "text" || part.type === "tool";
+}
+
+/** 是否参与 assistant 块顺序。 */
+export function isAssistantBlockPart(part: MessagePart): boolean {
+  return isBlockTypePart(part);
+}
+
+/** 参与 assistant 块顺序的 part，保持原顺序。 */
+export function assistantBlockParts(parts: readonly MessagePart[]): AssistantBlockPart[] {
+  return parts.filter(isBlockTypePart);
+}
+
+/**
+ * 有序 assistant 消息：至少有一个块 part，且所有块 part 的 blockIndex 都合法（isBlockIndex）。
+ * 不满足时整条消息按旧数据处理，不存在「部分有序」。要求至少一个块 part：没有块 part 的旧消息
+ * 留在旧路径，空消息的处理不变。
+ */
+export function hasOrderedAssistantBlocks(parts: readonly MessagePart[]): boolean {
+  const blockParts = assistantBlockParts(parts);
+  return blockParts.length > 0 && blockParts.every((part) => isBlockIndex(part.blockIndex));
+}
+
+/**
+ * 有序 assistant 消息的块 part 按 blockIndex 稳定排序，消费方拿到流顺序，而不是写库顺序
+ * （只读工具在流中写库，reasoning / text 在流结束后写库）。
+ * - 只在块 part 占用的位置之间重排；step-start、step-finish、file 等其他 part 的位置不变。
+ * - 序号相同时保持物理顺序；旧消息、混合消息（有一个块缺序号）整条保持物理顺序。
+ * 读边界（session-store repository 的 messages() / messageWithParts()）必须调用它，
+ * 否则冷恢复、V4 投影与 fork 都会拿到写库顺序。
+ */
+export function orderAssistantBlockParts(
+  info: Pick<MessageInfo, "role">,
+  parts: MessagePart[],
+): MessagePart[] {
+  if (info.role !== "assistant") return parts;
+  // 块 part 只筛一次，判定与排序共用；有块缺合法序号（旧消息、混合消息）时保持物理顺序。
+  const blockParts = sortByCompleteIndex(assistantBlockParts(parts), (part) => part.blockIndex);
+  if (!blockParts) return parts;
+  let next = 0;
+  return parts.map((part) => (isAssistantBlockPart(part) ? blockParts[next++]! : part));
+}
 
 export interface MessageWithParts {
   info: MessageInfo;

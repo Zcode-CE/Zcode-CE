@@ -1,11 +1,17 @@
 /* oxlint-disable eslint(max-lines) -- 公开 Row 的 allow-list 构建与闭包校验必须同处一个策略边界，拆分会让 builder/validator 规则漂移。 */
 import type { ConversationShareArtifactDescriptor } from "@zcode/shared";
-import type { ArtifactRow, ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type {
+  ArtifactRow,
+  ConversationRow,
+  WireConversationRow,
+} from "@zcode/shared/zcode-protocol-v4";
+import { isWireConversationRow } from "@zcode/shared/zcode-protocol-v4";
 
 import { ConversationShareServiceError } from "./conversationShare.js";
 
 interface ConversationSharePublicProjection {
-  rows: ConversationRow[];
+  // 公开投影只承载真正读得懂的 wire 行：unreadable 占位行是本地诊断事实，不是会话内容。
+  rows: WireConversationRow[];
   selectedProductTurnIds: string[];
   artifacts: ConversationSharePublicArtifact[];
 }
@@ -71,7 +77,7 @@ function isPublicArtifactRef(value: string): boolean {
   return /^zcode-artifact:\/\/share\/[A-Za-z0-9._~-]+$/u.test(value);
 }
 
-function assertTerminalAndSafe(rows: ConversationRow[]): void {
+function assertTerminalAndSafe(rows: readonly WireConversationRow[]): void {
   for (const row of rows) {
     if (row.productTurnId === undefined) {
       throwProjectionError(
@@ -174,7 +180,10 @@ function requiredMappedId(ids: Map<string, string>, sourceId: string, label: str
   return mapped;
 }
 
-function buildIdMaps(rows: ConversationRow[], selectedProductTurnIds: string[]): PublicIdMaps {
+function buildIdMaps(
+  rows: readonly WireConversationRow[],
+  selectedProductTurnIds: string[],
+): PublicIdMaps {
   return {
     productTurnIds: allocateIds(selectedProductTurnIds, "share-product-turn"),
     turnIds: allocateIds(
@@ -200,7 +209,7 @@ function buildIdMaps(rows: ConversationRow[], selectedProductTurnIds: string[]):
   };
 }
 
-function projectBase(row: ConversationRow, index: number, ids: PublicIdMaps) {
+function projectBase(row: WireConversationRow, index: number, ids: PublicIdMaps) {
   if (!row.productTurnId) {
     throwProjectionError(
       "invalid_conversation",
@@ -259,7 +268,11 @@ function projectTimelineMarker(
  * 一种 kind 时这里会编译失败。那是有意的闸门——公开投影是跨版本数据交换格式，往里加一种
  * 老客户端读不了的 kind 必须是个显式决定，不能靠 default 悄悄放过去。
  */
-function projectRow(row: ConversationRow, index: number, ids: PublicIdMaps): ConversationRow {
+function projectRow(
+  row: WireConversationRow,
+  index: number,
+  ids: PublicIdMaps,
+): WireConversationRow {
   const base = projectBase(row, index, ids);
   switch (row.kind) {
     case "turnHeader":
@@ -413,7 +426,7 @@ function assertUnique(values: string[], label: string): void {
 }
 
 function assertConversationSharePublicProjection(input: {
-  rows: ConversationRow[];
+  rows: WireConversationRow[];
   selectedProductTurnIds: string[];
 }): void {
   if (input.rows.length === 0 || input.selectedProductTurnIds.length === 0) {
@@ -594,7 +607,11 @@ export function buildConversationSharePublicProjection(input: {
   selectedProductTurnIds: string[];
   additionalArtifacts?: ConversationSharePublicArtifact[];
 }): ConversationSharePublicProjection {
-  assertTerminalAndSafe(input.rows);
+  // 逐行降级后的入参可能含 unreadable 占位行（本端读不懂一行时由消费端合成）。分享是内容
+  // 产物：占位行在这里直接跳过——既不投影成占位（那会把「本端读不懂」当成会话事实发给别人），
+  // 也不阻断其余可分享的行。跳过后 projectRow 的入参窄化成 wire 行，产物结构上不可能含占位。
+  const sourceRows = input.rows.filter(isWireConversationRow);
+  assertTerminalAndSafe(sourceRows);
   assertUnique(input.selectedProductTurnIds, "source product turn");
   if (input.selectedProductTurnIds.length === 0) {
     throwProjectionError(
@@ -605,7 +622,7 @@ export function buildConversationSharePublicProjection(input: {
 
   const selectedProductTurnIds = new Set(input.selectedProductTurnIds);
   if (
-    input.rows.some((row) => !row.productTurnId || !selectedProductTurnIds.has(row.productTurnId))
+    sourceRows.some((row) => !row.productTurnId || !selectedProductTurnIds.has(row.productTurnId))
   ) {
     throwProjectionError(
       "invalid_conversation",
@@ -615,7 +632,7 @@ export function buildConversationSharePublicProjection(input: {
 
   // 本地运行投影包含 subagent 详情和写入态标识，不能直接作为公开载荷；
   // 必须先过滤非 V1 Row，再基于剩余内容生成一套闭合的公开 ID。
-  const retainedRows = input.rows.filter(
+  const retainedRows = sourceRows.filter(
     (row) => row.kind !== "subagent" && row.kind !== "hookInvocation",
   );
   const sourceArtifactRows = retainedRows.filter(

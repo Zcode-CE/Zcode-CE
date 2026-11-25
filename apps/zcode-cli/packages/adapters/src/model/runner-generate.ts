@@ -1,3 +1,5 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入本波数据完整性与
+// 内容块顺序修复（会话行逐行降级 / blockIndex / 迁移 0023–0026 / schema_too_new 守卫）。
 import type { Logger, ModelStatusSink, ModelTextResult } from "@zcode/contracts";
 import {
   ModelErrorCode,
@@ -15,6 +17,7 @@ import { createGenerateTextOptions } from "./runner-options.js";
 import { detectProviderBusinessFinishError } from "./provider-finish-business-error.js";
 import {
   normalizeReasoning,
+  orderGeneratedContent,
   normalizeSources,
   normalizeToolCalls,
   normalizeToolResults,
@@ -326,8 +329,13 @@ export async function runGenerateText(input: {
         statusPublishOptions(input, admission),
       );
 
+      // 结构化输出的 text 是序列化结果，不对应模型块，不编号。
+      const textBlocks = input.request.responseJsonSchema
+        ? undefined
+        : orderGeneratedContent(result, { text, reasoning, toolCalls });
       return {
         text,
+        ...(textBlocks ? { textBlocks } : {}),
         finishReason: result.finishReason,
         usage,
         reasoning,

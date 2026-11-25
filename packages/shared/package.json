@@ -15,6 +15,8 @@
     "./model-config": "./src/model-config.ts",
     "./config-schema": "./src/config-schema.ts",
     "./node": "./src/node.ts",
+    "./credential-security": "./src/credential-security/module.ts",
+    "./credential-paths": "./src/credentialPaths.ts",
     "./zcodeEndpoint": "./src/zcodeEndpoint.ts",
     "./workspaceFileSearch": "./src/workspaceFileSearch.ts",
     "./workspaceFileEntriesCodec": "./src/workspaceFileEntriesCodec.ts",

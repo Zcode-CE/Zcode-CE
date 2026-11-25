@@ -1,3 +1,5 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入本波数据完整性与
+// 内容块顺序修复（会话行逐行降级 / blockIndex / 迁移 0023–0026 / schema_too_new 守卫）。
 // ============================================================
 // Message History - Maintains conversation context across turns
 // ============================================================
@@ -5,12 +7,14 @@
 import {
   type RuntimeInputPresentation,
   type ModelCallWrapper,
+  isBlockIndex,
   modelMessageContentToText,
   type ModelCacheControl,
   type ModelMessageContent,
   type ModelMessageContentBlock,
   type Model,
   type ModelReasoningContentBlock,
+  type ModelTextContentBlock,
   type ModelToolCall,
   type TokenUsageInfo,
 } from "@zcode/contracts";
@@ -23,6 +27,8 @@ export interface ToolCallInput {
   id: string;
   name: string;
   input: unknown;
+  /** 本次响应内的块到达序号；旧数据可缺失，见上游 v3.18.2 docs/design/v2/model/assistant-block-order.md。 */
+  blockIndex?: number;
 }
 
 // 仅模型协议出口和原始调用诊断使用；内部消费者始终读取目标 name/input。
@@ -32,6 +38,7 @@ export function toModelToolCall(call: ToolCallInput): ModelToolCall {
     id: call.id,
     name: call.modelCallWrapper,
     input: { name: call.name, input: call.input },
+    ...(call.blockIndex !== undefined ? { blockIndex: call.blockIndex } : {}),
   };
 }
 
@@ -383,7 +390,10 @@ export function createRuntimeAssistantEntry(
   model?: Pick<Model, "providerId" | "modelId">,
   tokens?: TokenUsageInfo,
 ): RuntimeMessageMessageEntry {
-  const reasoningBlocks = reasoning?.map((block) => cloneReasoningBlock(block)) ?? [];
+  // 旧条目不带 blockIndex。修复原因：非流式结果会在原对象上给 reasoning 编号，原样复制会让旧条目
+  // 部分带序号，只有思考块时还会被请求投影当成有序条目（上游 v3.18.2 assistant-block-order.md）。
+  const reasoningBlocks =
+    reasoning?.map(({ blockIndex: _blockIndex, ...block }) => cloneReasoningBlock(block)) ?? [];
   return {
     message: {
       role: "assistant",
@@ -404,6 +414,124 @@ export function createRuntimeAssistantEntry(
     },
     ...(tokens ? { tokens: cloneTokenUsageInfo(tokens) } : {}),
   };
+}
+
+// ============================================================
+// assistant 内容块顺序（blockIndex）
+// ============================================================
+// 设计依据：上游 zai-org/ZCode v3.18.2 的 apps/zcode-cli/docs/design/v2/model/assistant-block-order.md。
+// CE 没有服务端内置工具轮次：一条持久化 assistant 消息始终产出一条 assistant entry，
+// 所以这里只有 content 与 tool 两种块，也没有 compact 分组键。
+
+/**
+ * 有序 assistant 的一个块。所有块都带 blockIndex；旧数据（缺序号）走 createRuntimeAssistantEntry。
+ */
+export type AssistantHistoryBlock =
+  | { kind: "content"; block: ModelReasoningContentBlock | ModelTextContentBlock }
+  | { kind: "tool"; call: ToolCallInput };
+
+function assistantHistoryBlockIndex(block: AssistantHistoryBlock): number | undefined {
+  return block.kind === "content" ? block.block.blockIndex : block.call.blockIndex;
+}
+
+export function hasOrderedAssistantHistoryBlocks(
+  blocks: readonly AssistantHistoryBlock[],
+): boolean {
+  return blocks.every((block) => isBlockIndex(assistantHistoryBlockIndex(block)));
+}
+
+/**
+ * live 与冷恢复构造有序 assistant 条目的唯一入口，两条路径因此产出相同条目。
+ * - 按 blockIndex 稳定排序；去掉没有内容的 reasoning 和空字符串文字；文字块不合并。
+ * - 本地工具都放进同一个条目；usage 照旧附加。
+ * 维护约束：新增写入点时每次写入都要带 blockIndex，漏写一次这条消息就静默按旧数据排序。
+ */
+export function buildAssistantEntries(input: {
+  blocks: readonly AssistantHistoryBlock[];
+  model?: Pick<Model, "providerId" | "modelId">;
+  tokens?: TokenUsageInfo;
+  /** 冷恢复保留带 usage 的空 assistant 作为上下文估算锚点。 */
+  keepEmptyFinal?: boolean;
+}): RuntimeMessageMessageEntry[] {
+  const sorted = [...input.blocks].sort(
+    (left, right) => assistantHistoryBlockIndex(left)! - assistantHistoryBlockIndex(right)!,
+  );
+  const content: Array<ModelReasoningContentBlock | ModelTextContentBlock> = [];
+  const toolCalls: ToolCallInput[] = [];
+  for (const block of sorted) {
+    if (block.kind === "tool") {
+      toolCalls.push(cloneOrderedToolCall(block.call));
+      continue;
+    }
+    const keep =
+      block.block.type === "reasoning"
+        ? hasAssistantReasoningContent(block.block)
+        : block.block.text.length > 0;
+    if (keep) content.push(cloneOrderedContentBlock(block.block));
+  }
+  if (content.length === 0 && toolCalls.length === 0 && !input.keepEmptyFinal) return [];
+  return [
+    createOrderedAssistantEntry(
+      content,
+      toolCalls.length > 0 ? toolCalls : undefined,
+      input.model,
+      input.tokens,
+    ),
+  ];
+}
+
+// 旧条目与有序条目共用的条目外壳，两条路径的 message 字段因此一致。
+function assistantEntry(
+  content: ModelMessageContent,
+  toolCalls: ToolCallInput[] | undefined,
+  model: Pick<Model, "providerId" | "modelId"> | undefined,
+  tokens: TokenUsageInfo | undefined,
+): RuntimeMessageMessageEntry {
+  return {
+    message: {
+      role: "assistant",
+      content,
+      ...(toolCalls ? { toolCalls } : {}),
+      ...(model ? { providerId: model.providerId, modelId: model.modelId } : {}),
+    },
+    ...(tokens ? { tokens: cloneTokenUsageInfo(tokens) } : {}),
+  };
+}
+
+function createOrderedAssistantEntry(
+  content: Array<ModelReasoningContentBlock | ModelTextContentBlock>,
+  toolCalls: ToolCallInput[] | undefined,
+  model: Pick<Model, "providerId" | "modelId"> | undefined,
+  tokens?: TokenUsageInfo,
+): RuntimeMessageMessageEntry {
+  // 没有内容块时与旧条目一样用空字符串，避免空数组走不同的 provider 序列化。
+  return assistantEntry(content.length > 0 ? content : "", toolCalls, model, tokens);
+}
+
+// 只复制模型历史需要的字段；providerExecuted 等运行时标记不进入历史，live 与冷恢复构造的结果一致。
+function cloneHistoryToolCall(call: ToolCallInput): ToolCallInput {
+  return {
+    id: call.id,
+    name: call.name,
+    input: call.input,
+    ...(call.modelCallWrapper ? { modelCallWrapper: call.modelCallWrapper } : {}),
+  };
+}
+
+function cloneOrderedContentBlock(
+  block: ModelReasoningContentBlock | ModelTextContentBlock,
+): ModelReasoningContentBlock | ModelTextContentBlock {
+  return block.type === "reasoning"
+    ? cloneReasoningBlock(block)
+    : { type: "text", text: block.text, blockIndex: block.blockIndex };
+}
+
+function cloneOrderedToolCall(call: ToolCallInput): ToolCallInput {
+  return { ...cloneHistoryToolCall(call), blockIndex: call.blockIndex };
+}
+
+export function hasAssistantReasoningContent(reasoning: ModelReasoningContentBlock): boolean {
+  return reasoning.text.length > 0 || Object.keys(reasoning.providerOptions ?? {}).length > 0;
 }
 
 export function createRuntimeToolResultEntry(

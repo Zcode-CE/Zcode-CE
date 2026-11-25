@@ -1,11 +1,18 @@
-import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { atomicWritePrivateTextFile, backupCorruptFile, withFileLock } from "@zcode/shared/node";
-import { createZCodeCredentialCipher, type ZCodeCredentialCipher } from "./credential-cipher.js";
+import { atomicWritePrivateTextFile, backupCorruptFile } from "@zcode/shared/node";
+import {
+  captureCredentialGeneration,
+  createSystemCredentialCipher,
+  mutateCredentialRecordLocked,
+  readCredentialRecordWithMigration,
+  resolveCredentialsFilePath,
+  resolveCredentialsFilePathIn,
+  type CredentialCipher,
+  type CredentialRecordTarget,
+} from "@zcode/shared/credential-security";
 
-const ZCODE_DATA_BASE_DIR_ENV_KEY = "ZCODE_DATA_BASE_DIR";
 const ZAI_PROVIDER_ID = "zai";
 const credentialChangeListeners = new Map<
   string,
@@ -25,7 +32,7 @@ export const SHARED_ZCODE_CREDENTIAL_KEYS = {
 
 export interface SharedZCodeCredentialStoreOptions {
   baseDir?: string;
-  cipher?: ZCodeCredentialCipher;
+  cipher?: CredentialCipher;
   env?: Record<string, string | undefined>;
   filePath?: string;
 }
@@ -70,15 +77,51 @@ export function createSharedZCodeCredentialStore(
 ): SharedZCodeCredentialStore {
   const env = options.env ?? process.env;
   const filePath = resolveSharedZCodeCredentialsPath(options);
-  const cipher = options.cipher ?? createZCodeCredentialCipher({ env });
+  // 与 Desktop Host 共用同一份凭据文件；密钥来源与格式必须由同一实现决定，
+  // 否则 Get/Copy 两侧会各写一种密文，另一半读者只能读到密文本身。
+  const cipher = options.cipher ?? createSystemCredentialCipher({ filePath, env });
+  const recordTarget: CredentialRecordTarget = {
+    filePath,
+    cipher,
+    read: () => readRawCredentialRecord(filePath),
+    write: (record) => atomicWritePrivateTextFile(filePath, `${JSON.stringify(record, null, 2)}\n`),
+  };
+
+  /**
+   * 变更入口：锁内读 →（可选）迁移 → 变更 → 写闸门 → 原子写；通知在锁外发送。
+   * 纯删除路径不迁移：密钥不可用时登出仍必须成功（否则用户连退出都做不到）。
+   */
+  const mutate = async (
+    mutation: (value: Record<string, string>) => void | Promise<void>,
+    settings: { migrate?: boolean; expectedGeneration?: number } = {},
+  ): Promise<void> => {
+    await mutateCredentialRecordLocked(recordTarget, { ...settings, mutation });
+    const listeners = [...(credentialChangeListeners.get(filePath) ?? [])];
+    // 同进程的 Registry Source 需要在登录返回前观察到新凭据；单个监听者失败不应
+    // 把已经原子落盘的 Credential 伪装成写入失败。
+    await Promise.allSettled(listeners.map((listener) => listener()));
+  };
+
+  /** 加密前领代次：锁内写盘时复核，跨恢复/重置的在途写不会被当成新值覆盖。 */
+  const encryptWithGeneration = async (
+    entries: Readonly<Record<string, string>>,
+  ): Promise<{ generation: number; encrypted: Record<string, string> }> => {
+    const generation = await captureCredentialGeneration(filePath);
+    const encrypted = Object.fromEntries(
+      await Promise.all(
+        Object.entries(entries).map(async ([key, value]) => [key, await cipher.encrypt(value)] as const),
+      ),
+    );
+    return { generation, encrypted };
+  };
 
   return {
     filePath,
 
     async clearZaiLoginCredentials(): Promise<void> {
-      await mutateRawCredentialRecord(filePath, async (rawCredentials) => {
+      await mutate(async (rawCredentials) => {
         const activeProviderRaw = rawCredentials[SHARED_ZCODE_CREDENTIAL_KEYS.activeProvider];
-        const activeProvider = activeProviderRaw ? cipher.decrypt(activeProviderRaw) : null;
+        const activeProvider = activeProviderRaw ? await cipher.decrypt(activeProviderRaw) : null;
         delete rawCredentials[SHARED_ZCODE_CREDENTIAL_KEYS.zaiAccessToken];
         delete rawCredentials[SHARED_ZCODE_CREDENTIAL_KEYS.zaiRefreshToken];
         delete rawCredentials[SHARED_ZCODE_CREDENTIAL_KEYS.zaiUserInfo];
@@ -91,7 +134,7 @@ export function createSharedZCodeCredentialStore(
 
     async delete(key: string): Promise<void> {
       const validatedKey = validateCredentialKey(key);
-      await mutateRawCredentialRecord(filePath, (rawCredentials) => {
+      await mutate((rawCredentials) => {
         delete rawCredentials[validatedKey];
       });
     },
@@ -100,11 +143,11 @@ export function createSharedZCodeCredentialStore(
       const validatedKey = validateCredentialKey(key);
       const validatedExpectedValue = validateCredentialValue(expectedValue);
       let deleted = false;
-      await mutateRawCredentialRecord(filePath, (rawCredentials) => {
+      await mutate(async (rawCredentials) => {
         const encryptedValue = rawCredentials[validatedKey];
         if (
           encryptedValue === undefined ||
-          cipher.decrypt(encryptedValue) !== validatedExpectedValue
+          (await cipher.decrypt(encryptedValue)) !== validatedExpectedValue
         ) {
           return;
         }
@@ -122,11 +165,12 @@ export function createSharedZCodeCredentialStore(
       );
       if (validatedEntries.length === 0) return {};
       const deleted: Record<string, boolean> = {};
-      await mutateRawCredentialRecord(filePath, (rawCredentials) => {
+      await mutate(async (rawCredentials) => {
         for (const [key, expectedValue] of validatedEntries) {
           const encryptedValue = rawCredentials[key];
           const matches =
-            encryptedValue !== undefined && cipher.decrypt(encryptedValue) === expectedValue;
+            encryptedValue !== undefined &&
+            (await cipher.decrypt(encryptedValue)) === expectedValue;
           deleted[key] = matches;
           if (matches) delete rawCredentials[key];
         }
@@ -150,11 +194,11 @@ export function createSharedZCodeCredentialStore(
       const validatedExpectedValue = validateCredentialValue(expectedGuardValue);
       const validatedKeys = keysToDelete.map(validateCredentialKey);
       let deleted = false;
-      await mutateRawCredentialRecord(filePath, (rawCredentials) => {
+      await mutate(async (rawCredentials) => {
         const encryptedGuard = rawCredentials[validatedGuardKey];
         if (
           encryptedGuard === undefined ||
-          cipher.decrypt(encryptedGuard) !== validatedExpectedValue
+          (await cipher.decrypt(encryptedGuard)) !== validatedExpectedValue
         ) {
           return;
         }
@@ -165,22 +209,24 @@ export function createSharedZCodeCredentialStore(
     },
 
     async load(key: string): Promise<string | null> {
-      const rawCredentials = await readRawCredentialRecord(filePath);
+      const rawCredentials = await readCredentialRecordWithMigration(recordTarget);
       const rawValue = rawCredentials[validateCredentialKey(key)];
       if (rawValue === undefined) {
         return null;
       }
-      return cipher.decrypt(rawValue);
+      return await cipher.decrypt(rawValue);
     },
 
     async loadMany(keys: readonly string[]): Promise<Record<string, string | null>> {
       const validatedKeys = keys.map(validateCredentialKey);
-      const rawCredentials = await readRawCredentialRecord(filePath);
+      const rawCredentials = await readCredentialRecordWithMigration(recordTarget);
       return Object.fromEntries(
-        validatedKeys.map((key) => {
-          const rawValue = rawCredentials[key];
-          return [key, rawValue === undefined ? null : cipher.decrypt(rawValue)];
-        }),
+        await Promise.all(
+          validatedKeys.map(async (key) => {
+            const rawValue = rawCredentials[key];
+            return [key, rawValue === undefined ? null : await cipher.decrypt(rawValue)] as const;
+          }),
+        ),
       );
     },
 
@@ -199,22 +245,33 @@ export function createSharedZCodeCredentialStore(
 
     async save(key: string, value: string): Promise<void> {
       const validatedKey = validateCredentialKey(key);
-      const encryptedValue = cipher.encrypt(validateCredentialValue(value));
-      await mutateRawCredentialRecord(filePath, (rawCredentials) => {
-        rawCredentials[validatedKey] = encryptedValue;
+      const { generation, encrypted } = await encryptWithGeneration({
+        [validatedKey]: validateCredentialValue(value),
       });
+      await mutate(
+        (rawCredentials) => {
+          rawCredentials[validatedKey] = encrypted[validatedKey]!;
+        },
+        { migrate: true, expectedGeneration: generation },
+      );
     },
 
     async saveMany(entries: Readonly<Record<string, string>>): Promise<void> {
-      const encryptedEntries = Object.entries(entries).map(
-        ([key, value]) =>
-          [validateCredentialKey(key), cipher.encrypt(validateCredentialValue(value))] as const,
+      const validatedEntries = Object.fromEntries(
+        Object.entries(entries).map(([key, value]) => [
+          validateCredentialKey(key),
+          validateCredentialValue(value),
+        ]),
       );
-      await mutateRawCredentialRecord(filePath, (rawCredentials) => {
-        for (const [key, encryptedValue] of encryptedEntries) {
-          rawCredentials[key] = encryptedValue;
-        }
-      });
+      const { generation, encrypted } = await encryptWithGeneration(validatedEntries);
+      await mutate(
+        (rawCredentials) => {
+          for (const [key, encryptedValue] of Object.entries(encrypted)) {
+            rawCredentials[key] = encryptedValue;
+          }
+        },
+        { migrate: true, expectedGeneration: generation },
+      );
     },
 
     async saveReplacing(
@@ -223,70 +280,55 @@ export function createSharedZCodeCredentialStore(
       replacedKeys: readonly string[],
     ): Promise<void> {
       const validatedKey = validateCredentialKey(key);
-      const encryptedValue = cipher.encrypt(validateCredentialValue(value));
       const validatedReplacedKeys = replacedKeys.map(validateCredentialKey);
-      await mutateRawCredentialRecord(filePath, (rawCredentials) => {
-        rawCredentials[validatedKey] = encryptedValue;
-        for (const replacedKey of validatedReplacedKeys) {
-          if (replacedKey !== validatedKey) delete rawCredentials[replacedKey];
-        }
+      const { generation, encrypted } = await encryptWithGeneration({
+        [validatedKey]: validateCredentialValue(value),
       });
+      await mutate(
+        (rawCredentials) => {
+          rawCredentials[validatedKey] = encrypted[validatedKey]!;
+          for (const replacedKey of validatedReplacedKeys) {
+            if (replacedKey !== validatedKey) delete rawCredentials[replacedKey];
+          }
+        },
+        { migrate: true, expectedGeneration: generation },
+      );
     },
 
     async saveZaiLoginCredentials(payload: ZaiLoginCredentialPayload): Promise<void> {
-      const encryptedCredentials = {
-        activeProvider: cipher.encrypt(ZAI_PROVIDER_ID),
-        accessToken: cipher.encrypt(validateCredentialValue(payload.accessToken)),
-        jwtToken: cipher.encrypt(validateCredentialValue(payload.jwtToken)),
-        userInfo: cipher.encrypt(JSON.stringify(payload.user)),
-      };
-      await mutateRawCredentialRecord(filePath, (rawCredentials) => {
-        rawCredentials[SHARED_ZCODE_CREDENTIAL_KEYS.activeProvider] =
-          encryptedCredentials.activeProvider;
-        rawCredentials[SHARED_ZCODE_CREDENTIAL_KEYS.zaiAccessToken] =
-          encryptedCredentials.accessToken;
-        rawCredentials[SHARED_ZCODE_CREDENTIAL_KEYS.zcodeJwtToken] = encryptedCredentials.jwtToken;
-        rawCredentials[SHARED_ZCODE_CREDENTIAL_KEYS.zaiUserInfo] = encryptedCredentials.userInfo;
+      const { generation, encrypted } = await encryptWithGeneration({
+        [SHARED_ZCODE_CREDENTIAL_KEYS.activeProvider]: ZAI_PROVIDER_ID,
+        [SHARED_ZCODE_CREDENTIAL_KEYS.zaiAccessToken]: validateCredentialValue(payload.accessToken),
+        [SHARED_ZCODE_CREDENTIAL_KEYS.zcodeJwtToken]: validateCredentialValue(payload.jwtToken),
+        [SHARED_ZCODE_CREDENTIAL_KEYS.zaiUserInfo]: JSON.stringify(payload.user),
       });
+      await mutate(
+        (rawCredentials) => {
+          for (const [key, encryptedValue] of Object.entries(encrypted)) {
+            rawCredentials[key] = encryptedValue;
+          }
+        },
+        { migrate: true, expectedGeneration: generation },
+      );
     },
   };
 }
 
-export function loadSharedZCodeCredentialSync(
-  key: string,
-  options: SharedZCodeCredentialStoreOptions = {},
-): string | undefined {
-  const filePath = resolveSharedZCodeCredentialsPath(options);
-  if (!existsSync(filePath)) {
-    return undefined;
-  }
-
-  try {
-    const raw = readFileSync(filePath, "utf-8");
-    const parsed = JSON.parse(raw);
-    const record = parseCredentialRecord(parsed);
-    const rawValue = record[validateCredentialKey(key)];
-    if (rawValue === undefined) {
-      return undefined;
-    }
-    const cipher = options.cipher ?? createZCodeCredentialCipher({ env: options.env });
-    const decrypted = cipher.decrypt(rawValue);
-    return decrypted.trim().length > 0 ? decrypted : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
+/**
+ * 凭据文件路径：与 Host 的服务端解析共用同一条规则（`ZCODE_DATA_BASE_DIR` trim 后 > `HOME` >
+ * `homedir()`）。系统密钥条目按该绝对路径命名，两侧路径一旦分叉就会给同一文件造两把密钥，
+ * 一半密文永久解不开。
+ */
 export function resolveSharedZCodeCredentialsPath(
   options: SharedZCodeCredentialStoreOptions = {},
 ): string {
   if (options.filePath) {
     return resolveUserPath(options.filePath);
   }
-
-  const env = options.env ?? process.env;
-  const baseDir = options.baseDir ?? env[ZCODE_DATA_BASE_DIR_ENV_KEY] ?? homedir();
-  return join(resolveUserPath(baseDir), ".zcode", "v2", "credentials.json");
+  if (options.baseDir !== undefined) {
+    return resolveCredentialsFilePathIn(resolveUserPath(options.baseDir));
+  }
+  return resolveCredentialsFilePath(options.env ?? process.env);
 }
 
 async function readRawCredentialRecord(filePath: string): Promise<Record<string, string>> {
@@ -311,23 +353,6 @@ async function readRawCredentialRecord(filePath: string): Promise<Record<string,
       cause: error,
     });
   }
-}
-
-async function mutateRawCredentialRecord(
-  filePath: string,
-  mutation: (value: Record<string, string>) => void | Promise<void>,
-): Promise<void> {
-  // CLI、设置页和 session 可能位于不同 Node 进程；锁必须覆盖完整的
-  // read-modify-write，单独原子 rename 只能防半写，不能防旧快照覆盖新 key。
-  await withFileLock(filePath, async () => {
-    const value = await readRawCredentialRecord(filePath);
-    await mutation(value);
-    await atomicWritePrivateTextFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
-  });
-  const listeners = [...(credentialChangeListeners.get(filePath) ?? [])];
-  // 同进程的 Registry Source 需要在登录返回前观察到新凭据；单个监听者失败不应
-  // 把已经原子落盘的 Credential 伪装成写入失败。
-  await Promise.allSettled(listeners.map((listener) => listener()));
 }
 
 function parseCredentialRecord(value: unknown): Record<string, string> {

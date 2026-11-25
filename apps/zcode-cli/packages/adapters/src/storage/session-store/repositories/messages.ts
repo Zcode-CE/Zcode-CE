@@ -1,3 +1,5 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入本波数据完整性与
+// 内容块顺序修复（会话行逐行降级 / blockIndex / 迁移 0023–0026 / schema_too_new 守卫）。
 import type { DatabaseSync } from "node:sqlite";
 import type {
   MessageId,
@@ -8,6 +10,7 @@ import type {
   SessionId,
   SessionStorePort,
 } from "@zcode/contracts";
+import { orderAssistantBlockParts } from "@zcode/contracts";
 import { decodeMessageRow, decodePartRow, partCreatedAt } from "../codecs.js";
 import { encodeJson } from "../json.js";
 import type { MessageRow, PartRow } from "../rows.js";
@@ -250,10 +253,10 @@ export async function messages(
     partsByMessage.set(row.message_id, list);
   }
 
-  return messageRows.map((row) => ({
-    info: decodeMessageRow(row),
-    parts: partsByMessage.get(row.id) ?? [],
-  }));
+  return messageRows.map((row) => {
+    const info = decodeMessageRow(row);
+    return { info, parts: orderAssistantBlockParts(info, partsByMessage.get(row.id) ?? []) };
+  });
 }
 
 export async function messageWithParts(
@@ -274,8 +277,6 @@ export async function messageWithParts(
       `,
     )
     .all(input.messageID, input.sessionID) as unknown as PartRow[];
-  return {
-    info: decodeMessageRow(messageRow),
-    parts: partRows.map(decodePartRow),
-  };
+  const info = decodeMessageRow(messageRow);
+  return { info, parts: orderAssistantBlockParts(info, partRows.map(decodePartRow)) };
 }

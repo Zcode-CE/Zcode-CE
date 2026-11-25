@@ -52,6 +52,9 @@ const LOCALIZED_ERROR_CODES = new Set([
   // 历史任务模型不可用要按稳定 code 本地化，避免英文界面显示中文提示。
   "ZCODE_RUNTIME_MODEL_UNAVAILABLE",
   "ZCODE_BIGMODEL_TEAM_PLAN_MEMBER_REQUIRED",
+  // 会话正被更新版本彻底删除时，写入会被 SQLite 触发器 ABORT；适配器已把触发器原文换成
+  // 稳定 code，这里按 code 本地化，否则用户看到的是英文 message。
+  "SESSION_DELETING",
 ]);
 
 const MODEL_CONFIG_MISSING_CODES = new Set([

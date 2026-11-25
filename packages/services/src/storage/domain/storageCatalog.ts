@@ -132,12 +132,20 @@ const PREFIX_INDEX: Array<{ prefix: string; categoryId: StorageCategoryId }> = O
   )
   .sort((a, b) => b.prefix.length - a.prefix.length);
 
-/** 任何类别下都不能删除的文件：启动引导文件、凭据、Helper broker 凭据、诊断开关、活动崩溃现场。 */
+/**
+ * 任何类别下都不能删除的文件：启动引导文件、凭据、Helper broker 凭据、诊断开关、活动崩溃现场。
+ *
+ * `credential-secret` 与 `credential-source` 是凭据 v2 的密钥兜底与来源标记：前者是密钥本身
+ * （删掉等于让该目录的密文永久解不开），后者决定该目录允许用哪种密钥。它们当前分类落到
+ * 「其他/不可清理」，这里显式列出来，避免今后分类调整把它们变成可清理项。
+ */
 const PROTECTED_BASENAMES = new Set([
   "setting.json",
   "setting.json.lock",
   "credentials.json",
   ".credentials.json",
+  "credential-secret",
+  "credential-source",
   ".tokens",
   "zcode-stdio-tap.json",
 ]);

@@ -31,6 +31,8 @@ export async function persistPendingToolPart(
   runtime: AgentRuntimeInternal,
   options: {
     assistantMessageId: MessageId;
+    /** 块到达序号；旧路径（非流式未编号）没有，写入时省略。 */
+    blockIndex?: number;
     declarationIndex: number;
     input: Record<string, unknown>;
     partID: PartId;
@@ -59,6 +61,7 @@ export async function persistPendingToolPart(
       messageID: options.assistantMessageId,
       type: "tool",
       callID: options.toolCall.id,
+      ...(options.blockIndex !== undefined ? { blockIndex: options.blockIndex } : {}),
       declarationIndex: options.declarationIndex,
       tool: projected.toolName,
       metadata: {

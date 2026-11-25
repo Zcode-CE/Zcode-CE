@@ -43,6 +43,117 @@ function isBigModelUserInfoFallback(profile: OAuthUserProfile): boolean {
   return profile.id === "unknown" && profile.username === "user" && profile.displayName === "User";
 }
 
+/**
+ * 上游业务 userinfo 只拥有展示字段；customerNumber 或 sub 不能成为 ZCode 资产主体。
+ *
+ * 字段级合并（与上游逐字一致）：主体 id 与 rawProfile 保持缓存值，只取 username / displayName /
+ * avatarUrl。业务 userinfo 拿不到头像时保留缓存头像，不能把已有展示清空。
+ */
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入 OAuth 展示字段合并 ——
+// 业务 userinfo 只拥有展示字段，主体 id 与 rawProfile 始终来自本地可信缓存。
+export function mergeOAuthDisplayProfile(
+  cachedProfile: OAuthUserProfile,
+  businessProfile: OAuthUserProfile,
+): OAuthUserProfile {
+  if (isBigModelUserInfoFallback(businessProfile)) return cachedProfile;
+  return {
+    ...cachedProfile,
+    username: businessProfile.username,
+    displayName: businessProfile.displayName,
+    ...(businessProfile.avatarUrl ? { avatarUrl: businessProfile.avatarUrl } : {}),
+  };
+}
+
+/**
+ * 远端 userinfo 刷新未能落盘的原因。
+ *
+ * - missing-trusted-profile：本地没有可信主身份，调用方必须走重新登录（计划里的 require-relogin）。
+ * - stored-identity-changed：刷新期间主身份已被并发会话换掉，落盘会覆盖新会话（计划里的 reject）。
+ */
+export type OAuthProfileRefreshRejection = "missing-trusted-profile" | "stored-identity-changed";
+
+/**
+ * 刷新结果与本地主身份冲突时的显式拒绝。
+ *
+ * 之前 restoreSession 把远端 userinfo 整份写回 user_info：业务 userinfo 的账号标识（BigModel
+ * customerNumber / ZAI sub）变成主身份后，设备、关联与额度都会指向另一个账号。拒绝必须可诊断，
+ * 不能只返回 null 让调用方猜原因；调用方拿到本错误时不得再落盘，原凭据保持可读。
+ */
+export class OAuthProfileIdentityMismatchError extends Error {
+  readonly code = "oauth_profile_identity_mismatch";
+  readonly provider: OAuthProviderId;
+  readonly reason: OAuthProfileRefreshRejection;
+  readonly expectedUserId: string | null;
+  readonly observedUserId: string | null;
+
+  constructor(input: {
+    provider: OAuthProviderId;
+    reason: OAuthProfileRefreshRejection;
+    expectedUserId: string | null;
+    observedUserId: string | null;
+  }) {
+    super(
+      `OAuth profile refresh rejected (${input.reason}): provider=${input.provider} expected=${
+        input.expectedUserId ?? "none"
+      } observed=${input.observedUserId ?? "none"}`,
+    );
+    this.name = "OAuthProfileIdentityMismatchError";
+    this.provider = input.provider;
+    this.reason = input.reason;
+    this.expectedUserId = input.expectedUserId;
+    this.observedUserId = input.observedUserId;
+  }
+}
+
+/** 一次远端 userinfo 刷新的落盘计划：写展示字段、要求重新登录，或显式拒绝。 */
+export type OAuthProfileRefreshPlan =
+  | { action: "persist"; profile: OAuthUserProfile }
+  | { action: "require-relogin"; reason: OAuthProfileRefreshRejection }
+  | { action: "reject"; error: OAuthProfileIdentityMismatchError };
+
+function hasTrustedProfileIdentity(profile: OAuthUserProfile | null): profile is OAuthUserProfile {
+  return Boolean(profile && profile.id !== "unknown");
+}
+
+/**
+ * 计算远端 userinfo 刷新能否落盘，并给出落盘时该写的 profile。
+ *
+ * - 缺少可信主身份（无缓存或缓存是 unknown/User 哨兵）时要求重新登录：不从业务 userinfo 的
+ *   customerNumber / sub 构造主身份，与上游"缺少可信缓存时必须重新登录"一致。
+ * - 刷新期间主身份被并发登录、退出或切换改掉时拒绝写入：旧刷新结果只能补充原主体，
+ *   不能把旧 JWT 与另一个 user ID 组合成新登录，也不能覆盖新会话的凭据。
+ * - 其余情况做展示字段合并，主体字段（id / rawProfile）始终来自本地可信缓存。
+ *
+ * 合并基线取队列内重读到的 currentProfile（与 cachedProfile 同主体，但可能带上并发刷新写入的
+ * 展示字段）；上游在快照上合并，这里只把基线换成更新的一份，不改变"只更新展示字段"的语义。
+ */
+export function planOAuthProfileRefresh(input: {
+  provider: OAuthProviderId;
+  cachedProfile: OAuthUserProfile | null;
+  currentProfile: OAuthUserProfile | null;
+  fetchedProfile: OAuthUserProfile;
+}): OAuthProfileRefreshPlan {
+  const { provider, cachedProfile, currentProfile, fetchedProfile } = input;
+  if (!hasTrustedProfileIdentity(cachedProfile)) {
+    return { action: "require-relogin", reason: "missing-trusted-profile" };
+  }
+  if (!hasTrustedProfileIdentity(currentProfile) || currentProfile.id !== cachedProfile.id) {
+    return {
+      action: "reject",
+      error: new OAuthProfileIdentityMismatchError({
+        provider,
+        reason: "stored-identity-changed",
+        expectedUserId: cachedProfile.id,
+        observedUserId: currentProfile?.id ?? null,
+      }),
+    };
+  }
+  return {
+    action: "persist",
+    profile: mergeOAuthDisplayProfile(currentProfile, fetchedProfile),
+  };
+}
+
 function getErrorStatus(error: unknown): number | null {
   if (!error || typeof error !== "object") {
     return null;
@@ -131,7 +242,12 @@ export async function refreshLegacyBigModelCachedProfile(
       await saveProfile(withProviderProfileSchema(BIGMODEL_PROVIDER_ID, cachedProfile));
       return cachedProfile;
     }
-    const migratedProfile = withProviderProfileSchema(BIGMODEL_PROVIDER_ID, refreshedProfile);
+    // BigModel customerNumber 属于业务账号，不能覆盖已保存的 ZCode 主体。
+    // 旧迁移把整份业务 profile 回写，两个 ID 不同时会让设备、关联和资产被当成另一账号。
+    const migratedProfile = withProviderProfileSchema(
+      BIGMODEL_PROVIDER_ID,
+      mergeOAuthDisplayProfile(cachedProfile, refreshedProfile),
+    );
     await saveProfile(migratedProfile);
     return migratedProfile;
   } catch (error) {

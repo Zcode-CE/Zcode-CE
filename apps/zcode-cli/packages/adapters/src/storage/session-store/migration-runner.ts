@@ -1,14 +1,25 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入本波数据完整性与
+// 内容块顺序修复（会话行逐行降级 / blockIndex / 迁移 0023–0026 / schema_too_new 守卫）。
 import {
+  assertSchemaNotTooNew,
   classifyDatabaseStartupError,
   databaseMigrationIdSchema,
   databaseStartupErrorDetails,
+  SqliteSchemaTooNewError,
   type DatabaseMigrationFacts,
 } from "@zcode/shared";
 import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { SqliteSessionMigrationError } from "./errors.js";
+import {
+  backupSessionDatabaseBeforeMigration,
+  type SessionDatabaseBackupOutcome,
+} from "./migration-backup.js";
 import { SQLITE_MIGRATIONS } from "./migrations.js";
 import type { SchemaMigrationRow } from "./rows.js";
+
+const SCHEMA_MIGRATION_LEDGER_TABLE = "schema_migration";
+const KNOWN_MIGRATION_IDS = SQLITE_MIGRATIONS.map((migration) => migration.id);
 
 export const DEFAULT_SQLITE_STARTUP_LOCK_TIMEOUT_MS = 5_000;
 
@@ -37,7 +48,14 @@ export interface SqliteMigrationProgress {
   systemCode?: string;
 }
 
-export interface AsyncSqliteMigrationOptions {
+export interface SqliteSessionMigrationRunOptions {
+  /** 备份根目录；生产用 `~/.zcode/backup`，测试与桌面 Host 可覆盖。 */
+  backupRootDir?: string;
+  /** 备份结果回调：本模块不做日志，由调用方决定 warn / 启动面板提示。 */
+  onBackupOutcome?: (outcome: SessionDatabaseBackupOutcome) => void;
+}
+
+export interface AsyncSqliteMigrationOptions extends SqliteSessionMigrationRunOptions {
   lockWaitTimeoutMs?: number;
   onProgress?: (progress: SqliteMigrationProgress) => Promise<void>;
 }
@@ -50,8 +68,9 @@ export function runSqliteSessionMigrations(
   db: DatabaseSync,
   dbPath: string,
   lockTimeoutMs = DEFAULT_SQLITE_STARTUP_LOCK_TIMEOUT_MS,
+  runOptions: SqliteSessionMigrationRunOptions = {},
 ): void {
-  for (const step of migrationSteps(db, dbPath, lockTimeoutMs)) {
+  for (const step of migrationSteps(db, dbPath, lockTimeoutMs, runOptions)) {
     if ("delayMs" in step) waitSync(step.delayMs);
   }
 }
@@ -68,6 +87,7 @@ export async function runSqliteSessionMigrationsAsync(
     db,
     dbPath,
     options.lockWaitTimeoutMs ?? DEFAULT_SQLITE_MIGRATION_WAIT_MS,
+    options,
   );
   let failed = false;
   try {
@@ -100,6 +120,7 @@ function* migrationSteps(
   db: DatabaseSync,
   dbPath: string,
   lockTimeoutMs: number,
+  runOptions: SqliteSessionMigrationRunOptions,
 ): Generator<MigrationStep, void> {
   const startedAt = Date.now();
   const deadline = startedAt + Math.max(0, lockTimeoutMs);
@@ -155,12 +176,35 @@ function* migrationSteps(
       };
     });
     yield progress("checking");
+    // 升级前留一份文件级备份：整链回滚只保护「SQL 失败」，保护不了「迁完之后语义不对」。
+    // 新建空库没有可丢的数据、已是最新库也没有可改的结构，都不复制文件（避免每次启动
+    // 复制多 GB 会话库）。备份拿锁之前做，不占写锁。
+    if (migrationFacts?.kind === "upgrade") {
+      const outcome = backupSessionDatabaseBeforeMigration(db, dbPath, {
+        backupRootDir: runOptions.backupRootDir,
+        appliedMigrationIds: appliedMigrationIds(db),
+      });
+      // 通知失败不能覆盖备份结果，也不能阻断迁移（磁盘满只跳过、由调用方提示）。
+      try {
+        runOptions.onBackupOutcome?.(outcome);
+      } catch {
+        /* 日志/面板通道的问题不是数据库问题。 */
+      }
+    }
     // SQLite 是唯一协调者；拿锁后读取真实账本，等待者不会重复迁移已提交项。
     yield* acquire(() => db.exec("begin immediate"));
     transactionStarted = true;
     db.exec(`create table if not exists schema_migration (
       id text primary key, checksum text not null, app_version text, time_applied integer not null
     )`);
+    // 版本守卫：账本出现「本版不认识且比本版最高版本还新」的行 ⇒ 库由更新版本写过。
+    // 位置在拿锁之后、任何版本 DDL 之前；抛错即 rollback，等价于「没打开过」，读写一起拒绝。
+    // ≤ 本版最高版本 id 的未知行必须放行（官方开发构建的别名），否则会误伤本来能用的库。
+    assertSchemaNotTooNew(db, {
+      ledgerTable: SCHEMA_MIGRATION_LEDGER_TABLE,
+      knownMigrationIds: KNOWN_MIGRATION_IDS,
+      dbPath,
+    });
     // 拿锁后记录起点，避免预检时其他写者尚未提交；后续迁移不得覆盖它。
     const baseline = db.prepare("SELECT id FROM schema_migration ORDER BY id DESC LIMIT 1").get();
     if (migrationFacts)
@@ -186,7 +230,9 @@ function* migrationSteps(
           total: SQLITE_MIGRATIONS.length,
         };
         // 本 hotfix 只调整启动等待；执行与账本校验共用冻结原 SQL，避免维护两套转换语义。
-        db.exec(migration.sql);
+        // 已发布的 0023/0025 只能靠 apply 做到可重入：改写 SQL 会改 checksum（共用账本）。
+        if (migration.apply) migration.apply(db);
+        else db.exec(migration.sql);
         if (migrationFacts) migrationFacts.executedCount++;
         db.prepare(
           "insert into schema_migration (id, checksum, app_version, time_applied) values (?, ?, ?, ?)",
@@ -271,7 +317,10 @@ function normalizeMigrationError(
       cause: error,
       dbPath,
       kind: classifyDatabaseStartupError(error),
-      migrationId,
+      // 版本守卫在逐条迁移之前抛错，越界的那条未知 id 只能从错误本身取，
+      // 否则失败进度里不会带出「是哪条未来迁移把库升上去的」。
+      migrationId:
+        migrationId ?? (error instanceof SqliteSchemaTooNewError ? error.migrationId : undefined),
     },
   );
 }
@@ -285,6 +334,14 @@ function lockTimeoutError(
     `Timed out waiting for SQLite migration lock at ${dbPath}`,
     { cause, dbPath, kind: "lock_timeout", migrationId },
   );
+}
+
+/** 备份 manifest 里记录的「迁移前账本」：只读 id，不扫描业务表。 */
+function appliedMigrationIds(db: DatabaseSync): string[] {
+  const rows = db.prepare("SELECT id FROM schema_migration ORDER BY id").all();
+  const ids: string[] = [];
+  for (const row of rows) if (typeof row.id === "string") ids.push(row.id);
+  return ids;
 }
 
 function readAppliedMigration(db: DatabaseSync, id: string): SchemaMigrationRow | undefined {

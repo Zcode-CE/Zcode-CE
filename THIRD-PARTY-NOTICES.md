@@ -800,6 +800,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - asn1@0.2.6 — MIT
 
+- asn1js@3.1.0 — BSD-3-Clause
+
 - ast-types@0.13.4 — MIT
 
 - ast-types@0.16.1 — MIT
@@ -871,6 +873,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 - bundle-name@4.1.0 — MIT
 
 - bytes@3.1.2 — MIT
+
+- bytestreamjs@2.0.1 — BSD-3-Clause
 
 - call-bind-apply-helpers@1.0.2 — MIT
 
@@ -1904,6 +1908,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - pkg-types@1.3.1 — MIT
 
+- pkijs@3.4.3 — BSD-3-Clause
+
 - playwright-core@1.59.1 — Apache-2.0
 
 - png-js@1.1.0 — MIT
@@ -1947,6 +1953,10 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 - proxy-from-env@1.1.0 — MIT
 
 - proxy-from-env@2.1.0 — MIT
+
+- pvtsutils@1.3.6 — MIT
+
+- pvutils@1.2.0 — MIT
 
 - qrcode@1.5.4 — MIT
 
@@ -2615,6 +2625,10 @@ The original import revisions of copied components are not recorded in the curre
 - ZCode workflow sandbox & bash permission port v3.18.2 (Z.ai) (Apache-2.0): apps/zcode-cli/packages/dynamic-workflow-runtime/src/child-source.ts, apps/zcode-cli/packages/core/src/tool/handlers/bash-command-permission-policy.ts, apps/zcode-cli/packages/core/src/tool/handlers/bash.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/fec975905a2abd4c07e35c40d51fa097a2258ec9/LICENSE. Original import revision: fec975905a2abd4c07e35c40d51fa097a2258ec9.
 
 - ZCode main-window boundary & MCP stderr port v4.0.0 (Z.ai) (Apache-2.0): packages/desktop/src/main/desktopWindowChrome.ts, packages/desktop/src/main/index.ts, apps/zcode-cli/packages/adapters/src/mcp/stdio-stderr.ts, apps/zcode-cli/packages/adapters/src/mcp/index.ts, apps/zcode-cli/packages/adapters/src/config/config-merger.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/a4b4445141eb7d3b3e99eada9292775383bfc44e/LICENSE. Original import revision: a4b4445141eb7d3b3e99eada9292775383bfc44e.
+
+- ZCode 3.18 data-integrity & block order port (Z.ai) (Apache-2.0): apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts, apps/zcode-cli/packages/contracts/src/model/index.ts, apps/zcode-cli/packages/core/src/agent/tool-part-order.ts, apps/zcode-cli/packages/core/src/agent/message-history.ts, apps/zcode-cli/packages/core/src/agent/session-history-hydrator.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/migrations.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/migration-runner.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/messages.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0023-session-soft-delete-outcome.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0024-session-database-identity.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0025-session-permanent-deletion.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0026-dwf-run-parent-session-index.ts, apps/zcode-cli/packages/adapters/src/model/transform.ts, apps/zcode-cli/packages/adapters/src/model/runner-normalization.ts, apps/zcode-cli/packages/adapters/src/model/runner-generate.ts, packages/shared/src/zcode-protocol-v4/rows.ts, packages/shared/src/zcode-protocol-v4/snapshot.ts, packages/shared/src/zcode-protocol-v4/transport.ts, packages/shared/src/sqlite-migrations/index.ts, packages/shared/src/sqlite-migrations/schema-too-new.ts, packages/shared/src/database-startup.ts, packages/services/src/oauth/oauthProfileSchema.ts, packages/services/src/oauth/oauthService.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/fec975905a2abd4c07e35c40d51fa097a2258ec9/LICENSE. Original import revision: fec975905a2abd4c07e35c40d51fa097a2258ec9.
+
+- ZCode 4.0 desktop redaction, CA chain & plugin secrets port (Z.ai) (Apache-2.0): packages/desktop/src/main/exportLogs.ts, packages/desktop/src/main/desktopNetworkPolicy.ts, packages/shared/src/log-redaction.ts, apps/zcode-cli/packages/adapters/src/config/plugin-secrets.adapter.ts, apps/zcode-cli/packages/bootstrap/src/plugin-secrets.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/a4b4445141eb7d3b3e99eada9292775383bfc44e/LICENSE. Original import revision: a4b4445141eb7d3b3e99eada9292775383bfc44e.
 
 Fig autocomplete source carries the repository's MIT license; the generated registry records npm @withfig/autocomplete@2.692.3 metadata as ISC. The original source MIT notice is retained below.
 
@@ -8371,6 +8385,96 @@ MIT.
 
 ````
 
+### Notice ebe5d98519d0dfcbcb80e20b22a56e7321e8557cd14355760434bbd4c1f4f683
+
+- asn1js@3.1.0: LICENSE
+
+
+
+````text
+Copyright (c) 2014, GMO GlobalSign
+Copyright (c) 2015-2022, Peculiar Ventures
+All rights reserved.
+
+Author 2014-2019, Yury Strozhevsky
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice, this
+  list of conditions and the following disclaimer in the documentation and/or
+  other materials provided with the distribution.
+
+* Neither the name of the copyright holder nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+````
+
+### Notice 019e9cb79f848d4b3e1beffd88d67b3f6001e1086114aa2e4156f97420f13d29
+
+- asn1js@3.1.0: README.md (license section)
+
+
+
+````text
+## License
+
+Copyright (c) 2014, [GMO GlobalSign](http://www.globalsign.com/)
+Copyright (c) 2015-2022, [Peculiar Ventures](http://peculiarventures.com/)
+All rights reserved.
+
+Author 2014-2018, [Yury Strozhevsky](http://www.strozhevsky.com/).
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software without
+   specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+OF SUCH DAMAGE.
+
+[ASN.1]: http://en.wikipedia.org/wiki/Abstract_Syntax_Notation_One
+[ASN1js]: http://asn1js.org/
+[PKIjs]: http://pkijs.org/
+[BER]: http://en.wikipedia.org/wiki/X.690#BER_encoding
+[DER]: http://en.wikipedia.org/wiki/X.690#DER_encoding
+[freely available ASN.1:2008 test suite]: http://www.strozhevsky.com/free_docs/free_asn1_testsuite_descr.pdf
+[ASN.1:2008 TestSuite]: https://github.com/YuryStrozhevsky/asn1-test-suite
+
+````
+
 ### Notice a374b737c41b30b1ec04c5fcc17d1b853f008f217cc43a9dbea441abd9afde70
 
 - ast-types@0.13.4: LICENSE
@@ -9748,6 +9852,86 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 [downloads-url]: https://npmjs.org/package/bytes
 [npm-image]: https://badgen.net/npm/v/bytes
 [npm-url]: https://npmjs.org/package/bytes
+
+````
+
+### Notice f0fd6a4bf9bf46cfcea2005f800305fbb72cd0152b3c269cf496388258ee08f9
+
+- bytestreamjs@2.0.1: LICENSE
+
+
+
+````text
+Copyright (c) 2016-2022, Peculiar Ventures
+All rights reserved.
+
+Author 2016-2019, Yury Strozhevsky
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice, this
+  list of conditions and the following disclaimer in the documentation and/or
+  other materials provided with the distribution.
+
+* Neither the name of the {organization} nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+````
+
+### Notice 3c762cc2e0de215fc1f077709f456994a309604c38491050ac7a1e260899ce4b
+
+- bytestreamjs@2.0.1: README.MD (license section)
+
+
+
+````text
+## License
+
+*Copyright (c) 2016-2022, [**Peculiar Ventures**](http://peculiarventures.com/)*
+*All rights reserved.*
+
+*Author 2016-2018 [**Yury Strozhevsky**](http://www.strozhevsky.com/).*
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software without
+   specific prior written permission.
+
+*THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+OF SUCH DAMAGE.*
 
 ````
 
@@ -31810,6 +31994,46 @@ Made by [@pi0](https://github.com/pi0), [@danielroe](https://github.com/danielro
 
 ````
 
+### Notice d27a2aa238102924ea75da808f79253484347d824b9b7b077837e4232f9493f5
+
+- pkijs@3.4.3: LICENSE
+
+
+
+````text
+Copyright (c) 2014, GlobalSign
+Copyright (c) 2015-2019, Peculiar Ventures
+All rights reserved.
+
+Author 2014-2019, Yury Strozhevsky
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice, this
+  list of conditions and the following disclaimer in the documentation and/or
+  other materials provided with the distribution.
+
+* Neither the name of the {organization} nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+````
+
 ### Notice 45873d00a0dd243596deb4aa23b2493b3d1f0671921bf2538ea431d7380220eb
 
 - playwright-core@1.59.1: LICENSE
@@ -32671,6 +32895,71 @@ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+````
+
+### Notice c620c1d08a47c93ce242914a4269b86e41df5a97845325725a5f83d5d6f9d7fd
+
+- pvtsutils@1.3.6: LICENSE
+
+
+
+````text
+MIT License
+
+Copyright (c) 2017-2024 Peculiar Ventures, LLC
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+````
+
+### Notice 15c88630f1e778db64a446cb31b67362cc9eb7a048fdf5ac7ab51905b74464cd
+
+- pvutils@1.2.0: LICENSE
+
+
+
+````text
+MIT License
+
+Copyright (c) 2016-2019, Peculiar Ventures
+All rights reserved.
+
+Author 2016-2019, Yury Strozhevsky
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 ````
 
@@ -40957,6 +41246,10 @@ SOFTWARE.
 - ZCode workflow sandbox & bash permission port v3.18.2 (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/fec975905a2abd4c07e35c40d51fa097a2258ec9/LICENSE
 
 - ZCode main-window boundary & MCP stderr port v4.0.0 (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/a4b4445141eb7d3b3e99eada9292775383bfc44e/LICENSE
+
+- ZCode 3.18 data-integrity & block order port (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/fec975905a2abd4c07e35c40d51fa097a2258ec9/LICENSE
+
+- ZCode 4.0 desktop redaction, CA chain & plugin secrets port (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/a4b4445141eb7d3b3e99eada9292775383bfc44e/LICENSE
 
 
 

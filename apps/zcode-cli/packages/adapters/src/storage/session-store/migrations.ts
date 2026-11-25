@@ -1,9 +1,29 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v3.18.2 (fec97590, Apache-2.0) 并入本波数据完整性与
+// 内容块顺序修复（会话行逐行降级 / blockIndex / 迁移 0023–0026 / schema_too_new 守卫）。
+import type { DatabaseSync } from "node:sqlite";
 import { PROVIDER_MODEL_SELECTION_MIGRATION_SQL } from "./migrations/0020-provider-model-selection.js";
+import {
+  applySessionSoftDeleteOutcomeMigration,
+  SESSION_SOFT_DELETE_OUTCOME_MIGRATION_SQL,
+} from "./migrations/0023-session-soft-delete-outcome.js";
+import { SESSION_DATABASE_IDENTITY_MIGRATION_SQL } from "./migrations/0024-session-database-identity.js";
+import {
+  applySessionPermanentDeletionMigration,
+  SESSION_PERMANENT_DELETION_MIGRATION_SQL,
+} from "./migrations/0025-session-permanent-deletion.js";
+import { DWF_RUN_PARENT_SESSION_INDEX_MIGRATION_SQL } from "./migrations/0026-dwf-run-parent-session-index.js";
 
 interface SqliteMigration {
   appVersion: string;
   id: string;
   sql: string;
+  /**
+   * 结构已存在但账本未记账时的幂等执行入口（0023/0025）。
+   *
+   * 已发布 SQL 参与 checksum（sha256(sql.trim())），和官方共用同一张账本，因此幂等性
+   * 只能用 apply 表达，绝不能靠改写 SQL：改写后官方打开 CE 库会抛 checksum_mismatch。
+   */
+  apply?: (db: DatabaseSync) => void;
 }
 
 export const SQLITE_MIGRATIONS: readonly SqliteMigration[] = [
@@ -924,6 +944,32 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigration[] = [
     appVersion: "0.16.5",
     id: "0022_backfilled_session_reasoning",
     sql: BACKFILLED_SESSION_REASONING_MIGRATION_SQL,
+  },
+  // 0023–0026 与官方 3.18.2 / 4.0.0 的 SQL 逐字节相同、app_version 相同，checksum 因此
+  // 双向相等；这是「官方库 CE 能开、CE 库官方能开」的前提。不要重排、不要改号、不要内联守卫。
+  // 官方的 touchedTables / previousIds 没有搬：CE 的 runner 不做表级备份，也不读别名
+  // （守卫按「≤ 本版最大已知 id 一律放行」处理官方开发构建留下的别名行）。
+  {
+    appVersion: "0.16.9",
+    id: "0023_session_soft_delete_outcome",
+    sql: SESSION_SOFT_DELETE_OUTCOME_MIGRATION_SQL,
+    apply: applySessionSoftDeleteOutcomeMigration,
+  },
+  {
+    appVersion: "0.16.9",
+    id: "0024_session_database_identity",
+    sql: SESSION_DATABASE_IDENTITY_MIGRATION_SQL,
+  },
+  {
+    appVersion: "0.17.1",
+    id: "0025_session_permanent_deletion",
+    sql: SESSION_PERMANENT_DELETION_MIGRATION_SQL,
+    apply: applySessionPermanentDeletionMigration,
+  },
+  {
+    appVersion: "0.17.3",
+    id: "0026_dwf_run_parent_session_index",
+    sql: DWF_RUN_PARENT_SESSION_INDEX_MIGRATION_SQL,
   },
 ];
 import { OFFICIAL_GLM_SELECTION_MIGRATION_SQL } from "./migrations/0021-official-glm-selection.js";

@@ -33,7 +33,12 @@ import {
   recordModelHistoryRound,
   type RegularTurnLoopState,
 } from "./turn-loop-state.js";
-import { createRuntimeAssistantEntry } from "../../agent/message-history.js";
+import {
+  buildAssistantEntries,
+  createRuntimeAssistantEntry,
+  hasOrderedAssistantHistoryBlocks,
+  type AssistantHistoryBlock,
+} from "../../agent/message-history.js";
 import { commitTurnRequestEntries } from "./turn-output-token-continuation.js";
 
 const STREAMING_TOOL_CANCEL_DRAIN_TIMEOUT_MS = 250;
@@ -85,6 +90,7 @@ export function createStreamingToolCoordinator(
         abortSignal: abortController.signal,
         assistantMessageId: options.assistantMessageId,
         // model admission 已去重；只读工具可能先落盘，序号必须来自全部本地声明。
+        blockIndex: normalizedToolCall.blockIndex,
         declarationIndex: acceptedToolCalls.size - 1,
         model: options.model,
         toolSearch: options.toolSearch,
@@ -192,9 +198,17 @@ export function createStreamingToolCoordinator(
       state.toolCallCount += streamedToolResults.length;
       // 合并修复：恢复请求依赖 assistant tool-call 与随后 tool result 成对出现。
       // 因此必须同步推进本轮 request history，不能只更新 canonical history。
-      commitTurnRequestEntries(runtime, state.turnRequestState, [
-        createRuntimeAssistantEntry("", toolCalls, undefined, options.model),
-      ]);
+      // 已编号的调用走统一构造函数，冷恢复对同一组 part 产出相同条目（含工具顺序）。
+      const toolBlocks = toolCalls.map(
+        (call): AssistantHistoryBlock => ({ kind: "tool", call }),
+      );
+      commitTurnRequestEntries(
+        runtime,
+        state.turnRequestState,
+        hasOrderedAssistantHistoryBlocks(toolBlocks)
+          ? buildAssistantEntries({ blocks: toolBlocks, model: options.model })
+          : [createRuntimeAssistantEntry("", toolCalls, undefined, options.model)],
+      );
       state.turnMachine = new TurnMachineImpl(state.turnMachine.receiveModelResponse(""));
       await executeToolCallsForModelStep.call(runtime, state, {
         toolSearch: options.toolSearch,
@@ -230,6 +244,7 @@ async function executeDuringStream(
   options: {
     abortSignal: AbortSignal;
     assistantMessageId: MessageId;
+    blockIndex?: number;
     declarationIndex: number;
     model: Model;
     toolSearch?: ToolSearchExecutionContext;
@@ -248,6 +263,7 @@ async function executeDuringStream(
     id: options.toolCall.id as ToolCallId,
     input: options.toolCall.input,
     name: toolName,
+    ...(options.blockIndex !== undefined ? { blockIndex: options.blockIndex } : {}),
   };
   const partID = createPartId();
   const input = toRecordInput(toolCall.input);
@@ -258,6 +274,7 @@ async function executeDuringStream(
   // turn-tools 的 metadata 写入，Stop 发生在 drain 前时冷恢复只能退化成通用工具卡。
   await persistPendingToolPart(runtime, {
     assistantMessageId: options.assistantMessageId,
+    blockIndex: options.blockIndex,
     declarationIndex: options.declarationIndex,
     input,
     metadata,
@@ -307,6 +324,7 @@ async function executeDuringStream(
           messageID: options.assistantMessageId,
           type: "tool",
           callID: toolCall.id,
+          ...(options.blockIndex !== undefined ? { blockIndex: options.blockIndex } : {}),
           declarationIndex: options.declarationIndex,
           tool: toolCall.name,
           state: {
