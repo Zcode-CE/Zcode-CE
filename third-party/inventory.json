@@ -2125,7 +2125,7 @@
     "packages/ui/src/hooks/useCodingPlanQuotaResetUi.ts": "eed75a370ca2a08fa78ecd9129ac36355017b4ab9ed5d05c7c603d252587b6b4",
     "packages/ui/src/hooks/useWorkflowRunSave.ts": "e29d0d84541ecc772c8295255fefab7c537f9c75948210147838a82ec3dbc40d",
     "packages/ui/src/i18n/locales/en-US.ts": "a6bdc646816a60203c4a7c37240269b881021dd1e98f45013a0fa83d576cf84e",
-    "packages/ui/src/i18n/locales/zh-CN.ts": "ccfa2d6aac37ee08f0f110f8619ee679d6dacbb918117845e289a81e976e66dc",
+    "packages/ui/src/i18n/locales/zh-CN.ts": "3cf81c4ef9953d72231eaaba80bbc980719e3482cff87a9f1343426f21b8ce2c",
     "packages/ui/src/lib/assistantDirectiveParser.ts": "c64b119e46f917e2d869658559cb1113cc40caae1a89d68328b256ee4d76e09f",
     "packages/ui/src/lib/builtinSkillI18n.ts": "fbb44f7044214b70148f64dbafc1cea5ea550531e8084965ea978c5defc06deb",
     "packages/ui/src/lib/codingPlanQuotaResetUi.ts": "9ff69e18487e842d56136283b15fe9bfdfd383b79d911b25f967ec69f65af11f",
@@ -34241,7 +34241,7 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "ccfa2d6aac37ee08f0f110f8619ee679d6dacbb918117845e289a81e976e66dc"
+          "sha256": "3cf81c4ef9953d72231eaaba80bbc980719e3482cff87a9f1343426f21b8ce2c"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
@@ -35073,7 +35073,7 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "ccfa2d6aac37ee08f0f110f8619ee679d6dacbb918117845e289a81e976e66dc"
+          "sha256": "3cf81c4ef9953d72231eaaba80bbc980719e3482cff87a9f1343426f21b8ce2c"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
