@@ -93,7 +93,7 @@ with-key 流（`e2e-real-api` job）：
 
 ## 6. 与 recalculate 缺口的关系
 
-同一批 DSH 0.2.x 分析认定的 CE 唯一书面的办公能力缺口：xlsx 公式缓存重算。CE 的处理（S 档）：**不搬引擎整包**（145–182 MiB/平台 + MPL-2.0 + Linux 仅 WASM），只搬「能力探测 + 如实声明」的语义骨架：
+同一批 DSH 0.2.x 分析认定的 CE 唯一书面的办公能力缺口：xlsx 公式缓存重算。CE 的处理（S 档）：**不搬引擎整包**（145–190 MiB/平台，2026-11-25 实测 wasm 145.3 / darwin 153.9 / win32 189.7；MPL-2.0 + Linux 仅 WASM），只搬「能力探测 + 如实声明」的语义骨架：
 
 - `scripts/office-capabilities.mjs`（spreadsheets-plugin）：stdout 一行 JSON，`capabilities.recalculate.available` 是权威答案；rc 不表达 availability（能力不可用不是错误）。将来引擎落在唯一的挂载点 `scripts/office-node/recalculate.cjs` 时探测自动翻转，技能正文无需改动。
 - `skills/xlsx/SKILL.md`：交付含公式结果的工作簿时先跑探测；不可用时（CE 现状）在最终回复中如实声明「缓存结果未在本构建中重算」；不得把缓存值说成新算结果、不得用常量替换公式。

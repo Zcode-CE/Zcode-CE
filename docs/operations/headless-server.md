@@ -145,6 +145,14 @@ node bin/zcode.mjs --web [--host <host>] [--port <port>] [--workspace <path>] \
   登录态（OAuth 令牌等）落在数据目录里，与桌面端一致。也可用环境变量覆盖端点
   （`ZCODE_BASE_URL`、`ZCODE_ENDPOINT_ORIGIN` 等，见仓库根 `.env.example`）。
 - **不要**把 provider secret 写进命令行或镜像层；用环境变量或数据目录里的凭据。
+- **凭据主密钥来源**（按优先级）：`ZCODE_CREDENTIAL_SECRET` → `ZCODE_CREDENTIAL_SECRET_FILE`（32–4096 字节、
+  原字节不 trim）→ 数据目录里**已存在**的 `credential-secret`（0600）→ 系统凭据库。前两者同时设置 ⇒ 拒绝启动
+  （无法判断运维意图，按配置错误处理）。
+- **无头形态不会自动生成密钥**：容器重建会让密钥与身份一起静默消失，用户表现为「身份无故消失」。
+  因此缺密钥时**拒绝就绪**并给出可操作错误（文件名、目录、字节范围）。唯一正解是把一个 32–4096 字节的
+  secret 文件挂载进数据目录，或用 `ZCODE_CREDENTIAL_SECRET_FILE` 指向它。
+- **升级后不要回退到旧版本**：`enc:v2:` 密文在 3.17.x 及更早版本中不可读。要可回退只能同时写 v1，
+  那等于把可离线推导的弱密钥副本永久留在磁盘上，改动即失效。
 
 ### 5.1 服务端旋钮一览（环境变量）
 

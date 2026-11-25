@@ -3,9 +3,11 @@
 // 归属:      ZCode-CE 自研（self）—— 不是 DSH 上游文件，不回写上游，不跟 DSH 发版
 // 由来:      DSH 0.2.x 的 office-xlsx 技能把「先探测 recalculate 能力、不支持就如实声明」
 //            变成了技能规则（上游有随包 LibreOffice Kit CLI）。CE 明确不搬引擎整包
-//            （145–182 MiB/平台 + MPL-2.0 + Linux 仅 WASM），但保留「能力探测 + 如实声明」
+//            （145–190 MiB/平台，2026-11-25 实测 wasm 145.3 / darwin 153.9 / win32 189.7；MPL-2.0 + Linux 仅 WASM），但保留「能力探测 + 如实声明」
 //            的语义骨架，并给将来留出单一的引擎挂载点（见 ENGINE_RELATIVE_PATH）。
 // 本模块:    能力探测 CLI —— 只回答「本构建能否重算公式」，不做任何重算。
+// 口径:      缺能力就如实声明 —— 不得换引擎，也不得临时装库顶替（与上游 office_*
+//            的 `unavailable` 口径一致）。探测结果只描述本构建，不描述替代方案。
 // 契约:      stdout 一行 JSON（非 ASCII 转义，与 check_office.mjs 同口径）；
 //            可选 --out <file>；退出码 0 = 探测完成（无论能力是否可用），2 = 参数错误，
 //            1 = --out 写入失败。能力不可用不是错误：rc 永远不表达 availability。
@@ -48,7 +50,7 @@ const UNAVAILABLE_RECALCULATE = Object.freeze({
   limit:
     "This build ships no formula recalculation engine: the bundled library stores formulas and cached results but does not evaluate them.",
   guidance:
-    "When the deliverable must contain calculated formula results, state in the final reply that cached results were not recalculated in this build and must be recalculated or verified in a spreadsheet application. Do not report cached values as newly calculated results and do not replace requested formulas with constants.",
+    "When the deliverable must contain calculated formula results, state in the final reply that cached results were not recalculated in this build and must be recalculated or verified in a spreadsheet application. Do not report cached values as newly calculated results, do not replace requested formulas with constants, and do not substitute another library, the system LibreOffice, or a package installed on the fly to compute them.",
 });
 
 const AVAILABLE_RECALCULATE = Object.freeze({

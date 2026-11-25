@@ -3,7 +3,7 @@ name: docx
 description: Create, read, edit, and check Word documents (.docx), including reports, letters, and formatted tables. Use when a DOCX file is an input or requested deliverable.
 metadata:
   upstream: "@deepseek-ai/dsh-skill-office (MIT)"
-  modified: "ZCode-CE: 工具链由系统 Python(python-docx) 改为随包 Node 库(docx 9.7.1)；修正校验器相对路径为 ../../scripts/；补充降级边界；提权安装场景改为给出确切命令并声明所需权限（引导式授权，见 docs/development/office-plugins.md）；视觉检查恢复为 soffice→pdftoppm→visual-judge 两步链（Read 工具的 PDF 页图通路本就在随包代码里），补模型图片能力前置判定与「空白预览=渲染失败」规则"
+  modified: "ZCode-CE: 工具链由系统 Python(python-docx) 改为随包 Node 库(docx 9.7.1)；修正校验器相对路径为 ../../scripts/；补充降级边界；提权安装场景改为给出确切命令并声明所需权限（引导式授权，见 docs/development/office-plugins.md）；视觉检查恢复为 soffice→pdftoppm→visual-judge 两步链（Read 工具的 PDF 页图通路本就在随包代码里），补模型图片能力前置判定与「空白预览=渲染失败」规则；补旧格式（.doc/.dot/.docm）边界声明，并把「更深的编辑能力计划中」改为当前陈述"
 ---
 
 # Word documents
@@ -67,7 +67,9 @@ Therefore:
 - **Heavy or structural editing of an existing DOCX is not supported by this build.** Do not attempt it by reconstructing the document, and do not silently discard parts you cannot represent.
 - When a request needs editing beyond that boundary, **say so plainly**: tell the user the current build cannot edit an existing DOCX reliably, state what you *can* do (create a new document, or apply the specific precise change if it is safe), and ask how to proceed. Never present a rewritten document as a faithful edit of theirs.
 
-python-docx-style operations are not available here, so "inspect paragraphs, runs, tables, sections, headers and footers before changing the affected content" is not a reachable workflow in this build. A deeper editing capability is planned as an optional enhancement; it is not part of this version.
+python-docx-style operations are not available here, so "inspect paragraphs, runs, tables, sections, headers and footers before changing the affected content" is not a reachable workflow in this build. No deeper editing capability is part of this version.
+
+**Legacy binary formats are out of reach too.** Do not rename a `.doc`, `.dot`, or `.docm` file to `.docx`: this build cannot read them, because the bundled library is a generator only (above) and the checker verifies OOXML packages. With LibreOffice installed — the same optional enhancement used for rendering below — convert first and work on the copy it writes (`soffice --headless --convert-to docx --outdir <out_dir> legacy.doc`); a converted copy can differ from the original, so say so when it matters. Without it, say plainly that this build cannot open the file, preserve the original, and ask how to proceed. Never present a renamed or rebuilt file as a faithful conversion of the user's original.
 
 ## Check and deliver
 

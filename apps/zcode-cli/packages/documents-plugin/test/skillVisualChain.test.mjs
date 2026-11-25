@@ -250,3 +250,23 @@ test("frontmatter 的 metadata.modified 与本次改动同步（office-plugins.m
     );
   }
 });
+
+/**
+ * 旧格式边界（2026-11-25 补）：`.doc`/`.ppt` 读不了这件事必须写在技能里。
+ *
+ * 为什么：用户拿来一份正式格式的老文件时，最省事的做法是改名成 `.docx` 交给我们随包的
+ * 生成库 —— 得到一个「能打开但内容丢失」的产物，没有任何测试会失败，用户拿到的是坏文件。
+ * 断言打在最终消费点：技能正文同时给出「不得改名冒充」与「先转换或如实拒绝」两条出路。
+ */
+test("docx/pptx 声明旧格式边界：不得改名冒充，须先转换或如实拒绝", () => {
+  for (const plugin of OFFICE_PLUGINS.filter((item) => item.skill !== "xlsx")) {
+    const text = readSkill(plugin);
+    const label = `${plugin.name}/${plugin.skill}`;
+    const legacy = plugin.skill === "docx" ? ".doc" : ".ppt";
+    assert.ok(text.includes(legacy), `${label}：正文缺少旧格式 ${legacy} 的边界说明`);
+    assert.match(text, /Do not rename/u, `${label}：缺少「不得改名冒充」的禁令`);
+    assert.match(text, /--convert-to/u, `${label}：缺少「先转换」的出路`);
+    assert.match(text, /cannot open the file|say plainly/u, `${label}：缺少「如实拒绝」的出路`);
+  }
+});
+

@@ -2,7 +2,7 @@
 name: pptx
 metadata:
   upstream: "@deepseek-ai/dsh-skill-office (MIT)"
-  modified: "ZCode-CE: 工具链由系统 Python(python-pptx) 改为随包 Node 库(pptxgenjs 4.0.1)；修正校验器相对路径为 ../../scripts/；补充降级边界；提权安装场景改为给出确切命令并声明所需权限（引导式授权，见 docs/development/office-plugins.md）；恢复搬运时丢失的视觉链（soffice→pdftoppm→visual-judge 两步链，官方基线本有 dispatch），补模型图片能力前置判定与「空白预览=渲染失败」规则"
+  modified: "ZCode-CE: 工具链由系统 Python(python-pptx) 改为随包 Node 库(pptxgenjs 4.0.1)；修正校验器相对路径为 ../../scripts/；补充降级边界；提权安装场景改为给出确切命令并声明所需权限（引导式授权，见 docs/development/office-plugins.md）；恢复搬运时丢失的视觉链（soffice→pdftoppm→visual-judge 两步链，官方基线本有 dispatch），补模型图片能力前置判定与「空白预览=渲染失败」规则；补旧格式（.ppt/.pot/.pptm）边界声明，并把「更深的编辑能力计划中」改为当前陈述"
 description: Create, read, edit, and check PowerPoint presentations (.pptx), including slide text, tables, images, and charts. Use when a PPTX file is an input or requested deliverable.
 ---
 
@@ -60,7 +60,9 @@ Therefore:
 - **Heavy or structural editing of an existing PPTX is not supported by this build.** Do not attempt it by reconstructing the deck, and do not silently discard parts you cannot represent (animations, SmartArt, and other extension content are the usual casualties).
 - When a request needs editing beyond that boundary, **say so plainly**: tell the user the current build cannot edit an existing PPTX reliably, state what you *can* do (create a new deck, or apply the specific precise change if it is safe), and ask how to proceed. Never present a rebuilt deck as a faithful edit of theirs.
 
-A deeper editing capability is planned as an optional enhancement; it is not part of this version.
+No deeper editing capability is part of this version.
+
+**Legacy binary formats are out of reach too.** Do not rename a `.ppt`, `.pot`, or `.pptm` file to `.pptx`: this build cannot read them, because the bundled library is a generator only (above) and the checker verifies OOXML packages. With LibreOffice installed — the same optional enhancement used for rendering below — convert first and work on the copy it writes (`soffice --headless --convert-to pptx --outdir <out_dir> legacy.ppt`); a converted copy can differ from the original, so say so when it matters. Without it, say plainly that this build cannot open the file, preserve the original, and ask how to proceed. Never present a rebuilt deck as a faithful conversion of the user's original.
 
 ## Check and deliver
 

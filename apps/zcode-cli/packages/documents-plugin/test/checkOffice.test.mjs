@@ -13,7 +13,7 @@
  *
  * 两条路径都要过：
  * - `scripts/check_office.mjs`（技能正文调用的主路径，纯 Node，无第三方依赖）；
- * - `scripts/check_office.py`（保留的 Python 按需增强路径），有 python3 时一并跑，
+ * - `scripts/check_office.py`（系统 Python 是可选对照实现：有 python3 时一并跑，缺则如实声明、不引导安装，见 office-plugins.md §12），
  *   缺失时明确 skip，不假装通过。
  *
  * 内存口径：Node 在 RLIMIT_AS=512 MiB 下**连进程都起不来**（V8 预留虚拟地址空间，
@@ -271,7 +271,7 @@ test("三份 check_office.py / check_office.mjs（含 lib/ 模块）逐字节一
  * 两条实现路径的同型断言集合。
  *
  * 为什么要跑两遍：技能正文调用的主路径是 `check_office.mjs`（纯 Node），
- * `check_office.py` 是保留的 Python 按需增强路径。安全契约（超预算必结构化 fail、
+ * `check_office.py` 是系统 Python 的可选对照实现（见 office-plugins.md §12）。安全契约（超预算必结构化 fail、
  * 媒体不计入预算、正常文档不被误伤）对两者都成立，所以断言逐条复用，
  * 而不是给 JS 另写一套更弱的断言。
  *

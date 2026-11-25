@@ -24,9 +24,22 @@ node scripts/licenses.mjs check --strict # 发布前门槛：材料义务必须�
 ```
 
 - 基础门禁管的是"**包的许可标识能不能识别、生成物是否与输入一致**"。
-- `--strict` 管的是"**每一条材料义务是否已闭合或已记录**"。基础门禁通过**不等于**合规完成。
+- `--strict` 管的是"**`third-party/inventory.json` 的 `reviewRequired` 是否为空**"：非空即红，`reason` 逐条列出缺什么。基础门禁通过**不等于**合规完成。
+- **绿 ≠ 材料齐全**：`--strict` 变绿只说明没有未闭合的义务；`documentedLimitations`（已接受的书面限制，见 §2.1）照旧存在，并随 `THIRD-PARTY-NOTICES.md` 分发。
 - 只要动了 `third-party/**`、`pnpm-lock.yaml`、workspace 的 `package.json` 或任何被登记的快照，就要重新跑 `notices`，否则新鲜度检查会红。
 - 变更档位判定逻辑时，必须同时跑第 6 节的反向验证。
+
+### 2.1 `--strict` 里的两种记录：谁是待办、谁是结论
+
+`--strict` 只读 `inventory.json` 的两个字段，两者语义相反；混读会把已接受的限制重新提成待办。
+
+| 字段                    | 生成器怎么放进去                                                                                | 门禁含义           | 读者该怎么用                         |
+| ----------------------- | ----------------------------------------------------------------------------------------------- | ------------------ | ------------------------------------ |
+| `reviewRequired`        | 搬入源码/内嵌组件的缺口、档位判据不满足、`acceptedMissingNotice` 未落到非阻断档、原生组件缺快照 | **阻断**：非空即红 | **待办**：补材料、改登记或撤销记录   |
+| `documentedLimitations` | 只放四条判据全过的两档（`publisher-declared-standard-terms` / `pinned-upstream-license-file`）  | 不阻断             | **已接受的书面限制**：结论，不是待办 |
+
+- `documentedLimitations` 记的是**「上游从未发布过版权/许可文件」这一已核实的事实**，不是"材料没拿到先挂账"。它照样出现在 `THIRD-PARTY-NOTICES.md` 的 "Source evidence limitations" 段里（对外按这段读），所以复核时**不要**把它重新列成"待补齐材料"，也不要用它反过来放宽 `reviewRequired`。
+- `acceptedMissingNotice` 是写在 override 里的**接受理由**，但它**不改变阻断结论**：`scripts/generate-third-party-notices.mjs` 的 `blockingOf` 只看档位，没有登记非阻断档的条目一律按阻断处理。要让这类条目变绿只有两条路 —— 补齐到非阻断档，或改判据（需评审，且要跑 §6 反向验证）。
 
 ## 3. 材料证据档位（`evidenceKind`）
 
@@ -127,9 +140,10 @@ Exhibit A 短通知（192 B），MPL 全文并未随包分发。短通知本身�
 
 ## 4. 目前的状态（快照，会漂移）
 
-`--strict` 的阻断项与 `documentedLimitations` 的确切数字**以 `third-party/inventory.json` 为准**，不要在本文件里抄写数字。本节只记录状态的性质：
+`reviewRequired` 与 `documentedLimitations` 的确切数字**以 `third-party/inventory.json` 为准**，不要在本文件里抄写数字。本节只记录状态的性质：
 
-- 阻断项分三类：**档位判据不满足**（`publisher-declared-standard-terms` 但缺 (a)~(d) 之一，已在 reason 里写明）、**未重新分档的上游 pin 文件**（`pinned-upstream-license-file`）、以及**非 npm 组件**（copied 源码、内嵌组件、原生工具）。
+- `reviewRequired`（待办）只有两类：**档位判据不满足**（登记了非阻断档但缺 (a)~(d) 或 (甲)~(丁) 之一，reason 里逐条写明），以及**非 npm 组件**（搬入源码、内嵌组件、原生工具）材料缺口。登记了 `acceptedMissingNotice` 却未落到非阻断档的条目同样留在这一侧（见 §2.1）。
+- `documentedLimitations`（已接受的书面限制）是判据全过后的**结论**：发布者在已发布物里声明了标识、标准条款随包分发、出处已记录，而上游从未发布过许可文件。它不阻断，也不随基础门禁变化。
 - `brotli@1.3.3` 的特别之处：包本体按 `package.json` 声明为 MIT，但它 vendored 的 `google/brotli` 解码器（`dec/*.js`）带 **Apache-2.0 + `Copyright 2013 Google Inc.`** 逐字节声明。该声明登记在 `embedded-components.json`（`google/brotli (vendored in brotli@1.3.3)`），并且 `THIRD-PARTY-NOTICES.md` 里能查到它。**不要把 brotli 整包记成 MIT 就结束** —— 那是署名不准。
 
 ## 5. `pinned-upstream-license-file` 档（ce.4 新设，原为阻断）
@@ -199,7 +213,7 @@ node scripts/licenses.mjs notices && node scripts/licenses.mjs check --strict
 1. 先确认**有没有**上游材料：tarball 的**完整条目清单**（不是过滤结果）+ **文件内容里的声明**（`grep -riE 'permission is hereby granted|licen[sc]e|copyright'`）+ 上游仓库**所有分支/版本 tag 的树**。只按文件名查会漏 —— `brotli@1.3.3` 就是这么漏掉的。
 2. 有真实文件 ⇒ 落 `third-party/upstream/<sha256>.txt`（文件名 = 内容 sha256），在 override 里写 `file`+`sha256`+`source`，**不要**加 `evidenceKind`。
 3. 只有发布者声明 + 标准条款 ⇒ 登记 `evidenceKind: "publisher-declared-standard-terms"`，并在 `reviewEvidence` 里写清：`npmArchiveSha256`、声明原文所在位置、发布者身份来源。四条判据要能被机械核对。
-4. 确实无法取得任何材料 ⇒ `evidenceKind: "incomplete-unverified"`（阻断）或 `acceptedMissingNotice`（明确接受缺失并写明理由）。
+4. 确实无法取得任何材料 ⇒ 写明 `acceptedMissingNotice`（明确接受缺失的理由），或登记 `evidenceKind: "incomplete-unverified"`。**两种写法都仍然阻断 `--strict`**：理由是给人看的，变绿只能靠落到非阻断档（§2.1）。
 5. 跑 `node scripts/licenses.mjs notices`，再跑基础门禁与 `--strict`，确认差集符合预期。
 
 ## 8. 已知限制

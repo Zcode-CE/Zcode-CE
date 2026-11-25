@@ -2,7 +2,7 @@
 name: xlsx
 metadata:
   upstream: "@deepseek-ai/dsh-skill-office (MIT)"
-  modified: "ZCode-CE: 工具链由系统 Python(openpyxl/pandas) 改为随包 Node 库(exceljs 4.4.0)；修正校验器相对路径为 ../../scripts/；补充降级边界（重写丢失图表部件）；提权安装场景改为给出确切命令并声明所需权限（引导式授权，见 docs/development/office-plugins.md）；视觉检查改为按任务分情况（数据/公式任务跳过且不加未请求的免责声明），补 soffice→pdftoppm→visual-judge 两步链、模型图片能力前置判定与「空白预览=渲染失败」规则；recalculate 改为能力探测（scripts/office-capabilities.mjs）+ 不可用时在交付回复中如实声明缓存结果未重算（不引入 145–182 MiB/平台、Linux 仅 WASM 的引擎整包）"
+  modified: "ZCode-CE: 工具链由系统 Python(openpyxl/pandas) 改为随包 Node 库(exceljs 4.4.0)；修正校验器相对路径为 ../../scripts/；补充降级边界（重写丢失图表部件）；提权安装场景改为给出确切命令并声明所需权限（引导式授权，见 docs/development/office-plugins.md）；视觉检查改为按任务分情况（数据/公式任务跳过且不加未请求的免责声明），补 soffice→pdftoppm→visual-judge 两步链、模型图片能力前置判定与「空白预览=渲染失败」规则；recalculate 改为能力探测（scripts/office-capabilities.mjs）+ 不可用时在交付回复中如实声明缓存结果未重算（不引入 145–190 MiB/平台、Linux 仅 WASM 的引擎整包）"
 description: Read, create, and modify Excel workbooks (.xlsx), including cell values, formulas, formatting, and analysis. Use when an Excel workbook is an input or deliverable.
 ---
 

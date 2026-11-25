@@ -17,7 +17,7 @@
 #      traceback」，正是第 3 条要消灭的形态（OFFICE-CHECKER-JS.md §5.4 记录了该缺陷）
 # 状态:      本文件是 **Node 主路径之外的保留实现**（技能正文只引用 check_office.mjs）。
 #            保留理由：① 作为 JS 重写的**行为基准**（对比测试与 fuzz 都以它为准）；
-#            ② docs/development/office-plugins.md §8 把 Python 定位为「按需增强」路径。
+#            ② docs/development/office-plugins.md §12 把 Python 定位为「用系统已装能力、缺则如实声明、不引导安装」。
 #            因此它必须与 .mjs **保持契约一致**：改一边要同时核对另一边。
 # 回归测试: apps/zcode-cli/packages/documents-plugin/test/checkOffice.test.mjs
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 ---
 name: pdf
-description: Create PDF documents (.pdf) with the plugin's bundled PDFKit payload — body text in any script the system fonts cover (CJK included), tables drawn to fit the page, page numbers, and structural verification before delivery. Use when a PDF file is a requested deliverable, or when the user wants a document built from scratch rather than converted. Not a LaTeX engine and not an Office converter.
+description: Create PDF documents (.pdf) from scratch with the bundled PDFKit payload — system fonts only, tables, page numbers, and a glyph-coverage check that blocks delivery. Not LaTeX, not an Office converter.
 ---
 
 # PDF documents
