@@ -486,6 +486,7 @@ export { ZCodeConfigFileSchema, type ZCodeConfigFile } from "./schema.js";
 export { mergeConfigs, createPrioritizedConfig, getScopePriority } from "./config-merger.js";
 export {
   createConfig,
+  createConfigAsync,
   resolveWorkspaceStorageDir,
   type ConfigFactoryOptions,
   type ConfigResult,

@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入本波安全/稳定性修复（详见 docs/development/upstream-sync.md）。
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -12,6 +13,7 @@ import {
   buildWorkspaceHookBundleSnapshot,
   createWorkspaceHookSourceInput,
   readWorkspaceHookProjectSources,
+  readWorkspaceHookScriptStates,
   resolveWorkspaceHookRuntimeRoot,
   workspaceHooksConfigSchema,
   type WorkspaceHookBundleSnapshotData,
@@ -232,11 +234,19 @@ async function loadHooksImpl(
     userSource?.hooks,
     ...projectSources.map((source) => source.hooks),
   ]);
+  // D24：Settings 与运行时必须得到同一份摘要。调用方不传 scriptStates 时条目不带 scriptEntry、
+  // 摘要退回声明级，与运行时（createConfigAsync）算出的摘要不同 ⇒ 行内信任状态永远 pending。
+  // 读取失败按 unverifiable 计入摘要，宁可显示需重新信任，也不静默信任。
+  const scriptStates = await readWorkspaceHookScriptStates({
+    workspacePath,
+    sources: projectSources,
+  });
   const workspaceHookSnapshot = buildWorkspaceHookBundleSnapshot({
     workspaceIdentity,
     workspacePath,
     sources: projectSources,
     runtimeRoot,
+    scriptStates,
   });
   const persistentTrust = await readPersistentWorkspaceHookTrustDigests(workspaceIdentity, logger);
   const persistentTrustedDigests = persistentTrust.digests;

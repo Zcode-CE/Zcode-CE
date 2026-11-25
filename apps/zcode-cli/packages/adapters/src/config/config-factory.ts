@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入本波安全/稳定性修复（详见 docs/development/upstream-sync.md）。
 // Config Factory - Load and merge all config sources
 
 import { resolve } from "node:path";
@@ -17,8 +18,10 @@ import {
 } from "@zcode/contracts";
 import {
   buildWorkspaceHookBundleSnapshot,
+  readWorkspaceHookScriptStates,
   resolveWorkspaceHookRuntimeRoot,
   type WorkspaceHookRuntimeRoot,
+  type WorkspaceHookScriptState,
 } from "@zcode/shared/workspace-hook-discovery";
 import { createConfigPort } from "./index.js";
 import { loadFileConfig, getDefaultConfigPath, type LoadedConfig } from "./file-config.adapter.js";
@@ -119,6 +122,55 @@ export type McpServerConfigSource = "system" | "project" | "user" | "env" | "cli
  * 5. CLI overrides
  */
 export function createConfig(options: ConfigFactoryOptions = {}): ConfigResult {
+  return assembleConfig(options, discoverProjectConfigs(options), undefined);
+}
+
+/**
+ * 异步配置装配入口（D24 / ZP-20261110-06）：先读取可识别入口脚本的内容状态，再用与同步入口
+ * 完全相同的装配公式生成快照，使 declaration digest 覆盖入口脚本内容。
+ *
+ * 为什么必须与同步入口成对存在：同步 createConfig 拿不到脚本状态，只能保持引入内容绑定之前
+ * 的摘要（否则升级会让既有 Trust 一次性失效）；而 Review 授权、运行时准入与 Settings 显示
+ * 必须共用同一份摘要，否则同一工作区会在不同入口出现 bound / unbound 两种 bundleDigest，
+ * toggle 恒报 workspace_hooks_bundle_changed、授权后永不匹配。生产运行时（create-app）走
+ * 本函数，同步 createConfig 保留给不参与 Hook 信任的装配调用方。
+ */
+export async function createConfigAsync(
+  options: ConfigFactoryOptions = {},
+): Promise<ConfigResult> {
+  const discovery = discoverProjectConfigs(options);
+  const workspacePath = resolve(options.workingDirectory ?? process.cwd());
+  // 与快照使用同一批 sources：reviewItemId 才能一一对应，映射不完整会被记成 unverifiable。
+  const scriptStates = await readWorkspaceHookScriptStates({
+    workspacePath,
+    sources: discovery.hookCandidates,
+  });
+  return assembleConfig(options, discovery, scriptStates);
+}
+
+/**
+ * 项目配置发现（含 Hook 候选占位）只有一份实现：异步入口要先拿到 sources 读脚本状态，
+ * 再交给同一装配函数，避免两条装配路径各自发现一次而出现顺序或占位差异。
+ */
+function discoverProjectConfigs(options: ConfigFactoryOptions): ProjectConfigDiscovery {
+  return options.workingDirectory
+    ? loadProjectConfigs(options.workingDirectory, options.projectConfigPath)
+    : options.projectConfigPath
+      ? summarizeProjectConfigs([
+          loadProjectConfigFile(options.projectConfigPath, {
+            discoveryOrder: 0,
+            explicitProjectConfig: true,
+          }),
+        ])
+      : summarizeProjectConfigs([]);
+}
+
+function assembleConfig(
+  options: ConfigFactoryOptions,
+  discoveredProjectConfigs: ProjectConfigDiscovery,
+  /** 缺省表示拿不到脚本状态（同步入口）：条目不带 scriptEntry，摘要与内容绑定前逐字节相同。 */
+  workspaceHookScriptStates: ReadonlyMap<string, WorkspaceHookScriptState> | undefined,
+): ConfigResult {
   // 1. System defaults
   const configs: ReturnType<typeof createPrioritizedConfig>[] = [
     createPrioritizedConfig(DefaultRuntimeConfig, ConfigScope.System),
@@ -141,17 +193,7 @@ export function createConfig(options: ConfigFactoryOptions = {}): ConfigResult {
     );
   }
 
-  // 3. Project config files
-  const discoveredProjectConfigs: ProjectConfigDiscovery = options.workingDirectory
-    ? loadProjectConfigs(options.workingDirectory, options.projectConfigPath)
-    : options.projectConfigPath
-      ? summarizeProjectConfigs([
-          loadProjectConfigFile(options.projectConfigPath, {
-            discoveryOrder: 0,
-            explicitProjectConfig: true,
-          }),
-        ])
-      : summarizeProjectConfigs([]);
+  // 3. Project config files（发现结果由调用方传入，见 discoverProjectConfigs）
   // explicit 配置曾在 auto-discovery 之后手工追加并自行编号，绕过 shared
   // canonical-path dedup；同一文件会进入 snapshot 两次并使既有 Trust 全部 stale。
   // 修法：有 workspace 时由 loadProjectConfigs 统一走 discoverWorkspaceHookConfigPaths，
@@ -214,6 +256,8 @@ export function createConfig(options: ConfigFactoryOptions = {}): ConfigResult {
     workspacePath,
     sources: projectSummary.hookCandidates,
     runtimeRoot: workspaceHookRuntimeRoot,
+    // 同步入口不传：条目不带 scriptEntry，摘要保持与引入内容绑定之前逐字节相同。
+    ...(workspaceHookScriptStates ? { scriptStates: workspaceHookScriptStates } : {}),
   });
   const workspaceHookSnapshot = workspaceHookSnapshotData
     ? createWorkspaceHookBundleSnapshot(workspaceHookSnapshotData)

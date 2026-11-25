@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入本波安全/稳定性修复（详见 docs/development/upstream-sync.md）。
 import { open, mkdir, readFile, rename, rm } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import type { WorkspaceHookBundleSnapshotData } from "./workspace-hook-digest.js";
@@ -130,6 +131,8 @@ export async function writeWorkspaceHookConfiguredToggle(input: {
     hook: parsedDeclaration,
     defaultTimeoutMs: entry.resolvedTimeoutMs,
     resolvedMaxOutputBytes: entry.resolvedMaxOutputBytes,
+    // 只比较声明本体是否变化；入口脚本状态沿用 review 时的记录（D24），toggle 后的重建会重新读取。
+    ...(entry.scriptEntry ? { scriptEntry: entry.scriptEntry } : {}),
   });
   if (currentDigest !== entry.hookDeclarationDigest) {
     throw mismatch("Workspace Hook declaration changed after review");

@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入本波安全/稳定性修复（详见 docs/development/upstream-sync.md）。
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createDefaultFileWorkspaceHookTrustStore } from "@zcode/adapters/storage";
@@ -5,12 +6,14 @@ import { getDefaultConfigPath } from "@zcode/adapters/config";
 import {
   DefaultRuntimeConfig,
   createWorkspaceHookBundleSnapshot,
+  isWorkspaceHookScriptUnavailable,
   type WorkspaceHookBundleSnapshot,
   type WorkspaceHookTrustRecord,
 } from "@zcode/contracts";
 import {
   buildWorkspaceHookBundleSnapshot,
   readWorkspaceHookProjectSources,
+  readWorkspaceHookScriptStates,
   resolveWorkspaceHookRuntimeRoot,
   workspaceHooksConfigSchema,
   type WorkspaceHooksConfig,
@@ -30,7 +33,8 @@ export interface WorkspaceHookTrustCliItem {
   sourcePath: string;
   configuredEnabled: boolean;
   hookDeclarationDigest: string;
-  trustState: "trusted_persistent" | "pending_trust";
+  /** blocked_untrusted：入口脚本不存在或无法读取，不能授权（D24）。 */
+  trustState: "trusted_persistent" | "pending_trust" | "blocked_untrusted";
 }
 
 export interface WorkspaceHookTrustCliStatus {
@@ -46,7 +50,8 @@ export interface WorkspaceHookTrustCliStatus {
     | "workspace_hooks_require_trust_capable_host"
     // status 必须与 grant/revoke 的失败语义一致——损坏 store 若伪装成
     // pending_trust，用户按提示 grant 只会撞上 trust_store_corrupt，恢复指引矛盾。
-    | "workspace_hooks_trust_store_corrupt";
+    | "workspace_hooks_trust_store_corrupt"
+    | "workspace_hook_script_unavailable";
   items: WorkspaceHookTrustCliItem[];
 }
 
@@ -104,9 +109,11 @@ export async function inspectWorkspaceHookTrust(
     sourcePath: entry.sourceRelativePath,
     configuredEnabled: entry.configuredEnabled,
     hookDeclarationDigest: entry.hookDeclarationDigest,
-    trustState: trusted.has(entry.hookDeclarationDigest)
-      ? ("trusted_persistent" as const)
-      : ("pending_trust" as const),
+    trustState: isWorkspaceHookScriptUnavailable(entry)
+      ? ("blocked_untrusted" as const)
+      : trusted.has(entry.hookDeclarationDigest)
+        ? ("trusted_persistent" as const)
+        : ("pending_trust" as const),
   }));
   const enabled = items.filter((item) => item.configuredEnabled);
   const reasonCode =
@@ -114,7 +121,9 @@ export async function inspectWorkspaceHookTrust(
       ? "workspace_hooks_no_enabled_hooks"
       : enabled.every((item) => item.trustState === "trusted_persistent")
         ? "workspace_hooks_trusted_persistent"
-        : "workspace_hooks_pending_trust";
+        : enabled.some((item) => item.trustState === "pending_trust")
+          ? "workspace_hooks_pending_trust"
+          : "workspace_hook_script_unavailable";
   return {
     workspacePath: target.workspacePath,
     workspaceIdentity: target.workspaceIdentity,
@@ -135,6 +144,16 @@ export async function grantWorkspaceHookTrust(
   const target = normalizeTarget(input);
   const snapshot = await requireSnapshot(target);
   const selected = selectGrantEntries(snapshot, input);
+  // 入口脚本不存在或无法读取时没有可审核的内容（D24）：整条命令拒绝，不写 store。
+  // message 保持公开 reason code（协议侧按它收敛）；被拒条目放在 unavailableItems 供 CLI 列出。
+  const unavailable = selected.filter(isWorkspaceHookScriptUnavailable);
+  if (unavailable.length > 0) {
+    throw Object.assign(new Error("workspace_hook_script_unavailable"), {
+      unavailableItems: unavailable.map(
+        (entry) => `${entry.event} ${formatCommand(entry)} (${entry.sourceRelativePath})`,
+      ),
+    });
+  }
   const grantedAt = new Date().toISOString();
   const records: WorkspaceHookTrustRecord[] = selected.map((entry) => ({
     workspaceIdentity: snapshot.workspaceIdentity,
@@ -205,11 +224,18 @@ async function discoverSnapshot(
     userHooks,
     ...discovery.sources.map((source) => source.hooks),
   ]);
+  // 与运行时快照同形（D24）：inspect 用来比对 trust store 里的 digest，grant 用来写记录；
+  // 漏传 scriptStates 会让 CLI 授权出与运行时不同的摘要（授权成功但 Hook 永不运行）。
+  const scriptStates = await readWorkspaceHookScriptStates({
+    workspacePath: target.workspacePath,
+    sources: discovery.sources,
+  });
   const data = buildWorkspaceHookBundleSnapshot({
     workspaceIdentity: target.workspaceIdentity,
     workspacePath: target.workspacePath,
     sources: discovery.sources,
     runtimeRoot,
+    scriptStates,
   });
   return data ? createWorkspaceHookBundleSnapshot(data) : undefined;
 }

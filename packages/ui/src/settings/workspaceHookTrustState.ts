@@ -34,6 +34,8 @@ const WORKSPACE_HOOK_REASON_CODE_MESSAGE_IDS: Record<string, string> = {
   workspace_hooks_policy_requires_pretrust: "settings.hooks.review.reason.policy_requires_pretrust",
   workspace_hooks_interaction_timeout: "settings.hooks.review.reason.interaction_timeout",
   workspace_hooks_require_trust_capable_host: "settings.hooks.review.reason.host_unavailable",
+  // 入口脚本不存在或无法读取（D24）：授权与派发都会被拒绝，提示用户先修脚本再重新审核。
+  workspace_hook_script_unavailable: "settings.hooks.review.reason.script_unavailable",
 };
 
 const WORKSPACE_HOOK_REASON_CODE_FALLBACK_ID = "settings.hooks.review.reason.rejected";

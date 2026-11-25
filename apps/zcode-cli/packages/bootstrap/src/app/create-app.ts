@@ -4,7 +4,7 @@ import {
   createNodeToolArtifactStore,
 } from "@zcode/adapters/storage";
 import { createNodeLoggerFactory } from "@zcode/adapters/logging";
-import { createConfig, resolvePath } from "@zcode/adapters/config";
+import { createConfigAsync, resolvePath } from "@zcode/adapters/config";
 import {
   createNodeExecutionAdapter,
   resolveEffectiveBashShellSelection,
@@ -161,8 +161,10 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
     options.additionalDirectories,
     workingDirectory,
   );
+  // 运行时必须用异步装配入口（D24）：它读取入口脚本状态，让声明摘要覆盖脚本内容；
+  // 同步 createConfig 拿不到脚本状态，只用于不参与 Hook 信任的装配调用方。
   const configResult = resolveEffectiveConfigResult(
-    createConfig({
+    await createConfigAsync({
       env: options.env,
       projectConfigPath: options.projectConfigPath,
       workingDirectory,

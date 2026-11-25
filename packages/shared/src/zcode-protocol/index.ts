@@ -2329,6 +2329,9 @@ export const zcodeWorkspaceHookTrustGrantReasonCodeSchema = z.enum([
   "workspace_hooks_policy_requires_pretrust",
   "workspace_hooks_trust_store_corrupt",
   "workspace_hooks_config_unreadable",
+  // 入口脚本不存在或无法读取（D24）：Settings 预信任被拒时用户看到的是脚本问题，
+  // 而不是回落码 workspace_hooks_config_unreadable 指向的配置读取失败。
+  "workspace_hook_script_unavailable",
 ]);
 export type ZCodeWorkspaceHookTrustGrantReasonCode = z.infer<
   typeof zcodeWorkspaceHookTrustGrantReasonCodeSchema

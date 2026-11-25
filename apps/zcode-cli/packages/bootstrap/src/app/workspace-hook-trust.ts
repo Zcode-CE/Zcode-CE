@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入本波安全/稳定性修复（详见 docs/development/upstream-sync.md）。
 import { createDefaultFileWorkspaceHookTrustStore } from "@zcode/adapters/storage";
 import {
   InMemoryWorkspaceHookPolicyProvider,
@@ -22,7 +23,10 @@ import type {
   WorkspaceHookReviewRequestPayload,
   WorkspaceHookTrustRevokeTarget,
 } from "@zcode/shared/zcode-protocol-v4";
-import type { WorkspaceHookRuntimeRoot } from "@zcode/shared/workspace-hook-discovery";
+import {
+  readWorkspaceHookScriptState,
+  type WorkspaceHookRuntimeRoot,
+} from "@zcode/shared/workspace-hook-discovery";
 import {
   WorkspaceHookReviewController,
   type WorkspaceHookReviewCommandResult,
@@ -141,6 +145,8 @@ export function createWorkspaceHookRuntimeSecurity(input: {
     logger: input.logger,
     ready,
     ...(onAdmissionStateChanged ? { onAdmissionStateChanged } : {}),
+    // 派发前复核入口脚本（D24）：缺省时 runner 对带 scriptEntry 的声明 fail closed。
+    readScriptState: readWorkspaceHookScriptState,
     snapshot: input.snapshot,
   });
 

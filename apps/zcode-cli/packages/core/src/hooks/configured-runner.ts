@@ -1,7 +1,9 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入本波安全/稳定性修复（详见 docs/development/upstream-sync.md）。
 import {
   HookEventName,
   type CanonicalWorkspaceHookEntry,
   type HookConfig,
+  type HookInput,
   type HookSourceKind,
   type HookMatcherConfig,
 } from "@zcode/contracts";
@@ -85,6 +87,17 @@ function createWorkspaceHookRegistrations(
             hookDeclarationDigest: entry.hookDeclarationDigest,
             reviewItemId: entry.reviewItemId,
           }),
+        ...(entry.scriptEntry
+          ? {
+              verifyBeforeDispatch: (input: HookInput, signal: AbortSignal) =>
+                admission.verifyScriptEntry({
+                  reviewItemId: entry.reviewItemId,
+                  // 与 callback 实际执行的 cwd 一致。
+                  cwd: input.cwd || options.getWorkingDirectory(),
+                  signal,
+                }),
+            }
+          : {}),
         event: entry.event,
         hook,
         hookIndex: entry.hookIndex,
@@ -127,6 +140,7 @@ function workspaceEntryToHookConfig(
 
 function createHookRegistration(input: {
   admission?: HookRegistration["admission"];
+  verifyBeforeDispatch?: HookRegistration["verifyBeforeDispatch"];
   event: HookEventName;
   hook: HookConfig;
   hookIndex: number;
@@ -140,6 +154,7 @@ function createHookRegistration(input: {
 }): HookRegistration {
   return {
     ...(input.admission ? { admission: input.admission } : {}),
+    ...(input.verifyBeforeDispatch ? { verifyBeforeDispatch: input.verifyBeforeDispatch } : {}),
     async: input.hook.type === "command" && input.hook.async === true,
     callback: createConfiguredHookCallback(
       input.options,

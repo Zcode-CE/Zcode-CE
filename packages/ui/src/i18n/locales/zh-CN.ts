@@ -4035,6 +4035,8 @@ const zhCN: Record<string, string> = {
   "settings.hooks.review.reason.policy_requires_pretrust": "策略要求预先信任此 Hook",
   "settings.hooks.review.reason.interaction_timeout": "审核已超时",
   "settings.hooks.review.reason.host_unavailable": "当前连接不支持审核此 Hook",
+  "settings.hooks.review.reason.script_unavailable":
+    "钩子入口脚本不存在或无法读取，请修复后重新审核",
   "settings.hooks.review.reason.rejected": "操作被拒绝",
   "settings.hooks.title": "钩子",
   "settings.workspaceFileSearch.title": "项目搜索范围",

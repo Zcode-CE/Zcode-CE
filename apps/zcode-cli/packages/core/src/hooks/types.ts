@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入本波安全/稳定性修复（详见 docs/development/upstream-sync.md）。
 import type {
   ExecutionPort,
   HookEventName,
@@ -53,6 +54,11 @@ export interface HookRunAdmissionDecision {
 
 export interface HookRegistration {
   admission?: (input: HookInput) => HookRunAdmissionDecision;
+  /**
+   * admission 允许后、HookRunStarted 前的异步复核（D24：项目 Hook 入口脚本）。
+   * 截止时间等于 timeoutMs，不占用执行计时；返回后 runner 会再次同步执行 admission。
+   */
+  verifyBeforeDispatch?: (input: HookInput, signal: AbortSignal) => Promise<HookRunAdmissionDecision>;
   async?: boolean;
   callback: HookCallback;
   descriptor?: HookExecutionDescriptor | ((input: HookInput) => HookExecutionDescriptor);

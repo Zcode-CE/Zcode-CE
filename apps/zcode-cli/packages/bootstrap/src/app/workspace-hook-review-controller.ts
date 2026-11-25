@@ -1,5 +1,7 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入本波安全/稳定性修复（详见 docs/development/upstream-sync.md）。
 import {
   SessionEventType,
+  isWorkspaceHookScriptUnavailable,
   type WorkspaceHookBundleSnapshot,
   type WorkspaceHookReasonCode,
 } from "@zcode/contracts";
@@ -196,6 +198,21 @@ export class WorkspaceHookReviewController {
         return {
           accepted: false,
           reasonCode: "workspace_hooks_blocked_by_policy" as const,
+        };
+      }
+      // 入口脚本不存在或无法读取时没有可审核的内容（D24）：选中任一这样的条目即整体拒绝。
+      // 授权一个读不到的脚本等于把「不可审核」变成「已信任」，派发前复核会一直阻断它。
+      if (
+        snapshot.hooks.some(
+          (entry) =>
+            validation.reviewItemIds.includes(entry.reviewItemId) &&
+            isWorkspaceHookScriptUnavailable(entry),
+        )
+      ) {
+        this.telemetry.responseRejected(target, "workspace_hook_script_unavailable");
+        return {
+          accepted: false,
+          reasonCode: "workspace_hook_script_unavailable" as const,
         };
       }
       let applied: { grantedRecordCount?: number };

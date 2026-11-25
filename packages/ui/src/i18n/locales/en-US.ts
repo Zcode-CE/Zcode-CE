@@ -4330,6 +4330,8 @@ const enUS: Record<string, string> = {
   "settings.hooks.review.reason.blocked_by_policy": "Blocked by policy",
   "settings.hooks.review.reason.policy_requires_pretrust": "Policy requires pre-established trust",
   "settings.hooks.review.reason.interaction_timeout": "Review timed out",
+  "settings.hooks.review.reason.script_unavailable":
+    "The hook script is missing or unreadable — fix it, then review again",
   "settings.hooks.review.reason.host_unavailable": "This connection cannot review this Hook",
   "settings.hooks.review.reason.rejected": "Request rejected",
   "settings.hooks.title": "Hooks",

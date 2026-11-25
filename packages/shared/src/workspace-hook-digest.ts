@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入本波安全/稳定性修复（详见 docs/development/upstream-sync.md）。
 import { createHash } from "node:crypto";
 import { basename, relative, resolve } from "node:path";
 import {
@@ -11,6 +12,12 @@ import {
   type WorkspaceHookRuntimeRoot,
   type WorkspaceHookSourceInput,
 } from "./workspace-hook-config.js";
+import {
+  identifyWorkspaceHookScriptPath,
+  workspaceHookReviewItemId,
+  type WorkspaceHookScriptEntry,
+  type WorkspaceHookScriptState,
+} from "./workspace-hook-script.js";
 
 export interface CanonicalWorkspaceHookEntryData {
   reviewItemId: string;
@@ -28,6 +35,8 @@ export interface CanonicalWorkspaceHookEntryData {
   resolvedTimeoutMs: number;
   resolvedMaxOutputBytes: number;
   statusMessage?: string;
+  /** 能识别的直接入口脚本；同步路径拿不到脚本状态或识别不到入口时缺省。 */
+  scriptEntry?: WorkspaceHookScriptEntry;
   sourceRootEnabled: boolean;
   declarationEnabled: boolean;
   runtimeHooksEnabled: boolean;
@@ -63,6 +72,14 @@ export function resolveWorkspaceHookEntries(input: {
   workspacePath: string;
   sources: readonly WorkspaceHookSourceInput[];
   runtimeRoot: WorkspaceHookRuntimeRoot;
+  /**
+   * readWorkspaceHookScriptStates 的结果。
+   *
+   * 缺省表示调用方拿不到脚本内容（同步构建，如 createConfig）：此时不附加 scriptEntry，
+   * declaration digest 与引入内容绑定之前逐字节相同，既有 Trust 不会一次性失效。
+   * 传入后每个可识别入口都进条目；映射里查不到该 reviewItemId 时记 unverifiable（fail closed）。
+   */
+  scriptStates?: ReadonlyMap<string, WorkspaceHookScriptState>;
 }): CanonicalWorkspaceHookEntryData[] {
   const entries: CanonicalWorkspaceHookEntryData[] = [];
 
@@ -83,8 +100,26 @@ export function resolveWorkspaceHookEntries(input: {
             hook,
             input.runtimeRoot.timeoutMs,
           );
+          const reviewItemId = workspaceHookReviewItemId(
+            sourceFileIndex,
+            event,
+            matcherIndex,
+            hookIndex,
+          );
+          // 只有在调用方拿到脚本状态（异步入口）时才识别入口：同步路径下 scriptEntry 缺席，
+          // 声明摘要保持与引入内容绑定之前逐字节相同，升级本身不会让既有 Trust 失效。
+          const scriptPath =
+            input.scriptStates === undefined ? undefined : identifyWorkspaceHookScriptPath(hook);
+          const scriptEntry =
+            scriptPath === undefined
+              ? undefined
+              : {
+                  path: scriptPath,
+                  // 已经声明要绑定内容却查不到该条目，按 unverifiable 处理：不退回声明级摘要。
+                  state: input.scriptStates?.get(reviewItemId) ?? { kind: "unverifiable" as const },
+                };
           const common = {
-            reviewItemId: `workspace-hook-${sourceFileIndex}-${event}-${matcherIndex}-${hookIndex}`,
+            reviewItemId,
             event,
             matcherIndex,
             hookIndex,
@@ -95,6 +130,7 @@ export function resolveWorkspaceHookEntries(input: {
             resolvedTimeoutMs,
             resolvedMaxOutputBytes: input.runtimeRoot.maxOutputBytes,
             ...(hook.statusMessage ? { statusMessage: hook.statusMessage } : {}),
+            ...(scriptEntry ? { scriptEntry } : {}),
             ...gates,
             editable: source.editable,
             declarationDigestAlgorithm: "sha256" as const,
@@ -108,6 +144,7 @@ export function resolveWorkspaceHookEntries(input: {
               hook,
               defaultTimeoutMs: input.runtimeRoot.timeoutMs,
               resolvedMaxOutputBytes: input.runtimeRoot.maxOutputBytes,
+              ...(scriptEntry ? { scriptEntry } : {}),
             }),
           };
 
@@ -137,6 +174,8 @@ export function buildWorkspaceHookBundleSnapshot(input: {
   workspacePath: string;
   sources: readonly WorkspaceHookSourceInput[];
   runtimeRoot: WorkspaceHookRuntimeRoot;
+  /** 语义同 resolveWorkspaceHookEntries 的 scriptStates：缺省时摘要不绑定脚本内容。 */
+  scriptStates?: ReadonlyMap<string, WorkspaceHookScriptState>;
   discoveredAt?: string;
 }): WorkspaceHookBundleSnapshotData | undefined {
   const hooks = resolveWorkspaceHookEntries(input);
@@ -199,6 +238,7 @@ export function createWorkspaceHookDeclarationDigest(input: {
   hook: WorkspaceHookDefinition;
   defaultTimeoutMs: number;
   resolvedMaxOutputBytes: number;
+  scriptEntry?: WorkspaceHookScriptEntry;
 }): string {
   return sha256(
     canonicalDeclarationPayload({
@@ -218,6 +258,7 @@ function canonicalDeclarationPayload(input: {
   hook: WorkspaceHookDefinition;
   resolvedTimeoutMs: number;
   resolvedMaxOutputBytes: number;
+  scriptEntry?: WorkspaceHookScriptEntry;
 }): unknown[] {
   const execution =
     input.hook.type === "process"
@@ -244,7 +285,17 @@ function canonicalDeclarationPayload(input: {
     execution,
     input.resolvedTimeoutMs,
     input.resolvedMaxOutputBytes,
+    // 直接入口脚本内容进摘要（D24）：脚本变化即要求重新信任。未提供 scriptStates（同步路径）
+    // 或识别不到入口时不追加，摘要与引入内容绑定之前逐字节相同；missing / unverifiable 也进
+    // 摘要，保证它们不会与任何可授权的 file 状态得到同一个 digest。
+    ...(input.scriptEntry
+      ? [["scriptEntry", input.scriptEntry.path, canonicalScriptState(input.scriptEntry.state)]]
+      : []),
   ];
+}
+
+function canonicalScriptState(state: WorkspaceHookScriptState): unknown[] {
+  return state.kind === "file" ? ["file", state.sha256] : [state.kind];
 }
 
 function normalizeRelativeSourcePath(workspacePath: string, sourcePath: string): string {

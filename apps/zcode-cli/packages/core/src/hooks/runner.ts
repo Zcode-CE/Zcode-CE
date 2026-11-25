@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入本波安全/稳定性修复（详见 docs/development/upstream-sync.md）。
 import {
   HookOutcome,
   SessionEventType,
@@ -21,6 +22,7 @@ import {
   resolveHookDescriptor,
   resolveHookFailureOutcome,
   resolveHookRunAdmission,
+  verifyHookBeforeDispatch,
 } from "./runner-helpers.js";
 import type {
   HookRegistration,
@@ -87,7 +89,18 @@ export class InMemoryHookRunner implements HookRunner {
       // dispatch 前重新解析授权决定。预扫描结果可能已过时——前序 Hook
       // 执行期间用户 revoke、管理员收紧 policy 或 trust store reload 都会改变
       // 结论。security revision 的价值就在执行边界重验，授权决定不得缓存。
-      const admission = resolveHookRunAdmission(hook, input, this.logger);
+      let admission = resolveHookRunAdmission(hook, input, this.logger);
+      if (admission.allowed && hook.verifyBeforeDispatch) {
+        // 项目 Hook 入口脚本复核（D24）：等待期间可能发生 revoke / policy 收紧，复核通过后必须再验一次。
+        admission = await verifyHookBeforeDispatch(
+          hook,
+          input,
+          hook.timeoutMs ?? this.defaultTimeoutMs,
+          options.signal,
+          this.logger,
+        );
+        if (admission.allowed) admission = resolveHookRunAdmission(hook, input, this.logger);
+      }
       if (!admission.allowed) {
         await this.emitHookEvent(
           SessionEventType.HookRunBlocked,

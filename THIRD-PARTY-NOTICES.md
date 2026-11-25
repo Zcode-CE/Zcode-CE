@@ -922,6 +922,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - chevrotain@12.0.0 — Apache-2.0
 
+- chokidar@4.0.3 — MIT
+
 - class-variance-authority@0.7.1 — Apache-2.0
 
 - classcat@5.0.5 — MIT
@@ -2022,6 +2024,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - readdir-glob@1.1.3 — Apache-2.0
 
+- readdirp@4.1.2 — MIT
+
 - recast@0.23.11 — MIT
 
 - recharts@3.8.0 — MIT
@@ -2643,6 +2647,10 @@ The original import revisions of copied components are not recorded in the curre
 - ZCode 3.18 data-integrity & block order port (Z.ai) (Apache-2.0): apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts, apps/zcode-cli/packages/contracts/src/model/index.ts, apps/zcode-cli/packages/core/src/agent/tool-part-order.ts, apps/zcode-cli/packages/core/src/agent/message-history.ts, apps/zcode-cli/packages/core/src/agent/session-history-hydrator.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/migrations.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/migration-runner.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/messages.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0023-session-soft-delete-outcome.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0024-session-database-identity.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0025-session-permanent-deletion.ts, apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0026-dwf-run-parent-session-index.ts, apps/zcode-cli/packages/adapters/src/model/transform.ts, apps/zcode-cli/packages/adapters/src/model/runner-normalization.ts, apps/zcode-cli/packages/adapters/src/model/runner-generate.ts, packages/shared/src/zcode-protocol-v4/rows.ts, packages/shared/src/zcode-protocol-v4/snapshot.ts, packages/shared/src/zcode-protocol-v4/transport.ts, packages/shared/src/sqlite-migrations/index.ts, packages/shared/src/sqlite-migrations/schema-too-new.ts, packages/shared/src/database-startup.ts, packages/services/src/oauth/oauthProfileSchema.ts, packages/services/src/oauth/oauthService.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/fec975905a2abd4c07e35c40d51fa097a2258ec9/LICENSE. Original import revision: fec975905a2abd4c07e35c40d51fa097a2258ec9.
 
 - ZCode 4.0 desktop redaction, CA chain & plugin secrets port (Z.ai) (Apache-2.0): packages/desktop/src/main/exportLogs.ts, packages/desktop/src/main/desktopNetworkPolicy.ts, packages/shared/src/log-redaction.ts, apps/zcode-cli/packages/adapters/src/config/plugin-secrets.adapter.ts, apps/zcode-cli/packages/bootstrap/src/plugin-secrets.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/a4b4445141eb7d3b3e99eada9292775383bfc44e/LICENSE. Original import revision: a4b4445141eb7d3b3e99eada9292775383bfc44e.
+
+- ZCode prompt snapshot port v3.18.2 (Z.ai) (Apache-2.0): apps/zcode-cli/packages/core/src/runtime/helpers/prompt-snapshot.ts, apps/zcode-cli/packages/core/src/runtime/internal.ts, apps/zcode-cli/packages/core/src/runtime/methods/compact-active.ts, apps/zcode-cli/packages/core/src/runtime/methods/context-refresh.ts, apps/zcode-cli/packages/core/src/runtime/methods/resume.ts, apps/zcode-cli/packages/core/src/runtime/methods/session-fork.ts, apps/zcode-cli/packages/core/src/runtime/methods/turn-loop.ts, apps/zcode-cli/packages/core/src/runtime/methods/workspace-checkpoints.ts, apps/zcode-cli/packages/core/src/runtime/methods/workspace-fork.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/fec975905a2abd4c07e35c40d51fa097a2258ec9/LICENSE. Original import revision: fec975905a2abd4c07e35c40d51fa097a2258ec9.
+
+- ZCode hook script binding, adb admission, watch primitive & executable open guard v4.0.0 (Z.ai) (Apache-2.0): packages/shared/src/workspace-hook-script.ts, packages/shared/src/workspace-hook-digest.ts, packages/shared/src/workspace-hook-mutation.ts, packages/shared/src/workspace-hook-discovery.ts, apps/zcode-cli/packages/contracts/src/hooks/workspace-hook-trust.ts, apps/zcode-cli/packages/contracts/src/interfaces/execution.port.ts, apps/zcode-cli/packages/core/src/hooks/configured-runner.ts, apps/zcode-cli/packages/core/src/hooks/runner-helpers.ts, apps/zcode-cli/packages/core/src/hooks/runner.ts, apps/zcode-cli/packages/core/src/hooks/types.ts, apps/zcode-cli/packages/core/src/hooks/workspace-hook-runtime-admission.ts, apps/zcode-cli/packages/core/src/hooks/workspace-hook-trust-evaluation.ts, apps/zcode-cli/packages/core/src/tool/handlers/bash-adb-guard.ts, apps/zcode-cli/packages/core/src/tool/handlers/bash-command-parser.ts, apps/zcode-cli/packages/core/src/tool/handlers/bash.ts, apps/zcode-cli/packages/adapters/src/exec/node-execution-adapter.ts, apps/zcode-cli/packages/adapters/src/watch/watched-source.ts, apps/zcode-cli/packages/adapters/src/watch/contract.ts, apps/zcode-cli/packages/adapters/src/watch/deps.ts, apps/zcode-cli/packages/adapters/src/watch/index.ts, apps/zcode-cli/packages/adapters/src/config/config-factory.ts, apps/zcode-cli/packages/bootstrap/src/app/workspace-hook-trust.ts, apps/zcode-cli/packages/bootstrap/src/app/workspace-hook-review-controller.ts, apps/zcode-cli/packages/bootstrap/src/app/workspace-hook-review-mutation.ts, apps/zcode-cli/packages/bootstrap/src/workspace-hook-trust-cli.ts, packages/services/src/hooks/hooksService.ts, packages/desktop/src/main/file-open-apps/executableOpenGuard.ts, packages/desktop/src/main/file-open-apps/index.ts, packages/desktop/src/main/file-open-apps/contract.ts, packages/desktop/src/main/desktopMainIpcHelpers.ts, packages/desktop/src/main/desktopMainIpcPlatform.ts, packages/desktop/src/main/desktopMainIpcRemote.ts, packages/desktop/src/main/index.ts. License reference: https://raw.githubusercontent.com/zai-org/ZCode/a4b4445141eb7d3b3e99eada9292775383bfc44e/LICENSE. Original import revision: a4b4445141eb7d3b3e99eada9292775383bfc44e.
 
 Fig autocomplete source carries the repository's MIT license; the generated registry records npm @withfig/autocomplete@2.692.3 metadata as ISC. The original source MIT notice is retained below.
 
@@ -26715,6 +26723,50 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 ````
 
+### Notice bdfd5e0edb6089e6586c8f15e6a86fab83ffbeeda3b3b7b33734ccb8c5906965
+
+- chokidar@4.0.3: LICENSE
+
+
+
+````text
+The MIT License (MIT)
+
+Copyright (c) 2012 Paul Miller (https://paulmillr.com), Elan Shanker
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the “Software”), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+````
+
+### Notice 22748b67aba7858f24730a8dc6aa876d13d666d74178f8aa0e01af41617e75e7
+
+- chokidar@4.0.3: README.md (license section)
+
+
+
+````text
+## License
+
+MIT (c) Paul Miller (<https://paulmillr.com>), see [LICENSE](LICENSE) file.
+
+````
+
 ### Notice 0ccbf956cffc8dcf515809433cb5242ee67c94513d46e48c261d68d0880de406
 
 - class-variance-authority@0.7.1: LICENSE
@@ -49688,6 +49740,52 @@ IN THE SOFTWARE.
    limitations under the License.
 ````
 
+### Notice dffec71d93f273d2af7b54c6c7e7e70b3289c632ec0d7253210ec21ac336d5ac
+
+- readdirp@4.1.2: LICENSE
+
+
+
+````text
+MIT License
+
+Copyright (c) 2012-2019 Thorsten Lorenz, Paul Miller (https://paulmillr.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+````
+
+### Notice d7659b795379812cc8df27e1feb7d6c7570c734b7714b844a561fdb20a949009
+
+- readdirp@4.1.2: README.md (license section)
+
+
+
+````text
+## License
+
+Copyright (c) 2012-2019 Thorsten Lorenz, Paul Miller (<https://paulmillr.com>)
+
+MIT License, see [LICENSE](LICENSE) file.
+
+````
+
 ### Notice 6ca87d1dce5b82873603e566fd83dabe8771fb169013337d4a14bb9bbf794687
 
 - recast@0.23.11: LICENSE
@@ -57159,6 +57257,10 @@ SOFTWARE.
 - ZCode 3.18 data-integrity & block order port (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/fec975905a2abd4c07e35c40d51fa097a2258ec9/LICENSE
 
 - ZCode 4.0 desktop redaction, CA chain & plugin secrets port (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/a4b4445141eb7d3b3e99eada9292775383bfc44e/LICENSE
+
+- ZCode prompt snapshot port v3.18.2 (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/fec975905a2abd4c07e35c40d51fa097a2258ec9/LICENSE
+
+- ZCode hook script binding, adb admission, watch primitive & executable open guard v4.0.0 (Z.ai): https://raw.githubusercontent.com/zai-org/ZCode/a4b4445141eb7d3b3e99eada9292775383bfc44e/LICENSE
 
 
 

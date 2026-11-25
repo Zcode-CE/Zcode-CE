@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入本波安全/稳定性修复（详见 docs/development/upstream-sync.md）。
 import { basename, resolve } from "node:path";
 import {
   createWorkspaceHookBundleSnapshot,
@@ -7,6 +8,7 @@ import { digestSummary, workspaceIdentitySummary } from "@zcode/core";
 import {
   buildWorkspaceHookBundleSnapshot,
   readWorkspaceHookProjectSources,
+  readWorkspaceHookScriptStates,
   type WorkspaceHookRuntimeRoot,
 } from "@zcode/shared/workspace-hook-discovery";
 import {
@@ -86,11 +88,19 @@ async function rebuildSnapshot(
       { cause: discovery.errors[0]?.error },
     );
   }
+  // 重建必须与运行时快照同形（D24）：运行时用 createConfigAsync 绑定入口脚本内容，
+  // 这里漏传 scriptStates 会让重建的 bundleDigest 退回声明级，toggle 恒报
+  // workspace_hooks_bundle_changed；脚本在审核后被替换也要在这里体现为新的 bundleDigest。
+  const scriptStates = await readWorkspaceHookScriptStates({
+    workspacePath: options.workingDirectory,
+    sources: discovery.sources,
+  });
   const snapshot = buildWorkspaceHookBundleSnapshot({
     workspaceIdentity: options.workspaceIdentity,
     workspacePath: options.workingDirectory,
     sources: discovery.sources,
     runtimeRoot: options.runtimeRoot,
+    scriptStates,
   });
   if (!snapshot) {
     throw new WorkspaceHookMutationError(
