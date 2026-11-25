@@ -194,6 +194,7 @@ import {
   registerPlatformIpcHandlers,
   type AppSettingsSyncPatch,
 } from "./desktopMainIpcPlatform.js";
+import { createExecutableFileOpenConfirmer } from "./file-open-apps/index.js";
 import {
   loadCliMcpFromUserDirectory,
   migrateLegacyCommonMcp,
@@ -2008,9 +2009,14 @@ app.whenReady().then(async () => {
     });
   }
 
+  // 平台与远控两组 IPC 共用同一确认器，打开可执行类文件时语言跟随当前应用设置。
+  const confirmExecutableFileOpen = createExecutableFileOpenConfirmer(
+    () => currentApplicationLocale,
+  );
   registerPlatformIpcHandlers({
     fetchHelpConfig: readHelpConfig,
     logger,
+    confirmExecutableFileOpen,
     // F10(aac47556):设置页置灰查询——先确保托盘实例就绪(用户装扩展后首次查询会补建),
     // 再返回合并了 trayReady 的最终能力,避免设置页显示可开启但关窗实际走确认退出的
     // 不一致(CR-01)。
@@ -2131,6 +2137,7 @@ app.whenReady().then(async () => {
   // armsCustomContext / finalArmsCustomEventE2EEnabled 六个遥测选项。
   registerRemoteIpcHandlers({
     logger,
+    confirmExecutableFileOpen,
     createRemoteWorkspaceSession: remoteSessionManager.createRemoteWorkspaceSession,
     disposeRemoteWorkspaceSession: remoteSessionManager.disposeRemoteWorkspaceSession,
     cancelPendingRemoteWorkspaceSessionsForWindow:

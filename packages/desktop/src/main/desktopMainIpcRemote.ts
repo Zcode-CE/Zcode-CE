@@ -19,6 +19,7 @@ import {
   registerOAuthState,
 } from "./desktopOAuthDeepLink.js";
 import { openFileUrlInDefaultApp, openPathInDefaultApp } from "./desktopMainIpcHelpers.js";
+import type { ConfirmExecutableFileOpen } from "./file-open-apps/index.js";
 
 function isAllowedExternalOpenUrl(value: string): boolean {
   try {
@@ -131,6 +132,8 @@ export function registerRemoteIpcHandlers(options: {
     warn: (...args: unknown[]) => void;
     error: (...args: unknown[]) => void;
   };
+  /** 系统默认打开可执行类文件前的用户确认（见 file-open-apps/executableOpenGuard）。 */
+  confirmExecutableFileOpen: ConfirmExecutableFileOpen;
   // 遥测移除（P1）：这里原有 appTelemetryRuntime / onOAuthCallbackHandledSideEffect /
   // appTelemetryCore / reportRemoteUsageEvent / armsCustomContext / finalArmsCustomEventE2EEnabled
   // 六个上报相关选项，随 TelemetryCore 与 ARMS 一并删除。
@@ -201,7 +204,7 @@ export function registerRemoteIpcHandlers(options: {
     // 修复(X5):file: 协议交给 openFileUrlInDefaultApp(转路径 + openPath),
     // shell.openExternal 处理不了本地文件 URL。
     if (new URL(url).protocol === "file:") {
-      void openFileUrlInDefaultApp(url, options.logger);
+      void openFileUrlInDefaultApp(url, options.logger, options.confirmExecutableFileOpen);
       return;
     }
     const sender = event.sender;
@@ -232,7 +235,7 @@ export function registerRemoteIpcHandlers(options: {
   });
 
   ipcMain.handle(PlatformChannels.OpenExternalFile, async (_event, rawPath: string) =>
-    openPathInDefaultApp(rawPath, options.logger),
+    openPathInDefaultApp(rawPath, options.logger, options.confirmExecutableFileOpen),
   );
 
   ipcMain.on(PlatformChannels.RendererReady, (event) => {

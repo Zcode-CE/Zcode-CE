@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入本波安全/稳定性修复（详见 docs/development/upstream-sync.md）。
 /* eslint-disable max-lines -- 桌面平台 IPC 集中装配，拆散会让权限边界更难审计；行数随平台能力增长。 */
 import { BrowserWindow, dialog, ipcMain, nativeTheme } from "electron";
 import { readZCodeStdioTapDevState } from "@zcode/services/node";
@@ -25,7 +26,10 @@ import {
   type FileApplicationTarget,
 } from "@zcode/shared";
 import { getAppIconDataUrl, getInstalledEditors } from "./editors.js";
-import { createFileApplicationService } from "./file-open-apps/index.js";
+import {
+  createFileApplicationService,
+  type ConfirmExecutableFileOpen,
+} from "./file-open-apps/index.js";
 import { getApplicationIcon } from "./applicationIcons.js";
 import { exportLogs } from "./exportLogs.js";
 import { resolveCommunityUrl } from "./desktopCommandHandlers.js";
@@ -72,6 +76,8 @@ export function registerPlatformIpcHandlers(options: {
     warn: (...args: unknown[]) => void;
   };
   applyApplicationLocale: (locale: Locale) => Promise<void>;
+  /** 系统关联应用打开可执行类文件前的用户确认（见 file-open-apps/executableOpenGuard）。 */
+  confirmExecutableFileOpen: ConfirmExecutableFileOpen;
   resolveSystemLocale: () => Locale;
   focusWorkspaceInExistingWindow: (
     path: string,
@@ -412,6 +418,7 @@ export function registerPlatformIpcHandlers(options: {
   // 「打开方式」：枚举系统关联应用。平台不支持或系统调用失败一律返回空数组（不抛错）——
   // UI 据此降级为只剩默认打开，这是能力检测而不是错误路径。
   const fileApplications = createFileApplicationService({
+    confirmExecutableOpen: options.confirmExecutableFileOpen,
     getIcon: (id, path) => getAppIconDataUrl(id, path),
     logger: { warn: (message, detail) => options.logger.warn(message, detail) },
   });

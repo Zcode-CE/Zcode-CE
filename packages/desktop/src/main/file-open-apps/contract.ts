@@ -1,3 +1,4 @@
+// Modified by ZCode: 自上游 zai-org/ZCode v4.0.0 (a4b44451, Apache-2.0) 并入本波安全/稳定性修复（详见 docs/development/upstream-sync.md）。
 import type { FileApplicationInfo, FileApplicationTarget } from "@zcode/shared";
 
 /** 系统关联的真实身份不跨 IPC，只将其摘要给 renderer。 */
@@ -32,9 +33,12 @@ export interface FileApplicationNativeAdapter {
 export interface FileOpenAppsContract {
   /** 无持久状态；本地真实文件以外、系统失败均返回空数组。 */
   getFileApplications(target: FileApplicationTarget): Promise<FileApplicationInfo[]>;
-  /** 每次重查关联；不会执行 renderer 提供的路径/命令作为应用。 */
+  /**
+   * 每次重查关联；不会执行 renderer 提供的路径/命令作为应用。
+   * 会执行文件的组合先经用户确认；用户取消返回 { success: true, cancelled: true }。
+   */
   openFileWithApplication(
     applicationId: string,
     target: FileApplicationTarget,
-  ): Promise<{ success: boolean; error?: string }>;
+  ): Promise<{ success: boolean; error?: string; cancelled?: boolean }>;
 }

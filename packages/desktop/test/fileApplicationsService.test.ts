@@ -1,27 +1,33 @@
+/**
+ * 「打开方式」服务：只测不依赖真实系统的部分（注入假适配器）。
+ *
+ * 钉住四条最容易被改坏的规则：
+ * 1. 入口不信任 renderer —— 远端目标、目录、非绝对路径、不存在的文件一律返回空；
+ * 2. 应用 id 是身份的摘要，同一个 bundle 的多个安装副本合并成一条（列表里出现两个
+ *    "Chromium" 时用户无法选择，且 id 与打开时的重查结果必须对得上）；
+ * 3. 打开时按 id 重查，绝不把 renderer 传来的字符串当命令执行；
+ * 4. 会执行文件的组合（当前平台的可执行类后缀）先问用户，取消不算失败也不启动应用。
+ *
+ * 真实枚举走系统 API（macOS LaunchServices / Windows 关联 / Linux .desktop），
+ * 那部分只能在与目标平台一致时人工验证，见交付说明。
+ */
+
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { register } from "node:module";
 import test, { after } from "node:test";
 import type { FileApplicationInfo } from "@zcode/shared";
-import { createFileApplicationService } from "../src/main/file-open-apps/index.js";
 import type {
   FileApplicationNativeAdapter,
   NativeFileApplication,
 } from "../src/main/file-open-apps/contract.js";
 
-/**
- * 「打开方式」服务：只测不依赖真实系统的部分（注入假适配器）。
- *
- * 钉住三条最容易被改坏的规则：
- * 1. 入口不信任 renderer —— 远端目标、目录、非绝对路径、不存在的文件一律返回空；
- * 2. 应用 id 是身份的摘要，同一个 bundle 的多个安装副本合并成一条（列表里出现两个
- *    "Chromium" 时用户无法选择，且 id 与打开时的重查结果必须对得上）；
- * 3. 打开时按 id 重查，绝不把 renderer 传来的字符串当命令执行。
- *
- * 真实枚举走系统 API（macOS LaunchServices / Windows 关联 / Linux .desktop），
- * 那部分只能在与目标平台一致时人工验证，见交付说明。
- */
+// 打开链路现在会做可执行类文件确认，guard 静态导入 electron；node 侧用桩替换。
+register(new URL("./support/stubResolver.mjs", import.meta.url));
+
+const { createFileApplicationService } = await import("../src/main/file-open-apps/index.js");
 
 // 服务要求目标必须是真实存在的本机文件（不信任 renderer 的声明），所以夹具用真实临时文件。
 const workspaceDir = mkdtempSync(join(tmpdir(), "zcode-file-apps-"));
@@ -30,6 +36,25 @@ writeFileSync(targetPath, "hello");
 after(() => rmSync(workspaceDir, { recursive: true, force: true }));
 
 const TARGET = { path: targetPath, pathKind: "file" as const };
+
+// 可执行类后缀取当前平台真正会命中的那个：测试机换成 macOS/Windows 时也走同一条确认分支。
+const EXECUTABLE_SUFFIX =
+  process.platform === "darwin" ? "terminal" : process.platform === "win32" ? "bat" : "sh";
+const executablePath = join(workspaceDir, `payload.${EXECUTABLE_SUFFIX}`);
+writeFileSync(executablePath, "#!/bin/sh\necho pwned\n");
+const EXECUTABLE_TARGET = { path: executablePath, pathKind: "file" as const };
+
+/** 记录确认器收到的路径，并固定返回用户的选择。 */
+function createConfirm(confirmed: boolean) {
+  const calls: string[] = [];
+  return {
+    calls,
+    confirm: async (path: string) => {
+      calls.push(path);
+      return confirmed;
+    },
+  };
+}
 
 function fakeAdapter(applications: NativeFileApplication[]) {
   const opened: Array<{ key: string; path: string }> = [];
@@ -48,7 +73,10 @@ test("目标校验：远端 / 目录 / 不存在的路径一律返回空", async
   const { adapter } = fakeAdapter([
     { key: "/Applications/Bundle.app", name: "Bundle", isDefault: true },
   ]);
-  const service = createFileApplicationService({ adapter });
+  const service = createFileApplicationService({
+    adapter,
+    confirmExecutableOpen: async () => true,
+  });
   assert.deepEqual(
     await service.getFileApplications({ ...TARGET, workspaceIdentity: "ssh://host" }),
     [],
@@ -77,7 +105,10 @@ test("id 是身份摘要：稳定、非法应用不出现在列表里", async ()
     { key: "", name: "Broken", isDefault: false },
     { key: "/Applications/B.app", name: "  ", isDefault: false },
   ]);
-  const service = createFileApplicationService({ adapter });
+  const service = createFileApplicationService({
+    adapter,
+    confirmExecutableOpen: async () => true,
+  });
   const apps = await service.getFileApplications(TARGET);
   assert.equal(apps.length, 1);
   const [app] = apps as [FileApplicationInfo];
@@ -108,7 +139,10 @@ test("同一身份的多个安装副本合并成一条，且优先默认 / 系�
       version: "119",
     },
   ]);
-  const service = createFileApplicationService({ adapter });
+  const service = createFileApplicationService({
+    adapter,
+    confirmExecutableOpen: async () => true,
+  });
   const apps = await service.getFileApplications(TARGET);
   assert.equal(apps.length, 1, "同一 bundle 只出现一条");
   assert.equal(apps[0]?.isDefault, true, "保留默认安装的副本");
@@ -118,7 +152,10 @@ test("打开时按 id 重查：未知 id 不执行任何命令", async () => {
   const { adapter, opened } = fakeAdapter([
     { key: "/Applications/A.app", name: "Alpha", isDefault: true, identity: "darwin-bundle:com.a" },
   ]);
-  const service = createFileApplicationService({ adapter });
+  const service = createFileApplicationService({
+    adapter,
+    confirmExecutableOpen: async () => true,
+  });
   const [app] = await service.getFileApplications(TARGET);
   assert.ok(app);
 
@@ -132,6 +169,51 @@ test("打开时按 id 重查：未知 id 不执行任何命令", async () => {
   assert.deepEqual(opened, [{ key: "/Applications/A.app", path: TARGET.path }]);
 });
 
+test("可执行类文件取消确认：不启动应用，返回 cancelled 而不是失败", async () => {
+  const { adapter, opened } = fakeAdapter([
+    { key: "/Applications/A.app", name: "Alpha", isDefault: true, identity: "darwin-bundle:com.a" },
+  ]);
+  const { calls, confirm } = createConfirm(false);
+  const service = createFileApplicationService({ adapter, confirmExecutableOpen: confirm });
+  const [app] = await service.getFileApplications(EXECUTABLE_TARGET);
+  assert.ok(app);
+
+  const result = await service.openFileWithApplication(app.id, EXECUTABLE_TARGET);
+  assert.deepEqual(result, { success: true, cancelled: true }, "取消不是失败");
+  assert.deepEqual(calls, [executablePath], "确认器收到的是用户要点开的真实路径");
+  assert.deepEqual(opened, [], "取消后不得启动任何应用");
+});
+
+test("可执行类文件确认后照常打开", async () => {
+  const { adapter, opened } = fakeAdapter([
+    { key: "/Applications/A.app", name: "Alpha", isDefault: true, identity: "darwin-bundle:com.a" },
+  ]);
+  const { calls, confirm } = createConfirm(true);
+  const service = createFileApplicationService({ adapter, confirmExecutableOpen: confirm });
+  const [app] = await service.getFileApplications(EXECUTABLE_TARGET);
+  assert.ok(app);
+
+  const result = await service.openFileWithApplication(app.id, EXECUTABLE_TARGET);
+  assert.deepEqual(result, { success: true });
+  assert.equal(calls.length, 1);
+  assert.deepEqual(opened, [{ key: "/Applications/A.app", path: executablePath }]);
+});
+
+test("普通文档不弹确认，直接打开", async () => {
+  const { adapter, opened } = fakeAdapter([
+    { key: "/Applications/A.app", name: "Alpha", isDefault: true, identity: "darwin-bundle:com.a" },
+  ]);
+  const { calls, confirm } = createConfirm(false);
+  const service = createFileApplicationService({ adapter, confirmExecutableOpen: confirm });
+  const [app] = await service.getFileApplications(TARGET);
+  assert.ok(app);
+
+  const result = await service.openFileWithApplication(app.id, TARGET);
+  assert.deepEqual(result, { success: true });
+  assert.deepEqual(calls, [], "普通文档不该打扰用户");
+  assert.equal(opened.length, 1, "取消桩返回 false 也不影响普通文档打开");
+});
+
 test("枚举失败按空列表处理（能力检测不是错误路径）", async () => {
   const failing: FileApplicationNativeAdapter = {
     async query() {
@@ -141,6 +223,10 @@ test("枚举失败按空列表处理（能力检测不是错误路径）", async
       throw new Error("spawn ENOENT");
     },
   };
-  const service = createFileApplicationService({ adapter: failing, logger: { warn: () => {} } });
+  const service = createFileApplicationService({
+    adapter: failing,
+    confirmExecutableOpen: async () => true,
+    logger: { warn: () => {} },
+  });
   assert.deepEqual(await service.getFileApplications(TARGET), []);
 });
