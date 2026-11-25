@@ -89,6 +89,10 @@
     "./tools": {
       "types": "./dist/tools/index.d.ts",
       "import": "./dist/tools/index.js"
+    },
+    "./watch": {
+      "types": "./dist/watch/index.d.ts",
+      "import": "./dist/watch/index.js"
     }
   },
   "scripts": {
@@ -111,6 +115,7 @@
     "@zcode/zcode-cua": "workspace:*",
     "ai": "6.0.193",
     "cheerio": "^1.0.0",
+    "chokidar": "4.0.3",
     "iconv-lite": "0.7.2",
     "jimp": "^1.6.1",
     "koffi": "2.15.6",
