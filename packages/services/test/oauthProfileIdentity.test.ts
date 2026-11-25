@@ -8,7 +8,10 @@ import type {
   OAuthTokenSet,
   OAuthUserProfile,
 } from "@zcode/shared";
-import type { ICredentialService } from "../src/credential/credential.js";
+import type {
+  OAuthSessionCredentialService,
+  UpdateManyOptions,
+} from "../src/credential/credential.js";
 import {
   OAuthProfileIdentityMismatchError,
   refreshLegacyBigModelCachedProfile,
@@ -26,12 +29,18 @@ import { OAuthService } from "../src/oauth/oauthService.js";
 const MAIN_USER_ID = "zcode-user-1";
 const BUSINESS_USER_ID = "customer-999";
 
-interface CredentialHarness extends ICredentialService {
+interface CredentialHarness extends OAuthSessionCredentialService {
   readonly store: Map<string, string>;
-  /** 每次 load 返回后回调：用于在"刷新已读到可信主身份、远端请求仍在飞行"的窗口里改存储。 */
+  /** 每次读到某个键后回调：用于在"刷新已读到可信主身份、远端请求仍在飞行"的窗口里改存储。 */
   afterLoad?: (key: string) => void;
 }
 
+/**
+ * 内存版最小凭据契约：OAuth 只需要 load / loadMany / updateMany。
+ *
+ * updateMany 必须真的实现整组 CAS（expected 里任一键不等就一个都不写），否则
+ * 「过期快照不覆盖新登录」这类断言会被替身放行 —— 那测的就不是实现，而是替身。
+ */
 function createCredentialHarness(initial: Record<string, string> = {}): CredentialHarness {
   const store = new Map(Object.entries(initial));
   const harness: CredentialHarness = {
@@ -41,11 +50,27 @@ function createCredentialHarness(initial: Record<string, string> = {}): Credenti
       harness.afterLoad?.(key);
       return value;
     },
-    async save(key: string, value: string): Promise<void> {
-      store.set(key, value);
+    async loadMany(keys: readonly string[]): Promise<Record<string, string | null>> {
+      const values: Record<string, string | null> = {};
+      for (const key of keys) {
+        values[key] = store.get(key) ?? null;
+        harness.afterLoad?.(key);
+      }
+      return values;
     },
-    async delete(key: string): Promise<void> {
-      store.delete(key);
+    async updateMany(
+      changes: Readonly<Record<string, string | null>>,
+      options: UpdateManyOptions = {},
+    ): Promise<boolean> {
+      for (const [key, wanted] of Object.entries(options.expected ?? {})) {
+        if ((store.get(key) ?? null) !== wanted) return false;
+      }
+      options.assertCurrent?.();
+      for (const [key, value] of Object.entries(changes)) {
+        if (value === null) store.delete(key);
+        else store.set(key, value);
+      }
+      return true;
     },
   };
   return harness;

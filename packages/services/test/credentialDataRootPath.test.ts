@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test, { after } from "node:test";
@@ -36,6 +37,29 @@ async function createRoot(): Promise<string> {
 }
 
 const CREDENTIAL_KEY = "oauth:zai:access_token";
+const CREDENTIAL_SECRET_FILE_NAME = "credential-secret";
+
+/**
+ * 在每个数据根预置私有主密钥，把密钥来源钉在「同目录 credential-secret」上。
+ *
+ * 为什么必须钉：装了原生 @napi-rs/keyring 且本机系统凭据库可用时，密钥来源会变成 `os`，
+ * 目录里不会发布 credential-secret（密钥来源优先级见 CONTRACT.md）。不钉的话同一份测试在
+ * 「有 keyring 的机器」与「CI 上没有 keyring 的机器」会走两条不同路径：本机读不到这个文件，
+ * CI 又能读到，两边断言的含义并不相同。
+ *
+ * 预置文件命中优先级 3，因此本机与 CI 走同一条路径；CLI 侧 cipher 用 `env: {}` 创建也能
+ * 读到同一把密钥，路径契约与密钥契约可以一起覆盖。
+ */
+async function publishCredentialSecret(root: string): Promise<string> {
+  const secret = randomBytes(32).toString("base64url");
+  const secretDir = join(root, ".zcode", "v2");
+  const secretPath = join(secretDir, CREDENTIAL_SECRET_FILE_NAME);
+  await mkdir(secretDir, { recursive: true });
+  // 私有密钥要求 0600：权限放宽会被判 stage=managed 并拒绝使用。
+  await writeFile(secretPath, secret, { mode: 0o600 });
+  await chmod(secretPath, 0o600);
+  return secret;
+}
 
 test("T13：同一 env + 同一数据根下，Host 与 CLI 的凭据路径逐字节相等", () => {
   const root = "/tmp/zcode-cred-path-contract";
@@ -65,6 +89,9 @@ test("T13：同一 env + 同一数据根下，Host 与 CLI 的凭据路径逐字
 test("数据根切换：根 A 写入 → 切到根 B → Host/CLI 都读 B，A 的密文不被误读", async () => {
   const rootA = await createRoot();
   const rootB = await createRoot();
+  const secretA = await publishCredentialSecret(rootA);
+  const secretB = await publishCredentialSecret(rootB);
+  assert.notEqual(secretA, secretB, "不同数据根必须各自持有密钥");
   const service = createCredentialService();
 
   setDataBaseDir(rootA);
@@ -74,6 +101,10 @@ test("数据根切换：根 A 写入 → 切到根 B → Host/CLI 都读 B，A �
   assert.equal(await service.load(CREDENTIAL_KEY), "token-A");
   const recordA = JSON.parse(await readFile(fileA, "utf8")) as Record<string, string>;
   assert.ok(recordA[CREDENTIAL_KEY]?.startsWith("enc:v2:"), "根 A 必须是 v2 密文");
+  assert.ok(
+    recordA[CREDENTIAL_KEY]?.startsWith("enc:v2:env:"),
+    "预置 credential-secret ⇒ 必须走文件源，本机有无系统凭据库都一致",
+  );
 
   // 切到根 B：路径跟随新根，且读不到 A 的值（不是「回落到旧根」）。
   setDataBaseDir(rootB);
@@ -91,11 +122,16 @@ test("数据根切换：根 A 写入 → 切到根 B → Host/CLI 都读 B，A �
   const cliCipher = createSystemCredentialCipher({ filePath: cliPath, env: {} });
   assert.equal(await cliCipher.decrypt(recordB[CREDENTIAL_KEY]!), "token-B");
 
-  // 两个数据根各有自己的密钥（文件兜底），因此 A 的密文在 B 的密钥下必须明确失败，
-  // 而不是被当成可解析内容返回。
-  const secretA = await readFile(join(rootA, ".zcode", "v2", "credential-secret"), "utf8");
-  const secretB = await readFile(join(rootB, ".zcode", "v2", "credential-secret"), "utf8");
-  assert.notEqual(secretA, secretB, "不同数据根必须各自持有密钥");
+  // 两个数据根各有自己的密钥（预置的私有文件被原样使用，没有被改写或替换成系统库条目），
+  // 因此 A 的密文在 B 的密钥下必须明确失败，而不是被当成可解析内容返回。
+  assert.equal(
+    await readFile(join(rootA, ".zcode", "v2", CREDENTIAL_SECRET_FILE_NAME), "utf8"),
+    secretA,
+  );
+  assert.equal(
+    await readFile(join(rootB, ".zcode", "v2", CREDENTIAL_SECRET_FILE_NAME), "utf8"),
+    secretB,
+  );
   await assert.rejects(
     () => cliCipher.decrypt(recordA[CREDENTIAL_KEY]!),
     (error: { code?: string }) => error.code === "CREDENTIAL_SECURE_STORAGE_UNAVAILABLE",

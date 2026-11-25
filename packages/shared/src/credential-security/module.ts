@@ -1,5 +1,5 @@
 /**
- * 凭据 v2 的公开面（P1）。
+ * 凭据 v2 与批量契约的公开面（P1 + SPEC §7）。
  *
  * 只有后端（Desktop Host、桌面内置 agent、独立 CLI、独立 Server）可以 import 这里：
  * 系统密钥绝不进入 Renderer、通用 RPC 或日志。后续阶段只追加导出，不改已发布名。
@@ -55,6 +55,25 @@ export {
   type CredentialRecordTarget,
   type MutateCredentialRecordOptions,
 } from "./credentialRecordStore.js";
+export {
+  captureCredentialRecoveryGuard,
+  currentCredentialGeneration,
+  withCredentialGenerationScope,
+  type CredentialFileGuard,
+} from "./credentialGenerationScope.js";
+export {
+  captureCredentialGuard,
+  deleteCredentialValueIfEquals,
+  deleteUnreadableCredentialValues,
+  loadManyCredentialValues,
+  recoverUnreadableCredentialValue,
+  saveCredentialValueIfAbsent,
+  updateCredentialValuesMany,
+  type DeleteUnreadableCredentialOptions,
+  type RecoverUnreadableResult,
+  type SaveIfAbsentResult,
+  type UpdateCredentialValuesOptions,
+} from "./credentialBatchStore.js";
 export {
   createCredentialCipherByPath,
   createServerCredentialCipher,

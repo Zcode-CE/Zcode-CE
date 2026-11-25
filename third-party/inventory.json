@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "7e40eff61acd6f56402ee2220aee431e6c61dc08c20979dbd6a9adce89e71197",
+  "noticesSha256": "e0dd79a733934f19af716425fedf23b31a1ddadf4807c47d71df7dff2bb24f5f",
   "inputs": {
     ".agents/skills/agent-browser/references/authentication.md": "e2c3b0f4a1dc1368dee821f03c000d818a48421d09f3872525dddffe73f2112b",
     ".agents/skills/agent-browser/references/commands.md": "17522fc56d742663f47231ff06c4811abc87e12c7f78e11f94d253ddd540a909",
@@ -421,7 +421,7 @@
     "apps/zcode-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
     "package.json": "1cd794b6dbf9e14796bae13ef6d1b4e50709f7fb922a04b37d6a6d4268110a72",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
-    "packages/desktop/package.json": "7e5c66f0b858adae436552bfcfafbfaa469b18f9fbff23470d6c3c76432c075a",
+    "packages/desktop/package.json": "ff7d867a03a9aad40098957d8edd8ee0c6e19afb63437229fd2992be3bf15797",
     "packages/desktop/src/host/index.ts": "a0e335750bedb82216ee8d0b0bfe56bc159eaa56ae84a8bcf99b7a0020702ce6",
     "packages/desktop/src/main/autoUpdater.ts": "afd58ffc03bf86771965f2a1ca27a9fc54842581f4a01e34b94f762ea4d937dc",
     "packages/desktop/src/main/desktopMainIpcHelpers.ts": "a3e917745f814b5a47d167e343086bcfca289a262d0ae176cb692443cc3c9562",
@@ -1703,9 +1703,9 @@
     "packages/services/src/gen-ui/module.ts": "a8b844795cbd629c1036351a4768e98db1466251b61a55fd18530d4fff60fd9b",
     "packages/services/src/gen-ui/node.ts": "a6047379a2ad34185cd98f3d0ada603d376fd034744eb86b9184eb10547d48fd",
     "packages/services/src/index.ts": "ab2d1d9ed00a85e63b511606f94fffabdada794344eda4173f0c93b466485936",
-    "packages/services/src/node.ts": "e4b812583b30ae871533651b417ea5ca044113eda542a15ec8995fc4fa40bc52",
+    "packages/services/src/node.ts": "38c07673fa6733fd5c37d9f31decd571d2766a1c2887fdaa87f165b797f702ea",
     "packages/services/src/oauth/oauthProfileSchema.ts": "e6d6732edf23968292895d9fec493f93c4a7d6b4ba8a299c87e3114c3ea4ce23",
-    "packages/services/src/oauth/oauthService.ts": "c94d146c7343572e17b71828677830246893e5be7bf7405f1980dcc65d269188",
+    "packages/services/src/oauth/oauthService.ts": "bb32bc4a72999318dea4c75db83833f5ddada0efe71e4a0c3861e43bf09cbf48",
     "packages/services/src/plugin-ui-bridge/appToolsContract.ts": "13543dee77d43a67af4066fd9b98706cc0d2e478d9edf7508f1da155f6b3176c",
     "packages/services/src/plugin-ui-bridge/contract.example.ts": "7c0e4a5ab6ba1178de7b0efd0621a92a3561baa2682f3e9273b6f41d9c54d072",
     "packages/services/src/plugin-ui-bridge/CONTRACT.md": "4f60abf0876f83177be041332540e76c340a888f75d51d60c056a566e84ba800",
@@ -2085,8 +2085,8 @@
     "packages/ui/src/hooks/useBrowserSitePermissions.ts": "75d84af4d726b95d0d7cd166b1977514dc56d1644122b5857724cfc349ff0faa",
     "packages/ui/src/hooks/useCodingPlanQuotaResetUi.ts": "eed75a370ca2a08fa78ecd9129ac36355017b4ab9ed5d05c7c603d252587b6b4",
     "packages/ui/src/hooks/useWorkflowRunSave.ts": "e29d0d84541ecc772c8295255fefab7c537f9c75948210147838a82ec3dbc40d",
-    "packages/ui/src/i18n/locales/en-US.ts": "200af8456dd5aa717561280c78e74df6458275f377ec435c14ba884f613da4bd",
-    "packages/ui/src/i18n/locales/zh-CN.ts": "1679464150dfbf858e6d4a084e6609c20a1e6dba16bf0ec8ab8ed8bea1745d45",
+    "packages/ui/src/i18n/locales/en-US.ts": "2d4e09f1f452f8266f05754a97f16b1e1a5c5adfb6e6563f445fb1552b34933e",
+    "packages/ui/src/i18n/locales/zh-CN.ts": "2635bc34e7d2a5f517d2637ffaaec629c37500a10abec84df3439d5f0fa1887e",
     "packages/ui/src/lib/assistantDirectiveParser.ts": "c64b119e46f917e2d869658559cb1113cc40caae1a89d68328b256ee4d76e09f",
     "packages/ui/src/lib/builtinSkillI18n.ts": "fbb44f7044214b70148f64dbafc1cea5ea550531e8084965ea978c5defc06deb",
     "packages/ui/src/lib/codingPlanQuotaResetUi.ts": "9ff69e18487e842d56136283b15fe9bfdfd383b79d911b25f967ec69f65af11f",
@@ -2178,7 +2178,7 @@
     "packages/ui/src/v4/conversationProjectionStore.ts": "cef60d74848318c68dc5c755dc1b0af9b716fefb10a2014271fc4176ca19b58e",
     "packages/ui/src/v4/ConversationQueuePanel.tsx": "c3393a54146a7dd7d9ec9821ff43b6c371844a252f1b12fd9eee01c006778568",
     "packages/ui/src/v4/conversationRowContext.ts": "34fa5876e83014c3e58e7ddeb6c096020f4dd0f85a7e0471618adbaa5188140f",
-    "packages/ui/src/v4/ConversationRowView.tsx": "a384b9d9f0bd6cc8854b9b2d9bf9e9f32cb406164efe3a61a01f1618b9f0de5b",
+    "packages/ui/src/v4/ConversationRowView.tsx": "12224fd813ce93adcb2269fdaecc7e7f039b77de9772853b6c9e66c454499fad",
     "packages/ui/src/v4/ConversationTimeline.tsx": "89df6ef72839bbb3b4541db5af87dc5c83a121087961ffb8fa72c9c6485efd8e",
     "packages/ui/src/v4/ConversationTurnGroup.tsx": "d5f92543cb4e3eb3169b20a8b33c13e2d49dfa56996220c286b1dbfd996b63f7",
     "packages/ui/src/v4/conversationTurnRenderUnits.ts": "0caae57309ff5b65ce7fd097bcf61e53d76867a78243105b2cb5e25f259de118",
@@ -3345,7 +3345,7 @@
     "packages/zcode-server-cli/package.json": "6e294c4409cb90863d85b2e3d60f92766b156ccee577ebfeaffcb85e94194004",
     "patches/@ai-sdk__anthropic@3.0.81.patch": "d3a7c381eba7f5157f765a0528003af17cf84544911dfb7412c7800168e01c18",
     "patches/@ai-sdk__openai-compatible@2.0.60.patch": "9632fe9d821b3dc20939ae509cc35b968d90d018bbd1d812390718898182a38b",
-    "pnpm-lock.yaml": "44e737f11b8b49718a394c176237e93e6f653eb8ac8bfe983de1d1c2b8ea0149",
+    "pnpm-lock.yaml": "fe0c8a6ddcd601e7e34d18f80804a8e1a521f0fae941918f7a65c389a9eec5ec",
     "pnpm-workspace.yaml": "f18a18233e82cda1dc40be61bf2ad1bc99de25de63ad0be64bc652761a638372",
     "scripts/license-texts/Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "scripts/license-texts/MPL-2.0.txt": "5eba353fe5076ac3432177f8ab1cf75e3afcd0584251e37c3bfead5f447d040e",
@@ -5646,6 +5646,90 @@
         {
           "member": "LICENSE",
           "sha256": "8802fecf9da4367bc23bcf20b21cc143785fc6c92b152f3fa7fbe6ce08d344d6"
+        }
+      ]
+    },
+    {
+      "name": "@napi-rs/keyring-darwin-arm64",
+      "version": "2.1.2",
+      "license": "MIT",
+      "repository": "https://github.com/Brooooooklyn/keyring-node",
+      "notices": [
+        {
+          "member": "LICENSE.third-party.md",
+          "sha256": "91e92b200d6215078af0c69da9d07e3333c3d15e16f36989012e63e0bfc98749"
+        }
+      ]
+    },
+    {
+      "name": "@napi-rs/keyring-darwin-x64",
+      "version": "2.1.2",
+      "license": "MIT",
+      "repository": "https://github.com/Brooooooklyn/keyring-node",
+      "notices": [
+        {
+          "member": "LICENSE.third-party.md",
+          "sha256": "9a7ef11db183cd226800d30889bcc6f8b6596dac14471583b4283b572256efe9"
+        }
+      ]
+    },
+    {
+      "name": "@napi-rs/keyring-linux-arm64-gnu",
+      "version": "2.1.2",
+      "license": "MIT",
+      "repository": "https://github.com/Brooooooklyn/keyring-node",
+      "notices": [
+        {
+          "member": "LICENSE.third-party.md",
+          "sha256": "7e31f56ddc47a7e8c30974772c4bfa1562f275c375dd29e783419396065dfa37"
+        }
+      ]
+    },
+    {
+      "name": "@napi-rs/keyring-linux-x64-gnu",
+      "version": "2.1.2",
+      "license": "MIT",
+      "repository": "https://github.com/Brooooooklyn/keyring-node",
+      "notices": [
+        {
+          "member": "LICENSE.third-party.md",
+          "sha256": "f5d5938861d065ae52ff874eb7abf43d22b2d2ffa49666dd175c637b8d614a27"
+        }
+      ]
+    },
+    {
+      "name": "@napi-rs/keyring-win32-arm64-msvc",
+      "version": "2.1.2",
+      "license": "MIT",
+      "repository": "https://github.com/Brooooooklyn/keyring-node",
+      "notices": [
+        {
+          "member": "LICENSE.third-party.md",
+          "sha256": "c3f500ee3f17e44814aa93f80634805b4245533e2831096a9490eb31877ce2e3"
+        }
+      ]
+    },
+    {
+      "name": "@napi-rs/keyring-win32-x64-msvc",
+      "version": "2.1.2",
+      "license": "MIT",
+      "repository": "https://github.com/Brooooooklyn/keyring-node",
+      "notices": [
+        {
+          "member": "LICENSE.third-party.md",
+          "sha256": "7ba6d9c1629dfc7cd6312ea17713214d7a7147f2cb673f6a937588c7d1ec2d93"
+        }
+      ]
+    },
+    {
+      "name": "@napi-rs/keyring",
+      "version": "2.1.2",
+      "license": "MIT",
+      "repository": "https://github.com/Brooooooklyn/keyring-node",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "02965ed67e29f871a53f7a7afa593a0ddc8020f86ccce0faaf1aa59215b5269e"
         }
       ]
     },
@@ -20326,6 +20410,30 @@
       "version": "0.31.0-3"
     },
     {
+      "name": "@napi-rs/keyring-freebsd-x64",
+      "version": "2.1.2"
+    },
+    {
+      "name": "@napi-rs/keyring-linux-arm-gnueabihf",
+      "version": "2.1.2"
+    },
+    {
+      "name": "@napi-rs/keyring-linux-arm64-musl",
+      "version": "2.1.2"
+    },
+    {
+      "name": "@napi-rs/keyring-linux-riscv64-gnu",
+      "version": "2.1.2"
+    },
+    {
+      "name": "@napi-rs/keyring-linux-x64-musl",
+      "version": "2.1.2"
+    },
+    {
+      "name": "@napi-rs/keyring-win32-ia32-msvc",
+      "version": "2.1.2"
+    },
+    {
       "name": "@napi-rs/canvas-android-arm64",
       "version": "0.1.100"
     },
@@ -33148,7 +33256,7 @@
         },
         {
           "file": "packages/services/src/node.ts",
-          "sha256": "e4b812583b30ae871533651b417ea5ca044113eda542a15ec8995fc4fa40bc52"
+          "sha256": "38c07673fa6733fd5c37d9f31decd571d2766a1c2887fdaa87f165b797f702ea"
         },
         {
           "file": "packages/services/src/accessor.ts",
@@ -33493,7 +33601,7 @@
         },
         {
           "file": "packages/ui/src/v4/ConversationRowView.tsx",
-          "sha256": "a384b9d9f0bd6cc8854b9b2d9bf9e9f32cb406164efe3a61a01f1618b9f0de5b"
+          "sha256": "12224fd813ce93adcb2269fdaecc7e7f039b77de9772853b6c9e66c454499fad"
         }
       ]
     },
@@ -34054,11 +34162,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "1679464150dfbf858e6d4a084e6609c20a1e6dba16bf0ec8ab8ed8bea1745d45"
+          "sha256": "2635bc34e7d2a5f517d2637ffaaec629c37500a10abec84df3439d5f0fa1887e"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "200af8456dd5aa717561280c78e74df6458275f377ec435c14ba884f613da4bd"
+          "sha256": "2d4e09f1f452f8266f05754a97f16b1e1a5c5adfb6e6563f445fb1552b34933e"
         },
         {
           "file": "packages/ui/src/v4/WorkflowNotificationToolRow.tsx",
@@ -34796,7 +34904,7 @@
         },
         {
           "file": "packages/ui/src/v4/ConversationRowView.tsx",
-          "sha256": "a384b9d9f0bd6cc8854b9b2d9bf9e9f32cb406164efe3a61a01f1618b9f0de5b"
+          "sha256": "12224fd813ce93adcb2269fdaecc7e7f039b77de9772853b6c9e66c454499fad"
         },
         {
           "file": "packages/ui/src/v4/workflowRunCardJoin.ts",
@@ -34862,7 +34970,7 @@
         },
         {
           "file": "packages/ui/src/v4/ConversationRowView.tsx",
-          "sha256": "a384b9d9f0bd6cc8854b9b2d9bf9e9f32cb406164efe3a61a01f1618b9f0de5b"
+          "sha256": "12224fd813ce93adcb2269fdaecc7e7f039b77de9772853b6c9e66c454499fad"
         },
         {
           "file": "packages/ui/src/v4/ConversationTurnGroup.tsx",
@@ -34886,11 +34994,11 @@
         },
         {
           "file": "packages/ui/src/i18n/locales/zh-CN.ts",
-          "sha256": "1679464150dfbf858e6d4a084e6609c20a1e6dba16bf0ec8ab8ed8bea1745d45"
+          "sha256": "2635bc34e7d2a5f517d2637ffaaec629c37500a10abec84df3439d5f0fa1887e"
         },
         {
           "file": "packages/ui/src/i18n/locales/en-US.ts",
-          "sha256": "200af8456dd5aa717561280c78e74df6458275f377ec435c14ba884f613da4bd"
+          "sha256": "2d4e09f1f452f8266f05754a97f16b1e1a5c5adfb6e6563f445fb1552b34933e"
         }
       ]
     },
@@ -35207,7 +35315,7 @@
         },
         {
           "file": "packages/services/src/oauth/oauthService.ts",
-          "sha256": "c94d146c7343572e17b71828677830246893e5be7bf7405f1980dcc65d269188"
+          "sha256": "bb32bc4a72999318dea4c75db83833f5ddada0efe71e4a0c3861e43bf09cbf48"
         }
       ]
     },

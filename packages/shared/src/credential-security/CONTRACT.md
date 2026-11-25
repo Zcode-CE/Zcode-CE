@@ -67,9 +67,35 @@ Linux 固定 `secret-service`，不回退到重启即失的 kernel keyutils。
 锁序恒为「凭据文件锁 → 密钥锁」（`<credentials.json>.keyring`），任何路径都不得反序。
 首次并发生成由密钥锁串行化，后到者读到同一把密钥；私有文件用 `wx` + `link` 排他发布，绝不覆盖。
 
+## 批量读写（SPEC §7）
+
+批量语义只有一处实现：`credentialBatchStore.ts`（读多键、整组 CAS、条件删）与
+`credentialGenerationScope.ts`（代次作用域）。Host 凭据服务与 CLI store 只做键值校验与变更通知。
+
+| 入口                               | 语义                                                                                             |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `loadManyCredentialValues`         | 一次读多键；`null` 只表示键不存在（空串表示存在且为空）；读取前后复核代次                        |
+| `updateCredentialValuesMany`       | 整组 CAS：`expected` 全部相等才应用 `changes`（`null` = 删除）；不匹配返回 `false` 且不写盘      |
+| `deleteUnreadableCredentialValues` | 只删锁内仍解不开的键，可附带 `removeKeys` 与 `replacements`；返回受影响键集合或 `null`（未提交） |
+| `saveCredentialValueIfAbsent`      | 锁内「没有才写」，返回实际值；并发收敛到先写入者                                                 |
+| `deleteCredentialValueIfEquals`    | 只删仍等于期望明文的值；解不开按不等处理（不删）                                                 |
+| `recoverUnreadableCredentialValue` | 可读则返回原值、不可读则删除该键；`assertCurrent` 在锁内执行                                     |
+| `captureCredentialGuard`           | 把读-改-写包成一个代次作用域；作用域内写入口用事务起始代次                                       |
+
+四条不变量：CAS 是整组的（不是逐键删除）；比较在锁内、解密后（密文解不开 = 不等，密钥不可用 = 上抛）；
+加密在领取代次之后、文件锁之外完成；变更通知由调用方在锁外发送（锁内通知会让监听器派生的任务沿用本次代次）。
+
+## 变更通知载荷
+
+`onDidMutate` 的载荷是 `{ operation: "save" | "delete" | "batch" | "recover", keys: readonly string[] }`：
+批量提交只发一个事件且键已去重，单键操作恒为长度 1。`recover` 由单键恢复（`recoverUnreadable`）
+与 P2 的整库恢复共用，消费点必须逐键判定而不是只看第一个键。
+
 ## 本期未做（P2 / P3）
 
-自动重置、失败诊断全集与进程级观察者、`inspectStore/recoverStore`、批量 CAS（§7）、Main 私有桥、
-`prepareServerCredentialStorage`（Desktop 远程启动准备）、
-原生 `@napi-rs/keyring` 依赖安装与打包连线（asarUnpack / 平台变体 prune / licenses）。
-原生模块目前是**可选**惰性 import：模块不存在 → `stage=load` → 按上表回退或报错。
+自动重置、失败诊断全集与进程级观察者、`inspectStore/recoverStore`、Main 私有桥、
+`prepareServerCredentialStorage`（Desktop 远程启动准备）。
+
+原生 `@napi-rs/keyring`（2.1.2，精确版本）已随桌面内置 agent 分发：`asarUnpack` 只解目标平台变体的 `.node`，
+`desktop-native-package-policy.mjs` prune 非目标变体并在产物校验里报「非目标变体 / 缺目标变体 / 缺 .node / 缺主包」四类违规。
+无头分发包**不带**该模块（无头本就 `allowKeyCreation:false`，只接受显式配置密钥）⇒ 运行时 `stage=load` 并按上表回退或报错。

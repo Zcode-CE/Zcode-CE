@@ -7,7 +7,14 @@ import type {
   OAuthUserProfile,
 } from "@zcode/shared";
 import { BIGMODEL_PROVIDER_ID, isCredentialDecryptError, ZAI_PROVIDER_ID } from "@zcode/shared";
-import type { ICredentialService } from "../../credential/credential.js";
+import {
+  OAUTH_SESSION_REVISION_KEY,
+  type OAuthSessionCredentialService,
+} from "../../credential/credential.js";
+import {
+  commitCredentialSessionChange,
+  type CommitCredentialSessionChangeOptions,
+} from "../../credential/credentialSessionRevision.js";
 import { createServiceLogger } from "../../logger/serviceLogger.js";
 
 const ACTIVE_PROVIDER_KEY = "oauth:active_provider";
@@ -19,6 +26,32 @@ const log = createServiceLogger("oauthCredentialRepo");
 interface OAuthCredentialRepoOptions {
   providerIds?: readonly OAuthProviderId[];
   onCorruptOAuthSessionCleared?: (providerIds: readonly OAuthProviderId[]) => Promise<void>;
+}
+
+/** OAuth 会话快照：会话键的明文集合（含版本键）。提交时整组比较，任何键被并发改过就丢弃本次结果。 */
+export interface OAuthCredentialSnapshot {
+  readonly values: Readonly<Record<string, string | null>>;
+}
+
+/**
+ * 单个 provider 的字段级变更：`undefined` = 本次不动该字段，`null` = 清除。
+ * tokenSet 覆盖 access/refresh 与共享的 zcode JWT，profile 覆盖 user_info。
+ */
+export interface OAuthProviderSessionChange {
+  readonly provider: OAuthProviderId;
+  readonly tokenSet?: OAuthTokenSet | null;
+  readonly profile?: OAuthUserProfile | null;
+}
+
+/**
+ * 一次会话提交的字段级增量（登录、刷新、切号、登出、恢复都走它）。
+ *
+ * providers 按数组顺序应用：登录先清旧 provider 再写新 token，共享的 zcodejwttoken
+ * 才不会在切换过程中被自己的清理删掉。
+ */
+export interface OAuthSessionChange {
+  readonly activeProvider?: OAuthProviderId | null;
+  readonly providers?: readonly OAuthProviderSessionChange[];
 }
 
 function accessTokenKey(provider: OAuthProviderId): string {
@@ -33,6 +66,10 @@ function userInfoKey(provider: OAuthProviderId): string {
   return `oauth:${provider}:user_info`;
 }
 
+function usesZcodeJwt(provider: OAuthProviderId): boolean {
+  return provider === ZAI_PROVIDER_ID || provider === BIGMODEL_PROVIDER_ID;
+}
+
 function collectKnownOAuthProviderIds(
   providerIds: readonly OAuthProviderId[] = [],
 ): OAuthProviderId[] {
@@ -41,6 +78,64 @@ function collectKnownOAuthProviderIds(
     uniqueProviderIds.add(providerId);
   }
   return [...uniqueProviderIds];
+}
+
+function asOAuthProviderId(value: string | null | undefined): OAuthProviderId | null {
+  const trimmed = value?.trim();
+  return trimmed ? (trimmed as OAuthProviderId) : null;
+}
+
+function tokenKeys(provider: OAuthProviderId): string[] {
+  const keys = [accessTokenKey(provider), refreshTokenKey(provider)];
+  if (usesZcodeJwt(provider)) {
+    keys.push(ZCODE_JWT_TOKEN_KEY);
+  }
+  return keys;
+}
+
+/** access token 是否存在决定「是否登录」，其余字段只是它的补充。 */
+function tokenSetFromValues(
+  values: Readonly<Record<string, string | null | undefined>>,
+  provider: OAuthProviderId,
+): OAuthTokenSet | null {
+  const accessToken = values[accessTokenKey(provider)] ?? null;
+  if (!accessToken) {
+    return null;
+  }
+  const refreshToken = values[refreshTokenKey(provider)] ?? null;
+  const zcodeJwtToken = usesZcodeJwt(provider) ? (values[ZCODE_JWT_TOKEN_KEY] ?? null) : null;
+  return {
+    accessToken,
+    ...(refreshToken ? { refreshToken } : {}),
+    ...(zcodeJwtToken ? { zcodeJwtToken } : {}),
+  };
+}
+
+/** ZAI 后端 data.user 是账号态排查与恢复的源数据；只存归一化展示字段会丢 email/name/avatar 原结构。 */
+function persistableProfile(provider: OAuthProviderId, profile: OAuthUserProfile): unknown {
+  return provider === ZAI_PROVIDER_ID && profile.rawProfile ? profile.rawProfile : profile;
+}
+
+/**
+ * 把字段级变更展开成键值变更：`null` 表示删除该键。
+ * 同一键被多次写入时由调用方按数组顺序合并（后写覆盖先写）。
+ */
+function providerChanges(change: OAuthProviderSessionChange): Record<string, string | null> {
+  const changes: Record<string, string | null> = {};
+  if (change.tokenSet !== undefined) {
+    changes[accessTokenKey(change.provider)] = change.tokenSet ? change.tokenSet.accessToken : null;
+    changes[refreshTokenKey(change.provider)] = change.tokenSet?.refreshToken ?? null;
+    if (usesZcodeJwt(change.provider)) {
+      changes[ZCODE_JWT_TOKEN_KEY] = change.tokenSet?.zcodeJwtToken ?? null;
+    }
+  }
+  if (change.profile !== undefined) {
+    changes[userInfoKey(change.provider)] =
+      change.profile === null
+        ? null
+        : JSON.stringify(persistableProfile(change.provider, change.profile));
+  }
+  return changes;
 }
 
 function inferBase64ImageMimeType(decoded: Buffer): string {
@@ -132,12 +227,64 @@ function toOAuthUserProfileFromRawZaiUser(raw: Record<string, unknown>): OAuthUs
   };
 }
 
-/** OAuth 凭据仓储：统一 provider 命名空间 */
+/** 解析已落盘的 user_info 明文；解析失败按「没有可信 profile」处理，不抛错。 */
+function parseStoredUserProfile(
+  raw: string | null | undefined,
+  provider: OAuthProviderId,
+): OAuthUserProfile | null {
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<OAuthUserProfile>;
+    if (
+      typeof parsed.id === "string" &&
+      typeof parsed.username === "string" &&
+      typeof parsed.displayName === "string"
+    ) {
+      const avatarUrl = typeof parsed.avatarUrl === "string" ? parsed.avatarUrl : undefined;
+      const rawProfile =
+        typeof parsed.rawProfile === "object" && parsed.rawProfile !== null
+          ? parsed.rawProfile
+          : undefined;
+      return {
+        id: parsed.id,
+        username: parsed.username,
+        displayName: parsed.displayName,
+        ...(avatarUrl ? { avatarUrl } : {}),
+        ...(rawProfile ? { rawProfile } : {}),
+      };
+    }
+
+    if (provider === ZAI_PROVIDER_ID && typeof parsed === "object" && parsed !== null) {
+      // ZAI user_info 现在按后端 data.user 原样持久化，
+      // 启动恢复时需要从 user_id/name/avatar 重新映射展示字段。
+      const zaiProfile = toOAuthUserProfileFromRawZaiUser(parsed as Record<string, unknown>);
+      if (zaiProfile) {
+        return zaiProfile;
+      }
+    }
+  } catch {
+    // ignore parse error and fallback to null
+  }
+
+  return null;
+}
+
+/**
+ * OAuth 凭据仓储：统一 provider 命名空间。
+ *
+ * 写入全部走 SPEC §7 的批量契约：先从会话快照读明文，再在字段级合并，最后以整组 CAS +
+ * 版本轮换提交。不这样做的代价很具体 —— 登录要写 token、user_info、active provider 三组键，
+ * 逐键写入时另一个进程的登录能插进中间，落盘出「A 的 token + B 的 profile」；
+ * 读-改-写还要求「读到的值」就是「比较的值」，所以快照与提交必须由同一份明文驱动。
+ */
 export class OAuthCredentialRepo {
   private readonly knownProviderIds: OAuthProviderId[];
 
   constructor(
-    private credentialService: ICredentialService,
+    private credentialService: OAuthSessionCredentialService,
     options: OAuthCredentialRepoOptions = {},
   ) {
     this.knownProviderIds = collectKnownOAuthProviderIds(options.providerIds);
@@ -149,93 +296,26 @@ export class OAuthCredentialRepo {
   ) => Promise<void>;
 
   async getActiveProvider(): Promise<OAuthProviderId | null> {
-    return this.loadActiveProvider();
-  }
-
-  async setActiveProvider(provider: OAuthProviderId | null): Promise<void> {
-    await this.saveActiveProvider(provider);
+    return await this.loadActiveProvider();
   }
 
   async loadActiveProvider(): Promise<OAuthProviderId | null> {
-    try {
-      return await this.credentialService.load(ACTIVE_PROVIDER_KEY);
-    } catch (error) {
-      if (!isCredentialDecryptError(error)) {
-        throw error;
-      }
-
-      await this.clearCorruptOAuthSession();
-      return null;
-    }
-  }
-
-  async saveActiveProvider(provider: OAuthProviderId | null): Promise<void> {
-    if (!provider) {
-      await this.credentialService.delete(ACTIVE_PROVIDER_KEY);
-      return;
-    }
-
-    // App 登录恢复为 oauth:* 镜像，active provider 是互斥 provider 域的唯一事实源。
-    await this.credentialService.save(ACTIVE_PROVIDER_KEY, provider);
-  }
-
-  async loadActiveTokenSet(): Promise<OAuthTokenSet | null> {
-    const provider = await this.loadActiveProvider();
-    if (!provider) {
-      return null;
-    }
-
-    const tokenSet = await this.loadTokenSet(provider);
-    if (tokenSet) {
-      return tokenSet;
-    }
-
-    return null;
-  }
-
-  async saveActiveTokenSet(tokenSet: OAuthTokenSet): Promise<void> {
-    const provider = await this.loadActiveProvider();
-    if (!provider) {
-      throw new Error("保存当前登录 token 前缺少 active provider");
-    }
-    await this.saveTokenSet(provider, tokenSet);
+    const values = await this.loadValues([ACTIVE_PROVIDER_KEY]);
+    return asOAuthProviderId(values[ACTIVE_PROVIDER_KEY]);
   }
 
   async loadActiveUserProfile(): Promise<OAuthUserProfile | null> {
-    const provider = await this.loadActiveProvider();
-    if (!provider) {
-      return null;
-    }
-
-    const profile = await this.loadUserProfile(provider);
-    if (profile) {
-      return profile;
-    }
-
-    return null;
+    const provider = await this.getActiveProvider();
+    return provider ? await this.loadUserProfile(provider) : null;
   }
 
-  async saveActiveUserProfile(profile: OAuthUserProfile): Promise<void> {
-    const provider = await this.loadActiveProvider();
-    if (!provider) {
-      throw new Error("保存当前登录 user 前缺少 active provider");
-    }
-    await this.saveUserProfile(provider, profile);
+  async loadTokenSet(provider: OAuthProviderId): Promise<OAuthTokenSet | null> {
+    return tokenSetFromValues(await this.loadValues(tokenKeys(provider)), provider);
   }
 
-  async saveLoginAttribution(attribution: OAuthLoginAttribution): Promise<void> {
-    const persistAttribution = Object.fromEntries(
-      Object.entries(attribution).flatMap(([key, value]) => {
-        const trimmed = typeof value === "string" ? value.trim() : "";
-        return trimmed ? [[key, trimmed]] : [];
-      }),
-    );
-
-    if (Object.keys(persistAttribution).length === 0) {
-      return;
-    }
-
-    await this.credentialService.save(LOGIN_ATTRIBUTION_KEY, JSON.stringify(persistAttribution));
+  async loadUserProfile(provider: OAuthProviderId): Promise<OAuthUserProfile | null> {
+    const values = await this.loadValues([userInfoKey(provider)]);
+    return parseStoredUserProfile(values[userInfoKey(provider)], provider);
   }
 
   async loadLoginAttribution(): Promise<OAuthLoginAttribution | null> {
@@ -243,6 +323,7 @@ export class OAuthCredentialRepo {
     try {
       raw = await this.credentialService.load(LOGIN_ATTRIBUTION_KEY);
     } catch (error) {
+      // 归因是旁路事实：它解不开不等于登录失效，不能因为一条归因密文损坏就把用户强制登出。
       if (!isCredentialDecryptError(error)) {
         throw error;
       }
@@ -271,172 +352,170 @@ export class OAuthCredentialRepo {
         ),
       ) as OAuthLoginAttribution;
       if (Object.keys(params).length === 0) {
-        await this.credentialService.delete(LOGIN_ATTRIBUTION_KEY);
+        await this.credentialService.updateMany({ [LOGIN_ATTRIBUTION_KEY]: null });
         return null;
       }
       return params;
     } catch {
-      await this.credentialService.delete(LOGIN_ATTRIBUTION_KEY);
+      await this.credentialService.updateMany({ [LOGIN_ATTRIBUTION_KEY]: null });
       return null;
     }
   }
 
-  async clearActiveSession(): Promise<void> {
-    const activeProvider = await this.loadActiveProvider();
-    if (activeProvider) {
-      await this.clearProvider(activeProvider);
+  async saveLoginAttribution(attribution: OAuthLoginAttribution): Promise<void> {
+    const persistAttribution = Object.fromEntries(
+      Object.entries(attribution).flatMap(([key, value]) => {
+        const trimmed = typeof value === "string" ? value.trim() : "";
+        return trimmed ? [[key, trimmed]] : [];
+      }),
+    );
+
+    if (Object.keys(persistAttribution).length === 0) {
+      return;
     }
-    await this.credentialService.delete(ACTIVE_PROVIDER_KEY);
+
+    // 归因是旁路事实：它既不在会话快照里，也不轮换版本键 —— 归因回调常先于授权码到达，
+    // 若它轮换版本，同一 flow 的登录提交会以必然过期的快照失败，用户永远登不进去。
+    await this.credentialService.updateMany({
+      [LOGIN_ATTRIBUTION_KEY]: JSON.stringify(persistAttribution),
+    });
   }
 
-  async loadTokenSet(provider: OAuthProviderId): Promise<OAuthTokenSet | null> {
+  /**
+   * 读取当前会话快照（登录/刷新开始时调用）。
+   * 额外的 providers 用于 active provider 来自旧版本、不在已知列表里的情况：
+   * 快照必须包含本次事务要比较的全部键，否则那条 provider 的写入等于没有 CAS。
+   */
+  async captureSessionSnapshot(
+    providers: readonly OAuthProviderId[] = [],
+  ): Promise<OAuthCredentialSnapshot> {
+    return { values: await this.loadValues(this.sessionKeys(providers)) };
+  }
+
+  readActiveProvider(snapshot: OAuthCredentialSnapshot): OAuthProviderId | null {
+    return asOAuthProviderId(snapshot.values[ACTIVE_PROVIDER_KEY]);
+  }
+
+  readTokenSet(snapshot: OAuthCredentialSnapshot, provider: OAuthProviderId): OAuthTokenSet | null {
+    return tokenSetFromValues(snapshot.values, provider);
+  }
+
+  readUserProfile(
+    snapshot: OAuthCredentialSnapshot,
+    provider: OAuthProviderId,
+  ): OAuthUserProfile | null {
+    return parseStoredUserProfile(snapshot.values[userInfoKey(provider)], provider);
+  }
+
+  readZcodeJwtToken(snapshot: OAuthCredentialSnapshot): string | null {
+    return snapshot.values[ZCODE_JWT_TOKEN_KEY] ?? null;
+  }
+
+  /**
+   * 整组提交一次会话变更（SPEC §7.3）：字段级合并 + 整组 CAS + 版本轮换。
+   *
+   * 返回 false = 快照已被别的会话改写，本次一个键都没写（不是故障，调用方按当前存储重读）；
+   * snapshot 为 null 表示强制提交（登出、损坏恢复）：不比较期望值，只轮换版本让在途事务失效。
+   */
+  async commitSessionChange(
+    snapshot: OAuthCredentialSnapshot | null,
+    change: OAuthSessionChange,
+    options: CommitCredentialSessionChangeOptions = {},
+  ): Promise<boolean> {
+    const changes: Record<string, string | null> = {};
+    if (change.activeProvider !== undefined) {
+      changes[ACTIVE_PROVIDER_KEY] = change.activeProvider;
+    }
+    for (const providerChange of change.providers ?? []) {
+      Object.assign(changes, providerChanges(providerChange));
+    }
+    if (Object.keys(changes).length === 0) {
+      // 没有字段变化就不写盘：空提交若也轮换版本，会让所有在途事务无谓失效。
+      return true;
+    }
+
+    const committed = await commitCredentialSessionChange(
+      this.credentialService,
+      snapshot?.values ?? {},
+      changes,
+      options,
+    );
+    if (!committed) {
+      log.info(undefined, "OAuth session commit discarded: stored snapshot changed");
+    }
+    return committed;
+  }
+
+  /**
+   * 清理当前会话（登出、过期 JWT 失效）。
+   *
+   * 传快照时只有快照仍成立才提交 —— 期间另一进程写入了新登录就放弃清理、由调用方重读；
+   * 不传快照表示强制清理（用户主动登出、损坏恢复），不能被并发写挡住。
+   */
+  async clearActiveSession(snapshot?: OAuthCredentialSnapshot): Promise<boolean> {
+    const base = snapshot ?? (await this.captureSessionSnapshot());
+    const activeProvider = this.readActiveProvider(base);
+    return await this.commitSessionChange(snapshot ?? null, {
+      activeProvider: null,
+      providers: activeProvider
+        ? [{ provider: activeProvider, tokenSet: null, profile: null }]
+        : [],
+    });
+  }
+
+  /** 清空全部 provider 与 active provider（登出全部、损坏恢复）。强制提交，但轮换版本键。 */
+  async clearAll(providers: readonly OAuthProviderId[]): Promise<void> {
+    await this.commitSessionChange(null, {
+      activeProvider: null,
+      providers: providers.map((provider) => ({ provider, tokenSet: null, profile: null })),
+    });
+  }
+
+  /** 只清 active provider 键（provider 已不可用时启动恢复的收口动作）。 */
+  async clearActiveProvider(): Promise<void> {
+    await this.commitSessionChange(null, { activeProvider: null });
+  }
+
+  /**
+   * 批量明文读（SPEC §7.1 loadMany）：单键读取也走它，损坏处理只有一处。
+   *
+   * 解密失败按既有语义等价于强制登出：OAuth 命名空间已不可信，清掉后本次会话视为空；
+   * 密钥来源不可用等其他错误照常上抛，不能被当成「没登录」。
+   */
+  private async loadValues(keys: readonly string[]): Promise<Record<string, string | null>> {
     try {
-      const accessToken = await this.credentialService.load(accessTokenKey(provider));
-      if (!accessToken) {
-        return null;
-      }
-
-      const refreshToken = await this.credentialService.load(refreshTokenKey(provider));
-
-      const zcodeJwtToken =
-        provider === ZAI_PROVIDER_ID || provider === BIGMODEL_PROVIDER_ID
-          ? await this.credentialService.load(ZCODE_JWT_TOKEN_KEY)
-          : null;
-
-      return {
-        accessToken,
-        ...(refreshToken ? { refreshToken } : {}),
-        ...(zcodeJwtToken ? { zcodeJwtToken } : {}),
-      };
+      return await this.credentialService.loadMany(keys);
     } catch (error) {
       if (!isCredentialDecryptError(error)) {
         throw error;
       }
-
       await this.clearCorruptOAuthSession();
-      return null;
+      // 清完重新读：清理本身会轮换版本键，返回「全 null」的快照会与磁盘不符，
+      // 后续以自己的快照提交的登录就会永远 CAS 失败（用户表现为「修好了却登不进去」）。
+      return await this.credentialService.loadMany(keys);
     }
   }
 
-  async saveTokenSet(provider: OAuthProviderId, tokenSet: OAuthTokenSet): Promise<void> {
-    await this.credentialService.save(accessTokenKey(provider), tokenSet.accessToken);
-
-    if (tokenSet.refreshToken) {
-      await this.credentialService.save(refreshTokenKey(provider), tokenSet.refreshToken);
-    } else {
-      await this.credentialService.delete(refreshTokenKey(provider));
-    }
-
-    if (provider === ZAI_PROVIDER_ID || provider === BIGMODEL_PROVIDER_ID) {
-      if (tokenSet.zcodeJwtToken) {
-        // BigModel Start Plan 与 Z.ai Start Plan 一样消费 zcode JWT。
-        // JWT 必须在 OAuth callback 阶段随 tokenSet 落盘，后续 balance/runtime 只读取它，
-        // 不能再拿 BigModel access token 拼另一个 /oauth/token body 临时兑换。
-        await this.credentialService.save(ZCODE_JWT_TOKEN_KEY, tokenSet.zcodeJwtToken);
-      } else {
-        await this.credentialService.delete(ZCODE_JWT_TOKEN_KEY);
-      }
-    }
-  }
-
-  async loadUserProfile(provider: OAuthProviderId): Promise<OAuthUserProfile | null> {
-    return this.loadUserProfileFromKey(userInfoKey(provider), provider);
-  }
-
-  private async loadUserProfileFromKey(
-    key: string,
-    provider?: OAuthProviderId,
-  ): Promise<OAuthUserProfile | null> {
-    let raw: string | null;
-    try {
-      raw = await this.credentialService.load(key);
-    } catch (error) {
-      if (!isCredentialDecryptError(error)) {
-        throw error;
-      }
-
-      await this.clearCorruptOAuthSession();
-      return null;
-    }
-
-    if (!raw) {
-      return null;
-    }
-
-    try {
-      const parsed = JSON.parse(raw) as Partial<OAuthUserProfile>;
-      if (
-        typeof parsed.id === "string" &&
-        typeof parsed.username === "string" &&
-        typeof parsed.displayName === "string"
-      ) {
-        const avatarUrl = typeof parsed.avatarUrl === "string" ? parsed.avatarUrl : undefined;
-        const rawProfile =
-          typeof parsed.rawProfile === "object" && parsed.rawProfile !== null
-            ? parsed.rawProfile
-            : undefined;
-        return {
-          id: parsed.id,
-          username: parsed.username,
-          displayName: parsed.displayName,
-          ...(avatarUrl ? { avatarUrl } : {}),
-          ...(rawProfile ? { rawProfile } : {}),
-        };
-      }
-
-      if (provider === ZAI_PROVIDER_ID && typeof parsed === "object" && parsed !== null) {
-        // ZAI user_info 现在按后端 data.user 原样持久化，
-        // 启动恢复时需要从 user_id/name/avatar 重新映射展示字段。
-        const zaiProfile = toOAuthUserProfileFromRawZaiUser(parsed as Record<string, unknown>);
-        if (zaiProfile) {
-          return zaiProfile;
-        }
-      }
-    } catch {
-      // ignore parse error and fallback to null
-    }
-
-    return null;
-  }
-
-  async saveUserProfile(provider: OAuthProviderId, profile: OAuthUserProfile): Promise<void> {
-    // ZAI 后端返回的 data.user 是后续账号态排查与恢复的源数据，
-    // 之前只保存归一化展示字段会丢失 email/name/avatar 原始结构。
-    const persistProfile =
-      provider === ZAI_PROVIDER_ID && profile.rawProfile ? profile.rawProfile : profile;
-
-    await this.credentialService.save(userInfoKey(provider), JSON.stringify(persistProfile));
-  }
-
-  async clearUserProfile(provider: OAuthProviderId): Promise<void> {
-    await this.credentialService.delete(userInfoKey(provider));
-  }
-
-  async clearProvider(provider: OAuthProviderId): Promise<void> {
-    await this.credentialService.delete(accessTokenKey(provider));
-    await this.credentialService.delete(refreshTokenKey(provider));
-    await this.credentialService.delete(userInfoKey(provider));
-    if (shouldClearZcodeJwtOnLogout(provider)) {
-      await this.credentialService.delete(ZCODE_JWT_TOKEN_KEY);
-    }
-  }
-
-  async clearAll(providers: OAuthProviderId[]): Promise<void> {
-    for (const provider of providers) {
-      await this.clearProvider(provider);
-    }
-
-    await this.saveActiveProvider(null);
+  /** 会话键：批量提交的比较集合。归因键不在这里（旁路事实，见 saveLoginAttribution）。 */
+  private sessionKeys(extraProviders: readonly OAuthProviderId[]): string[] {
+    const providers = new Set<OAuthProviderId>([...this.knownProviderIds, ...extraProviders]);
+    return [
+      ACTIVE_PROVIDER_KEY,
+      OAUTH_SESSION_REVISION_KEY,
+      ZCODE_JWT_TOKEN_KEY,
+      ...[...providers].flatMap((provider) => [
+        accessTokenKey(provider),
+        refreshTokenKey(provider),
+        userInfoKey(provider),
+      ]),
+    ];
   }
 
   private async clearCorruptOAuthSession(): Promise<void> {
     // AES-GCM 解密失败说明当前运行时已经无法信任本地 OAuth 登录态。
-    // 等价于强制登出已注册 OAuth provider：先清 provider 命名空间与共享 zcode JWT，
-    // 再通知 service 层清理 Start/Coding Plan 这类派生模型凭据，同时避免误删 SSH 等其他独立凭据。
-    for (const provider of this.knownProviderIds) {
-      await this.clearProvider(provider);
-    }
-    await this.credentialService.delete(ACTIVE_PROVIDER_KEY);
+    // 等价于强制登出已注册 OAuth provider：清 provider 命名空间与共享 zcode JWT，并轮换版本键，
+    // 让在途登录/刷新事务的期望值全部失效；SSH、插件、bot 等其他独立凭据不受影响，也不误删。
+    await this.clearAll(this.knownProviderIds);
     try {
       await this.onCorruptOAuthSessionCleared?.(this.knownProviderIds);
     } catch (error) {
@@ -445,8 +524,4 @@ export class OAuthCredentialRepo {
       log.warn(undefined, "clear derived provider keys after corrupt OAuth session failed", error);
     }
   }
-}
-
-function shouldClearZcodeJwtOnLogout(provider: OAuthProviderId): boolean {
-  return provider === ZAI_PROVIDER_ID || provider === BIGMODEL_PROVIDER_ID;
 }

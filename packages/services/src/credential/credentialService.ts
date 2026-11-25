@@ -7,14 +7,25 @@ import {
   formatZodError,
 } from "@zcode/shared";
 import {
-  captureCredentialGeneration,
+  captureCredentialGuard,
   createCredentialCipherByPath,
+  deleteCredentialValueIfEquals,
+  deleteUnreadableCredentialValues,
+  loadManyCredentialValues,
   mutateCredentialRecordLocked,
   readCredentialRecordWithMigration,
+  recoverUnreadableCredentialValue,
+  saveCredentialValueIfAbsent,
+  updateCredentialValuesMany,
   type CredentialCipher,
   type CredentialRecordTarget,
 } from "@zcode/shared/credential-security";
-import type { ICredentialService } from "./credential.js";
+import type {
+  CredentialMutationEvent,
+  DeleteUnreadableOptions,
+  LocalCredentialService,
+  UpdateManyOptions,
+} from "./credential.js";
 import { createServiceLogger } from "../logger/serviceLogger.js";
 import { getCredentialsFilePath } from "../paths.js";
 
@@ -24,6 +35,9 @@ import { getCredentialsFilePath } from "../paths.js";
  * 持久化格式仍是 JSON，但每个 value 是 `enc:v2:` 密文：主密钥为 32 字节随机值，
  * 优先存系统凭据库、失败时回退同目录 0600 `credential-secret`（见 @zcode/shared/credential-security）。
  * 拿到 `credentials.json` 副本不再等于拿到 token —— 主密钥不在副本里。
+ *
+ * 批量方法（loadMany/updateMany/deleteUnreadable/...，SPEC §7）只做键值校验与变更通知，
+ * 读写语义全部落在共享层的 credentialBatchStore：CAS、代次闸门、锁序只有一处实现。
  */
 const logger = createServiceLogger("credentialService");
 
@@ -78,16 +92,49 @@ async function writeAll(credentialsFile: string, data: Record<string, string>): 
   await atomicWritePrivateTextFile(credentialsFile, `${JSON.stringify(data, null, 2)}\n`);
 }
 
+/** CAS 期望值与写入值走同一套校验；null 保留为「必须不存在」。 */
+function validateChanges(
+  changes: Readonly<Record<string, string | null>>,
+): Record<string, string | null> {
+  return Object.fromEntries(
+    Object.entries(changes).map(([key, value]) => [
+      credentialKeySchema.parse(key),
+      value === null ? null : credentialValueSchema.parse(value),
+    ]),
+  );
+}
+
+function validateExpected(
+  expected: Readonly<Record<string, string | null>> | undefined,
+): Record<string, string | null> | undefined {
+  return expected === undefined ? undefined : validateChanges(expected);
+}
+
+function validateValues(
+  values: Readonly<Record<string, string>> | undefined,
+): Record<string, string> | undefined {
+  if (values === undefined) return undefined;
+  return Object.fromEntries(
+    Object.entries(values).map(([key, value]) => [
+      credentialKeySchema.parse(key),
+      credentialValueSchema.parse(value),
+    ]),
+  );
+}
+
 interface CredentialServiceDependencies {
   /** 注入的加密后端；默认是本机系统凭据库（keyring 优先、私有文件兜底）。 */
   cipher?: CredentialCipher;
-  /** Host 私有的持久化成功通知；不进入 Renderer/RPC 凭据接口。 */
-  onDidMutate?: (event: { operation: "save" | "delete"; key: string }) => void;
+  /**
+   * Host 私有的持久化成功通知；不进入 Renderer/RPC 凭据接口。
+   * 批量提交一次只发一个事件并带完整 keys —— 通知必须在锁外发（见 credentialBatchStore）。
+   */
+  onDidMutate?: (event: CredentialMutationEvent) => void;
 }
 
 export function createCredentialService(
   dependencies: CredentialServiceDependencies = {},
-): ICredentialService {
+): LocalCredentialService {
   // 数据存储路径可在运行期切换，而密钥条目按凭据文件路径命名：cipher 必须按当前路径取，
   // 否则切换后的新根会继续用旧根的密钥。
   const cipherByPath = createCredentialCipherByPath();
@@ -98,6 +145,10 @@ export function createCredentialService(
     read: () => readAll(filePath),
     write: (record) => writeAll(filePath, record),
   });
+  const notify = (event: CredentialMutationEvent): void => {
+    if (event.keys.length === 0) return;
+    dependencies.onDidMutate?.(event);
+  };
 
   return {
     async load(key: string): Promise<string | null> {
@@ -117,33 +168,100 @@ export function createCredentialService(
       const validatedKey = credentialKeySchema.parse(key);
       const validatedValue = credentialValueSchema.parse(value);
       const credentialsFile = getCredentialsFile();
-      const cipher = cipherFor(credentialsFile);
-      // 加密在锁外完成（主密钥可能来自系统凭据库），代次在加密前领取、在锁内复核：
-      // 跨越了恢复/重置的在途写必须被拒绝一次，而不是把旧结果盖到新存储上。
-      const expectedGeneration = await captureCredentialGeneration(credentialsFile);
-      const encryptedValue = await cipher.encrypt(validatedValue);
-      // desktop host 与 CLI adapter 是独立进程，进程内排队不能阻止 whole-file
-      // read-modify-write 丢更新；共享目录锁必须覆盖读取、变更和原子替换全过程。
-      await mutateCredentialRecordLocked(recordTarget(credentialsFile), {
-        migrate: true,
-        expectedGeneration,
-        mutation: (creds) => {
-          creds[validatedKey] = encryptedValue;
-        },
+      // 单键写入就是「整组条件写只有一个变更」：加密在锁外、代次在锁内复核。
+      await updateCredentialValuesMany(recordTarget(credentialsFile), {
+        [validatedKey]: validatedValue,
       });
-      dependencies.onDidMutate?.({ operation: "save", key: validatedKey });
+      notify({ operation: "save", keys: [validatedKey] });
     },
 
     async delete(key: string): Promise<void> {
       const validatedKey = credentialKeySchema.parse(key);
       const credentialsFile = getCredentialsFile();
-      // 纯删除不迁移：密钥不可用时登出仍必须成功（恢复流程属 P2），也不产生新密文。
+      // 纯删除不迁移：密钥不可用时登出仍必须成功（恢复流程属 P2），也不产生新密文，
+      // 因此不需要代次闸门（闸门保护的是「加密结果基于旧存储」，删除没有加密结果）。
       await mutateCredentialRecordLocked(recordTarget(credentialsFile), {
         mutation: (creds) => {
           delete creds[validatedKey];
         },
       });
-      dependencies.onDidMutate?.({ operation: "delete", key: validatedKey });
+      notify({ operation: "delete", keys: [validatedKey] });
+    },
+
+    async loadMany(keys: readonly string[]): Promise<Record<string, string | null>> {
+      const validatedKeys = keys.map((key) => credentialKeySchema.parse(key));
+      return await loadManyCredentialValues(recordTarget(getCredentialsFile()), validatedKeys);
+    },
+
+    async updateMany(
+      changes: Readonly<Record<string, string | null>>,
+      options: UpdateManyOptions = {},
+    ): Promise<boolean> {
+      const validatedChanges = validateChanges(changes);
+      const committed = await updateCredentialValuesMany(
+        recordTarget(getCredentialsFile()),
+        validatedChanges,
+        { expected: validateExpected(options.expected), assertCurrent: options.assertCurrent },
+      );
+      if (committed) notify({ operation: "batch", keys: Object.keys(validatedChanges) });
+      return committed;
+    },
+
+    async deleteUnreadable(
+      keys: readonly string[],
+      options: DeleteUnreadableOptions = {},
+    ): Promise<boolean> {
+      const affected = await deleteUnreadableCredentialValues(
+        recordTarget(getCredentialsFile()),
+        keys.map((key) => credentialKeySchema.parse(key)),
+        {
+          expected: validateExpected(options.expected),
+          removeKeys: options.removeKeys?.map((key) => credentialKeySchema.parse(key)),
+          replacements: validateValues(options.replacements),
+        },
+      );
+      if (affected === null) return false;
+      notify({ operation: "batch", keys: affected });
+      return true;
+    },
+
+    async saveIfAbsent(key: string, value: string): Promise<string> {
+      const validatedKey = credentialKeySchema.parse(key);
+      const validatedValue = credentialValueSchema.parse(value);
+      const result = await saveCredentialValueIfAbsent(
+        recordTarget(getCredentialsFile()),
+        validatedKey,
+        validatedValue,
+      );
+      if (result.written) notify({ operation: "save", keys: [validatedKey] });
+      return result.value;
+    },
+
+    async deleteIfEquals(key: string, expected: string): Promise<void> {
+      const validatedKey = credentialKeySchema.parse(key);
+      const validatedExpected = credentialValueSchema.parse(expected);
+      const deleted = await deleteCredentialValueIfEquals(
+        recordTarget(getCredentialsFile()),
+        validatedKey,
+        validatedExpected,
+      );
+      if (deleted) notify({ operation: "delete", keys: [validatedKey] });
+    },
+
+    async recoverUnreadable(key: string, assertCurrent: () => void): Promise<string | null> {
+      const validatedKey = credentialKeySchema.parse(key);
+      const result = await recoverUnreadableCredentialValue(
+        recordTarget(getCredentialsFile()),
+        validatedKey,
+        assertCurrent,
+      );
+      // SPEC §7.2.5 把恢复流程统一成 operation: "recover"（上游对单键恢复发的是 delete）。
+      if (result.removed) notify({ operation: "recover", keys: [validatedKey] });
+      return result.value;
+    },
+
+    async captureRecoveryGuard() {
+      return await captureCredentialGuard(recordTarget(getCredentialsFile()));
     },
   };
 }

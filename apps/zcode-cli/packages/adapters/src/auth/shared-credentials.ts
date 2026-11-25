@@ -9,6 +9,7 @@ import {
   readCredentialRecordWithMigration,
   resolveCredentialsFilePath,
   resolveCredentialsFilePathIn,
+  updateCredentialValuesMany,
   type CredentialCipher,
   type CredentialRecordTarget,
 } from "@zcode/shared/credential-security";
@@ -28,6 +29,11 @@ export const SHARED_ZCODE_CREDENTIAL_KEYS = {
   zaiRefreshToken: "oauth:zai:refresh_token",
   zaiUserInfo: "oauth:zai:user_info",
   zcodeJwtToken: "zcodejwttoken",
+  /**
+   * OAuth 会话版本键：与 Host 侧同名同义（SPEC §7.3）。Host 每次 OAuth 提交都在同一批次里轮换它；
+   * CLI store 提供 updateMany 的整组 CAS 以便按同一代次提交，登出时它随共享键一起被清掉。
+   */
+  sessionRevision: "oauth:session_revision",
 } as const;
 
 export interface SharedZCodeCredentialStoreOptions {
@@ -50,6 +56,14 @@ export interface ZaiLoginCredentialPayload {
   user: ZaiLoginCredentialUser;
 }
 
+/** updateMany 的整组 CAS 选项（与 Host 侧 UpdateManyOptions 同义，SPEC §7.1）。 */
+export interface SharedCredentialUpdateOptions {
+  /** 整组期望值（明文；null = 必须不存在）。任一键不等就一个都不写。 */
+  expected?: Readonly<Record<string, string | null>>;
+  /** 锁内复核调用方前提；抛错即放弃提交且不写盘。 */
+  assertCurrent?: () => void;
+}
+
 export interface SharedZCodeCredentialStore {
   readonly filePath: string;
   clearZaiLoginCredentials(): Promise<void>;
@@ -70,6 +84,14 @@ export interface SharedZCodeCredentialStore {
   saveMany(entries: Readonly<Record<string, string>>): Promise<void>;
   saveReplacing(key: string, value: string, replacedKeys: readonly string[]): Promise<void>;
   saveZaiLoginCredentials(payload: ZaiLoginCredentialPayload): Promise<void>;
+  /**
+   * 整组条件写：expected 全部相等才应用 changes（null = 删除该键）。
+   * 返回 false = CAS 失败且未写盘（正常竞态，不抛错）；true = 已提交并发一次变更通知。
+   */
+  updateMany(
+    changes: Readonly<Record<string, string | null>>,
+    options?: SharedCredentialUpdateOptions,
+  ): Promise<boolean>;
 }
 
 export function createSharedZCodeCredentialStore(
@@ -88,6 +110,15 @@ export function createSharedZCodeCredentialStore(
   };
 
   /**
+   * 变更通知（锁外发送）：同进程的 Registry Source 需要在登录返回前观察到新凭据；
+   * 单个监听者失败不应把已经原子落盘的 Credential 伪装成写入失败。
+   */
+  const notifyChangeListeners = async (): Promise<void> => {
+    const listeners = [...(credentialChangeListeners.get(filePath) ?? [])];
+    await Promise.allSettled(listeners.map((listener) => listener()));
+  };
+
+  /**
    * 变更入口：锁内读 →（可选）迁移 → 变更 → 写闸门 → 原子写；通知在锁外发送。
    * 纯删除路径不迁移：密钥不可用时登出仍必须成功（否则用户连退出都做不到）。
    */
@@ -96,10 +127,7 @@ export function createSharedZCodeCredentialStore(
     settings: { migrate?: boolean; expectedGeneration?: number } = {},
   ): Promise<void> => {
     await mutateCredentialRecordLocked(recordTarget, { ...settings, mutation });
-    const listeners = [...(credentialChangeListeners.get(filePath) ?? [])];
-    // 同进程的 Registry Source 需要在登录返回前观察到新凭据；单个监听者失败不应
-    // 把已经原子落盘的 Credential 伪装成写入失败。
-    await Promise.allSettled(listeners.map((listener) => listener()));
+    await notifyChangeListeners();
   };
 
   /** 加密前领代次：锁内写盘时复核，跨恢复/重置的在途写不会被当成新值覆盖。 */
@@ -109,7 +137,9 @@ export function createSharedZCodeCredentialStore(
     const generation = await captureCredentialGeneration(filePath);
     const encrypted = Object.fromEntries(
       await Promise.all(
-        Object.entries(entries).map(async ([key, value]) => [key, await cipher.encrypt(value)] as const),
+        Object.entries(entries).map(
+          async ([key, value]) => [key, await cipher.encrypt(value)] as const,
+        ),
       ),
     );
     return { generation, encrypted };
@@ -295,6 +325,26 @@ export function createSharedZCodeCredentialStore(
       );
     },
 
+    /**
+     * 整组条件写（SPEC §7.1 updateMany）：读写语义只在共享层实现（CAS、代次闸门、锁序），
+     * 这里只做键值校验与一次变更通知。返回 false 表示 CAS 失败且未写盘，不是错误。
+     */
+    async updateMany(
+      changes: Readonly<Record<string, string | null>>,
+      options: SharedCredentialUpdateOptions = {},
+    ): Promise<boolean> {
+      const validatedChanges = validateCredentialChanges(changes);
+      const committed = await updateCredentialValuesMany(recordTarget, validatedChanges, {
+        expected:
+          options.expected === undefined ? undefined : validateCredentialChanges(options.expected),
+        assertCurrent: options.assertCurrent,
+      });
+      if (committed && Object.keys(validatedChanges).length > 0) {
+        await notifyChangeListeners();
+      }
+      return committed;
+    },
+
     async saveZaiLoginCredentials(payload: ZaiLoginCredentialPayload): Promise<void> {
       const { generation, encrypted } = await encryptWithGeneration({
         [SHARED_ZCODE_CREDENTIAL_KEYS.activeProvider]: ZAI_PROVIDER_ID,
@@ -391,6 +441,18 @@ function validateCredentialValue(value: string): string {
     throw new Error("Credential value must not be empty");
   }
   return value;
+}
+
+/** 变更/期望值共用同一套校验；null 保留为「必须不存在 / 删除」，不是空值。 */
+function validateCredentialChanges(
+  changes: Readonly<Record<string, string | null>>,
+): Record<string, string | null> {
+  return Object.fromEntries(
+    Object.entries(changes).map(([key, value]) => [
+      validateCredentialKey(key),
+      value === null ? null : validateCredentialValue(value),
+    ]),
+  );
 }
 
 function resolveUserPath(value: string): string {
